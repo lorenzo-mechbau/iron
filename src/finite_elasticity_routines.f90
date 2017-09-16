@@ -9535,23 +9535,29 @@ CONTAINS
                   CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
                 ENDIF
               ENDIF
+            
             CASE(PROBLEM_QUASISTATIC_FINITE_ELASTICITY_SUBTYPE)
               ! do nothing, time values get updated in CONTROL_TIME_LOOP_PRE_LOOP as there might be 
               ! a load increment loop below the time loop, so we don't want to update times here before
               ! every solve
-            CASE(PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE)
+            
+            CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+              & PROBLEM_GUDUNOV_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE, &
+              & PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+              & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
               ! do nothing
-            CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
-              ! do nothing
-            CASE(PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
-              ! do nothing
+            
             CASE(PROBLEM_MULTISCALE_FINITE_ELASTICITY_SUBTYPE)
               ! do nothing
-            CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+            
+            CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE,&
+              & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
               !evaluate the evolution law using the cell model variables of the current time step and the deformation gradient tensor of the previous time step
               CALL FINITE_ELASTICITY_EVALUATE_EVOLUTION_LAW(SOLVER,ERR,ERROR,*999)
+              
             CASE(PROBLEM_STANDARD_ELASTICITY_FLUID_PRESSURE_SUBTYPE)
               ! do nothing
+            
             CASE(PROBLEM_STANDARD_ELASTICITY_DARCY_SUBTYPE,PROBLEM_PGM_ELASTICITY_DARCY_SUBTYPE, &
               & PROBLEM_QUASISTATIC_ELASTICITY_TRANSIENT_DARCY_SUBTYPE,PROBLEM_QUASISTATIC_ELAST_TRANS_DARCY_MAT_SOLVE_SUBTYPE)
               IF(SOLVER%OUTPUT_TYPE>=SOLVER_PROGRESS_OUTPUT) THEN

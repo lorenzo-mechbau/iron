@@ -1724,9 +1724,9 @@ CONTAINS
               END SELECT
             CASE(PROBLEM_BIOELECTRIC_FINITE_ELASTICITY_TYPE)
               SELECT CASE(PROBLEM%SPECIFICATION(3))
-              CASE(PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE,PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
-                & PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE,EQUATIONS_SET_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE, &
-                & PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+              CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+                & PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
+                & PROBLEM_GUDUNOV_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
                 SELECT CASE(SOLVER%GLOBAL_NUMBER)
                 CASE(1)
                   CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT,ERR,ERROR,*999)
@@ -1737,6 +1737,24 @@ CONTAINS
                     & " is invalid for a bioelectrics finite elasticity problem."
                   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                 END SELECT
+                
+              CASE(PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+                & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
+                & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+                SELECT CASE(SOLVER%GLOBAL_NUMBER)
+                CASE(1)
+                  CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT/2.0_DP,ERR,ERROR,*999)
+                CASE(2)
+                  !Do nothing
+                CASE(3)
+                  CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME+TIME_INCREMENT/2.0_DP,CURRENT_TIME+TIME_INCREMENT, &
+                    & ERR,ERROR,*999)
+                CASE DEFAULT
+                  LOCAL_ERROR="The solver global number of "//TRIM(NUMBER_TO_VSTRING(SOLVER%GLOBAL_NUMBER,"*",ERR,ERROR))// &
+                    & " is invalid for a bioelectrics finite elasticity problem."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                END SELECT
+                
               CASE DEFAULT
                 LOCAL_ERROR="The problem subtype of "//TRIM(NUMBER_TO_VSTRING(PROBLEM%SPECIFICATION(3),"*",ERR,ERROR))// &
                   & " is invalid for a monodomain problem type."
