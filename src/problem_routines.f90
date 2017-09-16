@@ -2491,7 +2491,7 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
             CALL CustomProfilingStart("level 2: 3D solve")
 #endif
-            !CALL Problem_SolverEquationsStaticNonlinearSolve(SOLVER_EQUATIONS,ERR,ERROR,*999)
+            CALL Problem_SolverEquationsStaticNonlinearSolve(SOLVER_EQUATIONS,ERR,ERROR,*999)
 
 #ifdef USE_CUSTOM_PROFILING
             CALL CustomProfilingStop("level 2: 3D solve")
