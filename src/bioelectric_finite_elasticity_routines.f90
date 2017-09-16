@@ -544,15 +544,6 @@ CONTAINS
             CALL SOLVERS_SOLVER_GET(MONODOMAIN_SOLVERS,1,SOLVER,ERR,ERROR,*999)
             CALL CELLML_EQUATIONS_CREATE_START(SOLVER,CELLML_EQUATIONS,ERR,ERROR,*999)
             
-            SELECT CASE(PROBLEM%specification(3))
-            CASE(PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
-              & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
-              & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
-              
-              !Create the CellML equations for the second DAE solver
-              CALL SOLVERS_SOLVER_GET(MONODOMAIN_SOLVERS,3,SOLVER,ERR,ERROR,*999)
-              CALL CELLML_EQUATIONS_CREATE_START(SOLVER,CELLML_EQUATIONS,ERR,ERROR,*999)
-            END SELECT
           CASE(PROBLEM_SETUP_FINISH_ACTION)
             !Get the control loop
             CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
@@ -572,12 +563,12 @@ CONTAINS
               & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
               & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
                 
-              !Get the CellML equations for the second DAE solver
+              NULLIFY(SOLVER)
               CALL SOLVERS_SOLVER_GET(MONODOMAIN_SOLVERS,3,SOLVER,ERR,ERROR,*999)
-              CALL SOLVER_CELLML_EQUATIONS_GET(SOLVER,CELLML_EQUATIONS,ERR,ERROR,*999)
-              !Finish the CellML equations creation
-              CALL CELLML_EQUATIONS_CREATE_FINISH(CELLML_EQUATIONS,ERR,ERROR,*999)            
-            
+              
+              ! set the cellml equations to the second DAE_solver
+              SOLVER%CELLML_EQUATIONS=>CELLML_EQUATIONS
+              
             END SELECT
           CASE DEFAULT
             LOCAL_ERROR="The action type of "//TRIM(NUMBER_TO_VSTRING(PROBLEM_SETUP%ACTION_TYPE,"*",ERR,ERROR))// &
