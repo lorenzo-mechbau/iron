@@ -604,8 +604,8 @@ CONTAINS
                     SOLVER=>SOLVERS%SOLVERS(solver_idx)%PTR
                     
 #ifdef USE_CUSTOM_PROFILING
-                    IF (SOLVERS%NUMBER_OF_SOLVERS == 2) THEN      ! if this is the MONODOMAIN_TIME_LOOP
-                      IF (solver_idx == 1) THEN
+                    IF (SOLVERS%NUMBER_OF_SOLVERS >= 2) THEN      ! if this is the MONODOMAIN_TIME_LOOP
+                      IF (solver_idx == 1 .OR. solver_idx == 3) THEN
                         CALL CustomProfilingStart("level 1: SolverDAE solve")
                       ELSE
                         CALL CustomProfilingStart("level 1: SolverParabolic solve")
@@ -616,8 +616,8 @@ CONTAINS
                     CALL PROBLEM_SOLVER_SOLVE(SOLVER,ERR,ERROR,*999)
                     
 #ifdef USE_CUSTOM_PROFILING
-                    IF (SOLVERS%NUMBER_OF_SOLVERS == 2) THEN      ! if this is the MONODOMAIN_TIME_LOOP
-                      IF (solver_idx == 1) THEN
+                    IF (SOLVERS%NUMBER_OF_SOLVERS >= 2) THEN      ! if this is the MONODOMAIN_TIME_LOOP
+                      IF (solver_idx == 1 .OR. solver_idx == 3) THEN
                         CALL CustomProfilingStop("level 1: SolverDAE solve")
                       ELSE
                         CALL CustomProfilingStop("level 1: SolverParabolic solve")

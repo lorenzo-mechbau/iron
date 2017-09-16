@@ -50308,7 +50308,7 @@ CONTAINS
 
     !Argument variables
     TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
-    INTEGER(INTG) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(IN) :: number_timesteps !<The number it is to be set to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(VARYING_STRING) :: localError
@@ -50343,7 +50343,7 @@ CONTAINS
 
     !Argument variables
     TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
-    INTEGER(INTG) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(IN) :: number_timesteps !<The number it is to be set to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(VARYING_STRING) :: localError
@@ -61975,7 +61975,7 @@ CONTAINS
   SUBROUTINE cmfe_OutputInterpolationParameters(Problem, DependentFieldM, SolverParabolic, Err)
     TYPE(cmfe_ProblemType), INTENT(IN) :: Problem
     TYPE(cmfe_FieldType), INTENT(IN) :: DependentFieldM
-    TYPE(cmfe_SolverType) :: SolverParabolic
+    TYPE(cmfe_SolverType), INTENT(IN) :: SolverParabolic
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     
     !Local variables
