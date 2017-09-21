@@ -2872,7 +2872,7 @@ CONTAINS
 !                      CALL CustomProfilingStart('1.1.4. cellml integrate')
 !#endif
                       EULER_SOLVER%Iterator=EULER_SOLVER%Iterator+1
-                      PRINT *, "Iteration ",EULER_SOLVER%Iterator,":"
+                      !PRINT *, "Iteration ",EULER_SOLVER%Iterator,":"
                       !Integrate these CellML equations
                       CALL SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                         & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
