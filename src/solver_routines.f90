@@ -78,10 +78,10 @@ MODULE SOLVER_ROUTINES
   PRIVATE
 
 #include "mpif.h"  
-  
-  LOGICAL, PUBLIC :: DEBUG_MODE_A = .FALSE. ! from Aaron
+!-from Aaron:----------
+  LOGICAL, PUBLIC :: DEBUG_MODE_A = .FALSE.
+  LOGICAL, PUBLIC :: run_survey = .FALSE.
 
-  
   ! Timing variables
   REAL(DP), PUBLIC :: TIMING_ODE_SOLVER = 0_DP
 
@@ -2160,9 +2160,10 @@ CONTAINS
       & STATE_END_DOF,state_idx,STATE_START_DOF
     INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
-      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES))
+      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STARTT,FINISHT
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: exist_A,exist_B
     
     ENTERS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR,*999)
     
@@ -2387,6 +2388,31 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+                     ! remove this after test. OLD TOMO MECHANICS CASE
+                      IF (run_survey) THEN
+                      
+                        IF(dof_idx==1 .AND. TIME_STEP==1) THEN ! measure cpu time for integration of all cells over complete time interval
+                          CALL CPU_TIME(STARTT)
+                        ENDIF
+                        
+                        IF(dof_idx ==16 .AND. TIME_STEP==1) THEN ! output of initial values for cell number 16
+                          inquire(file="ODE_X_0.txt", exist=exist_B)
+                          if (exist_B) then
+                            open(4368, file="ODE_X_0.txt", status="old", position="append", action="write")
+                          else
+                            open(4368, file="ODE_X_0.txt", status="new", action="write")
+                          end if
+                          WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                          DO model_idx=0,NUMBER_STATES-1
+                            WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                          ENDDO
+                          WRITE(4368,'(A)',advance='yes') " expEuler_y(t=0)_Zelle_",dof_idx
+                          close(4368)
+                          model_idx=MODELS_DATA(1)
+                        ENDIF
+                        
+                      ENDIF ! run_survey
+                     ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -2408,16 +2434,47 @@ CONTAINS
 
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
-                          ENDIF !model_idx  
-                          ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
-                            DO model_idx=0,NUMBER_STATES-1
-                              WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
-                            ENDDO
-                            model_idx=MODELS_DATA(1)
-                            WRITE(*,*) ''
-                          ENDIF
+                      
+                            IF(TIME_STEP==TS_NUMBER) THEN
+                              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,END_TIME,STATE_DATA(STATE_START_DOF &
+                                & :STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
+                                & PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            ENDIF
+                                                       
+                            IF(dof_idx==16 .AND. run_survey) THEN 
+                              WRITE(*,'(A,G19.12)') " I_ion=",(-RATES(1)*0.58)
+                            ENDIF
+                      
+                          ENDIF !model_idx 
+                          
+                          ! remove this after test
+                          IF(run_survey) THEN
+                            IF(dof_idx==16 .AND. TIME_STEP==TS_NUMBER) THEN
+                              inquire(file="Euler.txt", exist=exist_A)
+                              if (exist_A) then
+                                open(1567, file="Euler.txt", status="old", position="append", action="write")
+                              else
+                                open(1567, file="Euler.txt", status="new", action="write")
+                              end if
+                              !produce formatted output
+                              WRITE(1567,'(i4)',advance='no') TS_NUMBER
+                              DO model_idx=0,NUMBER_STATES-1
+                                WRITE(1567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                              ENDDO
+                              WRITE(1567,'(A,G19.12)',advance='no') " I_ion=",(-RATES(1)*0.58)
+                              model_idx=MODELS_DATA(1)
+                            ENDIF
+                            IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN ! complete time measurement
+                              CALL CPU_TIME(FINISHT)
+                              !produce formatted output
+                              WRITE(1567,'(A,G19.12)',advance='yes') " eE_y(t=t^{0,0,N})_tookSecs:",FINISHT-STARTT
+                              close(1567)
+                              GO TO 999
+                            ENDIF
+                            ! in vector segment STATE_DATA(856:912) sind die Daten für dof_idx==16 und TIME_STEP==TS_NUMBER
+                          ENDIF ! run_survey
+                          ! up to this point
+                          
                         ENDDO !dof_idx
                       ENDDO !TIME_STEP
                     
@@ -2455,6 +2512,72 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+                     ! remove this after test ALIEV CASE (oldTomo = false)
+                     !IF (run_survey) THEN
+                     !    if((.NOT.(without_stim .OR. with_stim)) .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
+                     !     ! print the state data exactly once. then quit.
+                     !      inquire(file="WantedStatesb.txt", exist=exist_B)
+                     !      if (exist_B) then
+                     !        open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                     !      else
+                     !        open(4368, file="WantedStatesb.txt", status="new", action="write")
+                     !      end if
+                     !      WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                     !      DO model_idx=0,NUMBER_STATES-1
+                     !        WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                     !      ENDDO
+                     !      WRITE(4368,'(A)',advance='yes') "startbed_eulB"
+                     !      close(4368)
+                     !      model_idx=MODELS_DATA(1)
+                     !      go to 999
+                     !    endif
+                     !  if(without_stim .OR. (with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
+                    
+                     !    if(with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
+                     !    !now set the data manually:
+                     !      STATE_DATA(STATE_START_DOF)=0.0_DP    
+                     !      STATE_DATA(STATE_START_DOF+1)=17.6441232643_DP
+                     !      STATE_DATA(STATE_START_DOF+2)=0.565468565533E-03_DP
+                     !      STATE_DATA(STATE_START_DOF+3)=0.996836307317E-04_DP
+                     !      STATE_DATA(STATE_START_DOF+4)=0.999972804200E-04_DP
+                     !      STATE_DATA(STATE_START_DOF+5)=0.997663356061E-16_DP
+                     !      STATE_DATA(STATE_START_DOF+6)=0.008_DP
+                     !    endif
+                     !    
+                     !     IF(without_stim .AND. dof_idx==1 .AND. TIME_STEP==1) THEN
+                     !       inquire(file="ODE_X_0.txt", exist=exist_B)
+                     !       if (exist_B) then
+                     !         open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                     !       else
+                     !         open(4568, file="ODE_X_0.txt", status="new", action="write")
+                     !       end if
+                     !       WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                     !       DO model_idx=0,NUMBER_STATES-1
+                     !         WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                     !       ENDDO
+                     !       WRITE(4568,'(A)',advance='yes') " eE"
+                     !       close(4568)
+                     !       model_idx=MODELS_DATA(1)
+                     !       CALL CPU_TIME(STARTT)                          
+                     !     ELSE IF(with_stim .AND. dof_idx==1 .AND. TIME_STEP==1) THEN
+                     !       inquire(file="ODE_X_0.txt", exist=exist_B)
+                     !       if (exist_B) then
+                     !         open(4368, file="ODE_X_0.txt", status="old", position="append", action="write")
+                     !       else
+                     !         open(4368, file="ODE_X_0.txt", status="new", action="write")
+                     !       end if
+                     !       WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                     !       DO model_idx=0,NUMBER_STATES-1
+                     !         WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                     !       ENDDO
+                     !       WRITE(4368,'(A)',advance='yes') " eE_startbedingungen"
+                     !       close(4368)
+                     !       model_idx=MODELS_DATA(1)
+                     !       CALL CPU_TIME(STARTT) 
+                     !     ENDIF
+                     !   endif
+                     ! ENDIF ! run_survey
+                     ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -2473,14 +2596,54 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
-                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
-                            DO model_idx=0,NUMBER_STATES-1
-                              WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
-                            ENDDO
-                            model_idx=MODELS_DATA(1)
-                            WRITE(*,*) ''
-                          ENDIF
+                     ! remove this after test
+                     !IF (run_survey) THEN
+                     !   if(without_stim .OR. (with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
+                     !     IF(without_stim .AND. dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                     !       inquire(file="MeinOutputExp.txt", exist=exist_A)
+                     !       if (exist_A) then
+                     !         open(1567, file="MeinOutputExp.txt", status="old", position="append", action="write")
+                     !       else
+                     !         open(1567, file="MeinOutputExp.txt", status="new", action="write")
+                     !       end if
+                     !       !produce formatted output
+                     !       WRITE(1567,'(i4)',advance='no') TS_NUMBER
+                     !       DO model_idx=0,NUMBER_STATES-1
+                     !         WRITE(1567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                     !       ENDDO
+                     !       model_idx=MODELS_DATA(1)
+                     !     ELSE IF(with_stim .AND. dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                     !       inquire(file="MeinOutputExp.txt", exist=exist_A)
+                     !       if (exist_A) then
+                     !         open(1567, file="MeinOutputExp.txt", status="old", position="append", action="write")
+                     !       else
+                     !         open(1567, file="MeinOutputExp.txt", status="new", action="write")
+                     !       end if
+                     !       !produce formatted output
+                     !       WRITE(1567,'(i4)',advance='no') TS_NUMBER
+                     !       DO model_idx=0,NUMBER_STATES-1
+                     !         WRITE(1567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                     !       ENDDO
+                     !       model_idx=MODELS_DATA(1)
+                     !     ENDIF
+                     !     IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                     !       CALL CPU_TIME(FINISHT)
+                     !       !produce formatted output
+                     !       WRITE(1567,'(A,G19.12)',advance='yes') " eE",FINISHT-STARTT
+                     !       close(1567)
+                     !       GO TO 999
+                     !     ENDIF
+                     !   endif
+                     ! ENDIF ! run_survey
+                     ! up to this point
+                         ! IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
+                         !   WRITE(*,*)'eEB===================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
+                         !   DO model_idx=0,NUMBER_STATES-1
+                         !     WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
+                         !   ENDDO
+                         !   model_idx=MODELS_DATA(1)
+                         !   WRITE(*,*) ''
+                         ! ENDIF
                         ENDDO !dof_idx
                       ENDDO !TIME_STEP
                     ELSE
@@ -2708,7 +2871,8 @@ CONTAINS
 !#ifdef USE_CUSTOM_PROFILING
 !                      CALL CustomProfilingStart('1.1.4. cellml integrate')
 !#endif
-
+                      EULER_SOLVER%Iterator=EULER_SOLVER%Iterator+1
+                      PRINT *, "Iteration ",EULER_SOLVER%Iterator,":"
                       !Integrate these CellML equations
                       CALL SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                         & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
@@ -2901,10 +3065,12 @@ CONTAINS
     INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
       & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STATES_TEMP(MAX(1,MAX_NUMBER_STATES)) &
-      & ,RATES_TEMP(MAX(1,MAX_NUMBER_STATES))
+      & ,RATES_TEMP(MAX(1,MAX_NUMBER_STATES)),STARTT,FINISHT
     
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+  !remove this after measurements (as well as STARTT and FINISHT above):
+    LOGICAL :: exist_A,exist_B
     
     ENTERS("SOLVER_DAE_EULER_IMPROVED_INTEGRATE",ERR,ERROR,*999)
     
@@ -3178,6 +3344,29 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+                           ! remove this after test
+                           IF (run_survey) THEN
+                             IF(dof_idx==1 .AND. TIME_STEP==1) THEN
+                               CALL CPU_TIME(STARTT)
+                             ENDIF
+
+                             IF(dof_idx ==16 .AND. TIME_STEP==1) THEN
+                               inquire(file="ODE_X_0.txt", exist=exist_B)
+                               if (exist_B) then
+                                 open(4368, file="ODE_X_0.txt", status="old", position="append", action="write")
+                               else
+                                 open(4368, file="ODE_X_0.txt", status="new", action="write")
+                               end if
+                                 WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                               DO model_idx=0,NUMBER_STATES-1
+                                 WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                               ENDDO
+                                 WRITE(4368,'(A)',advance='yes') " Heun_y(t=0)_Zelle_",dof_idx
+                               close(4368)
+                               model_idx=MODELS_DATA(1)
+                             ENDIF
+                           ENDIF ! run_survey
+                           ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -3236,22 +3425,51 @@ CONTAINS
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                               & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
-                            ! compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
-                            INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
-                              & 0.5_DP * (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) &
-                                        & + INTERMEDIATES(1:MAX_NUMBER_INTERMEDIATES))
                             ! done.
-                          ENDIF !model_idx  
-                          ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'A=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
-                           !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
-                            DO model_idx=0,NUMBER_STATES-1
-                              WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
-                            ENDDO
-                            model_idx=MODELS_DATA(1)
-                            WRITE(*,*) ''
+                            
+                            ! compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
+                            !INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
+                            !  & 0.5_DP * (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) &
+                            !            & + INTERMEDIATES(1:MAX_NUMBER_INTERMEDIATES))
+                                        
+                            !NOTE! algebraic values for INTERMEDIATE_DATA need to be evaluated in the end of the integration period.
+                            IF(TIME_STEP==TS_NUMBER) THEN
+                              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,END_TIME,STATE_DATA(STATE_START_DOF &
+                                & :STATE_END_DOF),RATES_TEMP(1:NUMBER_STATES),INTERMEDIATE_DATA(INTERMEDIATE_START_DOF &
+                                & :INTERMEDIATE_END_DOF),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            ENDIF
+                            
+                            IF(dof_idx==16 .AND. run_survey) THEN 
+                              WRITE(*,'(A,G19.12)') " I_ion=",(-RATES_TEMP(1)*0.58)
+                            ENDIF
+                          ENDIF !model_idx
+                          
+                          ! remove this after test
+                          IF(run_survey) THEN
+                            IF(dof_idx==16 .AND. TIME_STEP==TS_NUMBER) THEN
+                              inquire(file="Heun.txt", exist=exist_A)
+                              if (exist_A) then
+                                open(5567, file="Heun.txt", status="old", position="append", action="write")
+                              else
+                                open(5567, file="Heun.txt", status="new", action="write")
+                              end if
+                              !produce formatted output
+                              WRITE(5567,'(i4)',advance='no') TS_NUMBER
+                              DO model_idx=0,NUMBER_STATES-1
+                                WRITE(5567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                              ENDDO
+                              WRITE(5567,'(A,G19.12)',advance='no') " I_ion=",(-RATES_TEMP(1)*0.58)
+                              model_idx=MODELS_DATA(1)
+                            ENDIF
+                            IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                              CALL CPU_TIME(FINISHT)
+                              !produce formatted output
+                              WRITE(5567,'(A,G19.12)',advance='yes') " H_y(t=t^{0,0,N})_tookSecs:",FINISHT-STARTT
+                              close(5567)
+                              GO TO 999
+                            ENDIF
                           ENDIF
+                          ! up to this point
                         ENDDO !dof_idx
                       ENDDO !TIME_STEP
                     
@@ -3299,6 +3517,73 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+                      ! remove this after test
+                      !IF (run_survey) THEN
+                      ! if((.NOT. (without_stim .OR. with_stim)) .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN   
+                      !   ! print the state data exactly once. then quit.
+                      !   inquire(file="WantedStatesb.txt", exist=exist_B)
+                      !   if (exist_B) then
+                      !     open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                      !   else
+                      !     open(4368, file="WantedStatesb.txt", status="new", action="write")
+                      !   end if
+                      !   WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                      !   DO model_idx=0,NUMBER_STATES-1
+                      !   WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                      !   ENDDO
+                      !   WRITE(4368,'(A)',advance='yes') "startbedingungenB"
+                      !   close(4368)
+                      !   model_idx=MODELS_DATA(1)
+                      !   
+                      !   go to 999
+                      ! endif
+                      ! 
+                      !  if(without_stim .OR. (with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
+                      !   if(with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
+                      !   !now set the data manually:
+                      !     STATE_DATA(STATE_START_DOF)=0.0_DP    
+                      !     STATE_DATA(STATE_START_DOF+1)=17.6441232643_DP
+                      !     STATE_DATA(STATE_START_DOF+2)=0.565468565533E-03_DP
+                      !     STATE_DATA(STATE_START_DOF+3)=0.996836307317E-04_DP
+                      !     STATE_DATA(STATE_START_DOF+4)=0.999972804200E-04_DP
+                      !     STATE_DATA(STATE_START_DOF+5)=0.997663356061E-16_DP
+                      !     STATE_DATA(STATE_START_DOF+6)=0.008_DP
+                      !    endif
+                      !  
+                      !    IF(without_stim .AND. dof_idx==1 .AND. TIME_STEP==1) THEN
+                      !      inquire(file="ODE_X_0.txt", exist=exist_B)
+                      !      if (exist_B) then
+                      !        open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                      !      else
+                      !        open(4568, file="ODE_X_0.txt", status="new", action="write")
+                      !      end if
+                      !      WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                      !      DO model_idx=0,NUMBER_STATES-1
+                      !        WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                      !      ENDDO
+                      !      WRITE(4568,'(A)',advance='yes') " iE"
+                      !      close(4568)
+                      !      model_idx=MODELS_DATA(1)
+                      !      CALL CPU_TIME(STARTT)
+                      !    ELSE IF(with_stim .AND. dof_idx==1 .AND. TIME_STEP==1) THEN
+                      !      inquire(file="ODE_X_0.txt", exist=exist_B)
+                      !      if (exist_B) then
+                      !        open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                      !      else
+                      !        open(4568, file="ODE_X_0.txt", status="new", action="write")
+                      !      end if
+                      !      WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                      !      DO model_idx=0,NUMBER_STATES-1
+                      !        WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                      !      ENDDO
+                      !      WRITE(4568,'(A)',advance='yes') " iE_startbedingungen"
+                      !      close(4568)
+                      !      model_idx=MODELS_DATA(1)
+                      !      CALL CPU_TIME(STARTT)
+                      !    ENDIF
+                      !  endif
+                      !ENDIF !run_survey
+                      ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -3339,7 +3624,33 @@ CONTAINS
                               & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! done.
                           ENDIF !model_idx
-                          
+                          ! remove this after test
+                          !IF (run_survey) THEN
+                          ! if(without_stim .OR. (with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
+                          !  IF(dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                          !   inquire(file="MeinOutputImpr.txt", exist=exist_A)
+                          !   if (exist_A) then
+                          !     open(5567, file="MeinOutputImpr.txt", status="old", position="append", action="write")
+                          !   else
+                          !     open(5567, file="MeinOutputImpr.txt", status="new", action="write")
+                          !   end if
+                          !   !produce formatted output
+                          !   WRITE(5567,'(i4)',advance='no') TS_NUMBER
+                          !   DO model_idx=0,NUMBER_STATES-1
+                          !     WRITE(5567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                          !   ENDDO
+                          !   !close(4567)
+                          !   model_idx=MODELS_DATA(1)
+                          !  ENDIF
+                          !  IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                          !   CALL CPU_TIME(FINISHT)
+                          !   WRITE(5567,'(A,G19.12)',advance='yes') " iE",FINISHT-STARTT
+                          !   close(5567)
+                          !   GO TO 999
+                          !  ENDIF
+                          ! endif
+                          !ENDIF ! run_survey
+                      ! up to this point                         
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
                             WRITE(*,*)'B=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
@@ -3583,7 +3894,10 @@ CONTAINS
 !#ifdef USE_CUSTOM_PROFILING
 !                      CALL CustomProfilingStart('1.1.4. cellml integrate')
 !#endif
-
+                      IF(run_survey) THEN
+                        EULER_SOLVER%Iterator=EULER_SOLVER%Iterator+1
+                        PRINT *, "Iteration ",EULER_SOLVER%Iterator,":"
+                      ENDIF ! runs_survey
                       !Integrate these CellML equations
                       CALL SOLVER_DAE_EULER_IMPROVED_INTEGRATE(IMPROVED_EULER_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                         & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
@@ -3701,6 +4015,7 @@ CONTAINS
         NULLIFY(DAE_SOLVER%EULER_SOLVER%FORWARD_EULER_SOLVER)
         NULLIFY(DAE_SOLVER%EULER_SOLVER%BACKWARD_EULER_SOLVER)
         NULLIFY(DAE_SOLVER%EULER_SOLVER%IMPROVED_EULER_SOLVER)
+        DAE_SOLVER%EULER_SOLVER%Iterator=0 ! to be removed if someone sees this
         !Default to a forward Euler solver
         CALL SOLVER_DAE_EULER_FORWARD_INITIALISE(DAE_SOLVER%EULER_SOLVER,ERR,ERROR,*999)
         DAE_SOLVER%EULER_SOLVER%EULER_TYPE=SOLVER_DAE_EULER_FORWARD
@@ -4481,6 +4796,7 @@ CONTAINS
         DAE_SOLVER%BDF_SOLVER%SOLVER_LIBRARY=SOLVER_PETSC_LIBRARY
         DAE_SOLVER%BDF_SOLVER%ABSOLUTE_TOLERANCE=0.0000001_DP
         DAE_SOLVER%BDF_SOLVER%RELATIVE_TOLERANCE=0.0000001_DP
+        DAE_SOLVER%BDF_SOLVER%ITERATOR=0
         !Defaults
       ENDIF
     ELSE
@@ -4761,6 +5077,7 @@ CONTAINS
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(PetscVecType) :: PETSC_RATES
+    LOGICAL :: exist_A,exist_B
     EXTERNAL :: Problem_SolverDAECellMLRHSPetsc
 
 
@@ -4797,6 +5114,7 @@ CONTAINS
                   ENDIF
                   !initialize context for petsc solving.
                   CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999)
+                                    
                   DO dof_idx=1,N
                     IF(DEBUG_MODE_A) THEN
                       WRITE(*,*) 'dof_idx is now ', dof_idx
@@ -4812,14 +5130,152 @@ CONTAINS
 ! http://www.mcs.anl.gov/petsc/documentation/tutorials/HandsOnExercise.html#ML
 
 ! c code for experimenting with petsc http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex19.c.html
-                         
+                      
+                      
                       !access the state field data
                       STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                       STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                      DO state_idx=1,NUMBER_STATES
-                        STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
+                      DO state_idx=0,NUMBER_STATES-1
+                        STATES_TEMP(state_idx) = STATE_DATA(STATE_START_DOF+state_idx)
                       ENDDO
-                                            
+                  ! remove this after test
+                  !  IF (run_survey) THEN
+                  !    if((.NOT.(without_stim .OR. with_stim)) .AND. BDF_SOLVER%ITERATOR==3) THEN
+                  !      ! print the state data exactly once. then quit.
+                  !      IF (NUMBER_STATES==57) THEN
+                  !       inquire(file="WantedStatesa.txt", exist=exist_B)
+                  !       if (exist_B) then
+                  !         open(4368, file="WantedStatesa.txt", status="old", position="append", action="write")
+                  !       else
+                  !         open(4368, file="WantedStatesa.txt", status="new", action="write")
+                  !       end if
+                  !       WRITE(4368,'(i4)',advance='no') 0
+                  !       DO state_idx=0,NUMBER_STATES-1
+                  !         WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx)
+                  !       ENDDO
+                  !       WRITE(4368,'(A)',advance='yes') "startbed_BDFA"
+                  !       close(4368)
+                  !       go to 999
+                  !      ELSE IF (NUMBER_STATES==7) THEN
+                  !      inquire(file="WantedStatesb.txt", exist=exist_B)
+                  !       if (exist_B) then
+                  !         open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                  !       else
+                  !         open(4368, file="WantedStatesb.txt", status="new", action="write")
+                  !       end if
+                  !       WRITE(4368,'(i4)',advance='no') 0
+                  !       DO state_idx=0,NUMBER_STATES-1
+                  !         WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx)
+                  !       ENDDO
+                  !       WRITE(4368,'(A)',advance='yes') "startbed_BDFB"
+                  !       close(4368)
+                  !       go to 999
+                  !      ENDIF
+                  !     endif
+                  !    if(without_stim .OR. (with_stim .AND. BDF_SOLVER%ITERATOR==3)) THEN
+                      
+                  !  !set the data manually if third iteration.
+                  !      if(with_stim .AND. BDF_SOLVER%ITERATOR==3) THEN
+                  !        !now set start data manually (with stimulation.)
+                  !        IF (NUMBER_STATES==57) THEN
+                  !        STATES_TEMP(0)=-80.2340818673_DP
+                  !        STATES_TEMP(1)=-82.1186903570_DP
+                  !        STATES_TEMP(2)=6.13754077486_DP 
+                  !        STATES_TEMP(3)=150.901412026_DP 
+                  !        STATES_TEMP(4)=5.89164187772_DP 
+                  !        STATES_TEMP(5)=12.6991339794_DP 
+                  !        STATES_TEMP(6)=132.185993099_DP 
+                  !        STATES_TEMP(7)= 133.009207112_DP
+                  !        STATES_TEMP(8)=0.682854289574E-02_DP
+                  !        STATES_TEMP(9)=0.995320999876_DP   
+                  !        STATES_TEMP(10)=0.276105758939E-01_DP
+                  !        STATES_TEMP(11)=0.598236838222_DP 
+                  !        STATES_TEMP(12)=0.586035078226_DP 
+                  !        STATES_TEMP(13)=0.688308692642E-02_DP
+                  !        STATES_TEMP(14)=0.996415957034_DP 
+                  !        STATES_TEMP(15)=0.270686136106E-01_DP
+                  !        STATES_TEMP(16)=0.595852639662_DP  
+                  !        STATES_TEMP(17)=0.586011097338_DP 
+                  !        STATES_TEMP(18)=0.176623526009E-05_DP
+                  !        STATES_TEMP(19)=0.563062532764E-05_DP 
+                  !        STATES_TEMP(20)=0.686477865317E-05_DP
+                  !        STATES_TEMP(21)=0.303979920966E-05_DP
+                  !        STATES_TEMP(22)=0.994746079138E-06_DP
+                  !        STATES_TEMP(23)=0.883111675605_DP   
+                  !        STATES_TEMP(24)=0.111481777798_DP   
+                  !        STATES_TEMP(25)=0.527727745798E-02_DP 
+                  !        STATES_TEMP(26)=0.110972256158E-03_DP 
+                  !        STATES_TEMP(27)=0.100069847374E-05_DP
+                  !        STATES_TEMP(28)=-0.275952221993E-03_DP 
+                  !        STATES_TEMP(29)=0.900649950131_DP 
+                  !        STATES_TEMP(30)=1580.84557483_DP  
+                  !        STATES_TEMP(31)=0.378863894057_DP         
+                  !        STATES_TEMP(32)=1581.70260595_DP  
+                  !        STATES_TEMP(33)=8.22804230197_DP    
+                  !        STATES_TEMP(34)=615.00_DP 
+                  !        STATES_TEMP(35)=615.00_DP
+                  !        STATES_TEMP(36)=811.00_DP
+                  !        STATES_TEMP(37)=811.00_DP
+                  !        STATES_TEMP(38)=17306.2578524_DP 
+                  !        STATES_TEMP(39)=17310.3107358_DP  
+                  !        STATES_TEMP(40)=2.23370810024_DP 
+                  !        STATES_TEMP(41)=1.51083300804_DP 
+                  !        STATES_TEMP(42)=7242.25398065_DP  
+                  !        STATES_TEMP(43)=7242.27476045_DP 
+                  !        STATES_TEMP(44)=755.512311852_DP  
+                  !        STATES_TEMP(45)=756.214406545_DP  
+                  !        STATES_TEMP(46)=957.730364364_DP  
+                  !        STATES_TEMP(47)=957.725397923_DP 
+                  !        STATES_TEMP(48)=1.34699206608_DP 
+                  !        STATES_TEMP(49)=0.343578091119_DP  
+                  !        STATES_TEMP(50)=0.554183908248_DP  
+                  !        STATES_TEMP(51)=1.34237448876_DP   
+                  !        STATES_TEMP(52)=0.133380126991_DP 
+                  !        STATES_TEMP(53)=0.106577126989_DP   
+                  !        STATES_TEMP(54)=0.231949036214_DP     
+                  !        STATES_TEMP(55)=0.284897915848_DP   
+                  !        STATES_TEMP(56)=0.173920034850_DP
+                  !        ELSE
+                  !         !now set the data manually:
+                  !         STATES_TEMP(0)=0.0_DP    
+                  !         STATES_TEMP(1)=17.6441232643_DP
+                  !         STATES_TEMP(2)=0.565468565533E-03_DP
+                  !         STATES_TEMP(3)=0.996836307317E-04_DP
+                  !         STATES_TEMP(4)=0.999972804200E-04_DP
+                  !         STATES_TEMP(5)=0.997663356061E-16_DP
+                  !         STATES_TEMP(6)=0.008_DP
+                  !       ENDIF
+                  !      endif
+                  !        IF(without_stim .AND. dof_idx==1) THEN
+                  !          inquire(file="ODE_X_0.txt", exist=exist_B)
+                  !          if (exist_B) then
+                  !            open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                  !          else
+                  !            open(4568, file="ODE_X_0.txt", status="new", action="write")
+                  !          end if
+                  !          WRITE(4568,'(A)',advance='no') "s.b."
+                  !          DO state_idx=0,NUMBER_STATES-1
+                  !            WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx)
+                  !          ENDDO
+                  !          WRITE(4568,'(A)',advance='yes') " BDF"
+                  !          close(4568)
+                  !        ELSEIF(with_stim .AND. dof_idx==1) THEN
+                  !          inquire(file="ODE_X_0.txt", exist=exist_B)
+                  !          if (exist_B) then
+                  !            open(4368, file="ODE_X_0.txt", status="old", position="append", action="write")
+                  !          else
+                  !            open(4368, file="ODE_X_0.txt", status="new", action="write")
+                  !          end if
+                  !          WRITE(4368,'(A)',advance='no') "s.b."
+                  !          DO state_idx=0,NUMBER_STATES-1
+                  !            WRITE(4368,'(A,G19.12)',advance='no') " ",STATES_TEMP(state_idx)
+                  !          ENDDO
+                  !          WRITE(4368,'(A)',advance='yes') " BDF"
+                  !          close(4368)
+                  !        ENDIF
+                  !    endif
+                  !  ENDIF ! run_survey
+                  !! up to this point               
                       !create PETSC states vector to initialize solver
                       CALL Petsc_VecInitialise(PETSC_CURRENT_STATES,err,error,*999)
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
@@ -4875,6 +5331,8 @@ CONTAINS
                       CALL Solver_DAECellMLPETScContextSet(ctx,BDF_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
                       CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
 
+                  !    CALL CPU_TIME(INTERMT)
+                      
                       CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999)
                       IF(DIAGNOSTICS1) THEN
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  FINAL SOLVED TIME = ", &
@@ -4895,17 +5353,58 @@ CONTAINS
                           & STATES_TEMP(state_idx-1)
                       ENDDO
                       
+                    ! remove this after test
+                    !IF (run_survey) THEN
+                    !  if(without_stim .OR. (with_stim .AND. BDF_SOLVER%ITERATOR==3)) THEN
+                    !    IF(without_stim .AND. dof_idx==1) THEN
+                    !      
+                    !      inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                    !      if (exist_A) then
+                    !        open(2567, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                    !      else
+                    !        open(2567, file="MeinOutputBDF.txt", status="new", action="write")
+                    !      endif
+                    !      
+                    !      !produce formatted output
+                    !      CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                    !      WRITE(2567,'(i4)',advance='no') NUMBER_OF_STEPS
+                    !      DO state_idx=1,NUMBER_STATES
+                    !        WRITE(2567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
+                    !      ENDDO
+                    !      close(2567)
+                    !    ENDIF
+                    !    IF(with_stim .AND. dof_idx==1) THEN
+                    !      
+                    !      inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                    !      if (exist_A) then
+                    !        open(2367, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                    !      else
+                    !        open(2367, file="MeinOutputBDF.txt", status="new", action="write")
+                    !      end if
+                    !      
+                    !      !produce formatted output
+                    !      CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                    !      WRITE(2367,'(i4)',advance='no') NUMBER_OF_STEPS
+                    !      DO state_idx=1,NUMBER_STATES
+                    !        WRITE(2367,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
+                    !      ENDDO
+                    !      close(2367)
+                    !    ENDIF ! dof_idx
+                    !  endif
+                    ! ENDIF ! run_survey
+                    ! ! up to this point
+                      
                       IF(DEBUG_MODE_A) THEN
                         WRITE(*,*) '___________________________________________________________' 
                         WRITE(*,*) '-----------------------------------------------------------' 
                         WRITE(*,*)
                       ENDIF
                       
-                      IF(dof_idx==1 .AND. .FALSE.) THEN
-                        CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
-                        WRITE(*,*) 'Number of steps of BDF solver is ',NUMBER_OF_STEPS,'. New state is:'
-                        CALL Petsc_VecView(PETSC_CURRENT_STATES,PETSC_VIEWER_STDOUT_SELF,ERR,ERROR,*999)
-                      ENDIF
+                     ! IF(dof_idx==1 .AND. .FALSE.) THEN
+                     !   CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                     !   WRITE(*,*) 'Number of steps of BDF solver is ',NUMBER_OF_STEPS,'. New state is:'
+                     !   CALL Petsc_VecView(PETSC_CURRENT_STATES,PETSC_VIEWER_STDOUT_SELF,ERR,ERROR,*999)
+                     ! ENDIF
                       
                       CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
                     ENDIF !model_idx
@@ -4963,6 +5462,8 @@ CONTAINS
     TYPE(FIELD_TYPE), POINTER :: MODELS_FIELD,STATE_FIELD,PARAMETERS_FIELD,INTERMEDIATE_FIELD
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: exist_A
+    REAL(DP) :: STARTT,FINISHT
 
     ENTERS("SOLVER_DAE_BDF_SOLVE",ERR,ERROR,*999)
 
@@ -4971,7 +5472,7 @@ CONTAINS
     NULLIFY(PARAMETERS_DATA)
     NULLIFY(STATE_DATA)
     NULLIFY(MODELS_VARIABLE)
-
+    
     IF(ASSOCIATED(BDF_SOLVER)) THEN
       DAE_SOLVER=>BDF_SOLVER%DAE_SOLVER
       IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -5023,15 +5524,50 @@ CONTAINS
                          ! WRITE(*,*) 'intermediate_field is associated for bdf_solve.'
                       ENDIF
                     ENDIF
-
+                    
+                    IF(run_survey)THEN
+                      BDF_SOLVER%ITERATOR=BDF_SOLVER%ITERATOR + 1
+                      PRINT *, "Iteration ", BDF_SOLVER%ITERATOR,":"
+                      CALL CPU_TIME(STARTT)
+                    ENDIF
+                    
                     !Integrate these CellML equations
-
                     CALL SOLVER_DAE_BDF_INTEGRATE(BDF_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                       & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
                       & CELLML_ENVIRONMENT%MODELS_FIELD%ONLY_ONE_MODEL_INDEX,MODELS_DATA,CELLML_ENVIRONMENT% &
                       & MAXIMUM_NUMBER_OF_STATE,STATE_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_PARAMETERS, &
                       & PARAMETERS_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR,ERROR,*999)
 
+                    IF(run_survey)THEN
+                      CALL CPU_TIME(FINISHT)
+                    ENDIF
+                    
+                    !produce formatted output
+                 ! IF (run_survey) THEN
+                 ! if(without_stim .OR. (with_stim .AND. BDF_SOLVER%ITERATOR==3)) THEN
+                 ! if(without_stim) then
+                 !   inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                 !   if (exist_A) then
+                 !     open(2567, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                 !   else
+                 !     open(2567, file="MeinOutputBDF.txt", status="new", action="write")
+                 !   endif
+                 !   WRITE(2567,'(A,G19.12)',advance='no') " BDF",FINISHT-STARTT
+                 !   close(2567)
+                 !   else if(with_stim .AND. BDF_SOLVER%ITERATOR==3) then
+                 !   inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                 !   if (exist_A) then
+                 !     open(2367, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                 !   else
+                 !     open(2367, file="MeinOutputBDF.txt", status="new", action="write")
+                 !   endif
+                 !   WRITE(2367,'(A,G19.12)',advance='no') " BDF",FINISHT-STARTT
+                 !   close(2367)
+                 ! endif
+                 ! endif
+                 ! ENDIF ! run_survey
+                    ! see go to below
+                    
                     !Restore field data
                     CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                       & MODELS_DATA,ERR,ERROR,*999)
@@ -5044,7 +5580,11 @@ CONTAINS
 
                     !Make sure fields have been updated to the current value of any mapped CellML fields
                     CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
-
+                  !  IF (run_survey) THEN
+                  !    IF (without_stim .OR. (with_stim .AND. BDF_SOLVER%ITERATOR==3)) THEN
+                  !      GO TO 999
+                  !    ENDIF
+                  !  ENDIF ! run_survey
                   ELSE
                     LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                       & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."

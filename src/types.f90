@@ -2534,6 +2534,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(BACKWARD_EULER_DAE_SOLVER_TYPE), POINTER :: BACKWARD_EULER_SOLVER !<A pointer to the backward Euler solver information
     TYPE(IMPROVED_EULER_DAE_SOLVER_TYPE), POINTER :: IMPROVED_EULER_SOLVER !<A pointer to the improved Euler solver information
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the Euler differential equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: Iterator ! to be removed if anyone sees this
   END TYPE EULER_DAE_SOLVER_TYPE
 
   !>Contains information for a Crank-Nicholson differential-algebraic equation solver
@@ -2560,6 +2561,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the BDF differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
     REAL(DP) :: RELATIVE_TOLERANCE !<The relative tolerance, the user expects to get from the SUNDIALS library
     REAL(DP) :: ABSOLUTE_TOLERANCE !<The absolute tolerance, the user expects to get from the SUNDIALS library
+    INTEGER(INTG) :: ITERATOR! to be removed if this falsly ends up somewhere not at Aarons
   END TYPE BDF_DAE_SOLVER_TYPE
 
   !>Contains information for a GL differential-algebraic equation solver
