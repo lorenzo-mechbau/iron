@@ -2532,7 +2532,6 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
             CALL CustomProfilingStart("level 2: 1D solve")
 #endif
-
             CALL Problem_SolverEquationsDynamicLinearSolve(SOLVER_EQUATIONS,ERR,ERROR,*999)
 
 #ifdef USE_CUSTOM_PROFILING
@@ -3209,6 +3208,12 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     
+    TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_SOLVER
+    TYPE(IMPROVED_EULER_DAE_SOLVER_TYPE), POINTER :: IMPROVED_EULER_SOLVER
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER, DAE_SOLVER0
+    TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_SOLVER0
+    TYPE(SOLVER_TYPE), POINTER :: DSOLVER
+    
     ENTERS("PROBLEM_SOLVER_SOLVE",ERR,ERROR,*999)
     
     IF(ASSOCIATED(SOLVER)) THEN
@@ -3225,7 +3230,25 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
       CALL CustomProfilingStart("level 2: solver overhead")     ! at this point reached by 0D and 1D solvers and 3D nonlinear solver
 #endif
+          
       CALL PROBLEM_SOLVER_PRE_SOLVE(SOLVER,ERR,ERROR,*999)
+      
+      !IF(ASSOCIATED(SOLVER)) THEN
+      !  DAE_SOLVER0=>SOLVER%DAE_SOLVER
+      !  IF(ASSOCIATED(DAE_SOLVER0)) THEN
+      !    EULER_SOLVER0=>DAE_SOLVER0%EULER_SOLVER
+      !    IF(ASSOCIATED(EULER_SOLVER0)) THEN
+      !      IMPROVED_EULER_SOLVER=>EULER_SOLVER0%IMPROVED_EULER_SOLVER
+      !      IF(ASSOCIATED(IMPROVED_EULER_SOLVER)) THEN
+      !        EULER_SOLVER=>IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER
+      !        IF(ASSOCIATED(EULER_SOLVER)) THEN
+      !          DAE_SOLVER=>EULER_SOLVER%DAE_SOLVER
+      !          PRINT *, "-> DAE_SOLVER%START_TIME=", DAE_SOLVER%START_TIME, ", DAE_SOLVER%END_TIME=",DAE_SOLVER%END_TIME
+      !        ENDIF
+      !      ENDIF
+      !    ENDIF
+      !  ENDIF
+      !ENDIF 
       
 #ifdef USE_CUSTOM_PROFILING
       CALL CustomProfilingStop("level 2: solver overhead")    ! at this point reached by 0D and 1D solvers and 3D nonlinear solver
@@ -3248,7 +3271,6 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
           CALL CustomProfilingStart("level 2: 0D solve")
 #endif
-
           CALL PROBLEM_CELLML_EQUATIONS_SOLVE(SOLVER%CELLML_EQUATIONS,ERR,ERROR,*999)
 
 #ifdef USE_CUSTOM_PROFILING

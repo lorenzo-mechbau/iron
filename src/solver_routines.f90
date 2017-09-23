@@ -3057,6 +3057,7 @@ CONTAINS
     REAL(DP), POINTER :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    LOGICAL :: DEBUGGING = .FALSE.   !< Enable some debugging output to find out which implementation of the solver is called
     
     !Local Variables
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,INTERMEDIATE_END_DOF,intermediate_idx,INTERMEDIATE_START_DOF,model_idx, &
@@ -3104,6 +3105,8 @@ CONTAINS
                       NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                       NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
 
+                      IF(DEBUGGING) PRINT *, "implementation 1, dof",dof_idx
+                      
                       !Copy CellML data to temporary arrays
                       DO state_idx=1,NUMBER_STATES
                         STATES(state_idx)=STATE_DATA((dof_idx-1)*N+state_idx)
@@ -3151,6 +3154,9 @@ CONTAINS
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
+                
+                IF(DEBUGGING) PRINT *, "implementation 2, dof",dof_idx
+                
                 DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                   DO dof_idx=1,N
                     model_idx=MODELS_DATA(dof_idx)
@@ -3197,6 +3203,7 @@ CONTAINS
           ELSE
             !Dof components are continguous. Can pass data directly.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
+            
               !Mulitple models
               DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                 DO dof_idx=1,N
@@ -3210,6 +3217,7 @@ CONTAINS
                       NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                       NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
 
+                      IF(DEBUGGING) PRINT *, "implementation 3, dof",dof_idx
 #ifdef WITH_CELLML
                       !Call RHS. Note some models might not have state, rates, intermediate or parameter data so call accordingly
                       !to avoid referencing null pointers
@@ -3218,6 +3226,8 @@ CONTAINS
                           IF(NUMBER_PARAMETERS>0) THEN
                             !We have states, intermediate and parameters for the model
 
+                            IF(DEBUGGING) PRINT *, "implementation 3.1, dof",dof_idx
+                      
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
@@ -3240,6 +3250,9 @@ CONTAINS
                           ELSE
                             !We do not have parameters in the model
 
+                            IF(DEBUGGING) PRINT *, "implementation 3.2, dof",dof_idx
+                            
+                            
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
@@ -3260,6 +3273,9 @@ CONTAINS
                            ENDIF
                         ELSE
                           IF(NUMBER_PARAMETERS>0) THEN
+                          
+                            IF(DEBUGGING) PRINT *, "implementation 3.3, dof",dof_idx
+                          
                             !We do not have intermediates in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
@@ -3277,6 +3293,9 @@ CONTAINS
                             ! compute y_{n+1} later.
                             ! not done, yet.
                           ELSE
+                          
+                            IF(DEBUGGING) PRINT *, "implementation 3.4, dof",dof_idx
+                          
                             !We do not have intermediates or parameters in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
@@ -3333,6 +3352,8 @@ CONTAINS
                     IF(NUMBER_PARAMETERS>0) THEN
                       !We have states, intermediates and parameters for the model
                       DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
+                        IF (DEBUGGING) PRINT *, "Time step ",TIME_STEP," START_TIME:",START_TIME, "END_TIME:",END_TIME
+                      
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3344,6 +3365,9 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+                            IF(DEBUGGING) PRINT *, "implementation 4, dof",dof_idx
+                            ! This branch is the actual branch that gets executed for cuboid example.
+                            
                            ! remove this after test
                            IF (run_survey) THEN
                              IF(dof_idx==1 .AND. TIME_STEP==1) THEN
@@ -3434,6 +3458,7 @@ CONTAINS
                                         
                             !NOTE! algebraic values for INTERMEDIATE_DATA need to be evaluated in the end of the integration period.
                             IF(TIME_STEP==TS_NUMBER) THEN
+                              IF(DEBUGGING) PRINT *, "evaluate algebraic equations"
                               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,END_TIME,STATE_DATA(STATE_START_DOF &
                                 & :STATE_END_DOF),RATES_TEMP(1:NUMBER_STATES),INTERMEDIATE_DATA(INTERMEDIATE_START_DOF &
                                 & :INTERMEDIATE_END_DOF),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
@@ -3485,6 +3510,8 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
 
+                            IF(DEBUGGING) PRINT *, "implementation 5, dof",dof_idx
+                            
                             ! y_n is given - evaluate f(t,y_n):
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
@@ -3517,6 +3544,9 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+                            
+                            IF(DEBUGGING) PRINT *, "implementation 6, dof",dof_idx
+                            
                       ! remove this after test
                       !IF (run_survey) THEN
                       ! if((.NOT. (without_stim .OR. with_stim)) .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN   
@@ -3669,6 +3699,8 @@ CONTAINS
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
 
+                            IF(DEBUGGING) PRINT *, "implementation 7, dof",dof_idx
+                            
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             ! y_n is given - evaluate f(t,y_n):
@@ -3898,6 +3930,8 @@ CONTAINS
                         EULER_SOLVER%Iterator=EULER_SOLVER%Iterator+1
                         PRINT *, "Iteration ",EULER_SOLVER%Iterator,":"
                       ENDIF ! runs_survey
+                      !PRINT *, "call SOLVER_DAE_EULER_IMPROVED_INTEGRATE, ",DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME
+                      
                       !Integrate these CellML equations
                       CALL SOLVER_DAE_EULER_IMPROVED_INTEGRATE(IMPROVED_EULER_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                         & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &

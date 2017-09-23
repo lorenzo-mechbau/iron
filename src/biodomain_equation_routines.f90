@@ -1637,6 +1637,8 @@ CONTAINS
     TYPE(PROBLEM_TYPE), POINTER :: PROBLEM
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
+    TYPE(SOLVER_TYPE), POINTER :: ACTUAL_SOLVER
 
     ENTERS("BIODOMAIN_PRE_SOLVE",ERR,ERROR,*999)
 
@@ -1743,12 +1745,46 @@ CONTAINS
                 & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
                 SELECT CASE(SOLVER%GLOBAL_NUMBER)
                 CASE(1)
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE, solver%global_number=1,CURRENT_TIME=",CURRENT_TIME,"TIME_INCREMENT=",TIME_INCREMENT
+                  !PRINT *, "SOLVER_DAE_TIMES_SET: ",CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT/2.0_DP
                   CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT/2.0_DP,ERR,ERROR,*999)
                 CASE(2)
                   !Do nothing
                 CASE(3)
-                  CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME+TIME_INCREMENT/2.0_DP,CURRENT_TIME+TIME_INCREMENT, &
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE, solver%global_number=3,CURRENT_TIME=",CURRENT_TIME,"TIME_INCREMENT=",TIME_INCREMENT
+                  !IF(SOLVER%SOLVE_TYPE==SOLVER_DAE_TYPE) THEN
+                  !  PRINT *, "is DAE solver"
+                  !  DAE_SOLVER=>SOLVER%DAE_SOLVER
+                  !  IF(ASSOCIATED(DAE_SOLVER)) THEN
+                  !    PRINT *, "START_TIME=",DAE_SOLVER%START_TIME,", END_TIME=",DAE_SOLVER%END_TIME
+                  !  ENDIF
+                  !ENDIF
+                  
+                  ! For Strang Splitting 2 DAE solvers are created, but only one CELLML_EQUATIONS instance
+                  ! Because the solver call gets only the CELLML_EQUATIONS 
+                  ! (CALL PROBLEM_CELLML_EQUATIONS_SOLVE(SOLVER%CELLML_EQUATIONS) in problem_routines.f90
+                  ! the there associated solver is used which is always the first solver. Therefore we need to
+                  ! use the first solver here
+                  IF(ASSOCIATED(SOLVER%SOLVERS)) THEN
+                  !  PRINT *, "number of solvers: ", SOLVER%SOLVERS%NUMBER_OF_SOLVERS
+                    IF (SOLVER%SOLVERS%NUMBER_OF_SOLVERS == 3) THEN
+                      ACTUAL_SOLVER=>SOLVER%SOLVERS%SOLVERS(1)%PTR    ! use firstr solver as second DAE solver in Strang splitting
+                    ENDIF
+                  ENDIF
+                  
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE: SOLVER_DAE_TIMES_SET: ",CURRENT_TIME+TIME_INCREMENT/2.0_DP,&
+                  ! & CURRENT_TIME+TIME_INCREMENT
+                  CALL SOLVER_DAE_TIMES_SET(ACTUAL_SOLVER,CURRENT_TIME+TIME_INCREMENT/2.0_DP,CURRENT_TIME+TIME_INCREMENT, &
                     & ERR,ERROR,*999)
+                    
+                  !IF(ACTUAL_SOLVER%SOLVE_TYPE==SOLVER_DAE_TYPE) THEN
+                  !  DAE_SOLVER=>ACTUAL_SOLVER%DAE_SOLVER
+                  !  IF(ASSOCIATED(DAE_SOLVER)) THEN
+                  !    PRINT *, "BIODOMAIN_PRE_SOLVE: DAE solver, START_TIME=",DAE_SOLVER%START_TIME,&
+                      !& ", END_TIME=",DAE_SOLVER%END_TIME
+                  !  ENDIF
+                  !ENDIF
+                    
                 CASE DEFAULT
                   LOCAL_ERROR="The solver global number of "//TRIM(NUMBER_TO_VSTRING(SOLVER%GLOBAL_NUMBER,"*",ERR,ERROR))// &
                     & " is invalid for a bioelectrics finite elasticity problem."
