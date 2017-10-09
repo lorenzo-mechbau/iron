@@ -46,10 +46,11 @@
 
 MODULE REACTION_DIFFUSION_IO_ROUTINES
 
- USE BASE_ROUTINES
- USE COMP_ENVIRONMENT
+ USE BaseRoutines
+ USE ComputationEnvironment
  USE EQUATIONS_SET_CONSTANTS
  USE FIELD_ROUTINES
+ USE FieldAccessRoutines
  USE TYPES
  USE INPUT_OUTPUT 
  USE KINDS   
@@ -82,7 +83,7 @@ CONTAINS
 
     !Argument variables
     TYPE(REGION_TYPE), INTENT(IN), POINTER :: REGION !<A pointer to the region to get the coordinate system for
-    CHARACTER(28), INTENT(IN) :: NAME !<the prefix name of file.
+    CHARACTER(30),INTENT(IN) :: NAME !<the prefix name of file.
     INTEGER(INTG) :: ERR !<The error code
     INTEGER(INTG), INTENT(IN) :: EQUATIONS_SET_GLOBAL_NUMBER
     TYPE(VARYING_STRING):: ERROR !<The error string
@@ -105,14 +106,14 @@ CONTAINS
 
     ENTERS("REACTION_DIFFUSION_IO_WRITE_CMGUI",ERR,ERROR,*999)
 
-    myComputationalNodeNumber = COMPUTATIONAL_NODE_NUMBER_GET(err,error)
+    myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(err,error)
 
     EQUATIONS_SET => REGION%equations_sets%equations_sets(EQUATIONS_SET_GLOBAL_NUMBER)%ptr
     NULLIFY(SOURCE_FIELD)
     COMPUTATIONAL_DOMAIN=>REGION%MESHES%MESHES(1) & 
       & %ptr%DECOMPOSITIONS%DECOMPOSITIONS(1)%ptr%DOMAIN(1)%ptr
 
-    myComputationalNodeNumber = COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+    myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
     NumberOfDimensions = COMPUTATIONAL_DOMAIN%NUMBER_OF_DIMENSIONS
     NumberOfNodes = COMPUTATIONAL_DOMAIN%TOPOLOGY%NODES%NUMBER_OF_NODES
     NodesInMeshComponent = REGION%meshes%meshes(1)%ptr%topology(1)%ptr%nodes%numberOfNodes
@@ -139,7 +140,7 @@ CONTAINS
 
     CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Writing Nodes...",ERR,ERROR,*999)
 
-    FILENAME="./output/"//NAME//".exnode"
+    FILENAME="./output/"//TRIM(NAME)//".exnode"
 
     OPEN(UNIT=myComputationalNodeNumber, FILE=CHAR(FILENAME),STATUS='unknown')
     ! WRITING HEADER INFORMATION
@@ -241,10 +242,10 @@ CONTAINS
       ENDIF
     ELSEIF(NumberOfDimensions==3) THEN
       BasisType=REGION%equations_sets%equations_sets(EQUATIONS_SET_GLOBAL_NUMBER)%ptr%equations% &
-        & interpolation%geometric_interp_parameters(FIELD_U_VARIABLE_TYPE)%ptr%bases(1)%ptr%type
+        & interpolation%geometricInterpParameters(FIELD_U_VARIABLE_TYPE)%ptr%bases(1)%ptr%type
     ENDIF
     CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Writing Elements...",ERR,ERROR,*999)
-    FILENAME="./output/"//NAME//".exelem"
+    FILENAME="./output/"//TRIM(NAME)//".exelem"
     OPEN(UNIT=myComputationalNodeNumber, FILE=CHAR(FILENAME),STATUS='unknown')
     WRITE(myComputationalNodeNumber,*) 'Group name: Cell'
     IF (BasisType==1) THEN !lagrange basis in 1 and 2D

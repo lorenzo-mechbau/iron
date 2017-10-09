@@ -44,7 +44,7 @@
 !> This module handles all elasticity class routines.
 MODULE ELASTICITY_ROUTINES
 
-  USE BASE_ROUTINES
+  USE BaseRoutines
   USE CONTROL_LOOP_ROUTINES
   USE EQUATIONS_SET_CONSTANTS
   USE FINITE_ELASTICITY_ROUTINES
@@ -84,7 +84,7 @@ MODULE ELASTICITY_ROUTINES
 
   PUBLIC Elasticity_EquationsSetDerivedVariableCalculate
 
-  PUBLIC Elasticity_StrainInterpolateXi
+  PUBLIC Elasticity_TensorInterpolateXi
 
   PUBLIC Elasticity_BoundaryConditionsAnalyticCalculate
   
@@ -501,18 +501,19 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculate the strain tensor at a given element xi location.
-  SUBROUTINE Elasticity_StrainInterpolateXi(equationsSet,userElementNumber,xi,values,err,error,*)
+  !>Evaluate a tensor at a given element xi location.
+  SUBROUTINE Elasticity_TensorInterpolateXi(equationsSet,tensorEvaluateType,userElementNumber,xi,values,err,error,*)
 
     !Argument variables
-    TYPE(EQUATIONS_SET_TYPE), POINTER, INTENT(IN) :: equationsSet !<A pointer to the equations set to interpolate strain for.
+    TYPE(EQUATIONS_SET_TYPE), POINTER, INTENT(IN) :: equationsSet !<A pointer to the equations set to interpolate the tensor for.
+    INTEGER(INTG), INTENT(IN) :: tensorEvaluateType !<The type of tensor to evaluate.
     INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number of the field to interpolate.
     REAL(DP), INTENT(IN) :: xi(:) !<The element xi to interpolate the field at.
-    REAL(DP), INTENT(OUT) :: values(6) !<The interpolated strain tensor values.
+    REAL(DP), INTENT(OUT) :: values(3,3) !<The interpolated tensor values.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
 
-    ENTERS("Elasticity_StrainInterpolateXi",err,error,*999)
+    ENTERS("Elasticity_TensorInterpolateXi",err,error,*999)
 
     IF(.NOT.ASSOCIATED(equationsSet)) THEN
       CALL FlagError("Equations set is not associated.",err,error,*999)
@@ -522,18 +523,18 @@ CONTAINS
     CASE(EQUATIONS_SET_LINEAR_ELASTICITY_TYPE)
       CALL FlagError("Not implemented.",err,error,*999)
     CASE(EQUATIONS_SET_FINITE_ELASTICITY_TYPE)
-      CALL FiniteElasticity_StrainInterpolateXi(equationsSet,userElementNumber,xi,values,err,error,*999)
+      CALL FiniteElasticity_TensorInterpolateXi(equationsSet,tensorEvaluateType,userElementNumber,xi,values,err,error,*999)
     CASE DEFAULT
       CALL FlagError("The second equations set specification of "// &
         & TRIM(NumberToVstring(equationsSet%specification(2),"*",err,error))// &
         & " is not valid for an elasticity equation set.",err,error,*999)
     END SELECT
 
-    EXITS("Elasticity_StrainInterpolateXi")
+    EXITS("Elasticity_TensorInterpolateXi")
     RETURN
-999 ERRORSEXITS("Elasticity_StrainInterpolateXi",err,error)
+999 ERRORSEXITS("Elasticity_TensorInterpolateXi",err,error)
     RETURN 1
-  END SUBROUTINE Elasticity_StrainInterpolateXi
+  END SUBROUTINE Elasticity_TensorInterpolateXi
 
   !
   !================================================================================================================================
@@ -597,7 +598,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
     INTEGER(INTG) :: problemType
 
-    CALL Enters("Elasticity_ProblemSpecificationSet",err,error,*999)
+    ENTERS("Elasticity_ProblemSpecificationSet",err,error,*999)
 
     IF(ASSOCIATED(problem)) THEN
       IF(SIZE(problemSpecification,1)>=2) THEN
@@ -623,10 +624,10 @@ CONTAINS
       CALL FlagError("Problem is not associated.",err,error,*999)
     END IF
 
-    CALL Exits("Elasticity_ProblemSpecificationSet")
+    EXITS("Elasticity_ProblemSpecificationSet")
     RETURN
-999 CALL Errors("Elasticity_ProblemSpecificationSet",err,error)
-    CALL Exits("Elasticity_ProblemSpecificationSet")
+999 ERRORS("Elasticity_ProblemSpecificationSet",err,error)
+    EXITS("Elasticity_ProblemSpecificationSet")
     RETURN 1
     
   END SUBROUTINE Elasticity_ProblemSpecificationSet
@@ -705,7 +706,7 @@ CONTAINS
       CASE(EQUATIONS_SET_LINEAR_ELASTICITY_TYPE)
         !Do Nothing
       CASE(EQUATIONS_SET_FINITE_ELASTICITY_TYPE)
-        CALL FINITE_ELASTICITY_PRE_SOLVE(CONTROL_LOOP,SOLVER,ERR,ERROR,*999)
+        CALL FiniteElasticity_PreSolve(solver,err,error,*999)
       CASE(PROBLEM_LINEAR_ELASTICITY_CONTACT_TYPE)
         !Do Nothing
       CASE(PROBLEM_FINITE_ELASTICITY_CONTACT_TYPE)
@@ -753,7 +754,7 @@ CONTAINS
       CASE(EQUATIONS_SET_LINEAR_ELASTICITY_TYPE)
         !Do Nothing
       CASE(EQUATIONS_SET_FINITE_ELASTICITY_TYPE)
-        CALL FINITE_ELASTICITY_POST_SOLVE(CONTROL_LOOP,SOLVER,ERR,ERROR,*999)
+        CALL FiniteElasticity_PostSolve(solver,err,error,*999)
       CASE(PROBLEM_LINEAR_ELASTICITY_CONTACT_TYPE)
         !Do Nothing
       CASE(PROBLEM_FINITE_ELASTICITY_CONTACT_TYPE)
@@ -793,15 +794,6 @@ CONTAINS
     IF(ASSOCIATED(CONTROL_LOOP%PROBLEM)) THEN
       SELECT CASE(CONTROL_LOOP%LOOP_TYPE)
       CASE(PROBLEM_CONTROL_TIME_LOOP_TYPE)
-        CALL CONTROL_LOOP_CURRENT_TIMES_GET(CONTROL_LOOP,CURRENT_TIME,TIME_INCREMENT,ERR,ERROR,*999)
-        CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"====== Starting time step",ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"CURRENT_TIME          = ",CURRENT_TIME,ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"TIME_INCREMENT        = ",TIME_INCREMENT,ERR,ERROR,*999)
-        IF(DIAGNOSTICS1) THEN
-          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"====== Starting time step",ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"CURRENT_TIME          = ",CURRENT_TIME,ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"TIME_INCREMENT        = ",TIME_INCREMENT,ERR,ERROR,*999)
-        ENDIF
         IF(.NOT.ALLOCATED(CONTROL_LOOP%PROBLEM%SPECIFICATION)) THEN
           CALL FlagError("Problem specification is not allocated.",err,error,*999)
         ELSE IF(SIZE(CONTROL_LOOP%PROBLEM%SPECIFICATION,1)<2) THEN
