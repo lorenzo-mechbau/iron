@@ -149,6 +149,16 @@ MODULE LISTS
     MODULE PROCEDURE LIST_ITEM_ADD_DP2
   END INTERFACE List_ItemAdd
   
+  !>Adds items to the end of a list \see LISTS.
+  INTERFACE List_ItemsAdd
+    MODULE PROCEDURE LIST_ITEMS_ADD_INTG1
+    MODULE PROCEDURE LIST_ITEMS_ADD_INTG2
+    MODULE PROCEDURE LIST_ITEMS_ADD_SP1
+    MODULE PROCEDURE LIST_ITEMS_ADD_SP2
+    MODULE PROCEDURE LIST_ITEMS_ADD_DP1
+    MODULE PROCEDURE LIST_ITEMS_ADD_DP2
+  END INTERFACE List_ItemsAdd
+  
   INTERFACE List_ItemDelete
     MODULE PROCEDURE LIST_ITEM_DELETE
   END INTERFACE List_ItemDelete
@@ -1243,6 +1253,351 @@ CONTAINS
     ERRORSEXITS("LIST_ITEM_ADD_DP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_DP2
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Adds an item to the end of an integer list of data dimension 1. 
+  SUBROUTINE LIST_ITEMS_ADD_INTG1(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    INTEGER(INTG), INTENT(IN) :: ITEMS(:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    INTEGER(INTG), ALLOCATABLE :: NEW_LIST(:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_INTG1",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==1) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS))
+              ALLOCATE(NEW_LIST(NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(1:LIST%NUMBER_IN_LIST)=LIST%LIST_INTG(1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_INTG)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_INTG(LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item"
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_INTG1")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_INTG1",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE LIST_ITEMS_ADD_INTG1
+  
+  !
+  !================================================================================================================================
+  !
+
+
+  !>Adds items to the end of an integer list of data dimension > 1. 
+  SUBROUTINE LIST_ITEMS_ADD_INTG2(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    INTEGER(INTG), INTENT(IN) :: ITEMS(:,:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    INTEGER(INTG), ALLOCATABLE :: NEW_LIST(:,:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_INTG2",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==SIZE(ITEMS,1)) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS,2)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS,2))
+              ALLOCATE(NEW_LIST(LIST%DATA_DIMENSION,NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(:,1:LIST%NUMBER_IN_LIST)=LIST%LIST_INTG2(:,1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_INTG2)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_INTG2(:,LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS,2))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is "// &
+              & TRIM(NumberToVString(SIZE(ITEMS,1),"*",ERR,ERROR))//" and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_INTG2")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_INTG2",ERR,ERROR)
+    RETURN 1
+    
+  END SUBROUTINE LIST_ITEMS_ADD_INTG2
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Adds an item to the end of an integer list of data dimension 1. 
+  SUBROUTINE LIST_ITEMS_ADD_SP1(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    REAL(SP), INTENT(IN) :: ITEMS(:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    REAL(SP), ALLOCATABLE :: NEW_LIST(:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_SP1",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==1) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS))
+              ALLOCATE(NEW_LIST(NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(1:LIST%NUMBER_IN_LIST)=LIST%LIST_SP(1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_SP)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_SP(LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item"
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_SP1")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_SP1",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE LIST_ITEMS_ADD_SP1
+  
+  !>Adds items to the end of an integer list of data dimension > 1. 
+  SUBROUTINE LIST_ITEMS_ADD_SP2(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    REAL(SP), INTENT(IN) :: ITEMS(:,:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    REAL(SP), ALLOCATABLE :: NEW_LIST(:,:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_SP2",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==SIZE(ITEMS,1)) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS,2)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS,2))
+              ALLOCATE(NEW_LIST(LIST%DATA_DIMENSION,NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(:,1:LIST%NUMBER_IN_LIST)=LIST%LIST_SP2(:,1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_SP2)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_SP2(:,LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS,2))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is "// &
+              & TRIM(NumberToVString(SIZE(ITEMS,1),"*",ERR,ERROR))//" and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_SP2")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_SP2",ERR,ERROR)
+    RETURN 1
+    
+  END SUBROUTINE LIST_ITEMS_ADD_SP2
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Adds an item to the end of an integer list of data dimension 1. 
+  SUBROUTINE LIST_ITEMS_ADD_DP1(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    REAL(DP), INTENT(IN) :: ITEMS(:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    REAL(DP), ALLOCATABLE :: NEW_LIST(:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_DP1",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==1) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS))
+              ALLOCATE(NEW_LIST(NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(1:LIST%NUMBER_IN_LIST)=LIST%LIST_DP(1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_DP)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_DP(LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item"
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_DP1")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_DP1",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE LIST_ITEMS_ADD_DP1
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Adds items to the end of an integer list of data dimension > 1. 
+  SUBROUTINE LIST_ITEMS_ADD_DP2(LIST,ITEMS,ERR,ERROR,*)
+   !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
+    REAL(DP), INTENT(IN) :: ITEMS(:,:) !<The items to add
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: NEW_SIZE
+    REAL(DP), ALLOCATABLE :: NEW_LIST(:,:)
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_ITEMS_ADD_DP2",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
+          IF(LIST%DATA_DIMENSION==SIZE(ITEMS,1)) THEN
+            IF(LIST%NUMBER_IN_LIST+SIZE(ITEMS,2)>LIST%SIZE) THEN
+              !Reallocate
+              NEW_SIZE=MAX(MAX(2*LIST%NUMBER_IN_LIST,1),LIST%NUMBER_IN_LIST+SIZE(ITEMS,2))
+              ALLOCATE(NEW_LIST(LIST%DATA_DIMENSION,NEW_SIZE),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate new list.",ERR,ERROR,*999)
+              NEW_LIST(:,1:LIST%NUMBER_IN_LIST)=LIST%LIST_DP2(:,1:LIST%NUMBER_IN_LIST)
+              CALL MOVE_ALLOC(NEW_LIST,LIST%LIST_DP2)
+              LIST%SIZE=NEW_SIZE
+            ENDIF
+            LIST%LIST_DP2(:,LIST%NUMBER_IN_LIST+1:LIST%NUMBER_IN_LIST+1+SIZE(ITEMS,2))=ITEMS
+            LIST%NUMBER_IN_LIST=LIST%NUMBER_IN_LIST+SIZE(ITEMS)
+          ELSE
+            LOCAL_ERROR="Invalid data dimension. The supplied data dimension is "// &
+              & TRIM(NumberToVString(SIZE(ITEMS,1),"*",ERR,ERROR))//" and the list data dimension is "// &
+              & TRIM(NumberToVString(LIST%DATA_DIMENSION,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))// &
+            & " does not match the integer type of the supplied list item."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("The list has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_ITEMS_ADD_DP2")
+    RETURN
+999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
+    ERRORSEXITS("LIST_ITEMS_ADD_DP2",ERR,ERROR)
+    RETURN 1
+    
+  END SUBROUTINE LIST_ITEMS_ADD_DP2
   
   !
   !================================================================================================================================
