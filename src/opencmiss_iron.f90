@@ -7235,6 +7235,73 @@ CONTAINS
   !================================================================================================================================
   !
 
+  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+  END SUBROUTINE cmfe_PrintElementsMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+  END SUBROUTINE cmfe_PrintNodesMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
+  
+  END SUBROUTINE 
+  
+  !
+  !================================================================================================================================
+  !
+
   SUBROUTINE cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, &
     & CustomTimingFileOutputUser, CustomTimingFileOutputSystem, Err)
 
@@ -7338,6 +7405,131 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_CustomSolverInfoReset
+  
+   
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingStart(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingStart(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStart
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingStop(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingStop(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStop
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingMemory(Identifier, NumberOfElements, TotalSize, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(IN) :: NumberOfElements  !< number of elements to record
+    INTEGER(INTG), INTENT(IN) :: TotalSize  !< MemoryConsumption to record
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingMemory(Identifier, NumberOfElements, TotalSize)
+  END SUBROUTINE cmfe_CustomProfilingMemory
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetInfo(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    CHARACTER(LEN=200000) :: cmfe_CustomProfilingGetInfo
+
+    cmfe_CustomProfilingGetInfo = CustomProfilingGetInfo()
+  END FUNCTION cmfe_CustomProfilingGetInfo
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetDuration(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    REAL(DP) :: cmfe_CustomProfilingGetDuration
+
+    cmfe_CustomProfilingGetDuration = CustomProfilingGetDuration(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetDuration
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetMemory(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(LINTG) :: cmfe_CustomProfilingGetMemory
+
+    cmfe_CustomProfilingGetMemory = CustomProfilingGetMemory(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetMemory
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetSizePerElement(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetSizePerElement
+
+    cmfe_CustomProfilingGetSizePerElement = CustomProfilingGetSizePerElement(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetSizePerElement
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetNumberObjects(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetNumberObjects
+
+    cmfe_CustomProfilingGetNumberObjects = CustomProfilingGetNumberObjects(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetNumberObjects
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingGetEnabled(CustomProfilingEnabled, TauProfilingEnabled, Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    LOGICAL, INTENT(OUT) :: CustomProfilingEnabled !< If custom profiling is compiled in
+    LOGICAL, INTENT(OUT) :: TauProfilingEnabled !< If TAU profiling is compiled in
+
+#ifdef TAUPROF
+    TauProfilingEnabled = .TRUE.
+#else
+    TauProfilingEnabled = .FALSE.
+#endif
+
+#ifdef USE_CUSTOM_PROFILING
+    CustomProfilingEnabled = .TRUE.
+#else
+    CustomProfilingEnabled = .FALSE.
+#endif
+  END SUBROUTINE cmfe_CustomProfilingGetEnabled
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    
+    CALL CustomProfilingReset()
+  END SUBROUTINE cmfe_CustomProfilingReset
+  
   !
   !================================================================================================================================
   !
@@ -62353,554 +62545,6 @@ CONTAINS
   !================================================================================================================================
   !
 
-  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
-    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    
-    ! get computational node numbers
-    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
-    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
-    
-    ! print ELement mappings
-    DO I = 0,NumberOfComputationalNodes-1
-      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-      IF (ComputationalNodeNumber == I) THEN
-        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
-        ! print variables
-        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
-          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
-        CALL FLUSH()   ! flush stdout
-      ENDIF
-    ENDDO
-    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-    
-    END SUBROUTINE cmfe_PrintElementsMapping
-  
-  !
-  !================================================================================================================================
-  !
-
-  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
-    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    ! get computational node numbers
-    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
-    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
-    
-    ! print ELement mappings
-    DO I = 0,NumberOfComputationalNodes-1
-      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-      IF (ComputationalNodeNumber == I) THEN
-        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
-        ! print variables
-        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
-          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
-        CALL FLUSH()   ! flush stdout
-      ENDIF
-    ENDDO
-    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-    
-    END SUBROUTINE cmfe_PrintNodesMapping
-  
-  !
-  !================================================================================================================================
-  !
-
-  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
-    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    
-    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
-  
-  END SUBROUTINE 
-  !
-  !================================================================================================================================
-  !
-
-  SUBROUTINE cmfe_CustomProfilingStart(Identifier, Err)
-    ! PARAMETERS
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-
-    CALL CustomProfilingStart(Identifier)
-  END SUBROUTINE cmfe_CustomProfilingStart
-
-  !
-  !================================================================================================================================
-  !
-
-  SUBROUTINE cmfe_CustomProfilingStop(Identifier, Err)
-    ! PARAMETERS
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-
-    CALL CustomProfilingStop(Identifier)
-  END SUBROUTINE cmfe_CustomProfilingStop
-
-  !
-  !================================================================================================================================
-  !
-
-  SUBROUTINE cmfe_CustomProfilingMemory(Identifier, NumberOfElements, TotalSize, Err)
-    ! PARAMETERS
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(IN) :: NumberOfElements  !< number of elements to record
-    INTEGER(INTG), INTENT(IN) :: TotalSize  !< MemoryConsumption to record
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-
-    CALL CustomProfilingMemory(Identifier, NumberOfElements, TotalSize)
-  END SUBROUTINE cmfe_CustomProfilingMemory
-
-  !
-  !================================================================================================================================
-  !
-
-  FUNCTION cmfe_CustomProfilingGetInfo(Err)
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    CHARACTER(LEN=200000) :: cmfe_CustomProfilingGetInfo
-
-    cmfe_CustomProfilingGetInfo = CustomProfilingGetInfo()
-  END FUNCTION cmfe_CustomProfilingGetInfo
-
-  !
-  !================================================================================================================================
-  !
-
-  FUNCTION cmfe_CustomProfilingGetDuration(Identifier, Err)
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    REAL(DP) :: cmfe_CustomProfilingGetDuration
-
-    cmfe_CustomProfilingGetDuration = CustomProfilingGetDuration(Identifier)
-  END FUNCTION cmfe_CustomProfilingGetDuration
-  !
-  !================================================================================================================================
-  !
-  FUNCTION cmfe_CustomProfilingGetMemory(Identifier, Err)
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    INTEGER(LINTG) :: cmfe_CustomProfilingGetMemory
-
-    cmfe_CustomProfilingGetMemory = CustomProfilingGetMemory(Identifier)
-  END FUNCTION cmfe_CustomProfilingGetMemory
-
-  !
-  !================================================================================================================================
-  !
-  FUNCTION cmfe_CustomProfilingGetSizePerElement(Identifier, Err)
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    INTEGER(INTG) :: cmfe_CustomProfilingGetSizePerElement
-
-    cmfe_CustomProfilingGetSizePerElement = CustomProfilingGetSizePerElement(Identifier)
-  END FUNCTION cmfe_CustomProfilingGetSizePerElement
-
-  !
-  !================================================================================================================================
-  !
-  FUNCTION cmfe_CustomProfilingGetNumberObjects(Identifier, Err)
-    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    INTEGER(INTG) :: cmfe_CustomProfilingGetNumberObjects
-
-    cmfe_CustomProfilingGetNumberObjects = CustomProfilingGetNumberObjects(Identifier)
-  END FUNCTION cmfe_CustomProfilingGetNumberObjects
-
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_CustomProfilingGetEnabled(CustomProfilingEnabled, TauProfilingEnabled, Err)
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    LOGICAL, INTENT(OUT) :: CustomProfilingEnabled !< If custom profiling is compiled in
-    LOGICAL, INTENT(OUT) :: TauProfilingEnabled !< If TAU profiling is compiled in
-
-#ifdef TAUPROF
-    TauProfilingEnabled = .TRUE.
-#else
-    TauProfilingEnabled = .FALSE.
-#endif
-
-#ifdef USE_CUSTOM_PROFILING
-    CustomProfilingEnabled = .TRUE.
-#else
-    CustomProfilingEnabled = .FALSE.
-#endif
-  END SUBROUTINE cmfe_CustomProfilingGetEnabled
-
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_CustomProfilingReset(Err)
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    
-    CALL CustomProfilingReset()
-  END SUBROUTINE cmfe_CustomProfilingReset
-
-!!==================================================================================================================================
-!!
-!! TYPES
-!!
-!!==================================================================================================================================
-
-
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintMesh(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_MeshType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintMesh
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintFields(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_FieldsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintFields
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintDistributedMatrix(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_DistributedMatrixType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintDistributedMatrix
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintRegion(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_RegionType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintRegion
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintMeshelementstype(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_MeshElementsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintMeshelementstype
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_InterfacePointsConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintQuadrature(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_QuadratureType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintQuadrature
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintSolverEquations(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintSolverEquations
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintNodes(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_NodesType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintNodes
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintDataPoints(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_DataPointsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintDataPoints
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintSolver(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_SolverType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintSolver
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintField(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_FieldType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintField
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintCoordinateSystem(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_CoordinateSystemType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintCoordinateSystem
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintDataProjection(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_DataProjectionType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintDataProjection
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintProblem(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_ProblemType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintProblem
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintGeneratedMesh(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_GeneratedMeshType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintGeneratedMesh
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintEquations(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_EquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintEquations
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintEquationsSet(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_EquationsSetType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintEquationsSet
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintDistributedVector(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_DistributedVectorType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintDistributedVector
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintInterfaceEquations(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_InterfaceEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintInterfaceEquations
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintControlLoop(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_ControlLoopType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintControlLoop
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintCellml(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_CellMLType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintCellml
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintBoundaryConditions(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintBoundaryConditions
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintBasis(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_BasisType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintBasis
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintMeshnodestype(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_MeshNodesType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintMeshnodestype
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintInterfaceCondition(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_InterfaceConditionType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintInterfaceCondition
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintInterfaceMeshConnectivity(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_InterfaceMeshConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintInterfaceMeshConnectivity
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintInterface(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_InterfaceType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintInterface
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintCellmlEquations(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_CellMLEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintCellmlEquations
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintDecomposition(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_DecompositionType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintDecomposition
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintMeshEmbedding(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_MeshEmbeddingType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintMeshEmbedding
-  
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintHistory(Variable, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_HistoryType), INTENT(IN) :: Variable  !<The Variable to be printed
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintHistory
-
-
-  !
-  !================================================================================================================================
-  ! this subroutines checks whether or not a given Field with VariableType and NodeUserNumber has ComponentNumber and stores it in UserNodeExist
   SUBROUTINE cmfe_DomainTopologyNodeCheckExists(Field, VariableType, NodeUserNumber, ComponentNumber, UserNodeExist, Err)
 
     TYPE(cmfe_FieldType), INTENT(IN)    :: Field !<The field to set the boundary condition for.
@@ -63725,4 +63369,1109 @@ CONTAINS
     RETURN
   END SUBROUTINE cmfe_ImportedMesh_SurfaceGetNumber0
 
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Mesh"
+          CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintFields(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Fields"
+          CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintFields
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedMatrix(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedMatrixType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DistributedMatrix"
+          CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDistributedMatrix
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintRegion(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_RegionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Region"
+          CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintRegion
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshelementstype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshElementsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Meshelementstype"
+          CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshelementstype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfacePointsConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Interfacepointsconnectivitytype"
+          CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintQuadrature(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_QuadratureType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Quadrature"
+          CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintQuadrature
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolverEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": SolverEquations"
+          CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintSolverEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintNodes(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_NodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Nodes"
+          CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintNodes
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataPoints(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataPointsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DataPoints"
+          CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDataPoints
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolver(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Solver"
+          CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintSolver
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintField(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Field"
+          CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintField
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCoordinateSystem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CoordinateSystemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": CoordinateSystem"
+          CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCoordinateSystem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataProjection(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataProjectionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DataProjection"
+          CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDataProjection
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintProblem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ProblemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Problem"
+          CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintProblem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintGeneratedMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_GeneratedMeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": GeneratedMesh"
+          CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintGeneratedMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Equations"
+          CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquationsSet(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsSetType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": EquationsSet"
+          CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintEquationsSet
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedVector(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedVectorType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DistributedVector"
+          CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDistributedVector
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceEquations"
+          CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintControlLoop(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ControlLoopType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": ControlLoop"
+          CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintControlLoop
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellml(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Cellml"
+          CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCellml
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBoundaryConditions(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": BoundaryConditions"
+          CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintBoundaryConditions
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBasis(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BasisType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Basis"
+          CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintBasis
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshnodestype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshNodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Meshnodestype"
+          CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshnodestype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceCondition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceConditionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceCondition"
+          CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceCondition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceMeshConnectivity(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceMeshConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceMeshConnectivity"
+          CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceMeshConnectivity
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterface(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Interface"
+          CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterface
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellmlEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": CellmlEquations"
+          CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCellmlEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDecomposition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Decomposition"
+          CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDecomposition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshEmbedding(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshEmbeddingType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": MeshEmbedding"
+          CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshEmbedding
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintHistory(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_HistoryType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": History"
+          CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintHistory
+  
 END MODULE OpenCMISS_Iron
