@@ -333,6 +333,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(DECOMPOSITION_TYPE), POINTER :: NEW_DECOMPOSITION
     TYPE(DECOMPOSITION_PTR_TYPE), POINTER :: NEW_DECOMPOSITIONS(:)
+    TYPE(LIST_TYPE), POINTER :: GlobalElementDomain
 
     NULLIFY(NEW_DECOMPOSITION)
     NULLIFY(NEW_DECOMPOSITIONS)
@@ -366,10 +367,20 @@ CONTAINS
               NEW_DECOMPOSITION%MESH_COMPONENT_NUMBER=1
               !Default decomposition is all the mesh with one domain.
               NEW_DECOMPOSITION%DECOMPOSITION_TYPE=DECOMPOSITION_ALL_TYPE
-              NEW_DECOMPOSITION%NUMBER_OF_DOMAINS=1          
+              NEW_DECOMPOSITION%NUMBER_OF_DOMAINS=1 
               ALLOCATE(NEW_DECOMPOSITION%ELEMENT_DOMAIN(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate new decomposition element domain.",ERR,ERROR,*999)
               NEW_DECOMPOSITION%ELEMENT_DOMAIN=0          
+              
+              ! create DECOMPOSITION%GlobalElementDomain, with standard size (of 10 entries)
+              NULLIFY(GlobalElementDomain)
+              CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
+              CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
+              CALL LIST_DATA_DIMENSION_SET(GlobalElementDomain,2,ERR,ERROR,*999)
+              CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
+              NEW_DECOMPOSITION%GlobalElementDomain=>GlobalElementDomain
+              
+              NULLIFY(NEW_DECOMPOSITION%ELEMENTS_MAPPING)
               !Nullify the domain
               NULLIFY(NEW_DECOMPOSITION%DOMAIN)
               !Nullify the topology
@@ -580,18 +591,15 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: NumberElementIndices,elem_index,elem_count,ne,nn,ComputationalNodeNo,MyComputationalNodeNumber,&
-      & NumberComputationalNodes,NumberOfElements,NumberElementsOnOwnComputationalNode, &
-      & ElementStart,ElementStop,MyElementStart,MyElementStop, I,J,ElementToSendNo,GlobalElementNo, &
-      & MyNumberOfElements,MPI_IERROR,MaxNumberElementsPerNode,component_idx,MinNumberXi,RequestHandle,&
-      & MaximumNumberElementsToSendToOneComputationalNode, GlobalElementNoDomainPair(2)
+      & NumberComputationalNodes,NumberOfElements, &
+      & ElementStart,ElementStop,MyElementStart,MyElementStop,GlobalElementNo, &
+      & MyNumberOfElements,MPI_IERROR,MaxNumberElementsPerNode,component_idx,MinNumberXi,&
+      & GlobalElementNoDomainPair(2)
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_COUNT(:),ADJACENT_NODE_PTR(:),ADJACENT_NODE_INDICES(:),ELEMENT_DISTRIBUTION(:), &
-      & DISPLACEMENTS(:),RECEIVE_COUNTS(:),ElementDomain(:),NumberElementsDomainTemporary(:),RequestHandles(:),&
-      & NumberElementsToReceive(:),ReceiveBuffer(:)
+      & RECEIVE_COUNTS(:),ElementDomain(:)
     INTEGER(INTG) :: ELEMENT_WEIGHT(1),WEIGHT_FLAG,NUMBER_FLAG,NUMBER_OF_CONSTRAINTS, &
       & NUMBER_OF_COMMON_NODES,PARMETIS_OPTIONS(0:2)
-    LOGICAL, ALLOCATABLE :: IRecvCompleted(:)
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain
-      
     REAL(DP) :: UBVEC(1)
     REAL(DP), ALLOCATABLE :: TPWGTS(:)
     REAL(DP) :: NumberElementsPerNode
@@ -605,170 +613,205 @@ CONTAINS
       IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
         MESH=>DECOMPOSITION%MESH
         IF(ASSOCIATED(MESH%TOPOLOGY)) THEN
+          IF(ASSOCIATED(DECOMPOSITION%GlobalElementDomain)) THEN
 
-          component_idx=DECOMPOSITION%MESH_COMPONENT_NUMBER
-          
-          ! get rank count and own rank
-          NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
-          IF(ERR/=0) GOTO 999
-          MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-          IF(ERR/=0) GOTO 999
-          
-          SELECT CASE(DECOMPOSITION%DECOMPOSITION_TYPE)
-          CASE(DECOMPOSITION_ALL_TYPE)
-            !Do nothing. Decomposition checked below.
-           CASE(DECOMPOSITION_CALCULATED_TYPE)
-            !Calculate the general decomposition
+            component_idx=DECOMPOSITION%MESH_COMPONENT_NUMBER
+            
+            ! get rank count and own rank
+            NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+            
+            SELECT CASE(DECOMPOSITION%DECOMPOSITION_TYPE)
+            CASE(DECOMPOSITION_ALL_TYPE)
+              !Do nothing. Decomposition checked below.
+            CASE(DECOMPOSITION_CALCULATED_TYPE)
+              !Calculate the general decomposition
 
-            IF(DECOMPOSITION%NUMBER_OF_DOMAINS==1) THEN
-            
-              IF (FILL_MEMORY_INTENSE_ARRAYS) THEN 
-                ! set domain of every element to 0
-                DECOMPOSITION%ELEMENT_DOMAIN=0
-              ENDIF
+              IF(DECOMPOSITION%NUMBER_OF_DOMAINS==1) THEN
               
-              ! get total number of elements from mesh
-              MyNumberOfElements = MESH%NUMBER_OF_ELEMENTS
-              
-              ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
-              ! the list contains pairs of (global el. no., domain no)
-              GlobalElementDomain=>DECOMPOSITION%GlobalElementDomain
-              NULLIFY(GlobalElementDomain)
-              CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
-              CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
-              CALL LIST_DATA_DIMENSION_SET(GlobalElementDomain,2,ERR,ERROR,*999)
-              CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
-              CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
-            
-              DO GlobalElementNo=0,MyNumberOfElements
-                GlobalElementNoDomainPair(1) = GlobalElementNo
-                GlobalElementNoDomainPair(2) = MyComputationalNodeNumber    ! this is 0
-                
-                CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
-              ENDDO
-              
-              
-            ELSE
-              ! Compute average number of elements per node
-              NumberElementsPerNode=REAL(MESH%NUMBER_OF_ELEMENTS,DP)/REAL(NumberComputationalNodes,DP)
-              ElementStart=1    ! first index of element range for a particular rank
-              ElementStop=0     ! last index of element range for a particular rank
-              MaxNumberElementsPerNode=-1
-              
-              ! Allocate arrays
-              ! note for merge: DISPLACEMENTS(i) == ELEMENT_DISTRIBUTION(i), therefore variable DISPLACEMENTS removed
-              !ALLOCATE(DISPLACEMENTS(0:NumberComputationalNodes-1),STAT=ERR)
-              !IF(ERR/=0) CALL FlagError("Could not allocate displacements.",ERR,ERROR,*999)
-              
-              ! ELEMENT_DISTRIBUTION(np): first global element number for process np
-              ALLOCATE(ELEMENT_DISTRIBUTION(0:NumberComputationalNodes),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate element distance.",ERR,ERROR,*999)
-              
-              ! RECEIVE_COUNTS(np): number of global elements for process np
-              ALLOCATE(RECEIVE_COUNTS(0:NumberComputationalNodes-1),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate recieve counts.",ERR,ERROR,*999)
-              
-              ELEMENT_DISTRIBUTION(0)=0
-              
-              ! Loop over computational nodes
-              DO ComputationalNodeNo=0,NumberComputationalNodes-1
-                
-                ! Compute range [ElementStart, ElementStop] of elements that will be on ComputationalNodeNo
-                ElementStart=ElementStop+1
-                IF(ComputationalNodeNo==NumberComputationalNodes-1) THEN
-                  ElementStop=MESH%NUMBER_OF_ELEMENTS
-                ELSE
-                  ElementStop=ElementStart+NINT(NumberElementsPerNode,INTG)-1
+                IF (FILL_MEMORY_INTENSE_ARRAYS) THEN 
+                  ! set domain of every element to 0
+                  DECOMPOSITION%ELEMENT_DOMAIN=0
                 ENDIF
                 
-                ! If after current range there are more computational nodes left than elements, reduce current range
-                IF((NumberComputationalNodes-1-ComputationalNodeNo)>(MESH%NUMBER_OF_ELEMENTS-ElementStop)) &
-                  & ElementStop=MESH%NUMBER_OF_ELEMENTS-(NumberComputationalNodes-1-ComputationalNodeNo)
-                IF(ElementStart>MESH%NUMBER_OF_ELEMENTS) ElementStart=MESH%NUMBER_OF_ELEMENTS
-                IF(ElementStop>MESH%NUMBER_OF_ELEMENTS) ElementStop=MESH%NUMBER_OF_ELEMENTS
+                ! get total number of elements from mesh
+                MyNumberOfElements = MESH%NUMBER_OF_ELEMENTS
                 
-                ! assign beginning of element range for next process (C numbering)
-                ELEMENT_DISTRIBUTION(ComputationalNodeNo+1)=ElementStop !C numbering
+                NULLIFY(GlobalElementDomain)
+                CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
+                CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
+                CALL LIST_DATA_DIMENSION_SET(GlobalElementDomain,2,ERR,ERROR,*999)
+                CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
+                CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
                 
-                ! assign number of elements in range for current rank to RECEIVE_COUNTS
-                NumberOfElements=ElementStop-ElementStart+1
-                RECEIVE_COUNTS(ComputationalNodeNo)=NumberOfElements
-                
-                ! store maximum value of NumberOfElements on a rank
-                IF(NumberOfElements>MaxNumberElementsPerNode) MaxNumberElementsPerNode=NumberOfElements
-                
-                ! on local rank
-                IF(ComputationalNodeNo==MyComputationalNodeNumber) THEN
-                  MyElementStart=ElementStart
-                  MyElementStop=ElementStop
-                  MyNumberOfElements=NumberOfElements
-                  NumberElementIndices=0
+                ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
+                ! the list contains pairs of (global el. no., domain no)
+                DO GlobalElementNo=0,MyNumberOfElements
+                  GlobalElementNoDomainPair(1) = GlobalElementNo
+                  GlobalElementNoDomainPair(2) = MyComputationalNodeNumber    ! this is 0
                   
-                  ! count number of nodes that are assigned to this rank
-                  ! loop over local elements
-                  DO ne=MyElementStart,MyElementStop
-                    BASIS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%BASIS
-                    NumberElementIndices=NumberElementIndices+BASIS%NUMBER_OF_NODES
-                  ENDDO !ne
+                  CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
+                ENDDO
+                
+                ! create new list with known number of elements
+                IF (ASSOCIATED(DECOMPOSITION%GlobalElementDomain)) THEN
+                  CALL LIST_DESTROY(DECOMPOSITION%GlobalElementDomain,ERR,ERROR,*999)
                 ENDIF
-              ENDDO !ComputationalNodeNo
-              
-              ALLOCATE(ADJACENT_NODE_PTR(0:MyNumberOfElements),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate element pointer list.",ERR,ERROR,*999)
-              ALLOCATE(ADJACENT_NODE_INDICES(0:NumberElementIndices-1),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate element indicies list.",ERR,ERROR,*999)
-              ALLOCATE(TPWGTS(1:DECOMPOSITION%NUMBER_OF_DOMAINS),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate tpwgts.",ERR,ERROR,*999)
-              elem_index=0
-              elem_count=0
-              ADJACENT_NODE_PTR(0)=0    ! ADJACENT_NODE_PTR(localElementNo) is the first index in ADJACENT_NODE_INDICES of the element (C numbering)
-              MinNumberXi=99999
-              
-              ! loop over local elements
-              DO ne=MyElementStart,MyElementStop
-                elem_count=elem_count+1
-                BASIS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%BASIS
+                DECOMPOSITION%GlobalElementDomain=>GlobalElementDomain
                 
-                ! Store minimum number of xi-directions of the elements basis
-                IF(BASIS%NUMBER_OF_XI<MinNumberXi) MinNumberXi=BASIS%NUMBER_OF_XI
-                
-                ! loop over nodes of element
-                DO nn=1,BASIS%NUMBER_OF_NODES
-                  ADJACENT_NODE_INDICES(elem_index)=MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)% &
-                    & MESH_ELEMENT_NODES(nn)-1 !C numbering
-                    
-                  ! ADJACENT_NODE_INDICES(ADJACENT_NODE_PTR(elem_count-1)+1:ADJACENT_NODE_PTR(elem_count)+1) contains
-                  ! the indices of adjacent nodes that define the graph to be partioned
-              
-                  elem_index=elem_index+1
-                ENDDO !nn
-                ADJACENT_NODE_PTR(elem_count)=elem_index !C numbering
-              ENDDO !ne
-              
-              !Set up ParMETIS variables
-              WEIGHT_FLAG=0 !No weights
-              ELEMENT_WEIGHT(1)=1 !Isn't used due to weight flag
-              NUMBER_FLAG=0 !C Numbering as there is a bug with Fortran numbering
-              NUMBER_OF_CONSTRAINTS=1   ! number of weight per vertex in the graph that will be partitioned
-              
-              ! NUMBER_OF_COMMON_NODES is the number of nodes that two elements have to share to be considered adjacent
-              IF(MinNumberXi==1) THEN     ! for one-dimensional meshes it is 1 node
-                NUMBER_OF_COMMON_NODES=1    
               ELSE
-                NUMBER_OF_COMMON_NODES=2  ! for 2D or 3D nodes it is 2 nodes, i.e. in a 3D mesh also elements sharing an edge are considered adjacent
-              ENDIF
-              
-              TPWGTS=1.0_DP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP)  ! target value for weights fraction per partition
-              UBVEC=1.05_DP ! imbalance tolerance: 5%
-              PARMETIS_OPTIONS(0)=1 !If zero, defaults are used, otherwise next two values are used
-              PARMETIS_OPTIONS(1)=7 !Level of information to output
-              PARMETIS_OPTIONS(2)=CMISS_RANDOM_SEEDS(1) !Seed for random number generator
-              
-              IF (FILL_MEMORY_INTENSE_ARRAYS) THEN 
-                ! use variable DECOMPOSITION%ELEMENT_DOMAIN, distribute information such that every rank has all information
+                ! Compute average number of elements per node
+                NumberElementsPerNode=REAL(MESH%NUMBER_OF_ELEMENTS,DP)/REAL(NumberComputationalNodes,DP)
+                ElementStart=1    ! first index of element range for a particular rank
+                ElementStop=0     ! last index of element range for a particular rank
+                MaxNumberElementsPerNode=-1
+                
+                ! Allocate arrays
+                ! note for merge: DISPLACEMENTS(i) == ELEMENT_DISTRIBUTION(i), therefore variable DISPLACEMENTS removed
+                !ALLOCATE(DISPLACEMENTS(0:NumberComputationalNodes-1),STAT=ERR)
+                !IF(ERR/=0) CALL FlagError("Could not allocate displacements.",ERR,ERROR,*999)
+                
+                ! ELEMENT_DISTRIBUTION(np): first global element number for process np
+                ALLOCATE(ELEMENT_DISTRIBUTION(0:NumberComputationalNodes),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate element distance.",ERR,ERROR,*999)
+                
+                ! RECEIVE_COUNTS(np): number of global elements for process np
+                ALLOCATE(RECEIVE_COUNTS(0:NumberComputationalNodes-1),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate recieve counts.",ERR,ERROR,*999)
+                
+                ELEMENT_DISTRIBUTION(0)=0
+                
+                ! Loop over computational nodes
+                DO ComputationalNodeNo=0,NumberComputationalNodes-1
+                  
+                  ! Compute range [ElementStart, ElementStop] of elements that will be on ComputationalNodeNo
+                  ElementStart=ElementStop+1
+                  IF(ComputationalNodeNo==NumberComputationalNodes-1) THEN
+                    ElementStop=MESH%NUMBER_OF_ELEMENTS
+                  ELSE
+                    ElementStop=ElementStart+NINT(NumberElementsPerNode,INTG)-1
+                  ENDIF
+                  
+                  ! If after current range there are more computational nodes left than elements, reduce current range
+                  IF((NumberComputationalNodes-1-ComputationalNodeNo)>(MESH%NUMBER_OF_ELEMENTS-ElementStop)) &
+                    & ElementStop=MESH%NUMBER_OF_ELEMENTS-(NumberComputationalNodes-1-ComputationalNodeNo)
+                  IF(ElementStart>MESH%NUMBER_OF_ELEMENTS) ElementStart=MESH%NUMBER_OF_ELEMENTS
+                  IF(ElementStop>MESH%NUMBER_OF_ELEMENTS) ElementStop=MESH%NUMBER_OF_ELEMENTS
+                  
+                  ! assign beginning of element range for next process (C numbering)
+                  ELEMENT_DISTRIBUTION(ComputationalNodeNo+1)=ElementStop !C numbering
+                  
+                  ! assign number of elements in range for current rank to RECEIVE_COUNTS
+                  NumberOfElements=ElementStop-ElementStart+1
+                  RECEIVE_COUNTS(ComputationalNodeNo)=NumberOfElements
+                  
+                  ! store maximum value of NumberOfElements on a rank
+                  IF(NumberOfElements>MaxNumberElementsPerNode) MaxNumberElementsPerNode=NumberOfElements
+                  
+                  ! on local rank
+                  IF(ComputationalNodeNo==MyComputationalNodeNumber) THEN
+                    MyElementStart=ElementStart
+                    MyElementStop=ElementStop
+                    MyNumberOfElements=NumberOfElements
+                    NumberElementIndices=0
+                    
+                    ! count number of nodes that are assigned to this rank
+                    ! loop over local elements
+                    DO ne=MyElementStart,MyElementStop
+                      BASIS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%BASIS
+                      NumberElementIndices=NumberElementIndices+BASIS%NUMBER_OF_NODES
+                    ENDDO !ne
+                  ENDIF
+                ENDDO !ComputationalNodeNo
+                
+                ALLOCATE(ADJACENT_NODE_PTR(0:MyNumberOfElements),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate element pointer list.",ERR,ERROR,*999)
+                ALLOCATE(ADJACENT_NODE_INDICES(0:NumberElementIndices-1),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate element indicies list.",ERR,ERROR,*999)
+                ALLOCATE(TPWGTS(1:DECOMPOSITION%NUMBER_OF_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate tpwgts.",ERR,ERROR,*999)
+                elem_index=0
+                elem_count=0
+                ADJACENT_NODE_PTR(0)=0    ! ADJACENT_NODE_PTR(localElementNo) is the first index in ADJACENT_NODE_INDICES of the element (C numbering)
+                MinNumberXi=99999
+                
+                ! loop over local elements
+                DO ne=MyElementStart,MyElementStop
+                  elem_count=elem_count+1
+                  BASIS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%BASIS
+                  
+                  ! Store minimum number of xi-directions of the elements basis
+                  IF(BASIS%NUMBER_OF_XI<MinNumberXi) MinNumberXi=BASIS%NUMBER_OF_XI
+                  
+                  ! loop over nodes of element
+                  DO nn=1,BASIS%NUMBER_OF_NODES
+                    ADJACENT_NODE_INDICES(elem_index)=MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)% &
+                      & MESH_ELEMENT_NODES(nn)-1 !C numbering
+                      
+                    ! ADJACENT_NODE_INDICES(ADJACENT_NODE_PTR(elem_count-1)+1:ADJACENT_NODE_PTR(elem_count)+1) contains
+                    ! the indices of adjacent nodes that define the graph to be partioned
+                
+                    elem_index=elem_index+1
+                  ENDDO !nn
+                  ADJACENT_NODE_PTR(elem_count)=elem_index !C numbering
+                ENDDO !ne
+                
+                !Set up ParMETIS variables
+                WEIGHT_FLAG=0 !No weights
+                ELEMENT_WEIGHT(1)=1 !Isn't used due to weight flag
+                NUMBER_FLAG=0 !C Numbering as there is a bug with Fortran numbering
+                NUMBER_OF_CONSTRAINTS=1   ! number of weight per vertex in the graph that will be partitioned
+                
+                ! NUMBER_OF_COMMON_NODES is the number of nodes that two elements have to share to be considered adjacent
+                IF(MinNumberXi==1) THEN     ! for one-dimensional meshes it is 1 node
+                  NUMBER_OF_COMMON_NODES=1    
+                ELSE
+                  NUMBER_OF_COMMON_NODES=2  ! for 2D or 3D nodes it is 2 nodes, i.e. in a 3D mesh also elements sharing an edge are considered adjacent
+                ENDIF
+                
+                TPWGTS=1.0_DP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP)  ! target value for weights fraction per partition
+                UBVEC=1.05_DP ! imbalance tolerance: 5%
+                PARMETIS_OPTIONS(0)=1 !If zero, defaults are used, otherwise next two values are used
+                PARMETIS_OPTIONS(1)=7 !Level of information to output
+                PARMETIS_OPTIONS(2)=CMISS_RANDOM_SEEDS(1) !Seed for random number generator
+                
+                IF (FILL_MEMORY_INTENSE_ARRAYS) THEN 
+                  ! use variable DECOMPOSITION%ELEMENT_DOMAIN, distribute information such that every rank has all information
+                  
+                  !Call ParMETIS to calculate the partitioning of the mesh graph. The graph is the dual graph to the node graph.
+                  !see parmetis reference manual: http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/manual.pdf
+                  CALL PARMETIS_PARTMESHKWAY(&
+                    & ELEMENT_DISTRIBUTION,&    ! starting indices of the elements per process
+                    & ADJACENT_NODE_PTR,ADJACENT_NODE_INDICES,&  ! local adjacent nodes in CSR format: ADJACENT_NODE_PTR is the starting indices to sequences in ADJACENT_NODE_INDICES that contain global node numbers that are adjacent to each of the local element
+                    & ELEMENT_WEIGHT,WEIGHT_FLAG, &  ! WEIGHT_FLAG=0, i.e. no weighting of the graph
+                    & NUMBER_FLAG, &      ! NUMBER_FLAG=0 means c-style numbering
+                    & NUMBER_OF_CONSTRAINTS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS, & ! number of contraints=1, NUMBER_OF_COMMON_NODES: see above, number of generated partitions
+                    & TPWGTS,UBVEC,PARMETIS_OPTIONS, &    ! UBVEC: imbalance tolerance
+                    & DECOMPOSITION%NUMBER_OF_EDGES_CUT, &  ! output: number of edge cuts
+                    & DECOMPOSITION%ELEMENT_DOMAIN(ELEMENT_DISTRIBUTION(MyComputationalNodeNumber)+1:), &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne
+                    & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ERR,ERROR,*999)
+                  
+                  !Transfer all the element domain information to the other computational nodes so that each rank has all the info
+                  IF(NumberComputationalNodes>1) THEN
+                    !This should work on a single processor but doesn't for mpich2 under windows. Maybe a bug? Avoid for now.
+                    CALL MPI_ALLGATHERV(MPI_IN_PLACE,MaxNumberElementsPerNode,MPI_INTEGER,DECOMPOSITION%ELEMENT_DOMAIN, &
+                      & RECEIVE_COUNTS,ELEMENT_DISTRIBUTION,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                    CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+                    ! note: allgatherV: complete fractioned vector on each rank, where each rank has only its own part
+                  ENDIF
+
+                ENDIF   ! if FILL_MEMORY_INTENSE_ARRAYS
+                
+                
+                ! use variable DECOMPOSITION%GLOBAL_ELEMENT_NUMBER which is the same as DOMAIN%LOCAL_TO_GLOBAL_MAP for elements
+                ALLOCATE(ElementDomain(0:MyNumberOfElements-1),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ElementDomain variable.",ERR,ERROR,*999)
                 
                 !Call ParMETIS to calculate the partitioning of the mesh graph. The graph is the dual graph to the node graph.
                 !see parmetis reference manual: http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/manual.pdf
+                ! Store result into local variable ElementDomain
                 CALL PARMETIS_PARTMESHKWAY(&
                   & ELEMENT_DISTRIBUTION,&    ! starting indices of the elements per process
                   & ADJACENT_NODE_PTR,ADJACENT_NODE_INDICES,&  ! local adjacent nodes in CSR format: ADJACENT_NODE_PTR is the starting indices to sequences in ADJACENT_NODE_INDICES that contain global node numbers that are adjacent to each of the local element
@@ -777,107 +820,86 @@ CONTAINS
                   & NUMBER_OF_CONSTRAINTS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS, & ! number of contraints=1, NUMBER_OF_COMMON_NODES: see above, number of generated partitions
                   & TPWGTS,UBVEC,PARMETIS_OPTIONS, &    ! UBVEC: imbalance tolerance
                   & DECOMPOSITION%NUMBER_OF_EDGES_CUT, &  ! output: number of edge cuts
-                  & DECOMPOSITION%ELEMENT_DOMAIN(ELEMENT_DISTRIBUTION(MyComputationalNodeNumber)+1:), &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne
+                  & ElementDomain, &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne, c style numbering
                   & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ERR,ERROR,*999)
                 
-                !Transfer all the element domain information to the other computational nodes so that each rank has all the info
-                IF(NumberComputationalNodes>1) THEN
-                  !This should work on a single processor but doesn't for mpich2 under windows. Maybe a bug? Avoid for now.
-                  CALL MPI_ALLGATHERV(MPI_IN_PLACE,MaxNumberElementsPerNode,MPI_INTEGER,DECOMPOSITION%ELEMENT_DOMAIN, &
-                    & RECEIVE_COUNTS,DISPLACEMENTS,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
-                  CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
-                  ! note: allgatherV: complete fractioned vector on each rank, where each rank has only its own part
-                ENDIF
-
-              ENDIF   ! if FILL_MEMORY_INTENSE_ARRAYS
-              
-              
-              ! use variable DECOMPOSITION%GLOBAL_ELEMENT_NUMBER which is the same as DOMAIN%LOCAL_TO_GLOBAL_MAP for elements
-              ALLOCATE(ElementDomain(0:MyNumberOfElements-1),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate ElementDomain variable.",ERR,ERROR,*999)
-              
-              !Call ParMETIS to calculate the partitioning of the mesh graph. The graph is the dual graph to the node graph.
-              !see parmetis reference manual: http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/manual.pdf
-              ! Store result into local variable ElementDomain
-              CALL PARMETIS_PARTMESHKWAY(&
-                & ELEMENT_DISTRIBUTION,&    ! starting indices of the elements per process
-                & ADJACENT_NODE_PTR,ADJACENT_NODE_INDICES,&  ! local adjacent nodes in CSR format: ADJACENT_NODE_PTR is the starting indices to sequences in ADJACENT_NODE_INDICES that contain global node numbers that are adjacent to each of the local element
-                & ELEMENT_WEIGHT,WEIGHT_FLAG, &  ! WEIGHT_FLAG=0, i.e. no weighting of the graph
-                & NUMBER_FLAG, &      ! NUMBER_FLAG=0 means c-style numbering
-                & NUMBER_OF_CONSTRAINTS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS, & ! number of contraints=1, NUMBER_OF_COMMON_NODES: see above, number of generated partitions
-                & TPWGTS,UBVEC,PARMETIS_OPTIONS, &    ! UBVEC: imbalance tolerance
-                & DECOMPOSITION%NUMBER_OF_EDGES_CUT, &  ! output: number of edge cuts
-                & ElementDomain, &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne, c style numbering
-                & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ERR,ERROR,*999)
-              
-              ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
-              ! the list contains pairs of (global el. no., domain no)
-              GlobalElementDomain=>DECOMPOSITION%GlobalElementDomain
-              NULLIFY(GlobalElementDomain)
-              CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
-              CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
-              CALL LIST_DATA_DIMENSION_SET(GlobalElementDomain,2,ERR,ERROR,*999)
-              CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
-              CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
-            
-              DO GlobalElementNo=MyElementStart,MyElementStop
-                GlobalElementNoDomainPair(1) = GlobalElementNo
-                GlobalElementNoDomainPair(2) = MyComputationalNodeNumber
+                ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
+                ! the list contains pairs of (global el. no., domain no)
                 
-                CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
-              ENDDO
+                NULLIFY(GlobalElementDomain)
+                CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
+                CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
+                CALL LIST_DATA_DIMENSION_SET(GlobalElementDomain,2,ERR,ERROR,*999)
+                CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
+                CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
               
-              ! deallocate temporary arrays
-              DEALLOCATE(ElementDomain)
-              DEALLOCATE(RECEIVE_COUNTS)
-              DEALLOCATE(ELEMENT_DISTRIBUTION)
-              DEALLOCATE(ADJACENT_NODE_PTR)
-              DEALLOCATE(ADJACENT_NODE_INDICES)
-              DEALLOCATE(TPWGTS)
+                DO GlobalElementNo=MyElementStart,MyElementStop
+                  GlobalElementNoDomainPair(1) = GlobalElementNo
+                  GlobalElementNoDomainPair(2) = MyComputationalNodeNumber
+                  
+                  CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
+                ENDDO
+                
+                ! create new list with known number of elements
+                IF (ASSOCIATED(DECOMPOSITION%GlobalElementDomain)) THEN
+                  CALL LIST_DESTROY(DECOMPOSITION%GlobalElementDomain,ERR,ERROR,*999)
+                ENDIF
+                DECOMPOSITION%GlobalElementDomain=>GlobalElementDomain
+                
+                ! deallocate temporary arrays
+                DEALLOCATE(ElementDomain)
+                DEALLOCATE(RECEIVE_COUNTS)
+                DEALLOCATE(ELEMENT_DISTRIBUTION)
+                DEALLOCATE(ADJACENT_NODE_PTR)
+                DEALLOCATE(ADJACENT_NODE_INDICES)
+                DEALLOCATE(TPWGTS)
 
-            ENDIF
-            
-          CASE(DECOMPOSITION_USER_DEFINED_TYPE)
-            !Do nothing. Decomposition checked below.          
-          CASE DEFAULT
-            CALL FlagError("Invalid domain decomposition type.",ERR,ERROR,*999)            
-          END SELECT
-          
-          ! distribute information in GlobalElementDomain such that afterwards each rank has only its local information in DECOMPOSITION%ELEMENTS_MAPPING
-          CALL DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
-          
-          IF (FILL_MEMORY_INTENSE_ARRAYS) THEN 
-            !Check decomposition and check that each domain has an element in it.
-            ALLOCATE(ELEMENT_COUNT(0:NumberComputationalNodes-1),STAT=ERR)
-            IF(ERR/=0) CALL FlagError("Could not allocate element count.",ERR,ERROR,*999)
-            ELEMENT_COUNT=0
-            ! count number of elements per rank
-            ! loop over global elements
-            DO elem_index=1,MESH%NUMBER_OF_ELEMENTS
-              ComputationalNodeNo=DECOMPOSITION%ELEMENT_DOMAIN(elem_index)
-              IF(ComputationalNodeNo>=0.AND.ComputationalNodeNo<NumberComputationalNodes) THEN
-                ELEMENT_COUNT(ComputationalNodeNo)=ELEMENT_COUNT(ComputationalNodeNo)+1
-              ELSE
-                LOCAL_ERROR="The computational node number of "//TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))// &
-                  & " for element number "//TRIM(NUMBER_TO_VSTRING(elem_index,"*",ERR,ERROR))// &
-                  & " is invalid. The computational node number must be between 0 and "// &
-                  & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodes-1,"*",ERR,ERROR))//"."
-                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
               ENDIF
-            ENDDO !elem_index
+              
+            CASE(DECOMPOSITION_USER_DEFINED_TYPE)
+              !Do nothing. Decomposition checked below.          
+            CASE DEFAULT
+              CALL FlagError("Invalid domain decomposition type.",ERR,ERROR,*999)            
+            END SELECT
             
-            ! Check that each rank has at least 1 element
-            DO ComputationalNodeNo=0,NumberComputationalNodes-1
-              IF(ELEMENT_COUNT(ComputationalNodeNo)==0) THEN
-                LOCAL_ERROR="Invalid decomposition. There are no elements in computational node "// &
-                  & TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))//"."
-                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-              ENDIF
-            ENDDO !ComputationalNodeNo
-            DEALLOCATE(ELEMENT_COUNT)
-          
-          ENDIF  ! IF FILL_MEMORY_INTENSE_ARRAYS
-          
+            ! distribute information in GlobalElementDomain such that afterwards each rank has only its local information in DECOMPOSITION%ELEMENTS_MAPPING
+            CALL DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
+            
+            IF (FILL_MEMORY_INTENSE_ARRAYS .AND. .FALSE.) THEN 
+              !Check decomposition and check that each domain has an element in it.
+              ALLOCATE(ELEMENT_COUNT(0:NumberComputationalNodes-1),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate element count.",ERR,ERROR,*999)
+              ELEMENT_COUNT=0
+              ! count number of elements per rank
+              ! loop over global elements
+              DO elem_index=1,MESH%NUMBER_OF_ELEMENTS
+                ComputationalNodeNo=DECOMPOSITION%ELEMENT_DOMAIN(elem_index)
+                IF(ComputationalNodeNo>=0.AND.ComputationalNodeNo<NumberComputationalNodes) THEN
+                  ELEMENT_COUNT(ComputationalNodeNo)=ELEMENT_COUNT(ComputationalNodeNo)+1
+                ELSE
+                  LOCAL_ERROR="The computational node number of "//TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))// &
+                    & " for element number "//TRIM(NUMBER_TO_VSTRING(elem_index,"*",ERR,ERROR))// &
+                    & " is invalid. The computational node number must be between 0 and "// &
+                    & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodes-1,"*",ERR,ERROR))//"."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ENDDO !elem_index
+              
+              ! Check that each rank has at least 1 element
+              DO ComputationalNodeNo=0,NumberComputationalNodes-1
+                IF(ELEMENT_COUNT(ComputationalNodeNo)==0) THEN
+                  LOCAL_ERROR="Invalid decomposition. There are no elements in computational node "// &
+                    & TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))//"."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ENDDO !ComputationalNodeNo
+              DEALLOCATE(ELEMENT_COUNT)
+            
+            ENDIF  ! IF FILL_MEMORY_INTENSE_ARRAYS
+            
+          ELSE
+            CALL FlagError("Decomposition GlobalElementDomain is not associated.",ERR,ERROR,*999)
+          ENDIF
         ELSE
           CALL FlagError("Decomposition mesh topology is not associated.",ERR,ERROR,*999)
         ENDIF
@@ -912,7 +934,6 @@ CONTAINS
     EXITS("DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE")
     RETURN
 999 IF(ALLOCATED(RECEIVE_COUNTS)) DEALLOCATE(RECEIVE_COUNTS)
-    IF(ALLOCATED(DISPLACEMENTS)) DEALLOCATE(DISPLACEMENTS)
     IF(ALLOCATED(ELEMENT_DISTRIBUTION)) DEALLOCATE(ELEMENT_DISTRIBUTION)
     IF(ALLOCATED(ADJACENT_NODE_PTR)) DEALLOCATE(ADJACENT_NODE_PTR)
     IF(ALLOCATED(ADJACENT_NODE_INDICES)) DEALLOCATE(ADJACENT_NODE_INDICES)
@@ -926,7 +947,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates for decomposition the ELEMENTS_MAPPING%NUMBER_OF_LOCAL, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL and ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP from GlobalElementDomain
+  !>Calculates for decomposition the ELEMENTNS_MAPPING%NUMBER_OF_DOMAINS, ELEMENTS_MAPPING%NUMBER_OF_GLOBAL, ELEMENTS_MAPPING%NUMBER_OF_LOCAL, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL and ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP from GlobalElementDomain
   SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
@@ -939,239 +960,337 @@ CONTAINS
       & MaximumNumberElementsToSendToOneComputationalNode, NumberComputationalNodesToReceiveFrom, &
       & MaximumNumberElementsToReceiveFromOneComputationalNode, ComputationalNodesToSendToNo, ComputationalNodesToReceiveFromNo, &
       & NumberElementsToComputationalNode, NumberElementsFromComputationalNode, NumberElementsInReceivedElementsList, &
-      & ElementToSendNo, MpiDisplacementsUnitBytes
+      & ElementToSendNo, MpiDisplacementsUnitBytes, NumberOwnLocalElements
     INTEGER(INTG), ALLOCATABLE :: NumberLocalElementsOnRank(:), NumberStoredElementsForRank(:), ElementSendBuffers(:,:), &
       & SendRequestHandle(:), ReceiveRequestHandle(:)
     INTEGER(INTG), ALLOCATABLE, DIMENSION(:,:) :: ElementReceiveBuffers
     INTEGER(KIND=MPI_ADDRESS_KIND) LB, EXTENT, MpiWindowSizeBytes, MpiTargetDisplacement
     TYPE(LIST_TYPE), POINTER :: ReceivedElementsList
+    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
 
     ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR,*999)
 
+    IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
+      CALL FlagError("Decomposition Elements mapping is already allocated.",ERR,ERROR,*999)
+    ENDIF
+    
     ! get rank count and own rank
     NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
     IF(ERR/=0) GOTO 999
     MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
     IF(ERR/=0) GOTO 999
+    
+    ! Allocate arrays
+    ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING,STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate ELEMENTS_MAPPING.",ERR,ERROR,*999)
+     
+    ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
+     
+    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAINS = NumberComputationalNodes
+    
+    IF (NumberComputationalNodes == 1) THEN    
+      ! count number of elements that we have from each rank
+      CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,NumberOwnLocalElements,ERR,ERROR,*999)
+      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberOwnLocalElements
+      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0) = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL
         
-    ! figure out which rank has how many of my local elements
-    ALLOCATE(NumberLocalElementsOnRank(0:NumberComputationalNodes-1),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate NumberLocalElementsOnRank variable.",ERR,ERROR,*999)
-    NumberLocalElementsOnRank = 0
-          
-    ALLOCATE(NumberStoredElementsForRank(0:NumberComputationalNodes-1),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate NumberStoredElementsForRank variable.",ERR,ERROR,*999)
-    NumberStoredElementsForRank = 0
+      ! create list for elements
+      NULLIFY(ReceivedElementsList)
+      CALL LIST_CREATE_START(ReceivedElementsList,ERR,ERROR,*999)
+      CALL LIST_DATA_TYPE_SET(ReceivedElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+      CALL LIST_INITIAL_SIZE_SET(ReceivedElementsList,DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
+      CALL LIST_CREATE_FINISH(ReceivedElementsList,ERR,ERROR,*999)
     
-    ! count number of elements that we have from each rank
-    CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,ListSize,ERR,ERROR,*999)
-    
-    DO I=1,ListSize
-      CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,I,GlobalElementNoDomainPair,ERR,ERROR,*999)
-      GlobalElementNo = GlobalElementNoDomainPair(1)
-      Domain = GlobalElementNoDomainPair(2)
-      
-      NumberStoredElementsForRank(Domain) = NumberStoredElementsForRank(Domain) + 1
-    ENDDO
-        
-    ! get size in bytes of MPI_INT
-    CALL MPI_TYPE_GET_EXTENT(MPI_INT, LB, EXTENT, MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_TYPE_GET_EXTENT",MPI_IERROR,ERR,ERROR,*999)
-    
-    ! start mpi RMA
-    MpiWindowSizeBytes = NumberComputationalNodes*EXTENT
-    MpiDisplacementsUnitBytes = EXTENT
-    CALL MPI_WIN_CREATE(NumberLocalElementsOnRank(0:NumberComputationalNodes-1), MpiWindowSizeBytes, &
-      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MpiMemoryWindow, MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
-    
-    CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
-          
-    ! write information of elements to remote ranks
-    DO ComputationalNodeNo=0,NumberComputationalNodes
-      IF (NumberStoredElementsForRank(ComputationalNodeNo) /= 0) THEN
-        MpiTargetDisplacement = MyComputationalNodeNumber
-        CALL MPI_PUT(NumberStoredElementsForRank(ComputationalNodeNo), 1, MPI_INT, ComputationalNodeNo,&
-          & MpiTargetDisplacement, 1, MPI_INT, MpiMemoryWindow, MPI_IERROR)
-        CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
-      ENDIF
-    ENDDO
-          
-    ! synchronize RMA
-    CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
-          
-    ! deallocate window 
-    CALL MPI_WIN_FREE(MpiMemoryWindow, MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_WIN_FREE",MPI_IERROR,ERR,ERROR,*999)
-          
-    ! count number of local elements
-    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = 0
-    DO ComputationalNodeNo=0,NumberComputationalNodes
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL + &
-        & NumberLocalElementsOnRank(ComputationalNodeNo)
-    ENDDO
-    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) = &
-      & DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL
-    
-    ! count number of computational nodes to send elements to
-    NumberComputationalNodesToSendTo = 0
-    MaximumNumberElementsToSendToOneComputationalNode = 0
-    DO ComputationalNodeNo=0,NumberComputationalNodes
-      IF (ComputationalNodeNo == MyComputationalNodeNumber) CYCLE
-    
-      IF (NumberStoredElementsForRank(ComputationalNodeNo) /= 0) THEN
-        NumberComputationalNodesToSendTo = NumberComputationalNodesToSendTo + 1
-        MaximumNumberElementsToSendToOneComputationalNode = MAX(MaximumNumberElementsToSendToOneComputationalNode, &
-          & NumberStoredElementsForRank(ComputationalNodeNo))
-      ENDIF
-    ENDDO
-    
-    ! count number of computational nodes to receive elements from
-    NumberComputationalNodesToReceiveFrom = 0
-    MaximumNumberElementsToReceiveFromOneComputationalNode = 0
-    DO ComputationalNodeNo=0,NumberComputationalNodes
-      IF (ComputationalNodeNo == MyComputationalNodeNumber) CYCLE
-    
-      IF (NumberLocalElementsOnRank(ComputationalNodeNo) /= 0) THEN
-        NumberComputationalNodesToReceiveFrom = NumberComputationalNodesToReceiveFrom + 1
-        MaximumNumberElementsToReceiveFromOneComputationalNode = MAX(MaximumNumberElementsToReceiveFromOneComputationalNode, &
-          & NumberLocalElementsOnRank(ComputationalNodeNo))
-      ENDIF
-    ENDDO
-    
-    ! get actual elements by message passing
-    !transfer information on actual elements to the ranks that own them.
-    
-    ! allocate send buffers
-    ALLOCATE(ElementSendBuffers(1:NumberComputationalNodesToSendTo,1:MaximumNumberElementsToSendToOneComputationalNode), &
-      & STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate ElementSendBuffers array with size "//&
-      & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToSendTo,"*",ERR,ERROR))//" x "//&
-      & TRIM(NUMBER_TO_VSTRING(MaximumNumberElementsToSendToOneComputationalNode,"*",ERR,ERROR))//".",ERR,ERROR,*999)
-    
-    ! allocate receive buffers
-    ALLOCATE(ElementReceiveBuffers(1:NumberComputationalNodesToReceiveFrom, &
-      & 1:MaximumNumberElementsToReceiveFromOneComputationalNode), STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate ElementReceiveBuffers array with size "//&
-      & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToReceiveFrom,"*",ERR,ERROR))//" x "//&
-      & TRIM(NUMBER_TO_VSTRING(MaximumNumberElementsToReceiveFromOneComputationalNode,"*",ERR,ERROR))//".",ERR,ERROR,*999)
-    
-    ! allocate request handles
-    ALLOCATE(SendRequestHandle(1:NumberComputationalNodesToSendTo), STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate SendRequestHandle array with size "//&
-      & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToSendTo,"*",ERR,ERROR))//".",ERR,ERROR,*999)
-    
-    ALLOCATE(ReceiveRequestHandle(1:NumberComputationalNodesToReceiveFrom), STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequestHandle array with size "//&
-      & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToReceiveFrom,"*",ERR,ERROR))//".",ERR,ERROR,*999)
-    
-    
-    ! Commit all send commands
-    ComputationalNodesToSendToNo = 1
-    
-    ! Loop over all computational nodes, except the own, starting with the next to the own computational node
-    ComputationalNodeNo = MyComputationalNodeNumber
-    DO I=1,NumberComputationalNodes-1
-      ComputationalNodeNo=ComputationalNodeNo+1
-      IF (ComputationalNodeNo == NumberComputationalNodes) ComputationalNodeNo=0
-      
-      ! find out how many elements this computational node will get from MyComputationalNodeNumber
-      NumberElementsToComputationalNode = NumberStoredElementsForRank(ComputationalNodeNo)
-      
-      ! send elements to computational node ComputationalNodeNo
-      IF (NumberElementsToComputationalNode /= 0) THEN
-      
-        ! fill send buffer 
-        ElementToSendNo = 1
-        DO J=1,ListSize
-          CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,J,GlobalElementNoDomainPair,ERR,ERROR,*999)
-          GlobalElementNo = GlobalElementNoDomainPair(1)
-          Domain = GlobalElementNoDomainPair(2)
-        
-          IF (Domain == ComputationalNodeNo) THEN
-            ElementSendBuffers(ComputationalNodesToSendToNo,ElementToSendNo) = GlobalElementNo
-            ElementToSendNo = ElementToSendNo + 1
-          ENDIF
-        ENDDO
-        
-        CALL MPI_ISEND(ElementSendBuffers(ComputationalNodesToSendToNo,1:NumberElementsToComputationalNode), &
-          & NumberElementsToComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
-          & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, SendRequestHandle(ComputationalNodesToSendToNo), MPI_IERROR)
-        CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
-        
-        ComputationalNodesToSendToNo = ComputationalNodesToSendToNo+1
-      ENDIF
-    ENDDO 
-    
-    ! commit all receive commands
-  
-    ! Loop over all computational nodes backwards, except the own, starting with the previous to the own computational node
-    ComputationalNodeNo = MyComputationalNodeNumber
-    ComputationalNodesToReceiveFromNo = 1
-    DO I=1,NumberComputationalNodes-1
-      ComputationalNodeNo=ComputationalNodeNo-1
-      IF (ComputationalNodeNo == -1) ComputationalNodeNo=NumberComputationalNodes-1
-      
-      ! find out how many elements this computational node will get from ComputationalNodeNo
-      NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
-      
-      IF (NumberElementsFromComputationalNode /= 0) THEN
-        
-        CALL MPI_IRECV(ElementReceiveBuffers(ComputationalNodesToReceiveFromNo,1:NumberElementsFromComputationalNode), &
-          & NumberElementsFromComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
-          & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
-        CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
-        
-        ComputationalNodesToReceiveFromNo = ComputationalNodesToReceiveFromNo + 1
-      ENDIF
-    ENDDO
-    
-    ! create list for received elements
-    NULLIFY(ReceivedElementsList)
-    CALL LIST_CREATE_START(ReceivedElementsList,ERR,ERROR,*999)
-    CALL LIST_DATA_TYPE_SET(ReceivedElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
-    CALL LIST_INITIAL_SIZE_SET(ReceivedElementsList,DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
-    CALL LIST_CREATE_FINISH(ReceivedElementsList,ERR,ERROR,*999)
-  
-    ! add elements that are already stored on the own rank to list
-    DO I=1,ListSize
-      CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,I,GlobalElementNoDomainPair,ERR,ERROR,*999)
-      GlobalElementNo = GlobalElementNoDomainPair(1)
-      Domain = GlobalElementNoDomainPair(2)
-      
-      IF (Domain == MyComputationalNodeNumber) THEN
+      ! add elements that are already stored on the own rank to list
+      DO I=1,NumberOwnLocalElements
+        CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,I,GlobalElementNoDomainPair,ERR,ERROR,*999)
+        GlobalElementNo = GlobalElementNoDomainPair(1)
+        Domain = GlobalElementNoDomainPair(2)
         CALL LIST_ITEM_ADD(ReceivedElementsList,GlobalElementNo,ERR,ERROR,*999)
-      ENDIF
-    ENDDO
-  
-    ! wait for all receive requests to terminate and store received values in receivebuffer list
-    DO ComputationalNodesToReceiveFromNo=1,NumberComputationalNodesToReceiveFrom
-      CALL MPI_WAIT(ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_STATUS_IGNORE, MPI_IERROR)
-      CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
+      ENDDO
       
-      NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
-      CALL LIST_ITEMS_ADD(ReceivedElementsList,ElementReceiveBuffers(ComputationalNodesToReceiveFromNo,&
-        & 1:NumberElementsFromComputationalNode))
-    ENDDO
-    
-    ! Sort list by global element number and store in local elements storage
-    CALL List_Sort(ReceivedElementsList,ERR,ERROR,*999)
-    CALL LIST_DETACH_AND_DESTROY(ReceivedElementsList,NumberElementsInReceivedElementsList,&
-      & DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
+      ! Sort list by global element number and store in local elements storage
+      CALL List_Sort(ReceivedElementsList,ERR,ERROR,*999)
+      CALL LIST_DETACH_AND_DESTROY(ReceivedElementsList,NumberElementsInReceivedElementsList,&
+        & DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
 
-    ! Terminate all send commands
-    DO ComputationalNodesToSendToNo=1,NumberComputationalNodesToSendTo
-      CALL MPI_WAIT(SendRequestHandle(ComputationalNodesToSendToNo), MPI_STATUS_IGNORE, MPI_IERROR)
-      CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
-    ENDDO
+    ELSE    ! multiple computational nodes
+          
+      ! figure out which rank has how many of my local elements
+      ALLOCATE(NumberLocalElementsOnRank(0:NumberComputationalNodes-1),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate NumberLocalElementsOnRank variable.",ERR,ERROR,*999)
+      NumberLocalElementsOnRank = 0
+            
+      ALLOCATE(NumberStoredElementsForRank(0:NumberComputationalNodes-1),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate NumberStoredElementsForRank variable.",ERR,ERROR,*999)
+      NumberStoredElementsForRank = 0
+      
+      ! count number of elements that we have from each rank
+      CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,ListSize,ERR,ERROR,*999)
+      
+      DO I=1,ListSize
+        CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,I,GlobalElementNoDomainPair,ERR,ERROR,*999)
+        GlobalElementNo = GlobalElementNoDomainPair(1)
+        Domain = GlobalElementNoDomainPair(2)
+          
+        IF (DEBUGGING) THEN
+          WRITE(*,"(I2,A,I3,A,I3,A,I3,A)") MyComputationalNodeNumber,": GlobalElementDomain(",I, &
+            & ")=(", GlobalElementNo,",",Domain,")"
+        ENDIF
+            
+        
+        
+        NumberStoredElementsForRank(Domain) = NumberStoredElementsForRank(Domain) + 1
+      ENDDO
+      
+      IF (DEBUGGING) THEN
+        DO ComputationalNodeNo=0,NumberComputationalNodes-1
+          WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
+            & ", NumberStoredElementsForRank: ", NumberStoredElementsForRank(ComputationalNodeNo)
+        ENDDO
+      ENDIF
+          
+      ! get size in bytes of MPI_INT
+      CALL MPI_TYPE_GET_EXTENT(MPI_INT, LB, EXTENT, MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_TYPE_GET_EXTENT",MPI_IERROR,ERR,ERROR,*999)
+      
+      ! start mpi RMA
+      MpiWindowSizeBytes = NumberComputationalNodes*EXTENT
+      MpiDisplacementsUnitBytes = EXTENT
+      CALL MPI_WIN_CREATE(NumberLocalElementsOnRank(0:NumberComputationalNodes-1), MpiWindowSizeBytes, &
+        & MpiDisplacementsUnitBytes, MPI_INFO_NULL, COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MpiMemoryWindow, MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
+      
+      CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+            
+      ! write information of elements to remote ranks
+      DO ComputationalNodeNo=0,NumberComputationalNodes-1
+        IF (NumberStoredElementsForRank(ComputationalNodeNo) /= 0) THEN
+          MpiTargetDisplacement = MyComputationalNodeNumber
+          CALL MPI_PUT(NumberStoredElementsForRank(ComputationalNodeNo), 1, MPI_INT, ComputationalNodeNo,&
+            & MpiTargetDisplacement, 1, MPI_INT, MpiMemoryWindow, MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+        ENDIF
+      ENDDO
+            
+      ! synchronize RMA
+      CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+            
+      ! deallocate window 
+      CALL MPI_WIN_FREE(MpiMemoryWindow, MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_WIN_FREE",MPI_IERROR,ERR,ERROR,*999)
+            
+      IF (DEBUGGING) THEN
+        DO ComputationalNodeNo=0,NumberComputationalNodes-1
+          WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
+            & ", NumberLocalElementsOnRank: ", NumberLocalElementsOnRank(ComputationalNodeNo)
+        ENDDO
+      ENDIF
+      
+      ! count number of computational nodes to send elements to
+      NumberComputationalNodesToSendTo = 0
+      MaximumNumberElementsToSendToOneComputationalNode = 0
+      DO ComputationalNodeNo=0,NumberComputationalNodes-1
+        IF (ComputationalNodeNo == MyComputationalNodeNumber) CYCLE
+      
+        IF (NumberStoredElementsForRank(ComputationalNodeNo) /= 0) THEN
+          NumberComputationalNodesToSendTo = NumberComputationalNodesToSendTo + 1
+          MaximumNumberElementsToSendToOneComputationalNode = MAX(MaximumNumberElementsToSendToOneComputationalNode, &
+            & NumberStoredElementsForRank(ComputationalNodeNo))
+        ENDIF
+      ENDDO
+      
+      ! count number of computational nodes to receive elements from
+      NumberComputationalNodesToReceiveFrom = 0
+      MaximumNumberElementsToReceiveFromOneComputationalNode = 0
+      DO ComputationalNodeNo=0,NumberComputationalNodes-1
+        IF (ComputationalNodeNo == MyComputationalNodeNumber) CYCLE
+      
+        IF (NumberLocalElementsOnRank(ComputationalNodeNo) /= 0) THEN
+          NumberComputationalNodesToReceiveFrom = NumberComputationalNodesToReceiveFrom + 1
+          MaximumNumberElementsToReceiveFromOneComputationalNode = MAX(MaximumNumberElementsToReceiveFromOneComputationalNode, &
+            & NumberLocalElementsOnRank(ComputationalNodeNo))
+        ENDIF
+      ENDDO
+      
+      ! get actual elements by message passing
+      !transfer information on actual elements to the ranks that own them.
+      
+      ! allocate send buffers
+      ALLOCATE(ElementSendBuffers(1:MaximumNumberElementsToSendToOneComputationalNode,1:NumberComputationalNodesToSendTo), &
+        & STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate ElementSendBuffers array with size "//&
+        & TRIM(NUMBER_TO_VSTRING(MaximumNumberElementsToSendToOneComputationalNode,"*",ERR,ERROR))//" x "//&
+        & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToSendTo,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+      
+      ! allocate receive buffers
+      ALLOCATE(ElementReceiveBuffers(1:MaximumNumberElementsToReceiveFromOneComputationalNode, &
+        & 1:NumberComputationalNodesToReceiveFrom), STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate ElementReceiveBuffers array with size "//&
+        & TRIM(NUMBER_TO_VSTRING(MaximumNumberElementsToReceiveFromOneComputationalNode,"*",ERR,ERROR))//" x "//&
+        & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToReceiveFrom,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+      
+      ! allocate request handles
+      ALLOCATE(SendRequestHandle(1:NumberComputationalNodesToSendTo), STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate SendRequestHandle array with size "//&
+        & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToSendTo,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+      
+      ALLOCATE(ReceiveRequestHandle(1:NumberComputationalNodesToReceiveFrom), STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequestHandle array with size "//&
+        & TRIM(NUMBER_TO_VSTRING(NumberComputationalNodesToReceiveFrom,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+      
+      
+      ! Commit all send commands
+      ComputationalNodesToSendToNo = 1
+      
+      ! Loop over all computational nodes, except the own, starting with the next to the own computational node
+      ComputationalNodeNo = MyComputationalNodeNumber
+      DO I=1,NumberComputationalNodes-1
+        ComputationalNodeNo=ComputationalNodeNo+1
+        IF (ComputationalNodeNo == NumberComputationalNodes) ComputationalNodeNo=0
+        
+        ! find out how many elements this computational node will get from MyComputationalNodeNumber
+        NumberElementsToComputationalNode = NumberStoredElementsForRank(ComputationalNodeNo)
+        
+        ! send elements to computational node ComputationalNodeNo
+        IF (NumberElementsToComputationalNode /= 0) THEN
+        
+          ! fill send buffer 
+          ElementToSendNo = 1
+          DO J=1,ListSize
+            CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,J,GlobalElementNoDomainPair,ERR,ERROR,*999)
+            GlobalElementNo = GlobalElementNoDomainPair(1)
+            Domain = GlobalElementNoDomainPair(2)
+          
+            IF (Domain == ComputationalNodeNo) THEN
+              ElementSendBuffers(ElementToSendNo,ComputationalNodesToSendToNo) = GlobalElementNo
+              ElementToSendNo = ElementToSendNo + 1
+            ENDIF
+          ENDDO
+          
+          CALL MPI_ISEND(ElementSendBuffers(1:NumberElementsToComputationalNode,ComputationalNodesToSendToNo), &
+            & NumberElementsToComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
+            & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, SendRequestHandle(ComputationalNodesToSendToNo), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+          
+          ComputationalNodesToSendToNo = ComputationalNodesToSendToNo+1
+        ENDIF
+      ENDDO 
+      
+      ! commit all receive commands
     
-    ! fill NUMBER_OF_DOMAIN_LOCAL
-    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL, &
-      & NumberComputationalNodes,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
-             
+      ! Loop over all computational nodes backwards, except the own, starting with the previous to the own computational node
+      ComputationalNodeNo = MyComputationalNodeNumber
+      ComputationalNodesToReceiveFromNo = 1
+      DO I=1,NumberComputationalNodes-1
+        ComputationalNodeNo=ComputationalNodeNo-1
+        IF (ComputationalNodeNo == -1) ComputationalNodeNo=NumberComputationalNodes-1
+        
+        ! find out how many elements this computational node will get from ComputationalNodeNo
+        NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
+        
+        IF (NumberElementsFromComputationalNode /= 0) THEN
+          
+          CALL MPI_IRECV(ElementReceiveBuffers(1:NumberElementsFromComputationalNode,ComputationalNodesToReceiveFromNo), &
+            & NumberElementsFromComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
+            & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+          
+          ComputationalNodesToReceiveFromNo = ComputationalNodesToReceiveFromNo + 1
+        ENDIF
+      ENDDO
+      
+      ! create list for received elements
+      NULLIFY(ReceivedElementsList)
+      CALL LIST_CREATE_START(ReceivedElementsList,ERR,ERROR,*999)
+      CALL LIST_DATA_TYPE_SET(ReceivedElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+      CALL LIST_INITIAL_SIZE_SET(ReceivedElementsList,ListSize,ERR,ERROR,*999)
+      CALL LIST_CREATE_FINISH(ReceivedElementsList,ERR,ERROR,*999)
+    
+      ! add elements that are already stored on the own rank to list
+      DO I=1,ListSize
+        CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,I,GlobalElementNoDomainPair,ERR,ERROR,*999)
+        GlobalElementNo = GlobalElementNoDomainPair(1)
+        Domain = GlobalElementNoDomainPair(2)
+        
+        IF (Domain == MyComputationalNodeNumber) THEN
+          CALL LIST_ITEM_ADD(ReceivedElementsList,GlobalElementNo,ERR,ERROR,*999)
+        ENDIF
+      ENDDO
+    
+      ! wait for all receive requests to terminate and store received values in receivebuffer list
+      ComputationalNodeNo = MyComputationalNodeNumber
+      ComputationalNodesToReceiveFromNo = 1
+      DO I=1,NumberComputationalNodes-1
+        ComputationalNodeNo=ComputationalNodeNo-1
+        IF (ComputationalNodeNo == -1) ComputationalNodeNo=NumberComputationalNodes-1
+        
+        CALL MPI_WAIT(ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_STATUS_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
+        
+        NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
+        IF (NumberElementsFromComputationalNode /= 0) THEN
+          !DO I=1,NumberElementsFromComputationalNode
+          !  CALL LIST_ITEM_ADD(ReceivedElementsList,ElementReceiveBuffers(I,ComputationalNodesToReceiveFromNo),ERR,ERROR,*999)
+          !ENDDO
+          CALL LIST_ITEMS_ADD(ReceivedElementsList,ElementReceiveBuffers(1:NumberElementsFromComputationalNode,&
+            & ComputationalNodesToReceiveFromNo),ERR,ERROR,*999)
+            
+          IF (DEBUGGING) THEN
+            WRITE(*,"(I2,3(A,I2),A)") MyComputationalNodeNumber,": index ",ComputationalNodesToReceiveFromNo,&
+              & ", ",NumberElementsFromComputationalNode," received element(s) from ", ComputationalNodeNo, ": "
+            DO J=1,NumberElementsFromComputationalNode
+              WRITE(*,"(I10)") ElementReceiveBuffers(J,ComputationalNodesToReceiveFromNo)
+            ENDDO
+          ENDIF
+          
+          ComputationalNodesToReceiveFromNo = ComputationalNodesToReceiveFromNo + 1
+        ENDIF
+      ENDDO
+    
+      ! Sort list by global element number and store in local elements storage
+      CALL List_Sort(ReceivedElementsList,ERR,ERROR,*999)
+      CALL LIST_REMOVE_DUPLICATES(ReceivedElementsList,ERR,ERROR,*999)
+      CALL LIST_DETACH_AND_DESTROY(ReceivedElementsList,NumberElementsInReceivedElementsList,&
+        & DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
+        
+      ! Eventually shrink array
+      DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP = RESHAPE(DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP, &
+        & [NumberElementsInReceivedElementsList])
+
+      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberElementsInReceivedElementsList
+      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) = NumberElementsInReceivedElementsList 
+        
+      ! Terminate all send commands
+      DO ComputationalNodesToSendToNo=1,NumberComputationalNodesToSendTo
+        CALL MPI_WAIT(SendRequestHandle(ComputationalNodesToSendToNo), MPI_STATUS_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
+      ENDDO
+      
+      ! fill NUMBER_OF_DOMAIN_LOCAL
+      CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DECOMPOSITION%ELEMENTS_MAPPING%&
+        & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
+        & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+         
+      IF (DEBUGGING) THEN
+        WRITE(*,"(I2,A)") MyComputationalNodeNumber,": NUMBER_OF_DOMAIN_LOCAL after ALLGATHER: "
+        DO I=0,NumberComputationalNodes-1
+          PRINT *, DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
+        ENDDO
+      ENDIF  
+    ENDIF
+    
+    ! compute total number of elements
+    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = 0
+    DO ComputationalNodeNo=0,NumberComputationalNodes-1
+      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL &
+        & + DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(ComputationalNodeNo)
+    ENDDO
+           
     EXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE")
     RETURN
 999 ERRORSEXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR)
@@ -1266,6 +1385,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: number_computational_nodes
+    INTEGER(INTG) :: GlobalElementNoDomainPair(2)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -1286,7 +1406,14 @@ CONTAINS
               number_computational_nodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
               IF(ERR/=0) GOTO 999
               IF(DOMAIN_NUMBER>=0.AND.DOMAIN_NUMBER<number_computational_nodes) THEN
-                DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
+                IF (FILL_MEMORY_INTENSE_ARRAYS) THEN
+                  DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
+                ENDIF
+                
+                GlobalElementNoDomainPair(1) = GLOBAL_ELEMENT_NUMBER
+                GlobalElementNoDomainPair(2) = DOMAIN_NUMBER
+                CALL LIST_ITEM_ADD(DECOMPOSITION%GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
+                
               ELSE
                 LOCAL_ERROR="Domain number "//TRIM(NUMBER_TO_VSTRING(DOMAIN_NUMBER,"*",ERR,ERROR))// &
                   & " is invalid. The limits are 0 to "//TRIM(NUMBER_TO_VSTRING(number_computational_nodes,"*",ERR,ERROR))//"."
@@ -5057,6 +5184,8 @@ CONTAINS
                     DEALLOCATE(GHOST_NODES)
                   ENDDO !domain_idx
                   
+                  PRINT *, "Warning! Not checking validity of domain wrt nodes "
+                  IF (.FALSE.) THEN
                   !Check decomposition and check that each domain has a node in it.
                   ALLOCATE(NODE_COUNT(0:number_computational_nodes-1),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate node count.",ERR,ERROR,*999)
@@ -5082,6 +5211,7 @@ CONTAINS
                     ENDIF
                   ENDDO !no_computational_node
                   DEALLOCATE(NODE_COUNT)
+                  ENDIF
           
                   DEALLOCATE(GHOST_NODES_LIST)
                   DEALLOCATE(LOCAL_NODE_NUMBERS)
