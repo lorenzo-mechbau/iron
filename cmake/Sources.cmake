@@ -65,6 +65,7 @@ set(IRON_Fortran_SRC
     fluid_mechanics_routines.f90
     fsi_routines.f90
     generated_mesh_routines.f90
+    global_to_local_map_replacement_routines.f90
     Hamilton_Jacobi_equations_routines.f90
     Helmholtz_equations_routines.f90
     #Helmholtz_TEMPLATE_equations_routines.f90
