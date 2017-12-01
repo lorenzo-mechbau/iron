@@ -432,7 +432,7 @@ MODULE TYPES
   !>Contains the information for the nodes of a mesh.
   TYPE MeshNodesType
     TYPE(MeshComponentTopologyType), POINTER :: meshComponentTopology !<The pointer to the mesh component topology for the nodes information.
-    INTEGER(INTG) :: numberOfnodes !<The number of nodes in the mesh.
+    INTEGER(INTG) :: numberOfNodes !<The number of nodes in the mesh.
     TYPE(MeshNodeType), ALLOCATABLE :: nodes(:) !<nodes(nodeIdx). The pointer to the array of topology information for the nodes of the mesh. node(nodeIdx) contains the topological information for the nodeIdx'th global node of the mesh. \todo Should this be allocatable???
     TYPE(TREE_TYPE), POINTER :: nodesTree !<A tree mapping the mesh global number to the region nodes global number.
   END TYPE MeshNodesType
@@ -479,6 +479,24 @@ MODULE TYPES
     TYPE(MeshComponentTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
   END TYPE MeshComponentTopologyPtrType
 
+  ! new type
+  !>Contains information on the local topology of a mesh.
+  TYPE MeshComponentLocalTopologyType
+    TYPE(MESH_TYPE), POINTER :: mesh !<Pointer to the parent mesh.
+    INTEGER(INTG) :: meshComponentNumber !<The mesh component number for this mesh topology.
+    TYPE(MeshNodesType), POINTER :: nodes !<Pointer to the local nodes within the mesh topology.
+    TYPE(MeshElementsType), POINTER :: elements !<Pointer to the local elements within the mesh topology.
+    TYPE(MeshDofsType), POINTER :: dofs !<Pointer to the local dofs within the mesh topology.
+    TYPE(MeshDataPointsType), POINTER :: dataPoints !<Pointer to the local data points within the mesh topology
+  END TYPE MeshComponentLocalTopologyType
+
+  ! new type
+  !>A buffer type to allow for an array of pointers to a MeshComponentLocalTopologyType.
+  TYPE MeshComponentLocalTopologyPtrType
+    TYPE(MeshComponentLocalTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
+  END TYPE MeshComponentLocalTopologyPtrType
+
+
   !>Embedded mesh types
   TYPE EMBEDDING_XI_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODES !<Number of nodes embedded in this element
@@ -518,6 +536,9 @@ MODULE TYPES
     TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
+    
+    ! new variable
+    TYPE(MeshComponentLocalTopologyPtrType), POINTER :: LOCAL_TOPOLOGY(:) !<LOCAL_TOPOLOGY(mesh_component_idx). A pointer to the local topology mesh_component_idx'th mesh component.
   END TYPE MESH_TYPE
 
   !>A buffer type to allow for an array of pointers to a MESH_TYPE.
@@ -1089,6 +1110,9 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     
     ! new variables
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain  !< A list of pairs (global element number, domain number) that can be set manually if DECOMPOSITION_USER_DEFINED_TYPE. It will be filled by Parmetis for DECOMPOSITION_CALCULATED_TYPE. It is a temporary variable und will be deallocated once ELEMENTS_MAPPING is set.
+    
+    ! (local element no, list of global node numbers)
+    
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING !<Pointer to the element mappings for the domain decomposition.
     
     ! temporary, remove

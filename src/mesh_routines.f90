@@ -59,6 +59,7 @@ MODULE MESH_ROUTINES
   USE MPI
 #endif
   USE NODE_ROUTINES
+  USE PRINT_TYPES_ROUTINES
   USE STRINGS
   USE TREES
   USE TYPES
@@ -865,6 +866,11 @@ CONTAINS
             ! distribute information in GlobalElementDomain such that afterwards each rank has only its local information in DECOMPOSITION%ELEMENTS_MAPPING
             CALL DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
             
+            ! compute a local version of the mesh topology, i.e. with local numbers
+            CALL MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY(DECOMPOSITION,ERR,ERROR,*999)
+            
+            CALL MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS(DECOMPOSITION,ERR,ERROR,*999)
+            
             IF (FILL_MEMORY_INTENSE_ARRAYS .AND. .FALSE.) THEN 
               !Check decomposition and check that each domain has an element in it.
               ALLOCATE(ELEMENT_COUNT(0:NumberComputationalNodes-1),STAT=ERR)
@@ -994,6 +1000,8 @@ CONTAINS
       CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,NumberOwnLocalElements,ERR,ERROR,*999)
       DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberOwnLocalElements
       DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0) = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+        
+      IF (NumberOwnLocalElements == 0) CALL FlagError("No elements set for decomposition.",ERR,ERROR,*999)
         
       ! create list for elements
       NULLIFY(ReceivedElementsList)
@@ -1290,6 +1298,13 @@ CONTAINS
       DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL &
         & + DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(ComputationalNodeNo)
     ENDDO
+    
+    IF (DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL /= DECOMPOSITION%MESH%NUMBER_OF_ELEMENTS) THEN
+      CALL FlagError("The mesh contains "//&
+        & TRIM(NUMBER_TO_VSTRING(DECOMPOSITION%MESH%NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//" elements, but you only specified "//&
+        & TRIM(NUMBER_TO_VSTRING(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL,"*",ERR,ERROR))//&
+        & " elements in the decomposition.",ERR,ERROR,*999)
+    ENDIF
            
     EXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE")
     RETURN
@@ -1297,6 +1312,254 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE
   
+  !
+  !================================================================================================================================
+  !
+
+  !> initializes DECOMPOSITION%MESH%LOCAL_TOPOLOGY and sets local elements from ELEMENTS_MAPPING and copies nodes from MESH%TOPOLOGY
+  SUBROUTINE MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY(DECOMPOSITION,ERR,ERROR,*)
+  
+    !Argument variables
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: DECOMPOSITION !<A pointer to the mesh to calculate the local topology domains for.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: MeshComponentNumber, MaxArrayLength, MaxDepth, I, ElementLocalNo, ElementGlobalNo, &
+      & NumberNodesOnLocalDomainList, NodeGlobalNo, NodeLocalNo
+    TYPE(MESH_TYPE), POINTER :: MESH
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
+    TYPE(MeshComponentLocalTopologyType), POINTER :: LOCAL_TOPOLOGY
+    TYPE(DOMAIN_MAPPING_TYPE) :: ELEMENTS_MAPPING
+    TYPE(LIST_TYPE), POINTER :: NodesOnLocalDomainList
+    INTEGER(INTG), ALLOCATABLE :: NodesOnLocalDomain(:)
+    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes
+    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
+
+    ENTERS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DECOMPOSITION)) THEN     
+      IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
+        ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
+        IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
+          MESH=>DECOMPOSITION%MESH
+          IF(ASSOCIATED(MESH%TOPOLOGY)) THEN
+            NULLIFY(MESH%LOCAL_TOPOLOGY)
+            ALLOCATE(MESH%LOCAL_TOPOLOGY(MESH%NUMBER_OF_COMPONENTS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate local topology.",ERR,ERROR,*999)
+            
+            ! get rank count and own rank
+            NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+          
+            DO MeshComponentNumber=1,DECOMPOSITION%MESH%NUMBER_OF_COMPONENTS
+              TOPOLOGY=>MESH%TOPOLOGY(MeshComponentNumber)%PTR
+              
+              ! allocate local topology for mesh component
+              NULLIFY(MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR)
+              ALLOCATE(MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR)
+              
+              LOCAL_TOPOLOGY=>MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR
+              
+              LOCAL_TOPOLOGY%MESH=>MESH
+              LOCAL_TOPOLOGY%MeshComponentNumber=MeshComponentNumber
+              
+              ! print datastructure such that is shows MESH%TOPOLOGY(1)%PTR%elements and MESH%TOPOLOGY(1)%PTR%nodes
+              IF (DEBUGGING) THEN
+                        
+                WRITE(*,"(I2,A,I1)") MyComputationalNodeNumber,": MESH_LOCAL_TOPOLOGY_CALCULATE MeshComponentNumber", &
+                  & MeshComponentNumber
+                
+                MaxDepth = 5
+                MaxArrayLength = 20
+                        
+                IF (NumberComputationalNodes == 1) THEN   ! serial execution
+                  CALL Print_MESH(MESH, MaxDepth, MaxArrayLength)
+                ELSE       
+                  ! Loop over computational nodes
+                  DO I = 0,NumberComputationalNodes-1
+                    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+                    IF (MyComputationalNodeNumber == I) THEN
+                      PRINT *, ""
+                      IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+                      WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes,": Mesh"
+                      CALL Print_MESH(MESH, MaxDepth, MaxArrayLength)
+                      CALL FLUSH()   ! flush stdout
+                    ENDIF
+                  ENDDO
+                  CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+                ENDIF
+              ENDIF
+              
+              ! initialize auxiliary variables
+              NULLIFY(LOCAL_TOPOLOGY%elements%meshComponentTopology)
+              LOCAL_TOPOLOGY%elements%NUMBER_OF_ELEMENTS=ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+              LOCAL_TOPOLOGY%elements%ELEMENTS_FINISHED=.TRUE.
+              NULLIFY(LOCAL_TOPOLOGY%elements%ELEMENTS_TREE)
+              NULLIFY(LOCAL_TOPOLOGY%nodes%meshComponentTopology)
+              NULLIFY(LOCAL_TOPOLOGY%nodes%nodesTree)
+              
+              ! allocate elements
+              ALLOCATE(LOCAL_TOPOLOGY%elements%ELEMENTS(ELEMENTS_MAPPING%NUMBER_OF_LOCAL),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate local topology elements.",ERR,ERROR,*999)
+            
+              NULLIFY(NodesOnLocalDomainList)
+              CALL LIST_CREATE_START(NodesOnLocalDomainList,ERR,ERROR,*999)
+              CALL LIST_DATA_TYPE_SET(NodesOnLocalDomainList,LIST_INTG_TYPE,ERR,ERROR,*999)
+              CALL LIST_INITIAL_SIZE_SET(NodesOnLocalDomainList,ElementStartvMAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
+              CALL LIST_CREATE_FINISH(NodesOnLocalDomainList,ERR,ERROR,*999)
+            
+              ! fill elements in local_topology, index is local number
+              DO ElementLocalNo=1,ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+                ! set global number
+                ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%GLOBAL_NUMBER=ElementGlobalNo
+                
+                ! assign rest from TOPOLOGY
+                ! note: later, do not use topology anymore, because it stores all elements
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BASIS=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BASIS
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%MESH_ELEMENT_NODES=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BOUNDARY_ELEMENT=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BOUNDARY_ELEMENT
+                  
+                ! collect global node numbers 
+                CALL LIST_ITEMS_ADD(NodesOnLocalDomainList, TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES, &
+                  & ERR,ERROR,*999)
+                
+                ! rest may be unneeded
+                IF(.FALSE.)THEN
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_NUMBER=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_NUMBER
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BOUNDARY_ELEMENT=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BOUNDARY_ELEMENT
+                  
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%GLOBAL_ELEMENT_NODES=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%GLOBAL_ELEMENT_NODES
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_ELEMENT_NODE_VERSIONS=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_ELEMENT_NODE_VERSIONS
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_ELEMENT_NODES=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_ELEMENT_NODES
+                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%ADJACENT_ELEMENTS=&
+                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%ADJACENT_ELEMENTS
+                ENDIF
+              ENDDO
+              
+              ! fill nodes with global numbers
+              CALL LIST_DETACH_AND_DESTROY(NodesOnLocalDomainList, NumberNodesOnLocalDomainList, NodesOnLocalDomain, ERR,ERROR,*999)
+              
+              LOCAL_TOPOLOGY%nodes%numberOfNodes = NumberNodesOnLocalDomainList
+              
+              ! loop over nodes on local domain list
+              ! note, these are not the final local node numbers
+              DO NodeLocalNo=1,NumberNodesOnLocalDomainList
+                NodeGlobalNo = NodesOnLocalDomain(NodeLocalNo)
+                LOCAL_TOPOLOGY%nodes%NODES(ElementLocalNo)%GLOBAL_NUMBER=NodeGlobalNo
+              ENDDO
+              
+            ENDDO 
+          ELSE
+            CALL FlagError("Mesh topology is not associated.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY")
+    RETURN
+999 ERRORSEXITS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY
+  
+  !
+  !================================================================================================================================
+  !
+
+  !> sets surroundignElements for nodes in DECOMPOSITION%MESH%LOCAL_TOPOLOGY
+  SUBROUTINE MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS(DECOMPOSITION,ERR,ERROR,*)
+  
+    !Argument variables
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: DECOMPOSITION !<A pointer to the mesh to calculate the local topology domains for.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: MeshComponentNumber, I, ElementLocalNo, ElementGlobalNo, &
+      &  NodeGlobalNo, NodeLocalNo
+    TYPE(MESH_TYPE), POINTER :: MESH
+    TYPE(MeshComponentLocalTopologyType), POINTER :: LOCAL_TOPOLOGY
+    TYPE(DOMAIN_MAPPING_TYPE) :: ELEMENTS_MAPPING
+    TYPE(LIST_TYPE), POINTER :: NodesOnLocalDomainList
+    TYPE(BASIS_TYPE), POINTER :: BASIS
+    TYPE(INTG), ALLOCATABLE :: NodesOnLocalDomain(:)
+    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes
+    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
+
+    ENTERS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DECOMPOSITION)) THEN     
+      IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
+        ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
+        IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
+          MESH=>DECOMPOSITION%MESH
+          IF(ASSOCIATED(MESH%LOCAL_TOPOLOGY)) THEN
+          
+            ! get rank count and own rank
+            NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            IF(ERR/=0) GOTO 999
+          
+            DO MeshComponentNumber=1,DECOMPOSITION%MESH%NUMBER_OF_COMPONENTS
+              
+              LOCAL_TOPOLOGY=>MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR
+              
+              ! loop over nodes on local domain list
+              ! note, these are not the final local node numbers
+              DO NodeLocalNo=1,LOCAL_TOPOLOGY%nodes%numberOfNodes
+
+                NodeGlobalNo=LOCAL_TOPOLOGY%nodes%NODES(NodeLocalNo)%globalNumber
+              
+                DO ElementLocalNo=1,LOCAL_TOPOLOGY%elements%NUMBER_OF_ELEMENTS
+                  BASIS=>LOCAL_TOPOLOGY%ELEMENTS%ELEMENTS(ElementLocalNo)%BASIS
+                  
+                  DO nn=1,BASIS%NUMBER_OF_NODES
+                    ElementAdjacentNodeGlobalNo = LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%MESH_ELEMENT_NODES(nn)
+                    
+                    IF (ElementAdjacentNodeGlobalNo == NodeGlobalNo) THEN
+                      ! increase numberOfSurroundingElements
+                      ! add to LOCAL_TOPOLOGY%nodes%NODES(NodeLocalNo)%surroundingElements()
+                    ENDIF
+                  ENDDO
+                ENDDO
+              ENDDO
+              
+            ENDDO   ! MeshComponentNumber
+          ELSE
+            CALL FlagError("Mesh local topology is not associated.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS")
+    RETURN
+999 ERRORSEXITS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS
   
   !
   !================================================================================================================================
@@ -1313,7 +1576,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: DOMAIN_NUMBER !<On return, the domain of the global element.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables`
+    !Local Variables
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -7160,6 +7423,7 @@ CONTAINS
       NULLIFY(MESH%EMBEDDED_MESHES)
       MESH%NUMBER_OF_ELEMENTS=0
       NULLIFY(MESH%TOPOLOGY)
+      NULLIFY(MESH%LOCAL_TOPOLOGY)
       NULLIFY(MESH%DECOMPOSITIONS)
     ENDIF
     
