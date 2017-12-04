@@ -116,7 +116,7 @@ MODULE DISTRIBUTED_MATRIX_VECTOR
 
   !Module variables
 
-  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=1    ! 100000000
+  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=1    ! 100000000  ! beware of MPI maximum tag number which is only guaranteed to be >32767!
 
   !Interfaces
 
@@ -904,12 +904,13 @@ CONTAINS
       CMISS_MATRIX%BASE_TAG_NUMBER=DISTRIBUTED_DATA_ID
       DOMAIN_MAPPING=>CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING
       IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
-        IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
+        !IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
           DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
-        ELSE
-          DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
-            & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
-        END IF
+        !ELSE
+        !  DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
+        !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
+        !  ! DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1 should also be okay in this case since communication is determined by message envelope (sender, dest, tag, comm)
+        !END IF
         CALL MATRIX_CREATE_FINISH(CMISS_MATRIX%MATRIX,ERR,ERROR,*999)
       ELSE
         CALL FlagError("Distributed matrix row domain mapping is not associated.",ERR,ERROR,*998)
@@ -6327,7 +6328,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: domain_idx,domain_idx2,domain_no,DUMMY_ERR,my_computational_node_number
+    INTEGER(INTG) :: domain_idx,domain_idx2,domain_no,DUMMY_ERR,MyComputationalNodeNumber
     LOGICAL :: FOUND
     TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING
@@ -6341,6 +6342,7 @@ CONTAINS
         DOMAIN_MAPPING=>DISTRIBUTED_VECTOR%DOMAIN_MAPPING
         IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
           CMISS_VECTOR%DATA_SIZE=CMISS_VECTOR%N
+          ! allocate memory for data
           SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
           CASE(MATRIX_VECTOR_INTG_TYPE)
             ALLOCATE(CMISS_VECTOR%DATA_INTG(CMISS_VECTOR%DATA_SIZE),STAT=ERR)
@@ -6376,47 +6378,69 @@ CONTAINS
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
           
+          ! get base tag number from global counter and increase counter
           CMISS_VECTOR%BASE_TAG_NUMBER=DISTRIBUTED_DATA_ID
-          IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
+          !IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
             DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
-          ELSE
-            DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
-              & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
-          END IF
+          !ELSE
+          !  DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
+          !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
+          !END IF
+          
+          ! if there are adjacent domains
           IF(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS>0) THEN
-            my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
             IF(ERR/=0) GOTO 999
+            
             IF(DISTRIBUTED_VECTOR%GHOSTING_TYPE==DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) THEN
+            
+              ! fill transfers information for each of the adjacent domains
               ALLOCATE(CMISS_VECTOR%TRANSFERS(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector transfer buffers.",ERR,ERROR,*999)
 #ifdef USE_CUSTOM_PROFILING
               CALL CustomProfilingMemory("distributed vector cmiss, ghosts", &
                 & DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, INT(SIZEOF(CMISS_VECTOR%TRANSFERS)))
 #endif
+
+              ! loop over adjacent domains
               DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                
+                ! initialize data structure
                 CALL DistributedVector_CmissTransferInitialise(CMISS_VECTOR,domain_idx,ERR,ERROR,*999)
+                
+                ! set buffer sizes and data type
                 CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_SIZE=DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
                   & NUMBER_OF_SEND_GHOSTS
                 CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE= &
                   & DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS
                 CMISS_VECTOR%TRANSFERS(domain_idx)%DATA_TYPE=DISTRIBUTED_VECTOR%DATA_TYPE
-                CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
-                  & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(my_computational_node_number)+domain_idx-1
+                
+                ! choose send tag number such that communication is unique
+                ! message envelope (sender, dest, tag, comm), thus tag only needs to distinguish between different matrix/vector objects
+                !CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
+                !  & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(MyComputationalNodeNumber)+domain_idx-1
+                CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER
+                  
+                ! get adjacent domain
                 domain_no=DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER
-                FOUND=.FALSE.
-                DO domain_idx2=DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no),DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no+1)-1
-                  IF(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(domain_idx2)==my_computational_node_number) THEN
-                    FOUND=.TRUE.
-                    EXIT
-                  ENDIF
-                ENDDO !domain_idx2
-                IF(FOUND) THEN
-                  domain_idx2=domain_idx2-DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+1
-                  CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
-                    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+domain_idx2-1
-                ELSE
-                  CALL FlagError("Could not find domain to set the receive tag number.",ERR,ERROR,*999)
-                ENDIF
+                CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER
+                
+                !FOUND=.FALSE.
+                !DO domain_idx2=DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no),DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no+1)-1
+                !  IF(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(domain_idx2)==MyComputationalNodeNumber) THEN
+                !    FOUND=.TRUE.
+                !    EXIT
+                !  ENDIF
+                !ENDDO !domain_idx2
+                !IF(FOUND) THEN
+                !  domain_idx2=domain_idx2-DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+1
+                !  CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
+                !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+domain_idx2-1
+                !ELSE
+                !  CALL FlagError("Could not find domain to set the receive tag number.",ERR,ERROR,*999)
+                !ENDIF
+                
+                ! allocate send and receive buffers
                 SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
                 CASE(DISTRIBUTED_MATRIX_VECTOR_INTG_TYPE)
 

@@ -623,7 +623,7 @@ CONTAINS
             IF(ERR/=0) GOTO 999
             MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
             IF(ERR/=0) GOTO 999
-            
+                        
             SELECT CASE(DECOMPOSITION%DECOMPOSITION_TYPE)
             CASE(DECOMPOSITION_ALL_TYPE)
               !Do nothing. Decomposition checked below.
@@ -864,12 +864,9 @@ CONTAINS
             END SELECT
             
             ! distribute information in GlobalElementDomain such that afterwards each rank has only its local information in DECOMPOSITION%ELEMENTS_MAPPING
+            CALL DECOMPOSITION_ELEMENTS_MAPPING_MAP_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
             CALL DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
-            
-            ! compute a local version of the mesh topology, i.e. with local numbers
-            CALL MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY(DECOMPOSITION,ERR,ERROR,*999)
-            
-            CALL MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS(DECOMPOSITION,ERR,ERROR,*999)
+            CALL DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
             
             IF (FILL_MEMORY_INTENSE_ARRAYS .AND. .FALSE.) THEN 
               !Check decomposition and check that each domain has an element in it.
@@ -953,8 +950,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates for decomposition the ELEMENTNS_MAPPING%NUMBER_OF_DOMAINS, ELEMENTS_MAPPING%NUMBER_OF_GLOBAL, ELEMENTS_MAPPING%NUMBER_OF_LOCAL, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL and ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP from GlobalElementDomain
-  SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
+  !>Calculates for decomposition the ELEMENTS_MAPPING%NUMBER_OF_DOMAINS, ELEMENTS_MAPPING%NUMBER_OF_GLOBAL, ELEMENTS_MAPPING%NUMBER_OF_LOCAL, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL and ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP from GlobalElementDomain
+  SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_MAP_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
@@ -972,9 +969,11 @@ CONTAINS
     INTEGER(INTG), ALLOCATABLE, DIMENSION(:,:) :: ElementReceiveBuffers
     INTEGER(KIND=MPI_ADDRESS_KIND) LB, EXTENT, MpiWindowSizeBytes, MpiTargetDisplacement
     TYPE(LIST_TYPE), POINTER :: ReceivedElementsList
-    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
+    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
 
-    ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR,*999)
+    ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_MAP",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
       CALL FlagError("Decomposition Elements mapping is already allocated.",ERR,ERROR,*999)
@@ -993,13 +992,14 @@ CONTAINS
     ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
     IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
      
-    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAINS = NumberComputationalNodes
+    CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DECOMPOSITION%ELEMENTS_MAPPING, DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+    ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
     
     IF (NumberComputationalNodes == 1) THEN    
       ! count number of elements that we have from each rank
       CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,NumberOwnLocalElements,ERR,ERROR,*999)
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberOwnLocalElements
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0) = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+      ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberOwnLocalElements
+      ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0) = ELEMENTS_MAPPING%NUMBER_OF_LOCAL
         
       IF (NumberOwnLocalElements == 0) CALL FlagError("No elements set for decomposition.",ERR,ERROR,*999)
         
@@ -1007,7 +1007,7 @@ CONTAINS
       NULLIFY(ReceivedElementsList)
       CALL LIST_CREATE_START(ReceivedElementsList,ERR,ERROR,*999)
       CALL LIST_DATA_TYPE_SET(ReceivedElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
-      CALL LIST_INITIAL_SIZE_SET(ReceivedElementsList,DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
+      CALL LIST_INITIAL_SIZE_SET(ReceivedElementsList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
       CALL LIST_CREATE_FINISH(ReceivedElementsList,ERR,ERROR,*999)
     
       ! add elements that are already stored on the own rank to list
@@ -1021,7 +1021,7 @@ CONTAINS
       ! Sort list by global element number and store in local elements storage
       CALL List_Sort(ReceivedElementsList,ERR,ERROR,*999)
       CALL LIST_DETACH_AND_DESTROY(ReceivedElementsList,NumberElementsInReceivedElementsList,&
-        & DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
+        & ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
 
     ELSE    ! multiple computational nodes
           
@@ -1263,14 +1263,14 @@ CONTAINS
       CALL List_Sort(ReceivedElementsList,ERR,ERROR,*999)
       CALL LIST_REMOVE_DUPLICATES(ReceivedElementsList,ERR,ERROR,*999)
       CALL LIST_DETACH_AND_DESTROY(ReceivedElementsList,NumberElementsInReceivedElementsList,&
-        & DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
+        & ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP,ERR,ERROR,*999)
         
       ! Eventually shrink array
-      DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP = RESHAPE(DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP, &
-        & [NumberElementsInReceivedElementsList])
+      ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP = RESHAPE(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP, &
+        & [NumberElementsInReceivedElementsList], [0])
 
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberElementsInReceivedElementsList
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) = NumberElementsInReceivedElementsList 
+      ELEMENTS_MAPPING%NUMBER_OF_LOCAL = NumberElementsInReceivedElementsList
+      ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) = NumberElementsInReceivedElementsList 
         
       ! Terminate all send commands
       DO ComputationalNodesToSendToNo=1,NumberComputationalNodesToSendTo
@@ -1279,7 +1279,7 @@ CONTAINS
       ENDDO
       
       ! fill NUMBER_OF_DOMAIN_LOCAL
-      CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DECOMPOSITION%ELEMENTS_MAPPING%&
+      CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,ELEMENTS_MAPPING%&
         & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
         & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
@@ -1287,25 +1287,182 @@ CONTAINS
       IF (DEBUGGING) THEN
         WRITE(*,"(I2,A)") MyComputationalNodeNumber,": NUMBER_OF_DOMAIN_LOCAL after ALLGATHER: "
         DO I=0,NumberComputationalNodes-1
-          PRINT *, DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
+          PRINT *, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
         ENDDO
       ENDIF  
     ENDIF
     
     ! compute total number of elements
-    DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = 0
+    ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = 0
     DO ComputationalNodeNo=0,NumberComputationalNodes-1
-      DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL &
-        & + DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(ComputationalNodeNo)
+      ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = ELEMENTS_MAPPING%NUMBER_OF_GLOBAL &
+        & + ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(ComputationalNodeNo)
     ENDDO
     
-    IF (DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL /= DECOMPOSITION%MESH%NUMBER_OF_ELEMENTS) THEN
+    IF (ELEMENTS_MAPPING%NUMBER_OF_GLOBAL /= DECOMPOSITION%MESH%NUMBER_OF_ELEMENTS) THEN
       CALL FlagError("The mesh contains "//&
         & TRIM(NUMBER_TO_VSTRING(DECOMPOSITION%MESH%NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//" elements, but you only specified "//&
-        & TRIM(NUMBER_TO_VSTRING(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_GLOBAL,"*",ERR,ERROR))//&
+        & TRIM(NUMBER_TO_VSTRING(ELEMENTS_MAPPING%NUMBER_OF_GLOBAL,"*",ERR,ERROR))//&
         & " elements in the decomposition.",ERR,ERROR,*999)
     ENDIF
            
+    EXITS("DECOMPOSITION_ELEMENTS_MAPPING_MAP")
+    RETURN
+999 ERRORSEXITS("DECOMPOSITION_ELEMENTS_MAPPING_MAP",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_MAP_CALCULATE
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Calculates for decomposition the internal, boundary and ghost numberings in ELEMENTS_MAPPING
+  SUBROUTINE DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: ElementLocalNo, ElementGlobalNo, NumberComputationalNodes, MyComputationalNodeNumber, nn, NodeGlobalNo, &
+      & AdjacentElementIdx, AdjacentElementGlobalNo, I, MPI_IERROR
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
+    TYPE(LIST_TYPE), POINTER :: GhostElementsList, InternalElementsList, BoundaryElementsList
+    LOGICAL :: ElementIsInterior
+    INTEGER(INTG), ALLOCATABLE :: InternalElements(:), GhostElements(:), BoundaryElements(:)
+
+    ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR,*999)
+
+    ! get rank count and own rank
+    NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+    MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+    
+    ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
+    TOPOLOGY=>DECOMPOSITION%MESH%TOPOLOGY(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+      
+    ! set boundary types in domain mapping
+    
+    ALLOCATE(GhostElementsList,STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate ghost elements list.",ERR,ERROR,*999)
+         
+    ! create list to hold ghost elements (global numbers)
+    NULLIFY(GhostElementsList)
+    CALL LIST_CREATE_START(GhostElementsList,ERR,ERROR,*999)
+    CALL LIST_DATA_DIMENSION_SET(GhostElementsList,1,ERR,ERROR,*999)
+    CALL LIST_DATA_TYPE_SET(GhostElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+    CALL LIST_INITIAL_SIZE_SET(GhostElementsList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
+    CALL LIST_CREATE_FINISH(GhostElementsList,ERR,ERROR,*999)
+    
+    ! create list to hold internal elements (local numbers)
+    NULLIFY(InternalElementsList)
+    CALL LIST_CREATE_START(InternalElementsList,ERR,ERROR,*999)
+    CALL LIST_DATA_DIMENSION_SET(InternalElementsList,1,ERR,ERROR,*999)
+    CALL LIST_DATA_TYPE_SET(InternalElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+    CALL LIST_INITIAL_SIZE_SET(InternalElementsList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
+    CALL LIST_CREATE_FINISH(InternalElementsList,ERR,ERROR,*999)
+    
+    ! create list to hold boundary elements (local numbers)
+    NULLIFY(BoundaryElementsList)
+    CALL LIST_CREATE_START(BoundaryElementsList,ERR,ERROR,*999)
+    CALL LIST_DATA_DIMENSION_SET(BoundaryElementsList,1,ERR,ERROR,*999)
+    CALL LIST_DATA_TYPE_SET(BoundaryElementsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+    CALL LIST_INITIAL_SIZE_SET(BoundaryElementsList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
+    CALL LIST_CREATE_FINISH(BoundaryElementsList,ERR,ERROR,*999)
+    
+    ! loop over elements on local rank
+    DO ElementLocalNo = 1,ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+      ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+      
+      ElementIsInterior = .TRUE.
+      ! loop over nodes of element
+      DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
+        NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
+        
+        ! loop over adjacent elements of node
+        DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+          AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+          
+          ! if adjacent element is not local
+          IF (.NOT. DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL(DECOMPOSITION,AdjacentElementGlobalNo,ERR,ERROR)) THEN
+          
+            CALL LIST_ITEM_ADD(GhostElementsList,AdjacentElementGlobalNo,ERR,ERROR,*999)
+            ElementIsInterior = .FALSE.
+          ENDIF
+        ENDDO  ! AdjacentElementIdx
+      ENDDO   ! nn
+      
+      IF (ElementIsInterior) THEN
+        CALL LIST_ITEM_ADD(InternalElementsList,ElementLocalNo,ERR,ERROR,*999)
+      ELSE
+        CALL LIST_ITEM_ADD(BoundaryElementsList,ElementLocalNo,ERR,ERROR,*999)
+      ENDIF
+    ENDDO
+    
+    CALL LIST_SORT(InternalElementsList,ERR,ERROR,*999)
+    CALL LIST_DETACH_AND_DESTROY(InternalElementsList,ELEMENTS_MAPPING%NUMBER_OF_INTERNAL,InternalElements,ERR,ERROR,*999)
+    CALL LIST_SORT(BoundaryElementsList,ERR,ERROR,*999)
+    CALL LIST_DETACH_AND_DESTROY(BoundaryElementsList,ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY,BoundaryElements,ERR,ERROR,*999)
+    
+    CALL List_Sort(GhostElementsList,ERR,ERROR,*999)
+    CALL LIST_REMOVE_DUPLICATES(GhostElementsList,ERR,ERROR,*999)
+    CALL LIST_DETACH_AND_DESTROY(GhostElementsList,ELEMENTS_MAPPING%NUMBER_OF_GHOST,GhostElements,ERR,ERROR,*999)
+    
+    ! compute total number of local elements and reshape LOCAL_TO_GLOBAL_MAP
+    ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL = ELEMENTS_MAPPING%NUMBER_OF_LOCAL + ELEMENTS_MAPPING%NUMBER_OF_GHOST
+        
+    ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP = RESHAPE(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP, &
+      & [ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL], [0])
+    
+    ! add global numbers of GhostElements at the end of LOCAL_TO_GLOBAL_MAP
+    IF (ELEMENTS_MAPPING%NUMBER_OF_GHOST > 0) THEN
+      ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%NUMBER_OF_LOCAL+1:ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL)=&
+        & GhostElements(1:ELEMENTS_MAPPING%NUMBER_OF_GHOST)
+    ENDIF
+    
+    ! assign numbers in domain mapping
+    ELEMENTS_MAPPING%INTERNAL_START=1
+    ELEMENTS_MAPPING%INTERNAL_FINISH=ELEMENTS_MAPPING%INTERNAL_START+ELEMENTS_MAPPING%NUMBER_OF_INTERNAL-1
+    ELEMENTS_MAPPING%BOUNDARY_START=ELEMENTS_MAPPING%INTERNAL_FINISH+1
+    ELEMENTS_MAPPING%BOUNDARY_FINISH=ELEMENTS_MAPPING%BOUNDARY_START+ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY-1
+    ELEMENTS_MAPPING%GHOST_START=ELEMENTS_MAPPING%BOUNDARY_FINISH+1
+    ELEMENTS_MAPPING%GHOST_FINISH=ELEMENTS_MAPPING%GHOST_START+ELEMENTS_MAPPING%NUMBER_OF_GHOST-1
+    
+    ! assign local element numbers in domain_list
+    ALLOCATE(ELEMENTS_MAPPING%DOMAIN_LIST(ELEMENTS_MAPPING%INTERNAL_START:ELEMENTS_MAPPING%GHOST_FINISH),STAT=ERR) 
+    IF(ERR/=0) CALL FlagError("Could not allocate DOMAIN_LIST.",ERR,ERROR,*999)
+    
+    ! internal elements
+    IF (ELEMENTS_MAPPING%NUMBER_OF_INTERNAL > 0) THEN
+      ELEMENTS_MAPPING%DOMAIN_LIST(ELEMENTS_MAPPING%INTERNAL_START:ELEMENTS_MAPPING%INTERNAL_FINISH) = &
+        & InternalElements(1:ELEMENTS_MAPPING%NUMBER_OF_INTERNAL)
+    ENDIF
+    
+    ! boundary elements
+    IF (ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY > 0) THEN
+      ELEMENTS_MAPPING%DOMAIN_LIST(ELEMENTS_MAPPING%BOUNDARY_START:ELEMENTS_MAPPING%BOUNDARY_FINISH) = &
+        & BoundaryElements(1:ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY)
+    ENDIF
+    
+    ! ghost elements
+    IF (ELEMENTS_MAPPING%NUMBER_OF_GHOST > 0) THEN
+      ELEMENTS_MAPPING%DOMAIN_LIST(ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH) = &
+        & [(I, I=ELEMENTS_MAPPING%NUMBER_OF_LOCAL+1,ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL,1)]
+    ENDIF
+           
+    ! allocate number_of_domain_ghost
+    ALLOCATE(ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_GHOST.",ERR,ERROR,*999)
+
+    ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_GHOST(MyComputationalNodeNumber) = ELEMENTS_MAPPING%NUMBER_OF_GHOST
+          
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,ELEMENTS_MAPPING%&
+      & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
+      & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+                   
     EXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE")
     RETURN
 999 ERRORSEXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR)
@@ -1316,257 +1473,509 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !> initializes DECOMPOSITION%MESH%LOCAL_TOPOLOGY and sets local elements from ELEMENTS_MAPPING and copies nodes from MESH%TOPOLOGY
-  SUBROUTINE MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY(DECOMPOSITION,ERR,ERROR,*)
-  
+  !>Calculates for decomposition ELEMENTS_MAPPING the variable NUMBER_OF_ADJACENT_DOMAINS and ADJACENT_DOMAINS(:) array
+  SUBROUTINE DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
+
     !Argument variables
-    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: DECOMPOSITION !<A pointer to the mesh to calculate the local topology domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: MeshComponentNumber, MaxArrayLength, MaxDepth, I, ElementLocalNo, ElementGlobalNo, &
-      & NumberNodesOnLocalDomainList, NodeGlobalNo, NodeLocalNo
-    TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
-    TYPE(MeshComponentLocalTopologyType), POINTER :: LOCAL_TOPOLOGY
-    TYPE(DOMAIN_MAPPING_TYPE) :: ELEMENTS_MAPPING
-    TYPE(LIST_TYPE), POINTER :: NodesOnLocalDomainList
-    INTEGER(INTG), ALLOCATABLE :: NodesOnLocalDomain(:)
-    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes
-    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
+    INTEGER(INTG) :: MPI_IERROR, I, NumberComputationalNodes, MyComputationalNodeNumber, FirstBoundaryElementGlobalNo, &
+      & LastBoundaryElementGlobalNo, ElementLocalNo, GhostElementLocalNo, ElementGlobalNo, GhostElementGlobalNo, &
+      & NumberRemoteBoundaryElements, RemoteDomainNo, ComputationalNodeNo, MpiDisplacementsUnitBytes, MpiMemoryWindow, Sign, &
+      & AdjacentDomainIdx, DomainIdx, ElementIdx, MpiRequest, AssertValue, MpiGroup, GhostSendIndexGlobalNo, LocalElementNo, &
+      & MaximumReceiveBufferSize, MaximumSendBufferSize
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
+    INTEGER(INTG), ALLOCATABLE :: NumberBoundaryElements(:), FirstLastBoundaryElement(:), BoundaryElementGlobalNumber(:), &
+      & RemoteBoundaryElements(:), SendRequestHandle(:), ReceiveRequestHandle(:), SendBuffers(:,:), ReceiveBuffers(:,:)
+    INTEGER(KIND=MPI_ADDRESS_KIND) LB, EXTENT, MpiLocalWindowSizeBytes, MpiTargetDisplacement
+    TYPE(LIST_TYPE), POINTER :: AdjacentDomainsList
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: AdjacentDomain
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: MappingAdjacentDomain
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: AdjacentDomains(:)
+    LOGICAL :: ElementFound, AdjacentDomainAlreadyStored, NotYetCheckedForLastRemoteBoundaryElements
+    
 
-    ENTERS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY",ERR,ERROR,*999)
+    ENTERS("DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(DECOMPOSITION)) THEN     
-      IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
-        ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
-        IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
-          MESH=>DECOMPOSITION%MESH
-          IF(ASSOCIATED(MESH%TOPOLOGY)) THEN
-            NULLIFY(MESH%LOCAL_TOPOLOGY)
-            ALLOCATE(MESH%LOCAL_TOPOLOGY(MESH%NUMBER_OF_COMPONENTS),STAT=ERR)
-            IF(ERR/=0) CALL FlagError("Could not allocate local topology.",ERR,ERROR,*999)
-            
-            ! get rank count and own rank
-            NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
-            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
+    ! get rank count and own rank
+    NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+    MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+    
+    ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
+    
+    ! communicate number of boundary elements on each rank
+    ALLOCATE(NumberBoundaryElements(0:NumberComputationalNodes-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate NumberBoundaryElements.",ERR,ERROR,*999)
+    NumberBoundaryElements(MyComputationalNodeNumber) = ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY
+    
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
+      & NumberBoundaryElements(0:NumberComputationalNodes-1),1,MPI_INTEGER, &
+      & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+    
+    ! communicate bounds of boundary nodes, i.e. the first and last global element number of the contained boundary nodes
+    ALLOCATE(FirstLastBoundaryElement(0:NumberComputationalNodes*2-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate FirstLastBoundaryElement.",ERR,ERROR,*999)
+    
+    IF (ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY == 0) THEN
+      FirstBoundaryElementGlobalNo = 0
+      LastBoundaryElementGlobalNo = 0
+    ELSE
+      FirstBoundaryElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%DOMAIN_LIST(&
+        &ELEMENTS_MAPPING%BOUNDARY_START))
+      LastBoundaryElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%DOMAIN_LIST(&
+        & ELEMENTS_MAPPING%BOUNDARY_FINISH))
+    ENDIF
+    
+    FirstLastBoundaryElement(2*MyComputationalNodeNumber) = FirstBoundaryElementGlobalNo
+    FirstLastBoundaryElement(2*MyComputationalNodeNumber+1) = LastBoundaryElementGlobalNo
+    
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,2,MPI_INTEGER, &
+      & FirstLastBoundaryElement(0:NumberComputationalNodes*2-1),2,MPI_INTEGER, &
+      & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+    
+    !PRINT *, MyComputationalNodeNumber, ": NumberBoundaryElements: ", NumberBoundaryElements
+    !PRINT *, MyComputationalNodeNumber, ": FirstLastBoundaryElement: ", FirstLastBoundaryElement
+    
+    
+    
+    ! provide own boundary element global numbers to all processes via RMA
+    ALLOCATE(BoundaryElementGlobalNumber(ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate BoundaryElementGlobalNumber.",ERR,ERROR,*999)
+    
+    I = 1
+    DO ElementIdx=ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH 
+      ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+      ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+      BoundaryElementGlobalNumber(I) = ElementGlobalNo
+      I = I+1
+    ENDDO
+    
+    !PRINT *, MyComputationalNodeNumber, ": BoundaryElementGlobalNumber: ", BoundaryElementGlobalNumber
+    
+      
+    ! get size in bytes of MPI_INT
+    CALL MPI_TYPE_GET_EXTENT(MPI_INT, LB, EXTENT, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_TYPE_GET_EXTENT",MPI_IERROR,ERR,ERROR,*999)
+    
+    ! start mpi RMA
+    MpiLocalWindowSizeBytes = ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY*EXTENT
+    MpiDisplacementsUnitBytes = EXTENT
+    CALL MPI_WIN_CREATE(BoundaryElementGlobalNumber(1:ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY), MpiLocalWindowSizeBytes, &
+      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MpiMemoryWindow, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
+    
+    !CALL MPI_WIN_FENCE(MPI_MODE_NOPRECEDE, MpiMemoryWindow, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+        
+    AssertValue = 0
+    !CALL MPI_COMM_GROUP(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MpiGroup, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WIN_START",MPI_IERROR,ERR,ERROR,*999)
+    !CALL MPI_WIN_START(MpiGroup, AssertValue, MpiMemoryWindow, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WIN_START",MPI_IERROR,ERR,ERROR,*999)
+        
+    ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = 0
+    
+    ! search for own ghost elements at remote ranks
+    ! loop over ghost elements
+    DO ElementIdx=ELEMENTS_MAPPING%GHOST_START,ELEMENTS_MAPPING%GHOST_FINISH
+      GhostElementLocalNo=ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+      GhostElementGlobalNo=ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(GhostElementLocalNo)
+      
+      !PRINT *, MyComputationalNodeNumber, ": GhostElement local ",GhostElementLocalNo, ", global ",GhostElementGlobalNo
+      
+      ! loop over other ranks to see which one could have the element as boundary element
+      ! iteration order is r-1,r+1,r-2,r+2,... with r being own computational node
+      DO I=1,NumberComputationalNodes
+        DO Sign=-1,1,2
+          ComputationalNodeNo=MyComputationalNodeNumber+I*Sign 
+          ComputationalNodeNo=MODULO(ComputationalNodeNo,NumberComputationalNodes)
+        
+          ElementFound = .FALSE.
+          IF (ALLOCATED(RemoteBoundaryElements) .AND. NotYetCheckedForLastRemoteBoundaryElements) THEN
           
-            DO MeshComponentNumber=1,DECOMPOSITION%MESH%NUMBER_OF_COMPONENTS
-              TOPOLOGY=>MESH%TOPOLOGY(MeshComponentNumber)%PTR
-              
-              ! allocate local topology for mesh component
-              NULLIFY(MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR)
-              ALLOCATE(MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR)
-              
-              LOCAL_TOPOLOGY=>MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR
-              
-              LOCAL_TOPOLOGY%MESH=>MESH
-              LOCAL_TOPOLOGY%MeshComponentNumber=MeshComponentNumber
-              
-              ! print datastructure such that is shows MESH%TOPOLOGY(1)%PTR%elements and MESH%TOPOLOGY(1)%PTR%nodes
-              IF (DEBUGGING) THEN
-                        
-                WRITE(*,"(I2,A,I1)") MyComputationalNodeNumber,": MESH_LOCAL_TOPOLOGY_CALCULATE MeshComponentNumber", &
-                  & MeshComponentNumber
+            ! test if the previously received remote boundary nodes list satisfies the following ghost element
+            IF (SORTED_ARRAY_CONTAINS_ELEMENT(RemoteBoundaryElements,GhostElementGlobalNo,ERR,ERROR)) THEN
+              ElementFound = .TRUE.
+              NotYetCheckedForLastRemoteBoundaryElements = .FALSE.
+              !PRINT *, MyComputationalNodeNumber, ": contains element from last rank (",RemoteDomainNo,") -> element found"
+            ENDIF
+          ENDIF
+          
+          
+          IF (.NOT. ElementFound) THEN
+            !PRINT *, MyComputationalNodeNumber, ": query rank ", ComputationalNodeNo
+          
+            FirstBoundaryElementGlobalNo = FirstLastBoundaryElement(2*ComputationalNodeNo)
+            LastBoundaryElementGlobalNo = FirstLastBoundaryElement(2*ComputationalNodeNo+1)
+            IF (FirstBoundaryElementGlobalNo <= GhostElementGlobalNo .AND. GhostElementGlobalNo <= LastBoundaryElementGlobalNo) THEN
                 
-                MaxDepth = 5
-                MaxArrayLength = 20
-                        
-                IF (NumberComputationalNodes == 1) THEN   ! serial execution
-                  CALL Print_MESH(MESH, MaxDepth, MaxArrayLength)
-                ELSE       
-                  ! Loop over computational nodes
-                  DO I = 0,NumberComputationalNodes-1
-                    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-                    IF (MyComputationalNodeNumber == I) THEN
-                      PRINT *, ""
-                      IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
-                      WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes,": Mesh"
-                      CALL Print_MESH(MESH, MaxDepth, MaxArrayLength)
-                      CALL FLUSH()   ! flush stdout
-                    ENDIF
-                  ENDDO
-                  CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-                ENDIF
+              ! communicate to see if rank contains node
+              
+              !PRINT *, MyComputationalNodeNumber, ": element lies in interval [",FirstBoundaryElementGlobalNo,",",&
+              !  & LastBoundaryElementGlobalNo,"]"
+                
+              IF (ALLOCATED(RemoteBoundaryElements)) DEALLOCATE(RemoteBoundaryElements)
+                
+              ! read list with all boundary elements of rank ComputationalNodeNo into RemoteBoundaryElements
+              NumberRemoteBoundaryElements = NumberBoundaryElements(ComputationalNodeNo)
+              ALLOCATE(RemoteBoundaryElements(NumberRemoteBoundaryElements),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate RemoteBoundaryElements.",ERR,ERROR,*999)
+              RemoteBoundaryElements = 0
+              
+              !CALL MPI_WIN_POST(MpiGroup,0,MpiMemoryWindow, MPI_IERROR)
+              !CALL MPI_ERROR_CHECK("MPI_WIN_POST",MPI_IERROR,ERR,ERROR,*999)
+              
+              ! start passive target communication (see http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-2.0/node126.htm for introduction)
+              CALL MPI_WIN_LOCK(MPI_LOCK_SHARED, ComputationalNodeNo, 0, MpiMemoryWindow, MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_WIN_LOCK",MPI_IERROR,ERR,ERROR,*999)
+              
+              MpiTargetDisplacement = 0
+              CALL MPI_GET(RemoteBoundaryElements, NumberRemoteBoundaryElements, MPI_INT, &
+                & ComputationalNodeNo, MpiTargetDisplacement, NumberRemoteBoundaryElements, MPI_INT, MpiMemoryWindow, &
+                & MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_GET",MPI_IERROR,ERR,ERROR,*999)
+              
+              !CALL MPI_WIN_FLUSH(ComputationalNodeNo, MpiMemoryWindow, MPI_IERROR)
+              !CALL MPI_ERROR_CHECK("MPI_WIN_FLUSH",MPI_IERROR,ERR,ERROR,*999)
+              
+              CALL MPI_WIN_UNLOCK(ComputationalNodeNo, MpiMemoryWindow, MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_WIN_UNLOCK",MPI_IERROR,ERR,ERROR,*999)
+              
+              
+              !CALL MPI_WIN_WAIT(MpiMemoryWindow, MPI_IERROR)
+              !CALL MPI_ERROR_CHECK("MPI_WIN_WAIT",MPI_IERROR,ERR,ERROR,*999)
+              
+              ! synchronize RMA
+              !CALL MPI_WIN_FENCE(IOR(MPI_MODE_NOSTORE, MPI_MODE_NOPUT), MpiMemoryWindow, MPI_IERROR)
+              !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+            
+              !PRINT *, MyComputationalNodeNumber, ": find ghost ",GhostElementGlobalNo," at rank ", ComputationalNodeNo, &
+              !  & " which has ", NumberRemoteBoundaryElements, " boundary nodes :", RemoteBoundaryElements
+              
+              RemoteDomainNo = ComputationalNodeNo
+              NotYetCheckedForLastRemoteBoundaryElements = .TRUE.
+                
+              ! if element was found 
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(RemoteBoundaryElements,GhostElementGlobalNo,ERR,ERROR)) THEN
+                !PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements contains ghost element -> element found"
+                ElementFound = .TRUE.
+              ELSE
+                !PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements does not contain ghost element"
               ENDIF
+            ELSE
+              !PRINT *, MyComputationalNodeNumber, ": boundary element lies not in range of computational node"
               
-              ! initialize auxiliary variables
-              NULLIFY(LOCAL_TOPOLOGY%elements%meshComponentTopology)
-              LOCAL_TOPOLOGY%elements%NUMBER_OF_ELEMENTS=ELEMENTS_MAPPING%NUMBER_OF_LOCAL
-              LOCAL_TOPOLOGY%elements%ELEMENTS_FINISHED=.TRUE.
-              NULLIFY(LOCAL_TOPOLOGY%elements%ELEMENTS_TREE)
-              NULLIFY(LOCAL_TOPOLOGY%nodes%meshComponentTopology)
-              NULLIFY(LOCAL_TOPOLOGY%nodes%nodesTree)
+            ENDIF ! boundary element no. lies in range of computational node
+          ENDIF   ! .NOT. ElementFound
               
-              ! allocate elements
-              ALLOCATE(LOCAL_TOPOLOGY%elements%ELEMENTS(ELEMENTS_MAPPING%NUMBER_OF_LOCAL),STAT=ERR)
-              IF(ERR/=0) CALL FlagError("Could not allocate local topology elements.",ERR,ERROR,*999)
-            
-              NULLIFY(NodesOnLocalDomainList)
-              CALL LIST_CREATE_START(NodesOnLocalDomainList,ERR,ERROR,*999)
-              CALL LIST_DATA_TYPE_SET(NodesOnLocalDomainList,LIST_INTG_TYPE,ERR,ERROR,*999)
-              CALL LIST_INITIAL_SIZE_SET(NodesOnLocalDomainList,ElementStartvMAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
-              CALL LIST_CREATE_FINISH(NodesOnLocalDomainList,ERR,ERROR,*999)
-            
-              ! fill elements in local_topology, index is local number
-              DO ElementLocalNo=1,ELEMENTS_MAPPING%NUMBER_OF_LOCAL
-                ! set global number
-                ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%GLOBAL_NUMBER=ElementGlobalNo
-                
-                ! assign rest from TOPOLOGY
-                ! note: later, do not use topology anymore, because it stores all elements
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BASIS=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BASIS
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%MESH_ELEMENT_NODES=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BOUNDARY_ELEMENT=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BOUNDARY_ELEMENT
+              
+          IF (ElementFound) THEN
+            ! loop over already collected adjacent domains to see if this one was already stored
+            AdjacentDomainAlreadyStored = .FALSE.
+            DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+              MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+              IF (MappingAdjacentDomain%DOMAIN_NUMBER == RemoteDomainNo) THEN
+              
+                  !PRINT *, MyComputationalNodeNumber, ": add ghost to AdjacentDomainIdx ",AdjacentDomainIdx
+              
+                  ! add ghost 
+                  MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS = MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS+1
                   
-                ! collect global node numbers 
-                CALL LIST_ITEMS_ADD(NodesOnLocalDomainList, TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES, &
-                  & ERR,ERROR,*999)
-                
-                ! rest may be unneeded
-                IF(.FALSE.)THEN
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_NUMBER=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_NUMBER
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%BOUNDARY_ELEMENT=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%BOUNDARY_ELEMENT
+                  MappingAdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(MappingAdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES, &
+                   & [MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS], [GhostElementLocalNo])
                   
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%GLOBAL_ELEMENT_NODES=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%GLOBAL_ELEMENT_NODES
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_ELEMENT_NODE_VERSIONS=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_ELEMENT_NODE_VERSIONS
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%USER_ELEMENT_NODES=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%USER_ELEMENT_NODES
-                LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%ADJACENT_ELEMENTS=&
-                  & TOPOLOGY%elements%ELEMENTS(ElementGlobalNo)%ADJACENT_ELEMENTS
-                ENDIF
-              ENDDO
+                  AdjacentDomainAlreadyStored = .TRUE.
+                  EXIT
+              ENDIF
+            ENDDO
+            
+            IF (.NOT.AdjacentDomainAlreadyStored) THEN
+            
+              !PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomain"
+            
+              NULLIFY(AdjacentDomain)
+              ALLOCATE(AdjacentDomain,STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate AdjacentDomain.",ERR,ERROR,*999)
               
-              ! fill nodes with global numbers
-              CALL LIST_DETACH_AND_DESTROY(NodesOnLocalDomainList, NumberNodesOnLocalDomainList, NodesOnLocalDomain, ERR,ERROR,*999)
+              AdjacentDomain%DOMAIN_NUMBER = RemoteDomainNo
+              AdjacentDomain%NUMBER_OF_SEND_GHOSTS = 0
+              AdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS = 0
+              ALLOCATE(AdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES(1),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+              AdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS = 1
+              AdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES(1) = GhostElementLocalNo
               
-              LOCAL_TOPOLOGY%nodes%numberOfNodes = NumberNodesOnLocalDomainList
+              !PRINT *, MyComputationalNodeNumber, ": reshape to size ",ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
               
-              ! loop over nodes on local domain list
-              ! note, these are not the final local node numbers
-              DO NodeLocalNo=1,NumberNodesOnLocalDomainList
-                NodeGlobalNo = NodesOnLocalDomain(NodeLocalNo)
-                LOCAL_TOPOLOGY%nodes%NODES(ElementLocalNo)%GLOBAL_NUMBER=NodeGlobalNo
-              ENDDO
+              ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS+1
               
-            ENDDO 
+              ALLOCATE(AdjacentDomains(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate AdjacentDomains.",ERR,ERROR,*999)
+              
+              AdjacentDomains(1:ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS-1)=ELEMENTS_MAPPING%ADJACENT_DOMAINS
+              AdjacentDomains(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS)=AdjacentDomain
+              
+              CALL MOVE_ALLOC(AdjacentDomains,ELEMENTS_MAPPING%ADJACENT_DOMAINS)
+          
+            ENDIF ! .NOT.AdjacentDomainAlreadyStored
           ELSE
-            CALL FlagError("Mesh topology is not associated.",ERR,ERROR,*999)
-          ENDIF
-        ELSE
-          CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
-        ENDIF
-      ELSE
-        CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
-      ENDIF
-    ELSE
-      CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
-    ENDIF
+            
+            !PRINT *, MyComputationalNodeNumber, ": element not found on rank ", ComputationalNodeNo
+          ENDIF ! element was found
+            
+          IF (ElementFound) EXIT
+        ENDDO ! sign
+        IF (ElementFound) EXIT
+      ENDDO ! I
+    ENDDO ! GhostElementLocalNo
+        
+    ! synchronize RMA
+    !CALL MPI_WIN_FENCE(IOR(MPI_MODE_NOSTORE, MPI_MODE_NOPUT), MpiMemoryWindow, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+          
+    ! synchronize RMA
+    CALL MPI_WIN_FENCE(MPI_MODE_NOSUCCEED, MpiMemoryWindow, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
+          
+    !CALL MPI_WIN_COMPLETE(MpiMemoryWindow, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WIN_COMPLETE",MPI_IERROR,ERR,ERROR,*999)
     
-    EXITS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY")
+    ! deallocate window 
+    CALL MPI_WIN_FREE(MpiMemoryWindow, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WIN_FREE",MPI_IERROR,ERR,ERROR,*999)
+            
+            
+    ! exchange LOCAL_GHOST_SEND_INDICES
+    ALLOCATE(SendRequestHandle(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate SendRequestHandle.",ERR,ERROR,*999)
+    
+    ALLOCATE(ReceiveRequestHandle(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequestHandle.",ERR,ERROR,*999)
+    
+    MaximumSendBufferSize = 0
+    
+    ! commit send commands for number of elements to transfer
+    ! loop over adjacent domains
+    DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+      
+      CALL MPI_ISEND(MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS, &
+        & 1, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
+        & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+      MaximumSendBufferSize = MAX(MaximumSendBufferSize, MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS)
+    ENDDO
+    
+    ! commit receive commands for number of elements to transfer
+    ! loop over adjacent domains
+    DO AdjacentDomainIdx=ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,1,-1
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+      
+      CALL MPI_IRECV(MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS, &
+        & 1, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
+        & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+    ENDDO
+    
+    CALL MPI_WAITALL(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+    CALL MPI_WAITALL(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+    
+    ! determine maximum receive buffer size
+    MaximumReceiveBufferSize = 0
+    DO AdjacentDomainIdx=ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,1,-1
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+      
+      MaximumReceiveBufferSize = MAX(MaximumReceiveBufferSize, MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS)
+      
+      ! allocate space for LOCAL_GHOST_SEND_INDICES
+      ALLOCATE(MappingAdjacentDomain%LOCAL_GHOST_SEND_INDICES(1:MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES of size "//&
+        & TRIM(NUMBER_TO_VSTRING(MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+    ENDDO
+    
+    ! allocate send and receive buffers
+    ALLOCATE(SendBuffers(MaximumSendBufferSize,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate SendBuffers.",ERR,ERROR,*999)
+    ALLOCATE(ReceiveBuffers(MaximumReceiveBufferSize,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffers.",ERR,ERROR,*999)
+    
+    
+    ! commit send commands for actual ghost element global numbers
+    ! loop over adjacent domains
+    DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+              
+      ! fill send buffer
+      DO I=1,MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS
+        SendBuffers(I,AdjacentDomainIdx)=&
+          & ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(MappingAdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES(I))     
+      ENDDO
+      
+      CALL MPI_ISEND(SendBuffers(1:MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS,AdjacentDomainIdx), &
+        & MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
+        & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+    ENDDO
+    
+    ! commit receive commands for number of elements to transfer
+    ! loop over adjacent domains
+    DO AdjacentDomainIdx=ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,1,-1
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+      
+      CALL MPI_IRECV(ReceiveBuffers(1:MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS,AdjacentDomainIdx), &
+        & MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
+        & COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+    ENDDO
+    
+    CALL MPI_WAITALL(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+    CALL MPI_WAITALL(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+    
+    ! convert received global element numbers back to local element numbers
+    ! loop over adjacent domains
+    DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+      MappingAdjacentDomain=>ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)
+      
+      LocalElementNo = 1
+      DO I=1,MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS
+        GhostSendIndexGlobalNo = ReceiveBuffers(I,AdjacentDomainIdx)
+        
+        ! convert global element number GhostSendIndexGlobalNo to local element number LocalElementNo
+        DO WHILE (ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(LocalELementNo) < GhostSendIndexGlobalNo)
+          LocalElementNo = LocalElementNo+1
+        ENDDO
+      
+        MappingAdjacentDomain%LOCAL_GHOST_SEND_INDICES(I) = LocalElementNo
+      ENDDO
+    ENDDO
+    
+           
+    EXITS("DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE")
     RETURN
-999 ERRORSEXITS("MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY",ERR,ERROR)
+999 ERRORSEXITS("DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE",ERR,ERROR)
     RETURN 1
-  END SUBROUTINE MESH_LOCAL_TOPOLOGY_SET_FROM_TOPOLOGY
+  END SUBROUTINE DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE
   
   !
   !================================================================================================================================
   !
 
-  !> sets surroundignElements for nodes in DECOMPOSITION%MESH%LOCAL_TOPOLOGY
-  SUBROUTINE MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS(DECOMPOSITION,ERR,ERROR,*)
-  
+  FUNCTION DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL(DECOMPOSITION,GLOBAL_ELEMENT_NO,ERR,ERROR)
     !Argument variables
-    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: DECOMPOSITION !<A pointer to the mesh to calculate the local topology domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition
+    INTEGER(INTG), INTENT(IN) :: GLOBAL_ELEMENT_NO !<The global element number to determine if it is on the local domain
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Function variable
+    LOGICAL :: DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL
     !Local Variables
-    INTEGER(INTG) :: MeshComponentNumber, I, ElementLocalNo, ElementGlobalNo, &
-      &  NodeGlobalNo, NodeLocalNo
-    TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MeshComponentLocalTopologyType), POINTER :: LOCAL_TOPOLOGY
-    TYPE(DOMAIN_MAPPING_TYPE) :: ELEMENTS_MAPPING
-    TYPE(LIST_TYPE), POINTER :: NodesOnLocalDomainList
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    TYPE(INTG), ALLOCATABLE :: NodesOnLocalDomain(:)
-    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes
-    LOGICAL, PARAMETER :: DEBUGGING = .TRUE.
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    INTEGER(INTG) :: ElementLocalNo, SearchElementGlobalNo, LowerBoundElementLocalNo, UpperBoundElementLocalNo, &
+      & PreviousElementLocalNo
 
-    ENTERS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS",ERR,ERROR,*999)
+    ENTERS("DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(DECOMPOSITION)) THEN     
+    DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL = .FALSE.
+    
+    IF(ASSOCIATED(DECOMPOSITION)) THEN
       IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
-        ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
-        IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
-          MESH=>DECOMPOSITION%MESH
-          IF(ASSOCIATED(MESH%LOCAL_TOPOLOGY)) THEN
-          
-            ! get rank count and own rank
-            NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
-            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
-          
-            DO MeshComponentNumber=1,DECOMPOSITION%MESH%NUMBER_OF_COMPONENTS
-              
-              LOCAL_TOPOLOGY=>MESH%LOCAL_TOPOLOGY(MeshComponentNumber)%PTR
-              
-              ! loop over nodes on local domain list
-              ! note, these are not the final local node numbers
-              DO NodeLocalNo=1,LOCAL_TOPOLOGY%nodes%numberOfNodes
-
-                NodeGlobalNo=LOCAL_TOPOLOGY%nodes%NODES(NodeLocalNo)%globalNumber
-              
-                DO ElementLocalNo=1,LOCAL_TOPOLOGY%elements%NUMBER_OF_ELEMENTS
-                  BASIS=>LOCAL_TOPOLOGY%ELEMENTS%ELEMENTS(ElementLocalNo)%BASIS
-                  
-                  DO nn=1,BASIS%NUMBER_OF_NODES
-                    ElementAdjacentNodeGlobalNo = LOCAL_TOPOLOGY%elements%ELEMENTS(ElementLocalNo)%MESH_ELEMENT_NODES(nn)
-                    
-                    IF (ElementAdjacentNodeGlobalNo == NodeGlobalNo) THEN
-                      ! increase numberOfSurroundingElements
-                      ! add to LOCAL_TOPOLOGY%nodes%NODES(NodeLocalNo)%surroundingElements()
-                    ENDIF
-                  ENDDO
-                ENDDO
-              ENDDO
-              
-            ENDDO   ! MeshComponentNumber
-          ELSE
-            CALL FlagError("Mesh local topology is not associated.",ERR,ERROR,*999)
-          ENDIF
-        ELSE
-          CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
-        ENDIF
+        DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL = SORTED_ARRAY_CONTAINS_ELEMENT(DECOMPOSITION%ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP, &
+          & GLOBAL_ELEMENT_NO,ERR,ERROR)
       ELSE
-        CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
+        CALL FlagError("Decomposition elements mapping is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
     
-    EXITS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS")
+    EXITS("DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL")
     RETURN
-999 ERRORSEXITS("MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS",ERR,ERROR)
-    RETURN 1
-  END SUBROUTINE MESH_LOCAL_TOPOLOGY_CALCULATE_SURROUNDING_ELEMENTS
+999 ERRORSEXITS("DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL",ERR,ERROR)
+    RETURN
+  END FUNCTION DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL
   
   !
   !================================================================================================================================
   !
 
-  ! SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_IS_LOCAL instead of _GET
+  FUNCTION SORTED_ARRAY_CONTAINS_ELEMENT(ARRAY,ELEMENT,ERR,ERROR)
+    !Argument variables
+    INTEGER(INTG), DIMENSION(:) :: ARRAY !<The array in which to search for the element, needs to be sorted
+    INTEGER(INTG), INTENT(IN) :: ELEMENT !<The element to search for
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Function variable
+    LOGICAL :: SORTED_ARRAY_CONTAINS_ELEMENT
+    !Local Variables
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    INTEGER(INTG) :: SearchIndex, ValueAtSearchIndex, LowerBoundSearchIndex, UpperBoundSearchIndex, &
+      & PreviousSearchIndex
+
+    ENTERS("SORTED_ARRAY_CONTAINS_ELEMENT",ERR,ERROR,*999)
+
+    SORTED_ARRAY_CONTAINS_ELEMENT = .FALSE.
+
+    IF (SIZE(ARRAY) == 0) RETURN
+    
+    SearchIndex = (LBOUND(ARRAY,1)+UBOUND(ARRAY,1))/2
+    ! bound values are first indices where the elements can't be
+    LowerBoundSearchIndex = LBOUND(ARRAY,1)-1
+    UpperBoundSearchIndex = UBOUND(ARRAY,1)+1
+    PreviousSearchIndex = -1
+    
+    !PRINT *, "find ",ELEMENT," in array: ",ARRAY,LBOUND(ARRAY,1),UBOUND(ARRAY,1)
+    
+    DO WHILE(LowerBoundSearchIndex < UpperBoundSearchIndex)
+      ValueAtSearchIndex = ARRAY(SearchIndex)
+      
+      !PRINT *, "  [",LowerBoundSearchIndex,SearchIndex,UpperBoundSearchIndex,"]"
+      !PRINT *, "  current pointer ValueAtSearchIndex=",ValueAtSearchIndex,", to search ELEMENT=", &
+      !  & ELEMENT
+    
+      IF (ValueAtSearchIndex == ELEMENT) THEN
+        ! global element number was found among local elements
+        SORTED_ARRAY_CONTAINS_ELEMENT = .TRUE.
+        !PRINT *, "found"
+        EXITS("SORTED_ARRAY_CONTAINS_ELEMENT")
+        RETURN
+      
+      ELSEIF (ValueAtSearchIndex > ELEMENT) THEN
+        ! search position was too high
+        UpperBoundSearchIndex = SearchIndex
+        SearchIndex = NINT((SearchIndex+LowerBoundSearchIndex)/2.)
+        
+      ELSEIF (ValueAtSearchIndex < ELEMENT) THEN
+        ! search position was too low
+        LowerBoundSearchIndex = SearchIndex
+        SearchIndex = NINT((SearchIndex+UpperBoundSearchIndex)/2.)
+      ENDIF
+      
+      ! If search position did not change or new position is invalid, terminate search
+      IF (SearchIndex == PreviousSearchIndex .OR. SearchIndex <= LBOUND(ARRAY,1)-1 .OR. SearchIndex >= UBOUND(ARRAY,1)+1) EXIT
+      
+      PreviousSearchIndex = SearchIndex
+    ENDDO
+    
+    EXITS("SORTED_ARRAY_CONTAINS_ELEMENT")
+    RETURN
+999 ERRORSEXITS("SORTED_ARRAY_CONTAINS_ELEMENT",ERR,ERROR)
+    RETURN
+  END FUNCTION SORTED_ARRAY_CONTAINS_ELEMENT
   
+  !
+  !================================================================================================================================
+  !
+
   !>Gets the domain for a given element in a decomposition of a mesh. \todo should be able to specify lists of elements. \see OPENCMISS::CMISSDecompositionElementDomainGet
   SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_GET(DECOMPOSITION,USER_ELEMENT_NUMBER,DOMAIN_NUMBER,ERR,ERROR,*)
 
@@ -4997,11 +5406,6 @@ CONTAINS
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
         & ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,ELEMENTS_MAPPING%NUMBER_OF_DOMAINS+1,8,8, &
-        & ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR,'("    Adjacent domains ptr  :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR( &
-        & ELEMENTS_MAPPING%NUMBER_OF_DOMAINS)-1,8,8,ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST, &
-        '("    Adjacent domains list :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
       DO domain_idx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domain_idx,ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &
@@ -5556,11 +5960,6 @@ CONTAINS
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
         & NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,NODES_MAPPING%NUMBER_OF_DOMAINS+1,8,8, &
-        & NODES_MAPPING%ADJACENT_DOMAINS_PTR,'("    Adjacent domains ptr  :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,NODES_MAPPING%ADJACENT_DOMAINS_PTR( &
-        & NODES_MAPPING%NUMBER_OF_DOMAINS)-1,8,8,NODES_MAPPING%ADJACENT_DOMAINS_LIST, &
-        '("    Adjacent domains list :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
       DO domain_idx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domain_idx,ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &
@@ -5621,11 +6020,6 @@ CONTAINS
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
         & DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOFS_MAPPING%NUMBER_OF_DOMAINS+1,8,8, &
-        & DOFS_MAPPING%ADJACENT_DOMAINS_PTR,'("    Adjacent domains ptr  :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
-      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOFS_MAPPING%ADJACENT_DOMAINS_PTR( &
-        & DOFS_MAPPING%NUMBER_OF_DOMAINS)-1,8,8,DOFS_MAPPING%ADJACENT_DOMAINS_LIST, &
-        '("    Adjacent domains list :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
       DO domain_idx=1,DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domain_idx,ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &

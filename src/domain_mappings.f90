@@ -184,6 +184,7 @@ CONTAINS
   !
 
   !>Calculates the domain mappings local map from a domain mappings global map.
+  ! to be removed
   SUBROUTINE DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(DOMAIN_MAPPING,ERR,ERROR,*)
 
     !Argument variables
