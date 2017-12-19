@@ -48,7 +48,9 @@ MODULE INPUT_OUTPUT
   USE CONSTANTS
   USE KINDS
   USE ISO_VARYING_STRING
+  USE MPI
   USE STRINGS
+  
 
 #include "macros.h"  
 
@@ -367,7 +369,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-
+    
 !    ENTERS("WRITE_STRING_C",ERR,ERROR,*999)
         
     WRITE(OP_STRING,'(A)') STRING

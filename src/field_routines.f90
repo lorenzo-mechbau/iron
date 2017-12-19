@@ -10570,8 +10570,8 @@ CONTAINS
       & NUMBER_OF_CONSTANT_DOFS,NUMBER_OF_ELEMENT_DOFS,NUMBER_OF_NODE_DOFS,NUMBER_OF_GRID_POINT_DOFS,NUMBER_OF_GAUSS_POINT_DOFS, &
       & NUMBER_OF_LOCAL_VARIABLE_DOFS,TOTAL_NUMBER_OF_VARIABLE_DOFS,NUMBER_OF_DOMAINS,variable_global_ny, &
       & variable_local_ny,domain_idx,domain_no,constant_nyy,element_ny,element_nyy,node_ny,node_nyy,grid_point_nyy, &
-      & Gauss_point_nyy,version_idx,derivative_idx,ny,NUMBER_OF_COMPUTATIONAL_NODES, &
-      & my_computational_node_number,domain_type_stop,start_idx,stop_idx,element_idx,node_idx,NUMBER_OF_LOCAL, NGP, MAX_NGP, &
+      & Gauss_point_nyy,version_idx,derivative_idx,ny,NumberComputationalNodes, &
+      & MyComputationalNodeNumber,domain_type_stop,start_idx,stop_idx,element_idx,node_idx,NUMBER_OF_LOCAL, NGP, MAX_NGP, &
       & gp,MPI_IERROR,NUMBER_OF_GLOBAL_DOFS,gauss_point_idx,NUMBER_OF_DATA_POINT_DOFS,data_point_nyy,dataPointIdx,elementIdx, &
       & localDataNumber,globalElementNumber
     INTEGER(INTG), ALLOCATABLE :: VARIABLE_LOCAL_DOFS_OFFSETS(:),VARIABLE_GHOST_DOFS_OFFSETS(:), &
@@ -10594,10 +10594,11 @@ CONTAINS
     IF (CALL_COUNTER == 10 .AND. COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 0) DEBUGGING = .FALSE.
 
     IF(ASSOCIATED(FIELD)) THEN
-      NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+      NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
       IF(ERR/=0) GOTO 999
-      my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+      MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       IF(ERR/=0) GOTO 999
+      
       !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
       !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
       DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
@@ -10610,14 +10611,17 @@ CONTAINS
         NUMBER_OF_LOCAL_VARIABLE_DOFS=0
         TOTAL_NUMBER_OF_VARIABLE_DOFS=0
         NUMBER_OF_GLOBAL_VARIABLE_DOFS=0
+        
         DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
           FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+          
           SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
           CASE(FIELD_CONSTANT_INTERPOLATION)
             NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS+1
             NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+1
             TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+1
             NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+1
+          
           CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
             DOMAIN=>FIELD_COMPONENT%DOMAIN
             DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
@@ -10625,6 +10629,7 @@ CONTAINS
             NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
             TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
             NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS
+          
           CASE(FIELD_NODE_BASED_INTERPOLATION)
             DOMAIN=>FIELD_COMPONENT%DOMAIN
             DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
@@ -10632,8 +10637,10 @@ CONTAINS
             NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_DOFS
             TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%TOTAL_NUMBER_OF_DOFS
             NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_GLOBAL_DOFS
+          
           CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
             CALL FlagError("Not implemented.",ERR,ERROR,*999)
+          
           CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
             DOMAIN=>FIELD_COMPONENT%DOMAIN
             DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
@@ -10649,6 +10656,7 @@ CONTAINS
             NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS*MAX_NGP
             TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
             NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS*MAX_NGP
+          
           CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
             ! Data points do not have domain topology or mappings, since they're the same across all mesh components
             decompositionTopology=>FIELD%DECOMPOSITION%TOPOLOGY
@@ -10658,6 +10666,7 @@ CONTAINS
               & dataPoints%totalNumberOfDataPoints  
             NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+decompositionTopology%dataPoints% &
               & numberOfGlobalDataPoints
+          
           CASE DEFAULT
             LOCAL_ERROR="The interpolation type of "// &
               & TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
@@ -10666,6 +10675,7 @@ CONTAINS
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
         ENDDO !component_idx
+        
         !Allocate the DOF to parameters (nodes, elements, gauss, components etc.) maps. 
         FIELD%VARIABLES(variable_idx)%NUMBER_OF_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS
         FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
@@ -10712,7 +10722,7 @@ CONTAINS
       IF(ERR/=0) CALL FlagError("Could not allocate variable ghost dofs offsets.",ERR,ERROR,*999)
       !We want to ensure that the ghost DOFs are at the end so loop over the DOFs in two passes. The first pass will process
       !the local DOFs for each variable component and the second pass will process the ghost DOFs for each variable component.
-      IF(NUMBER_OF_COMPUTATIONAL_NODES==1) THEN
+      IF(NumberComputationalNodes==1) THEN
         domain_type_stop=1 !Local only
       ELSE
         domain_type_stop=2 !Local+Ghosts
@@ -10760,6 +10770,8 @@ CONTAINS
                 PRINT *, "Interpolation type: ", FIELD_COMPONENT%INTERPOLATION_TYPE
               ENDIF
               
+              ! ny = dof
+              
               SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
               CASE(FIELD_CONSTANT_INTERPOLATION)
                 !Only process the non-ghosted dofs for constant interpolation
@@ -10773,7 +10785,7 @@ CONTAINS
                     variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                     CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                       & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                    NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                    NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                     ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
                       & STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
@@ -10859,7 +10871,7 @@ CONTAINS
                   
                     variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                   
-                    NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                    NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                     
                     IF (DEBUGGING) PRINT "(3(A,I3),A)", " global dofs offset: ",VARIABLE_GLOBAL_DOFS_OFFSET,&
                       & ", variable_global_ny=", variable_global_ny,", present on ", NUMBER_OF_DOMAINS, " domains"
@@ -11516,13 +11528,13 @@ CONTAINS
             CASE(FIELD_CONSTANT_INTERPOLATION)
               DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
                 FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                variable_local_ny=1+VARIABLE_LOCAL_DOFS_OFFSETS(my_computational_node_number)
+                variable_local_ny=1+VARIABLE_LOCAL_DOFS_OFFSETS(MyComputationalNodeNumber)
                 !Allocate and set up global to local domain map for variable mapping
                 IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
                   variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                   CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                     & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                  NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                  NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                   ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
                     & STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
@@ -11624,7 +11636,7 @@ CONTAINS
                   DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
                     FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
                     element_ny=element_ny+1
-                    variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(my_computational_node_number)
+                    variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(MyComputationalNodeNumber)
                     element_nyy=element_nyy+1
                     !Setup dof to parameter map
                     FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_ELEMENT_DOF_TYPE
@@ -11731,7 +11743,7 @@ CONTAINS
                     FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
                     DOMAIN=>FIELD_COMPONENT%DOMAIN
                     node_ny=node_ny+1
-                    variable_local_ny=node_ny+VARIABLE_LOCAL_DOFS_OFFSETS(my_computational_node_number)
+                    variable_local_ny=node_ny+VARIABLE_LOCAL_DOFS_OFFSETS(MyComputationalNodeNumber)
                     node_nyy=node_nyy+1
                     version_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(1,ny)
                     derivative_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(2,ny)
@@ -11832,7 +11844,7 @@ CONTAINS
                       FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
                       DOMAIN=>FIELD_COMPONENT%DOMAIN
                       element_ny=element_ny+1
-                      variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(my_computational_node_number)
+                      variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(MyComputationalNodeNumber)
                       node_nyy=node_nyy+1
                       !Setup dof to parameter map
                       FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_GAUSS_POINT_DOF_TYPE
