@@ -10599,6 +10599,20 @@ CONTAINS
       MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       IF(ERR/=0) GOTO 999
       
+      ! algorithm
+      ! at first compute number of dofs and total number of dofs wghere nodes mapping gets computed
+      ! the create list with all to all
+      
+      !        break no. ->
+      ! rank   (glob.node,dof) (0,0)  (4,12) (9,13) (12,24) ...
+      !  v
+      !
+      !
+      !  from that local to global dof numbering can be computed
+      
+      
+      
+      
       !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
       !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
       DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES

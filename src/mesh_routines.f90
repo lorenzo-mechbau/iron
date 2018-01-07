@@ -6401,9 +6401,10 @@ CONTAINS
     TYPE(LIST_TYPE), POINTER :: InternalNodesList, BoundaryAndGhostNodesList, AdjacentDomainsList, LocalAndAdjacentDomainsList, &
       & BoundaryNodesList, GhostNodesList, GhostNodesDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: DomainsOfNodeList(:), SharedNodesList(:), LocalGhostSendIndices(:), &
-      & LocalGhostReceiveIndices(:), SendBufferList(:)
+      & LocalGhostReceiveIndices(:), SendBufferList(:), NewLocalGhostSendIndices, NewLocalGhostReceiveIndices
     REAL(DP) :: OptimalNumberNodesPerDomain, NumberNodes, TotalNumberNodes, NumberNodesAboveOptimum, PortionToDistribute
-    LOGICAL :: OnOtherDomain,NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+    LOGICAL :: OnOtherDomain,NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain,AdacentDomainEntryFound 
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: NewAdjacentDomain
     !LOGICAL :: DIAGNOSTICS1 = .TRUE.
     !LOGICAL :: DIAGNOSTICS2 = .TRUE.
 
@@ -7084,7 +7085,7 @@ CONTAINS
                 ! add own nodes that are ghost nodes on other domains and do not lie on the border between boundary and ghost elements at the other domain 
                 ! to send buffer to the send to that domain
                 
-                ! loop over boundary elements
+                ! loop over boundary and ghost elements
                 DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%GHOST_FINISH
                   ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
                   ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
@@ -7277,12 +7278,10 @@ CONTAINS
                           ENDIF
                         ENDDO  ! GhostElementIdx
                         
-                        
                       ENDDO  ! DomainIdx
                     ENDIF
                   ENDDO
                 ENDDO
-                
                 
                 
                 
@@ -7527,6 +7526,7 @@ CONTAINS
                   ENDIF
                   
                   ! find entry ADJACENT_DOMAINS array for domainNo
+                  AdacentDomainEntryFound = .FALSE.
                   DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     IF (NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER == GhostDomain) THEN
                       
@@ -7536,11 +7536,123 @@ CONTAINS
                       ENDIF
                             
                       CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
-                            
+                      
+                      AdacentDomainEntryFound = .TRUE.
                       EXIT
                     ENDIF
-                  ENDDO
-                ENDDO
+                  ENDDO ! AdjacentDomainIdx
+                  
+                  ! TODO: fix following
+                  IF (.NOT. AdacentDomainEntryFound.AND..TRUE.) THEN
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
+                    ENDIF
+                  
+                    ! create new AdjacentDomain entry in NODES_MAPPING%ADJACENT_DOMAINS
+                    NULLIFY(NewAdjacentDomain)
+                    ALLOCATE(NewAdjacentDomain,STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate NewAdjacentDomain.",ERR,ERROR,*999)
+                    
+                    NewAdjacentDomain%DOMAIN_NUMBER = GhostDomain
+                    NewAdjacentDomain%NUMBER_OF_SEND_GHOSTS = 0
+                    NewAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS = 0
+                    NewAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
+                    
+                    NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS+1
+                    
+                    
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS=",&
+                      NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    ENDIF
+                    
+                    
+                    IF (NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
+                      ALLOCATE(NODES_MAPPING%ADJACENT_DOMAINS(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate NODES_MAPPING%ADJACENT_DOMAINS.",ERR,ERROR,*999)
+                      
+                      NODES_MAPPING%ADJACENT_DOMAINS(1) = NewAdjacentDomain
+                    ELSE
+                      NODES_MAPPING%ADJACENT_DOMAINS = RESHAPE(NODES_MAPPING%ADJACENT_DOMAINS, &
+                        & [NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS], [NewAdjacentDomain])
+                    ENDIF
+                    
+                    
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ": create lists"
+                    ENDIF
+                    
+                    
+                    
+                    ! create list for local ghost send indices
+                    ALLOCATE(NewLocalGhostSendIndices,STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate NewLocalGhostSendIndices.",ERR,ERROR,*999)
+                    
+                    ALLOCATE(NewLocalGhostReceiveIndices,STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate NewLocalGhostReceiveIndices.",ERR,ERROR,*999)
+                    
+                    NULLIFY(NewLocalGhostSendIndices%PTR)
+                    CALL LIST_CREATE_START(NewLocalGhostSendIndices%PTR,ERR,ERROR,*999)
+                    CALL LIST_DATA_DIMENSION_SET(NewLocalGhostSendIndices%PTR,1,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(NewLocalGhostSendIndices%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(NewLocalGhostSendIndices%PTR,ERR,ERROR,*999)
+                    
+                    ! create list for local ghost receive indices
+                    NULLIFY(NewLocalGhostReceiveIndices%PTR)
+                    CALL LIST_CREATE_START(NewLocalGhostReceiveIndices%PTR,ERR,ERROR,*999)
+                    CALL LIST_DATA_DIMENSION_SET(NewLocalGhostReceiveIndices%PTR,1,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(NewLocalGhostReceiveIndices%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(NewLocalGhostReceiveIndices%PTR,ERR,ERROR,*999)
+                  
+                    
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ": reshape"
+                    ENDIF
+                    IF (NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
+                      ALLOCATE(LocalGhostReceiveIndices(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate LocalGhostReceiveIndices.",ERR,ERROR,*999)
+                      
+                      LocalGhostReceiveIndices(1) = NewLocalGhostReceiveIndices
+                    ELSE
+                      LocalGhostReceiveIndices = RESHAPE(LocalGhostReceiveIndices, [NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS], &
+                        & [NewLocalGhostReceiveIndices])
+                    ENDIF
+                    
+                    IF (NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
+                      ALLOCATE(LocalGhostSendIndices(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate LocalGhostSendIndices.",ERR,ERROR,*999)
+                      
+                      LocalGhostSendIndices(1) = NewLocalGhostSendIndices
+                    ELSE
+                      LocalGhostSendIndices = RESHAPE(LocalGhostSendIndices, [NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS], &
+                        & [NewLocalGhostSendIndices])
+                    ENDIF
+                    IF (NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
+                      ALLOCATE(AdjacentDomains(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate AdjacentDomains.",ERR,ERROR,*999)
+                      
+                      AdjacentDomains(1) = GhostDomain
+                    ELSE
+                      AdjacentDomains = RESHAPE(AdjacentDomains, [NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS], &
+                        & [GhostDomain])
+                    ENDIF
+                    
+                    
+                    
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ": add to list"
+                    ENDIF
+                    AdjacentDomainIdx = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    NumberAdjacentDomains = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    IF (DIAGNOSTICS1) THEN
+                      PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
+                        & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx
+                    ENDIF
+                          
+                    CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
+                  ENDIF
+                  
+                ENDDO  ! GhostNodeIdx
                 
                 DO AdjacentDomainIdx=1,NumberAdjacentDomains
                   ! create LocalGhostSendIndices for the adjacent domain
@@ -8653,9 +8765,9 @@ CONTAINS
     ELEMENT%NUMBER=0
     NULLIFY(ELEMENT%BASIS)
   
-    EXITS("DOMAIN_TOPOLOGY_ELEMENT_INITALISE")
+    EXITS("DOMAIN_TOPOLOGY_ELEMENT_INITIALISE")
     RETURN
-999 ERRORSEXITS("DOMAIN_TOPOLOGY_ELEMENT_INITALISE",ERR,ERROR)
+999 ERRORSEXITS("DOMAIN_TOPOLOGY_ELEMENT_INITIALISE",ERR,ERROR)
     RETURN 1
    
   END SUBROUTINE DOMAIN_TOPOLOGY_ELEMENT_INITIALISE

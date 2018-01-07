@@ -1117,6 +1117,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     
     ! (local element no, list of global node numbers)
     
+    ! move FURTHER_GHOSTS_here
+    
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING !<Pointer to the element mappings for the domain decomposition.
     
     ! temporary, remove
