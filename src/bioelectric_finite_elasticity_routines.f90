@@ -2223,32 +2223,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  !> Make all processes wait until one sets the variable gdb_resume to 1 via a debugger (e.g. gdb)
-  SUBROUTINE gdbParallelDebuggingBarrier()
-    INTEGER(Intg) :: Gdb_Resume
-    INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
-    INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
-    Gdb_Resume = 0
-
-    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
-    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
-
-    IF (NumberOfComputationalNodes > 0) THEN
-      PRINT*, "Node ", ComputationalNodeNumber, ", UID ",GETPID()," is waiting for Gdb_Resume=", Gdb_Resume &
-        & , " to become 1 " // NEW_LINE('A') // "sudo gdb cuboid ",GETPID(), NEW_LINE('A') //"select-frame 2" // &
-        & NEW_LINE('A') // "set var gdb_resume = 1" // NEW_LINE('A') // &
-        & "info locals" // NEW_LINE('A') // "next"
-      DO WHILE (Gdb_Resume == 0)
-        CALL Sleep(1)
-      ENDDO
-      PRINT*, "Node ", ComputationalNodeNumber, " resumes because gdb_resume=", Gdb_Resume, "."
-    ENDIF
-
-  END SUBROUTINE gdbParallelDebuggingBarrier
-
-  !
-  !================================================================================================================================
-  !
   !> Make a consistent state such that also in bioelectric node ghost elements the GeometricFieldM FIELD_U_VARIABLE_TYPE GeometryM 
   !> field has the correct values. This is done by exchanging node distances over adjacent domains.
   !> This method can be considered a helper method for BioelectricFiniteElasticity_UpdateGeometricField.

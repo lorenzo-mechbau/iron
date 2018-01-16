@@ -328,6 +328,8 @@ MODULE BASE_ROUTINES
 
   PUBLIC FlagError,FlagWarning
   
+  PUBLIC gdbParallelDebuggingBarrier
+  
   PUBLIC OUTPUT_SET_OFF,OUTPUT_SET_ON
 
   PUBLIC OutputSetOn,OutputSetOff
@@ -629,6 +631,32 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  !> Make all processes wait until one sets the variable gdb_resume to 1 via a debugger (e.g. gdb)
+  SUBROUTINE gdbParallelDebuggingBarrier()
+    INTEGER(Intg) :: Gdb_Resume
+    INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
+    INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
+    Gdb_Resume = 0
+
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+
+    IF (NumberOfComputationalNodes > 0) THEN
+      PRINT*, "Node ", ComputationalNodeNumber, ", UID ",GETPID()," is waiting for Gdb_Resume=", Gdb_Resume &
+        & , " to become 1 " // NEW_LINE('A') // "sudo gdb cuboid ",GETPID(), NEW_LINE('A') //"select-frame 2" // &
+        & NEW_LINE('A') // "set var gdb_resume = 1" // NEW_LINE('A') // &
+        & "info locals" // NEW_LINE('A') // "next"
+      DO WHILE (Gdb_Resume == 0)
+        CALL Sleep(1)
+      ENDDO
+      PRINT*, "Node ", ComputationalNodeNumber, " resumes because gdb_resume=", Gdb_Resume, "."
+    ENDIF
+
+  END SUBROUTINE gdbParallelDebuggingBarrier
+
+  !
+  !================================================================================================================================
+  !
 
 #include "macros.h"
 
@@ -719,6 +747,9 @@ CONTAINS
     STRING_LENGTH=LEN_TRIM(STRING)
     ERROR=STRING(1:STRING_LENGTH)
 
+    PRINT *, "ERROR: ", TRIM(STRING)
+    CALL ABORT()
+    
     RETURN 1
   END SUBROUTINE FLAG_ERROR_C
 
@@ -738,6 +769,8 @@ CONTAINS
     IF(ERR==0) ERR=1
     ERROR=STRING
 
+    PRINT *, "ERROR: ", CHAR(STRING)
+    CALL ABORT()
     RETURN 1
   END SUBROUTINE FLAG_ERROR_VS
 

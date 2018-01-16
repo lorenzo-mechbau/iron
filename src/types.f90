@@ -65,6 +65,9 @@
 !#### Index: nu
 !###  Description:
 !###    Index for a partial derivative.
+!#### Index: ny
+!###  Description:
+!###    Index for a degree of freedom
 
 !> This module contains all type definitions in order to avoid cyclic module references.
 MODULE TYPES
@@ -412,7 +415,7 @@ MODULE TYPES
   TYPE MeshNodeDerivativeType
     INTEGER(INTG) :: numberOfVersions !The number of global versions at the node for the mesh.
     INTEGER(INTG), ALLOCATABLE :: userVersionNumbers(:) !userVersionNumbers(versionIdx). The user version numbers for the versionIdx'th version for the node.
-    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node.
+    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node. (dofIndex(nv) is the global dof number, where nv is the version index)
     INTEGER(INTG) :: globalDerivativeIndex !The global derivative index of the nk'th global derivative for the node.
     INTEGER(INTG) :: partialDerivativeIndex !The partial derivative index (nu) of the nk'th global derivative for the node. Old CMISS name NUNK(nk,nj,np).
   END TYPE MeshNodeDerivativeType
@@ -533,11 +536,24 @@ MODULE TYPES
     INTEGER(INTG) :: NUMBER_OF_EMBEDDED_MESHES !<The number of meshes that are embedded in this mesh.
     TYPE(MESH_PTR_TYPE), POINTER :: EMBEDDED_MESHES(:) !<EMBEDDED_MESHES(mesh_idx). A pointer to the mesh_idx'th mesh that is embedded in this mesh.
     INTEGER(INTG) :: NUMBER_OF_ELEMENTS
-    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
     
-    ! new variable
+    ! try to remove global information contained in TOPOLOGY later! 
+    ! currently in use: 
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
+    !
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+    !
+    !  DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
+    !    DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+    !      ny = MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+    
+    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
+    
+    ! new variable (?)
     TYPE(MeshComponentLocalTopologyPtrType), POINTER :: LOCAL_TOPOLOGY(:) !<LOCAL_TOPOLOGY(mesh_component_idx). A pointer to the local topology mesh_component_idx'th mesh component.
   END TYPE MESH_TYPE
 
@@ -909,10 +925,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: DOMAIN_NUMBER !<The number of the domain that is adjacent to a domain in a mapping.
     INTEGER(INTG) :: NUMBER_OF_SEND_GHOSTS !<The number of ghost locals in the current domain that are to be sent to this domain.
     INTEGER(INTG) :: NUMBER_OF_RECEIVE_GHOSTS !<The number of ghost locals in the current domain that are to be received from this domain.
-    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts (actually boundary nodes/elements) in the current domain that are to be sent to this domain.
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts (actually boundary nodes/elements/dofs) in the current domain that are to be sent to this domain.
     INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_RECEIVE_INDICES(:) !<LOCAL_GHOST_RECEIVE_INDICES(i). The local numbers of the ghosts in the current domain that are to be received from this domain.
-    INTEGER(INTG) :: NUMBER_OF_FURTHER_LINKED_GHOSTS !<The number of further linked ghost numbers that are needed such that all ghost nodes know all their shared domains
-    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_FURTHER_INDICES(:) !<LOCAL_GHOST_FURTHER_INDICES(i) local number of a linked element
+    INTEGER(INTG) :: NUMBER_OF_FURTHER_LINKED_GHOSTS !<The number of further linked ghost numbers that are needed such that all ghost nodes know all their shared domains, this is only needed for element mappings
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_FURTHER_INDICES(:) !<LOCAL_GHOST_FURTHER_INDICES(i) local number of a linked element, this is only needed for element mappings
   END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   
   !>Contains the local information for a global mapping number for a domain mapping.
@@ -975,9 +991,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: MESH_COMPONENT_NUMBER !<The mesh component number of the mesh which this domain was decomposed from.
     TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region that this domain is in. This is "inherited" from the mesh region. 
     INTEGER(INTG) :: NUMBER_OF_DIMENSIONS !<The number of dimensions for this domain. This is "inherited" from the mesh.
-    INTEGER(INTG), ALLOCATABLE :: NODE_DOMAIN(:) !<NODE_DOMAIN(np). The domain number that the np'th global node is in for the domain decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+    
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: MAPPINGS !<Pointer to the mappings for the domain  e.g., global to local and local to global maps
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<Pointer to the topology for the domain. (completely local information)
+    
+    ! to be removed
+    INTEGER(INTG), ALLOCATABLE :: NODE_DOMAIN(:) !<NODE_DOMAIN(np). The domain number that the np'th global node is in for the domain decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+    
   END TYPE DOMAIN_TYPE
 
   !>A buffer type to allow for an array of pointers to a DOMAIN_TYPE.
@@ -1117,7 +1137,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     
     ! (local element no, list of global node numbers)
     
-    ! move FURTHER_GHOSTS_here
+    ! move FURTHER_GHOSTS_here (no, not so easily possible)
     
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING !<Pointer to the element mappings for the domain decomposition.
     
@@ -1242,8 +1262,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_GAUSS_POINT_DOFS !<The number of Gauss point based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_DATA_POINT_DOFS !<The number of data point based degrees-of-freedom in the field dofs.
     INTEGER(INTG), ALLOCATABLE :: CONSTANT_DOF2PARAM_MAP(:) !<CONSTANT_DOF2PARAM_MAP(nyy). The mapping from constant field dofs to field parameters for the nyy'th constant field dof. The DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
-    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOF2PARAM_MAP(:,:) !<ELEMENT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from element based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
-    INTEGER(INTG), ALLOCATABLE :: NODE_DOF2PARAM_MAP(:,:) !<NODE_DOF2PARAM_MAP(i=1..4,nyy). The mapping from node based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the version number (version_idx) of the field parameter. When i=2 the DOF2PARAM_MAP gives the derivative number (derivative_idx) of the field parameter. When i=3 the DOF2PARAM_MAP gives the node number (node_idx) of the field parameter. When i=4 the DOF2PARAM_MAP gives the component number (component_idx) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
+    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOF2PARAM_MAP(:,:) !<ELEMENT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from element based field dofs to field parameters for the nyy'th element field dof. When i=1 the DOF2PARAM_MAP gives the local element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
+    INTEGER(INTG), ALLOCATABLE :: NODE_DOF2PARAM_MAP(:,:) !<NODE_DOF2PARAM_MAP(i=1..4,nyy). The mapping from node based field dofs to field parameters for the nyy'th node field dof. When i=1 the DOF2PARAM_MAP gives the version number (version_idx) of the field parameter. When i=2 the DOF2PARAM_MAP gives the derivative number (derivative_idx) of the field parameter. When i=3 the DOF2PARAM_MAP gives the local node number (node_idx) of the field parameter. When i=4 the DOF2PARAM_MAP gives the component number (component_idx) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: GRID_POINT_DOF2PARAM_MAP(:,:) !<GRID_POINT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from grid point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the grid point number (nq) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
     INTEGER(INTG), ALLOCATABLE :: GAUSS_POINT_DOF2PARAM_MAP(:,:) !<GAUSS_POINT_DOF2PARAM_MAP(i=1..3,nyy). The mapping from Gauss point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the Gauss point number (ng) of the field parameter. When i=2 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=3 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
     INTEGER(INTG), ALLOCATABLE :: DATA_POINT_DOF2PARAM_MAP(:,:)!<DATA_POINT_DOF2PARAM_MAP(i=1..3,nyy). The mapping from data point based field dofs to field parameters for the nyy'th data point field dof. When i=1 the DOF2PARAM_MAP gives the data point number (np) of the field parameter. When i=2 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=3 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
@@ -1264,13 +1284,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !>A type to hold the mapping from field nodes to field dof numbers for a particular field variable component.
   TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODE_PARAMETERS !<The number of node based field parameters for this field variable component.
-    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter to a dof
+    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter (local node number) to a dof (local dof number)
   END TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field elements to field dof numbers for a particular field variable component.
   TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_PARAMETERS !<The number of element based field parameters for this field variable component.
-    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element based parameter for this field variable component. \todo Allow for multiple element parameters per element.
+    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element (local element no.) based parameter for this field variable component. \todo Allow for multiple element parameters per element.
   END TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field grid points to field dof numbers for a particular field variable component.

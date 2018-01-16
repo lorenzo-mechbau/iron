@@ -154,7 +154,7 @@ MODULE MESH_ROUTINES
 
   PUBLIC DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS
 
-  PUBLIC DomainTopology_ElementBasisGet
+  PUBLIC DomainTopology_ElementBasisGet, DOMAIN_MAPPINGS_COMPARE
   
   PUBLIC MeshTopologyElementCheckExists,MeshTopologyNodeCheckExists
   
@@ -5884,7 +5884,7 @@ CONTAINS
   !================================================================================================================================
   !
   
-  !>Initialises the mappings for a domain decomposition. \todo finalise on error.
+  !>compare two domain mappings
   SUBROUTINE DOMAIN_MAPPINGS_COMPARE(DOMAIN_MAPPING1,DOMAIN_MAPPING2,NAME,ERR,ERROR,*)
 
     !Argument variables
@@ -6184,6 +6184,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DOMAIN_MAPPING_TYPE) :: NODES_MAPPING_NEW
+    TYPE(DOMAIN_MAPPING_TYPE) :: DOFS_MAPPING_NEW
     TYPE(DOMAIN_MAPPING_TYPE),POINTER :: NODES_MAPPING_NEW_PTR
     INTEGER(INTG) :: DOFS_NUMBER_OF_LOCAL_NEW, DOFS_TOTAL_NUMBER_OF_LOCAL_NEW, DOFS_NUMBER_OF_GLOBAL_NEW, &
       & MaxDepth,MaxArrayLength,I,MyComputationalNodeNumber,NumberComputationalNodes
@@ -6195,7 +6196,7 @@ CONTAINS
     IF(ERR/=0) GOTO 999
     MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
     IF(ERR/=0) GOTO 999
-        
+         
     IF(ASSOCIATED(DOMAIN)) THEN
       IF(ASSOCIATED(DOMAIN%MAPPINGS)) THEN
         CALL FlagError("Domain already has mappings associated.",ERR,ERROR,*999)
@@ -6212,36 +6213,64 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         
         IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
-          CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999)
+          CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999)  ! also sets number of dofs
           
           ! output nodes mapping from new implementation
-          IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
-            MaxDepth = 2
-            MaxArrayLength = 100
-            IF (NumberComputationalNodes == 1) THEN   ! serial execution
-              CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-            ELSE       
-              ! Loop over computational nodes
-              DO I = 0,NumberComputationalNodes-1
+          IF (DIAGNOSTICS3) THEN
+            IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
+              MaxDepth = 2
+              MaxArrayLength = 100
+              IF (NumberComputationalNodes == 1) THEN   ! serial execution
+                PRINT *, ""
+                PRINT *, "------------------------------------------"
+                WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                  & ": DOMAIN%MAPPINGS%NODES (new implementation)"
+                CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
+              ELSE       
+                ! Loop over computational nodes
+                DO I = 0,NumberComputationalNodes-1
+                  CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+                  IF (MyComputationalNodeNumber == I) THEN
+                    PRINT *, ""
+                    IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+                    WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                      & ": DOMAIN%MAPPINGS%NODES (new implementation)"
+                    CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
+                    CALL FLUSH()   ! flush stdout
+                  ENDIF
+                ENDDO
                 CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-                IF (MyComputationalNodeNumber == I) THEN
-                  PRINT *, ""
-                  IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
-                  WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
-                    & ": DOMAIN%MAPPINGS%NODES (new implementation)"
-                  CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-                  CALL FLUSH()   ! flush stdout
-                ENDIF
-              ENDDO
-              CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
-            ENDIF
-          ENDIF  ! USE_NEW_LOCAL_IMPLEMENTATION
-          
+              ENDIF
+              ! output dofs mapping from new implementation
+              IF (NumberComputationalNodes == 1) THEN   ! serial execution
+                PRINT *, ""
+                PRINT *, "------------------------------------------"
+                WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                  & ": DOMAIN%MAPPINGS%DOFS (new implementation)"
+                CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
+              ELSE       
+                ! Loop over computational nodes
+                DO I = 0,NumberComputationalNodes-1
+                  CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+                  IF (MyComputationalNodeNumber == I) THEN
+                    PRINT *, ""
+                    IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+                    WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                      & ": DOMAIN%MAPPINGS%DOFS (new implementation)"
+                    CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
+                    CALL FLUSH()   ! flush stdout
+                  ENDIF
+                ENDDO
+                CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+              ENDIF
+            ENDIF  ! USE_NEW_LOCAL_IMPLEMENTATION
+          ENDIF
         ENDIF
         
         IF (USE_NEW_LOCAL_IMPLEMENTATION .AND. USE_OLD_GLOBAL_IMPLEMENTATION) THEN        
-          ! backup the DOMAIN%MAPPINGS%NODES to compare to old implementation
+          ! backup the DOMAIN%MAPPINGS%NODES and %DOFS to compare to old implementation
           NODES_MAPPING_NEW = DOMAIN%MAPPINGS%NODES
+          DOFS_MAPPING_NEW = DOMAIN%MAPPINGS%DOFS
           DOFS_NUMBER_OF_LOCAL_NEW = DOMAIN%MAPPINGS%DOFS%NUMBER_OF_LOCAL
           DOFS_TOTAL_NUMBER_OF_LOCAL_NEW = DOMAIN%MAPPINGS%DOFS%TOTAL_NUMBER_OF_LOCAL
           DOFS_NUMBER_OF_GLOBAL_NEW = DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL
@@ -6249,6 +6278,10 @@ CONTAINS
           ! reset nodes mapping
           NULLIFY(DOMAIN%MAPPINGS%NODES)
           CALL DOMAIN_MAPPINGS_NODES_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+          
+          ! reset dofs mapping
+          NULLIFY(DOMAIN%MAPPINGS%DOFS)
+          CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         ENDIF
         
         IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
@@ -6264,6 +6297,10 @@ CONTAINS
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
+              PRINT *, ""
+              PRINT *, "------------------------------------------"
+              WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                    & ": DOMAIN%MAPPINGS%ELEMENTS (old implementation)"
               CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%ELEMENTS, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
@@ -6287,6 +6324,10 @@ CONTAINS
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
+              PRINT *, ""
+              PRINT *, "------------------------------------------"
+              WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                    & ": DECOMPOSITION%ELEMENTS_MAPPING (new implementation)"
               CALL Print_DOMAIN_MAPPING(DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
@@ -6310,6 +6351,10 @@ CONTAINS
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
+              PRINT *, ""
+              PRINT *, "------------------------------------------"
+              WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                    & ": DOMAIN%MAPPINGS%NODES (old implementation)"
               CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
@@ -6321,6 +6366,33 @@ CONTAINS
                   WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%NODES (old implementation)"
                   CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
+                  CALL FLUSH()   ! flush stdout
+                ENDIF
+              ENDDO
+              CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+            ENDIF
+          ENDIF   ! USE_OLD_GLOBAL_IMPLEMENTATION
+            
+          ! output dofs mapping from old implementation
+          IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+            MaxDepth = 2
+            MaxArrayLength = 100
+            IF (NumberComputationalNodes == 1) THEN   ! serial execution
+              PRINT *, ""
+              PRINT *, "------------------------------------------"
+              WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                    & ": DOMAIN%MAPPINGS%DOFS (old implementation)"
+              CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
+            ELSE       
+              ! Loop over computational nodes
+              DO I = 0,NumberComputationalNodes-1
+                CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+                IF (MyComputationalNodeNumber == I) THEN
+                  PRINT *, ""
+                  IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+                  WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
+                    & ": DOMAIN%MAPPINGS%DOFS (old implementation)"
+                  CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
                   CALL FLUSH()   ! flush stdout
                 ENDIF
               ENDDO
@@ -6387,7 +6459,7 @@ CONTAINS
       & DomainListInternalIdx, GhostNodeGlobalNo, GhostNodeIdx, GlobalNodeNo, InternalNodeGlobalNo, InternalNodesIdx, &
       & LocalNodeNo, NumberInCurrentSetToClaim, NumberInteriorNodesOnRank, NumberLocalNodesOnRank, NumberToSend, &
       & NumberNodesWithThatSetOfDomains, BoundaryAndGhostNodeIdx2, MaximumNumberToSend, NumberOfNodesToReceive, NumberGhostNodes, &
-      & GhostDomain, GhostElementIdx, DomainNo2, AdjacentDomainIdx2
+      & GhostDomain, GhostElementIdx, DomainNo2, AdjacentDomainIdx2, NodeIdx, DerivativeIdx, NodeLocalNo
       
     INTEGER(INTG), ALLOCATABLE :: BoundaryAndGhostNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberInteriorAndLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryAndGhostNodesDomain(:), &
@@ -6398,6 +6470,7 @@ CONTAINS
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS_MAPPING
     TYPE(LIST_TYPE), POINTER :: InternalNodesList, BoundaryAndGhostNodesList, AdjacentDomainsList, LocalAndAdjacentDomainsList, &
       & BoundaryNodesList, GhostNodesList, GhostNodesDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: DomainsOfNodeList(:), SharedNodesList(:), LocalGhostSendIndices(:), &
@@ -7049,7 +7122,7 @@ CONTAINS
                 CALL LIST_CREATE_START(GhostNodesDomainsList,ERR,ERROR,*999)
                 CALL LIST_DATA_DIMENSION_SET(GhostNodesDomainsList,2,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(GhostNodesDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
-                CALL LIST_INITIAL_SIZE_SET(GhostNodesDomainsList,2*NumberGhostNodes,ERR,ERROR,*999)
+                CALL LIST_INITIAL_SIZE_SET(GhostNodesDomainsList,MAX(1,2*NumberGhostNodes),ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(GhostNodesDomainsList,ERR,ERROR,*999)
                 
                 DO GhostNodeIdx=1,NumberGhostNodes
@@ -7542,7 +7615,6 @@ CONTAINS
                     ENDIF
                   ENDDO ! AdjacentDomainIdx
                   
-                  ! TODO: fix following
                   IF (.NOT. AdacentDomainEntryFound.AND..TRUE.) THEN
                     IF (DIAGNOSTICS1) THEN
                       PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
@@ -7714,6 +7786,100 @@ CONTAINS
                   DO I=0,NumberComputationalNodes-1
                     PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_GHOST(I)
                   ENDDO
+                ENDIF
+                
+                ! ----------------------------------------------
+                ! set some values in DOFS_MAPPING
+                
+                IF(ASSOCIATED(DOMAIN%MAPPINGS%DOFS)) THEN
+                  DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
+          
+                  ! count number of local dofs
+                  ! loop over internal nodes
+                  DO NodeIdx = NODES_MAPPING%INTERNAL_START,NODES_MAPPING%INTERNAL_FINISH
+                    NodeLocalNo = NODES_MAPPING%DOMAIN_LIST(NodeIdx)
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+                    
+                    DO DerivativeIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                      DOFS_MAPPING%NUMBER_OF_INTERNAL = DOFS_MAPPING%NUMBER_OF_INTERNAL + &
+                        & TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                    ENDDO
+                  ENDDO
+                  
+                  ! count number of boundary dofs
+                  ! loop over boundary nodes
+                  DO NodeIdx = NODES_MAPPING%BOUNDARY_START,NODES_MAPPING%BOUNDARY_FINISH
+                    NodeLocalNo = NODES_MAPPING%DOMAIN_LIST(NodeIdx)
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+                    
+                    DO DerivativeIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                      DOFS_MAPPING%NUMBER_OF_BOUNDARY = DOFS_MAPPING%NUMBER_OF_BOUNDARY + &
+                        & TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                    ENDDO
+                  ENDDO
+                  
+                  ! count number of ghost dofs
+                  ! loop over ghost nodes
+                  DO NodeIdx = NODES_MAPPING%GHOST_START,NODES_MAPPING%GHOST_FINISH
+                    NodeLocalNo = NODES_MAPPING%DOMAIN_LIST(NodeIdx)
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+                    
+                    DO DerivativeIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                      DOFS_MAPPING%NUMBER_OF_GHOST = DOFS_MAPPING%NUMBER_OF_GHOST + &
+                        & TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                    ENDDO
+                  ENDDO
+      
+                  
+                  ! sum up number of local and total number of local
+                  DOFS_MAPPING%NUMBER_OF_LOCAL = DOFS_MAPPING%NUMBER_OF_INTERNAL + DOFS_MAPPING%NUMBER_OF_BOUNDARY
+                  DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL = DOFS_MAPPING%NUMBER_OF_LOCAL + DOFS_MAPPING%NUMBER_OF_GHOST
+               
+                  ! allreduce number of dofs
+                  CALL MPI_ALLREDUCE(DOFS_MAPPING%NUMBER_OF_LOCAL,DOFS_MAPPING%NUMBER_OF_GLOBAL,1,MPI_INT,MPI_SUM, &
+                    & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+                  
+                  ! compute index positions for DOMAIN_LIST
+                  DOFS_MAPPING%INTERNAL_START=1
+                  DOFS_MAPPING%INTERNAL_FINISH=DOFS_MAPPING%INTERNAL_START+DOFS_MAPPING%NUMBER_OF_INTERNAL-1
+                  DOFS_MAPPING%BOUNDARY_START=DOFS_MAPPING%INTERNAL_FINISH+1
+                  DOFS_MAPPING%BOUNDARY_FINISH=DOFS_MAPPING%BOUNDARY_START+DOFS_MAPPING%NUMBER_OF_BOUNDARY-1
+                  DOFS_MAPPING%GHOST_START=DOFS_MAPPING%BOUNDARY_FINISH+1
+                  DOFS_MAPPING%GHOST_FINISH=DOFS_MAPPING%GHOST_START+DOFS_MAPPING%NUMBER_OF_GHOST-1
+            
+                  ! exchange NUMBER_OF_DOMAIN_LOCAL and NUMBER_OF_DOMAIN_GHOST
+                  ! allocate number_of_domain_local
+                  ALLOCATE(DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
+
+                  DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) = DOFS_MAPPING%NUMBER_OF_LOCAL
+                 
+                  CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DOFS_MAPPING%&
+                    & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
+                    & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+                         
+                  ! allocate number_of_domain_ghost
+                  ALLOCATE(DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_GHOST.",ERR,ERROR,*999)
+
+                  DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST(MyComputationalNodeNumber) = DOFS_MAPPING%NUMBER_OF_GHOST
+                        
+                  CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DOFS_MAPPING%&
+                    & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
+                    & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+                        
+                  ! adjacent domains from nodes mapping
+                  DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  
+                  ALLOCATE(DOFS_MAPPING%ADJACENT_DOMAINS(1:DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate ADJACENT_DOMAINS.",ERR,ERROR,*999)
+
+                  DOFS_MAPPING%ADJACENT_DOMAINS = NODES_MAPPING%ADJACENT_DOMAINS
+                  DOFS_MAPPING%NUMBER_OF_DOMAINS = NODES_MAPPING%NUMBER_OF_DOMAINS
+       
                 ENDIF
                 
                 ! deallocate arrays
