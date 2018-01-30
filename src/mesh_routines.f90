@@ -980,7 +980,7 @@ CONTAINS
     TYPE(LIST_TYPE), POINTER :: ReceivedElementsList
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
-    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
+    !LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
 
     ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_MAP",ERR,ERROR,*999)
 
@@ -1051,9 +1051,12 @@ CONTAINS
         GlobalElementNo = GlobalElementNoDomainPair(1)
         Domain = GlobalElementNoDomainPair(2)
           
-        IF (DEBUGGING) THEN
-          WRITE(*,"(I2,A,I3,A,I3,A,I3,A)") MyComputationalNodeNumber,": GlobalElementDomain(",I, &
-            & ")=(", GlobalElementNo,",",Domain,")"
+        IF (DIAGNOSTICS2) THEN
+          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"GlobalElementDomain("//TRIM(NumberToVString(I,"*",ERR,ERROR))//")=("//&
+            & TRIM(NumberToVString(GlobalElementNo,"*",ERR,ERROR))//","//TRIM(NumberToVString(Domain,"*",ERR,ERROR))//")",&
+            & ERR,ERROR,*999)
+          !WRITE(*,"(I2,A,I3,A,I3,A,I3,A)") MyComputationalNodeNumber,": GlobalElementDomain(",I, &
+          !  & ")=(", GlobalElementNo,",",Domain,")"
         ENDIF
             
         
@@ -1061,10 +1064,13 @@ CONTAINS
         NumberStoredElementsForRank(Domain) = NumberStoredElementsForRank(Domain) + 1
       ENDDO
       
-      IF (DEBUGGING) THEN
+      IF (DIAGNOSTICS2) THEN
         DO ComputationalNodeNo=0,NumberComputationalNodes-1
-          WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
-            & ", NumberStoredElementsForRank: ", NumberStoredElementsForRank(ComputationalNodeNo)
+          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"ComputationalNodeNo: "// &
+            & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR))//", NumberStoredElementsForRank: "// &
+            & TRIM(NumberToVString(NumberStoredElementsForRank(ComputationalNodeNo),"*",ERR,ERROR)),ERR,ERROR,*999)
+          !WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
+          !  & ", NumberStoredElementsForRank: ", NumberStoredElementsForRank(ComputationalNodeNo)
         ENDDO
       ENDIF
           
@@ -1100,10 +1106,13 @@ CONTAINS
       CALL MPI_WIN_FREE(MpiMemoryWindow, MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_WIN_FREE",MPI_IERROR,ERR,ERROR,*999)
             
-      IF (DEBUGGING) THEN
+      IF (DIAGNOSTICS2) THEN
         DO ComputationalNodeNo=0,NumberComputationalNodes-1
-          WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
-            & ", NumberLocalElementsOnRank: ", NumberLocalElementsOnRank(ComputationalNodeNo)
+          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"ComputationalNodeNo: "// &
+            & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR))//", NumberLocalElementsOnRank: "// &
+            & TRIM(NumberToVString(NumberLocalElementsOnRank(ComputationalNodeNo),"*",ERR,ERROR)),ERR,ERROR,*999)
+          !WRITE(*,"(I2,A,I2,A,I3)") MyComputationalNodeNumber,": ComputationalNodeNo: ",ComputationalNodeNo, &
+          !  & ", NumberLocalElementsOnRank: ", NumberLocalElementsOnRank(ComputationalNodeNo)
         ENDDO
       ENDIF
       
@@ -1256,11 +1265,18 @@ CONTAINS
           CALL LIST_ITEMS_ADD(ReceivedElementsList,ElementReceiveBuffers(1:NumberElementsFromComputationalNode,&
             & ComputationalNodesToReceiveFromNo),ERR,ERROR,*999)
             
-          IF (DEBUGGING) THEN
-            WRITE(*,"(I2,3(A,I2),A)") MyComputationalNodeNumber,": index ",ComputationalNodesToReceiveFromNo,&
-              & ", ",NumberElementsFromComputationalNode," received element(s) from ", ComputationalNodeNo, ": "
+          IF (DIAGNOSTICS2) THEN
+            
+            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"index "// &
+              & TRIM(NumberToVString(ComputationalNodesToReceiveFromNo,"*",ERR,ERROR))//", "// &
+              & TRIM(NumberToVString(NumberElementsFromComputationalNode,"*",ERR,ERROR))//" received element(s) from "//&
+              & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR))//": ",ERR,ERROR,*999)
+            !WRITE(*,"(I2,3(A,I2),A)") MyComputationalNodeNumber,": index ",ComputationalNodesToReceiveFromNo,&
+            !  & ", ",NumberElementsFromComputationalNode," received element(s) from ", ComputationalNodeNo, ": "
             DO J=1,NumberElementsFromComputationalNode
-              WRITE(*,"(I10)") ElementReceiveBuffers(J,ComputationalNodesToReceiveFromNo)
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,TRIM(NumberToVString(ElementReceiveBuffers(J, &
+                & ComputationalNodesToReceiveFromNo),"(I10)",ERR,ERROR)),ERR,ERROR,*999)
+              !WRITE(*,"(I10)") ElementReceiveBuffers(J,ComputationalNodesToReceiveFromNo)
             ENDDO
           ENDIF
           
@@ -1293,12 +1309,12 @@ CONTAINS
         & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
          
-      IF (DEBUGGING) THEN
-        WRITE(*,"(I2,A)") MyComputationalNodeNumber,": NUMBER_OF_DOMAIN_LOCAL after ALLGATHER: "
-        DO I=0,NumberComputationalNodes-1
-          PRINT *, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
-        ENDDO
-      ENDIF  
+      !IF (DIAGNOSTICS2) THEN
+      !  WRITE(*,"(I2,A)") MyComputationalNodeNumber,": NUMBER_OF_DOMAIN_LOCAL after ALLGATHER: "
+      !  DO I=0,NumberComputationalNodes-1
+      !    PRINT *, ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
+      !  ENDDO
+      !ENDIF  
     ENDIF
     
     ! compute total number of elements
@@ -1601,7 +1617,10 @@ CONTAINS
       GhostElementGlobalNo=ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(GhostElementLocalNo)
       
       IF (DIAGNOSTICS2) THEN
-        PRINT *, MyComputationalNodeNumber, ": GhostElement local ",GhostElementLocalNo, ", global ",GhostElementGlobalNo
+        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"GhostElement local "// &
+            & TRIM(NumberToVString(GhostElementLocalNo,"*",ERR,ERROR))//", global "// &
+            & TRIM(NumberToVString(GhostElementGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+        !PRINT *, MyComputationalNodeNumber, ": GhostElement local ",GhostElementLocalNo, ", global ",GhostElementGlobalNo
       ENDIF
       
       NotYetCheckedForLastRemoteBoundaryElements = .TRUE.
@@ -1620,8 +1639,10 @@ CONTAINS
             IF (SORTED_ARRAY_CONTAINS_ELEMENT(RemoteBoundaryElements,GhostElementGlobalNo,ERR,ERROR)) THEN
               ElementFound = .TRUE.
               NotYetCheckedForLastRemoteBoundaryElements = .FALSE.
-              IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": element is in list from last rank (",RemoteDomainNo,") -> element found"
+              IF (DIAGNOSTICS2) THEN              
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"element is in list from last rank ("// &
+                    & TRIM(NumberToVString(RemoteDomainNo,"*",ERR,ERROR))//") -> element found",ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": element is in list from last rank (",RemoteDomainNo,") -> element found"
               ENDIF
             ENDIF
           ENDIF
@@ -1629,7 +1650,9 @@ CONTAINS
           
           IF (.NOT. ElementFound) THEN
             IF (DIAGNOSTICS2) THEN
-              PRINT *, MyComputationalNodeNumber, ": query rank ", ComputationalNodeNo
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"query rank "// &
+                  & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+              !PRINT *, MyComputationalNodeNumber, ": query rank ", ComputationalNodeNo
             ENDIF
           
             FirstBoundaryElementGlobalNo = FirstLastBoundaryElement(2*ComputationalNodeNo)
@@ -1639,8 +1662,11 @@ CONTAINS
               ! communicate to see if rank contains node
               
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": element lies in interval [",FirstBoundaryElementGlobalNo,",",&
-                  & LastBoundaryElementGlobalNo,"]"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"element lies in interval ["// &
+                    & TRIM(NumberToVString(FirstBoundaryElementGlobalNo,"*",ERR,ERROR))//","// &
+                    & TRIM(NumberToVString(LastBoundaryElementGlobalNo,"*",ERR,ERROR))//"]",ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": element lies in interval [",FirstBoundaryElementGlobalNo,",",&
+                !  & LastBoundaryElementGlobalNo,"]"
               ENDIF
                 
               IF (ALLOCATED(RemoteBoundaryElements)) DEALLOCATE(RemoteBoundaryElements)
@@ -1679,8 +1705,12 @@ CONTAINS
               !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
               
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": find ghost ",GhostElementGlobalNo," at rank ", ComputationalNodeNo, &
-                  & " which has ", NumberRemoteBoundaryElements, " boundary nodes :", RemoteBoundaryElements
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"find ghost "// &
+                    & TRIM(NumberToVString(GhostElementGlobalNo,"*",ERR,ERROR))//" at rank "// &
+                    & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR))//" which has "// &
+                    & TRIM(NumberToVString(NumberRemoteBoundaryElements,"*",ERR,ERROR))//" boundary nodes",ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": find ghost ",GhostElementGlobalNo," at rank ", ComputationalNodeNo, &
+                !  & " which has ", NumberRemoteBoundaryElements, " boundary nodes :", RemoteBoundaryElements
               ENDIF
               
               RemoteDomainNo = ComputationalNodeNo
@@ -1689,17 +1719,23 @@ CONTAINS
               ! if element was found 
               IF (SORTED_ARRAY_CONTAINS_ELEMENT(RemoteBoundaryElements,GhostElementGlobalNo,ERR,ERROR)) THEN
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements contains ghost element -> element found"
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"RemoteBoundaryElements contains ghost element -> element found",&
+                    & ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements contains ghost element -> element found"
                 ENDIF
                 ElementFound = .TRUE.
               ELSE
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements does not contain ghost element"
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"RemoteBoundaryElements does not contain ghost element",&
+                    & ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": RemoteBoundaryElements does not contain ghost element"
                 ENDIF
               ENDIF
             ELSE
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": boundary element does not lie in range of computational node"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"boundary element does not lie in range of computational node",&
+                  & ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": boundary element does not lie in range of computational node"
               ENDIF
               
             ENDIF ! boundary element no. lies in range of computational node
@@ -1714,7 +1750,9 @@ CONTAINS
               IF (MappingAdjacentDomain%DOMAIN_NUMBER == RemoteDomainNo) THEN
               
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": add ghost to AdjacentDomainIdx ",AdjacentDomainIdx
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"add ghost to AdjacentDomainIdx "// &
+                      & TRIM(NumberToVString(AdjacentDomainIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": add ghost to AdjacentDomainIdx ",AdjacentDomainIdx
                 ENDIF
             
                 ! add ghost 
@@ -1731,7 +1769,8 @@ CONTAINS
             IF (.NOT.AdjacentDomainAlreadyStored) THEN
             
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomain"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"create new AdjacentDomain",ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomain"
               ENDIF
             
               ! create new AdjacentDomain entry in ELEMENTS_MAPPING%ADJACENT_DOMAINS
@@ -1750,8 +1789,10 @@ CONTAINS
               
               ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS+1
               
-              IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": reshape to size ",ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+              IF (DIAGNOSTICS2) THEN               
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"reshape to size "// &
+                  & TRIM(NumberToVString(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,"*",ERR,ERROR)),ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": reshape to size ",ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
               ENDIF
               
               ALLOCATE(AdjacentDomains(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
@@ -1768,7 +1809,9 @@ CONTAINS
             ENDIF ! .NOT.AdjacentDomainAlreadyStored
           ELSE
             IF (DIAGNOSTICS2) THEN
-              PRINT *, MyComputationalNodeNumber, ": element not found on rank ", ComputationalNodeNo
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"element not found on rank "// &
+                & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+              !PRINT *, MyComputationalNodeNumber, ": element not found on rank ", ComputationalNodeNo
             ENDIF
           ENDIF ! element was found
             
@@ -1779,17 +1822,9 @@ CONTAINS
     ENDDO ! GhostElementLocalNo
         
     ! synchronize RMA
-    !CALL MPI_WIN_FENCE(IOR(MPI_MODE_NOSTORE, MPI_MODE_NOPUT), MpiMemoryWindow, MPI_IERROR)
-    !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
-          
-    ! synchronize RMA
     CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
-    !CALL MPI_WIN_FENCE(MPI_MODE_NOSUCCEED, MpiMemoryWindow, MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
           
-    !CALL MPI_WIN_COMPLETE(MpiMemoryWindow, MPI_IERROR)
-    !CALL MPI_ERROR_CHECK("MPI_WIN_COMPLETE",MPI_IERROR,ERR,ERROR,*999)
-    
     ! deallocate window 
     CALL MPI_WIN_FREE(MpiMemoryWindow, MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_WIN_FREE",MPI_IERROR,ERR,ERROR,*999)
@@ -1951,7 +1986,9 @@ CONTAINS
     ENDDO
     
       IF (DIAGNOSTICS2) THEN
-        PRINT *, MyComputationalNodeNumber, ": *my GhostElements global: ",GhostElementGlobalNumber
+        !CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*my GhostElements global: "// &
+        !  & TRIM(NumberToVString(GhostElementGlobalNumber,"*",ERR,ERROR)),ERR,ERROR,*999)
+        !PRINT *, MyComputationalNodeNumber, ": *my GhostElements global: ",GhostElementGlobalNumber
       ENDIF
     
     ! start mpi RMA
@@ -1970,7 +2007,10 @@ CONTAINS
       GhostElementGlobalNo=ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(GhostElementLocalNo)
       
       IF (DIAGNOSTICS2) THEN
-        PRINT *, MyComputationalNodeNumber, ": *GhostElement local ",GhostElementLocalNo, ", global ",GhostElementGlobalNo
+        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*GhostElement local "// &
+          & TRIM(NumberToVString(GhostElementLocalNo,"*",ERR,ERROR))//", global "// &
+          & TRIM(NumberToVString(GhostElementGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+        !PRINT *, MyComputationalNodeNumber, ": *GhostElement local ",GhostElementLocalNo, ", global ",GhostElementGlobalNo
       ENDIF
       
       NotYetCheckedForLastRemoteGhostElements = .TRUE.
@@ -1993,7 +2033,9 @@ CONTAINS
               ElementFound = .TRUE.
               NotYetCheckedForLastRemoteGhostElements = .FALSE.
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *element is in list from last rank (",RemoteDomainNo,") -> element found"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*element is in list from last rank ("// &
+                  & TRIM(NumberToVString(RemoteDomainNo,"*",ERR,ERROR))//") -> element found",ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *element is in list from last rank (",RemoteDomainNo,") -> element found"
               ENDIF
             ENDIF
           ENDIF
@@ -2001,7 +2043,9 @@ CONTAINS
           
           IF (.NOT. ElementFound) THEN
             IF (DIAGNOSTICS2) THEN
-              PRINT *, MyComputationalNodeNumber, ": *query rank ", ComputationalNodeNo
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*query rank "// &
+                & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+              !PRINT *, MyComputationalNodeNumber, ": *query rank ", ComputationalNodeNo
             ENDIF
           
             FirstGhostElementGlobalNo = FirstLastGhostElement(2*ComputationalNodeNo)
@@ -2011,8 +2055,12 @@ CONTAINS
               ! communicate to see if rank contains element
               
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *element lies in interval [",FirstGhostElementGlobalNo,",",&
-                  & LastGhostElementGlobalNo,"]"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*element lies in interval ["// &
+                  & TRIM(NumberToVString(FirstGhostElementGlobalNo,"*",ERR,ERROR))//","// &
+                  & TRIM(NumberToVString(LastGhostElementGlobalNo,"*",ERR,ERROR))//"]" &
+                  ,ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *element lies in interval [",FirstGhostElementGlobalNo,",",&
+                !  & LastGhostElementGlobalNo,"]"
               ENDIF
                 
               IF (ALLOCATED(RemoteGhostElements)) DEALLOCATE(RemoteGhostElements)
@@ -2038,8 +2086,14 @@ CONTAINS
 
     
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *find ghost ",GhostElementGlobalNo," at rank ", ComputationalNodeNo, &
-                  & " which has ", NumberRemoteGhostElements, " *ghost nodes :", RemoteGhostElements
+              
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*find ghost "// &
+                  & TRIM(NumberToVString(GhostElementGlobalNo,"*",ERR,ERROR))//" at rank "// &
+                  & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR))//" which has "// &
+                  & TRIM(NumberToVString(NumberRemoteGhostElements,"*",ERR,ERROR))//" *ghost nodes" &
+                  & ,ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *find ghost ",GhostElementGlobalNo," at rank ", ComputationalNodeNo, &
+                !  & " which has ", NumberRemoteGhostElements, " *ghost nodes :", RemoteGhostElements
               ENDIF
               
               RemoteDomainNo = ComputationalNodeNo
@@ -2048,17 +2102,23 @@ CONTAINS
               ! if element was found 
               IF (SORTED_ARRAY_CONTAINS_ELEMENT(RemoteGhostElements,GhostElementGlobalNo,ERR,ERROR)) THEN
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": *RemoteGhostElements contains ghost element -> element found"
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*RemoteGhostElements contains ghost element -> element found" &
+                    & ,ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": *RemoteGhostElements contains ghost element -> element found"
                 ENDIF
                 ElementFound = .TRUE.
               ELSE
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": *RemoteGhostElements does not contain ghost element"
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*RemoteGhostElements does not contain ghost element" &
+                    & ,ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": *RemoteGhostElements does not contain ghost element"
                 ENDIF
               ENDIF
             ELSE
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *ghost element does not lie in range of computational node"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*ghost element does not lie in range of computational node" &
+                  & ,ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *ghost element does not lie in range of computational node"
               ENDIF
               
             ENDIF ! ghost element no. lies in range of computational node
@@ -2075,7 +2135,10 @@ CONTAINS
               IF (MappingAdjacentDomain%DOMAIN_NUMBER == RemoteDomainNo) THEN
               
                 IF (DIAGNOSTICS2) THEN
-                  PRINT *, MyComputationalNodeNumber, ": *add ghost to AdjacentDomainIdx ",AdjacentDomainIdx
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*add ghost to AdjacentDomainIdx "// &
+                    & TRIM(NumberToVString(AdjacentDomainIdx,"*",ERR,ERROR)) &
+                    & ,ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": *add ghost to AdjacentDomainIdx ",AdjacentDomainIdx
                 ENDIF
             
                 ! check if ghost is already stored
@@ -2092,8 +2155,11 @@ CONTAINS
                   MappingAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS = MappingAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS+1
                   
                   IF (DIAGNOSTICS2) THEN
-                    PRINT *, MyComputationalNodeNumber, ": *NUMBER_OF_FURTHER_LINKED_GHOSTS ", &
-                      & MappingAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS
+                    CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*NUMBER_OF_FURTHER_LINKED_GHOSTS "// &
+                      & TRIM(NumberToVString(MappingAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS,"*",ERR,ERROR)) &
+                      & ,ERR,ERROR,*999)
+                    !PRINT *, MyComputationalNodeNumber, ": *NUMBER_OF_FURTHER_LINKED_GHOSTS ", &
+                    !  & MappingAdjacentDomain%NUMBER_OF_FURTHER_LINKED_GHOSTS
                   ENDIF
                   
                   IF (.NOT.ALLOCATED(MappingAdjacentDomain%LOCAL_GHOST_FURTHER_INDICES) .AND. &
@@ -2118,7 +2184,9 @@ CONTAINS
             IF (.NOT.AdjacentDomainAlreadyStored) THEN
             
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *create new AdjacentDomain"
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*create new AdjacentDomain" &
+                  & ,ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *create new AdjacentDomain"
               ENDIF
             
               ! create new AdjacentDomain entry in ELEMENTS_MAPPING%ADJACENT_DOMAINS
@@ -2138,7 +2206,10 @@ CONTAINS
               ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS+1
               
               IF (DIAGNOSTICS2) THEN
-                PRINT *, MyComputationalNodeNumber, ": *reshape to size ",ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*reshape to size " // &
+                  & TRIM(NumberToVString(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,"*",ERR,ERROR)) &
+                  & ,ERR,ERROR,*999)
+                !PRINT *, MyComputationalNodeNumber, ": *reshape to size ",ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
               ENDIF
               
               ALLOCATE(AdjacentDomains(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
@@ -2155,12 +2226,18 @@ CONTAINS
             ENDIF ! .NOT.AdjacentDomainAlreadyStored
           ELSE
             IF (DIAGNOSTICS2) THEN
-              PRINT *, MyComputationalNodeNumber, ": *element not found on rank ", ComputationalNodeNo
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*element not found on rank " // &
+                & TRIM(NumberToVString(ComputationalNodeNo,"*",ERR,ERROR)) &
+                & ,ERR,ERROR,*999)
+              !PRINT *, MyComputationalNodeNumber, ": *element not found on rank ", ComputationalNodeNo
             ENDIF
           ENDIF ! element was found
             
           IF (DIAGNOSTICS2) THEN
-            PRINT *, MyComputationalNodeNumber, ": *FoundElementsCount: ", FoundElementsCount
+            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"*FoundElementsCount: " // &
+              & TRIM(NumberToVString(FoundElementsCount,"*",ERR,ERROR)) &
+              & ,ERR,ERROR,*999)
+            !PRINT *, MyComputationalNodeNumber, ": *FoundElementsCount: ", FoundElementsCount
           ENDIF
           IF (FoundElementsCount >= 6) THEN
             EXIT
@@ -6538,7 +6615,10 @@ CONTAINS
                   DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
                     NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
                       
-                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
+                    IF (DIAGNOSTICS2) &
+                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "//TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
+                      & ERR,ERROR,*999)
+                      !PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
       
                     OnOtherDomain = .FALSE.
                       
@@ -6546,13 +6626,18 @@ CONTAINS
                     DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
                       AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
                       
-                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
+                      IF (DIAGNOSTICS2) &
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global " //&
+                          & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                        !PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
                     
                       ! determine if adjacent element is on a different domain, that is the case if it is a ghost
                       IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
                         & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ERR,ERROR)) THEN
                         
-                        IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     on other domain"
+                        IF (DIAGNOSTICS2) &
+                          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on other domain",ERR,ERROR,*999)
+                          !PRINT *, MyComputationalNodeNumber, ":     on other domain"
                     
                         OnOtherDomain = .TRUE.
                         EXIT
@@ -6560,7 +6645,7 @@ CONTAINS
                     
                     ENDDO
                     
-                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": is node internal? ",(.NOT. OnOtherDomain)
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": is node internal? ",(.NOT. OnOtherDomain)
                     
                     IF (.NOT. OnOtherDomain) THEN
                       ! add node to internal nodes list
@@ -6646,7 +6731,10 @@ CONTAINS
                 DO BoundaryAndGhostNodeIdx=1,NumberBoundaryAndGhostNodes
                   NodeGlobalNo=BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
                 
-                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
+                  IF (DIAGNOSTICS2) &
+                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "//TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
+                      & ERR,ERROR,*999)
+                      ! PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
       
                   ! determine the other domains which have this node as boundary node
                   
@@ -6654,7 +6742,10 @@ CONTAINS
                   DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
                     AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
                     
-                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
+                    IF (DIAGNOSTICS2) &
+                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global "// &
+                        & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                      ! PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
                     
                     ! determine local (ghost) number
                     ! if adjacent element is among the ghost elements, i.e. on a different domain (and not a boundary element)
@@ -6664,7 +6755,10 @@ CONTAINS
                       
                       AdjacentElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
                       
-                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     adjacent element local ",AdjacentElementLocalNo
+                      IF (DIAGNOSTICS2) &
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element local "// &
+                          & TRIM(NumberToVString(AdjacentElementLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                        ! PRINT *, MyComputationalNodeNumber, ":     adjacent element local ",AdjacentElementLocalNo
                       
                       ! determine domain of AdjacentElementLocalNo
                       DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
@@ -6672,7 +6766,10 @@ CONTAINS
                           & LOCAL_GHOST_RECEIVE_INDICES,AdjacentElementLocalNo,ERR,ERROR)) THEN
                           
                           DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
-                          IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     on domain ",DomainNo
+                          IF (DIAGNOSTICS2) &
+                            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on domain "// &
+                              & TRIM(NumberToVString(DomainNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                            ! PRINT *, MyComputationalNodeNumber, ":     on domain ",DomainNo
                           
                           ! now it was found that NodeGlobalNo is also on domain AdjacentDomainIdx, add to list
                           CALL LIST_ITEM_ADD(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
@@ -6680,7 +6777,9 @@ CONTAINS
                         ENDIF
                       ENDDO  ! AdjacentDomainIdx
                     ELSE 
-                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     is on same domain"
+                      IF (DIAGNOSTICS2) &
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     is on same domain",ERR,ERROR,*999)
+                        ! PRINT *, MyComputationalNodeNumber, ":     is on same domain"
                     ENDIF
                   ENDDO  ! AdjacentElementIdx
                 ENDDO  ! BoundaryAndGhostNodeIdx
@@ -6725,9 +6824,13 @@ CONTAINS
                 DEALLOCATE(IntegerArray)
                 
                 IF (DIAGNOSTICS1) THEN
-                  PRINT *, MyComputationalNodeNumber, ": ",NumberAdjacentDomains," AdjacentDomains:",AdjacentDomains
-                  PRINT *, MyComputationalNodeNumber, ": ",NumberLocalAndAdjacentDomains," LocalAndAdjacentDomains:", &
-                    & LocalAndAdjacentDomains
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, TRIM(NumberToVString(NumberAdjacentDomains,"*",ERR,ERROR)) // &
+                    & " AdjacentDomains",ERR,ERROR,*999)
+                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, TRIM(NumberToVString(NumberLocalAndAdjacentDomains,"*",ERR,ERROR)) // &
+                    & " LocalAndAdjacentDomains",ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": ",NumberAdjacentDomains," AdjacentDomains:",AdjacentDomains
+                  !PRINT *, MyComputationalNodeNumber, ": ",NumberLocalAndAdjacentDomains," LocalAndAdjacentDomains:", &
+                  !  & LocalAndAdjacentDomains
                 ENDIF
               
                 ! create list for each adjacent domain with shared nodes
@@ -6825,12 +6928,20 @@ CONTAINS
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 NODES_MAPPING%NUMBER_OF_GLOBAL = NINT(TotalNumberNodes)
                 
-                IF (DIAGNOSTICS1) THEn
-                  PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_INTERNAL: ",NODES_MAPPING%NUMBER_OF_INTERNAL
-                  PRINT *, MyComputationalNodeNumber, ": NumberBoundaryAndGhostNodes: ",NumberBoundaryAndGhostNodes
-                  PRINT *, MyComputationalNodeNumber, ": NumberNodes: ",NumberNodes
-                  PRINT *, MyComputationalNodeNumber, ": TotalNumberNodes: ",TotalNumberNodes
-                  PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_GLOBAL: ",NODES_MAPPING%NUMBER_OF_GLOBAL
+                IF (DIAGNOSTICS1) THEN
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NODES_MAPPING%NUMBER_OF_INTERNAL: ",&
+                    & NODES_MAPPING%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NumberBoundaryAndGhostNodes: ", &
+                    & NumberBoundaryAndGhostNodes,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NumberNodes: ",NumberNodes,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"TotalNumberNodes: ",TotalNumberNodes,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NODES_MAPPING%NUMBER_OF_GLOBAL: ", &
+                   & NODES_MAPPING%NUMBER_OF_GLOBAL,ERR,ERROR,*999)
+                  !PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_INTERNAL: ",NODES_MAPPING%NUMBER_OF_INTERNAL
+                  !PRINT *, MyComputationalNodeNumber, ": NumberBoundaryAndGhostNodes: ",NumberBoundaryAndGhostNodes
+                  !PRINT *, MyComputationalNodeNumber, ": NumberNodes: ",NumberNodes
+                  !PRINT *, MyComputationalNodeNumber, ": TotalNumberNodes: ",TotalNumberNodes
+                  !PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_GLOBAL: ",NODES_MAPPING%NUMBER_OF_GLOBAL
                 ENDIF
                 
                 ! compute average number per domain
@@ -6890,9 +7001,13 @@ CONTAINS
                 IF (DIAGNOSTICS1) THEN
                   DO AdjacentDomainIdx=1,NumberAdjacentDomains+1 
                     AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
-                    PRINT *, MyComputationalNodeNumber, ": rank ",AdjacentDomain,&
-                      & " interior:",NumberInteriorAndLocalNodesOnRank(1,AdjacentDomainIdx), &
-                      & ", total:",NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx),", AdjacentDomainIdx=",AdjacentDomainIdx
+                    CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "rank "//TRIM(NumberToVString(AdjacentDomain,"*",ERR,ERROR)) // &
+                      & ", interior:"//TRIM(NumberToVString(AdjacentDomain,"*",ERR,ERROR)) // &
+                      & ", total:"//TRIM(NumberToVString(NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx),"*",ERR,ERROR)) //&
+                      & ", AdjacentDomainIdx="//TRIM(NumberToVString(AdjacentDomainIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                    !PRINT *, MyComputationalNodeNumber, ": rank ",AdjacentDomain,&
+                    !  & " interior:",NumberInteriorAndLocalNodesOnRank(1,AdjacentDomainIdx), &
+                    !  & ", total:",NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx),", AdjacentDomainIdx=",AdjacentDomainIdx
                   ENDDO
                 ENDIF
         
@@ -6920,12 +7035,16 @@ CONTAINS
                           
                   IF (DIAGNOSTICS2) THEN
                     CALL LIST_NUMBER_OF_ITEMS_GET(SharedNodesList(AdjacentDomainIdx)%PTR,NumberSharedNodes,ERR,ERROR,*999)
-                    PRINT *, MyComputationalNodeNumber, ": domain ", AdjacentDomain, " has ",NumberSharedNodes," nodes "
+                    CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, ": domain "//TRIM(NumberToVString(AdjacentDomain,"*",ERR,ERROR)) // &
+                      & " has "//TRIM(NumberToVString(NumberSharedNodes,"*",ERR,ERROR)) // &
+                      & " nodes ",ERR,ERROR,*999)
+                    !PRINT *, MyComputationalNodeNumber, ": domain ", AdjacentDomain, " has ",NumberSharedNodes," nodes "
                     DO SharedNodeIdx = 1,NumberSharedNodes
                       CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,BoundaryAndGhostNodeIdx,&
                         & ERR,ERROR,*999)
                       GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
-                      PRINT *, MyComputationalNodeNumber, ":     global no. ", GlobalNodeNo
+                      !PRINT *, MyComputationalNodeNumber, ":     global no. ", GlobalNodeNo
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "     global no. ",GlobalNodeNo,ERR,ERROR,*999)
                     ENDDO
                         
                   ENDIF
@@ -6939,17 +7058,24 @@ CONTAINS
                     
                     IF (DIAGNOSTICS2) THEN
                       CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, NumberDomains, ERR,ERROR,*999)
-                      PRINT *, MyComputationalNodeNumber, ": consider node ",GlobalNodeNo," which is shared by the ",&
-                        NumberDomains," domains "
+                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " consider node "//&
+                        & TRIM(NumberToVString(GlobalNodeNo,"*",ERR,ERROR)) // &
+                        & " which is shared by the "//TRIM(NumberToVString(NumberDomains,"*",ERR,ERROR)) // &
+                        & " domains ",ERR,ERROR,*999)
+                      !PRINT *, MyComputationalNodeNumber, ": consider node ",GlobalNodeNo," which is shared by the ",&
+                      !  NumberDomains," domains "
                       DO I=1,NumberDomains
                         CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I,DomainNo,ERR,ERROR,*999)
-                        PRINT *, MyComputationalNodeNumber, ":   ",DomainNo
+                        !PRINT *, MyComputationalNodeNumber, ":   ",DomainNo
+                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "   ",DomainNo,ERR,ERROR,*999)
                       ENDDO
                     ENDIF
                     
                     IF (DIAGNOSTICS2) THEN
-                      PRINT *, MyComputationalNodeNumber, ": node assigned to domain ", &
-                        & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, " node assigned to domain ",BoundaryAndGhostNodesDomain( &
+                        & BoundaryAndGhostNodeIdx),ERR,ERROR,*999)
+                      !PRINT *, MyComputationalNodeNumber, ": node assigned to domain ", &
+                      !  & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
                     ENDIF
                       
                     ! if node was not yet assigned to a domain
@@ -6966,12 +7092,14 @@ CONTAINS
                         IF (DIAGNOSTICS2) THEN
                           GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx2)
                     
-                          PRINT *, MyComputationalNodeNumber, ": further node ", GlobalNodeNo
+                          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, " further node ",GlobalNodeNo,ERR,ERROR,*999)
+                          !PRINT *, MyComputationalNodeNumber, ": further node ", GlobalNodeNo
                           CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,NumberDomains,&
                             & ERR,ERROR,*999)
                           DO I=1,NumberDomains
                             CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,I,DomainNo,ERR,ERROR,*999)
-                            PRINT *, MyComputationalNodeNumber, ":     domain set  ",DomainNo
+                            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "     domain set  ",DomainNo,ERR,ERROR,*999)
+                            !PRINT *, MyComputationalNodeNumber, ":     domain set  ",DomainNo
                           ENDDO
                         ENDIF
                         
@@ -6979,14 +7107,18 @@ CONTAINS
                           
                           IF (LIST_EQUAL(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, &
                             & DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,ERR,ERROR)) THEN
-                            IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":     domain set is equal"
+                            IF (DIAGNOSTICS2) CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "     domain set is equal",ERR,ERROR,*999)
+                            !PRINT *, MyComputationalNodeNumber, ":     domain set is equal"
                             NumberNodesWithThatSetOfDomains = NumberNodesWithThatSetOfDomains+1
                           ENDIF
                         ENDIF
                       ENDDO
                       IF (DIAGNOSTICS2) THEN
-                        PRINT *, MyComputationalNodeNumber, ": there are ", NumberNodesWithThatSetOfDomains, &
-                          & " nodes with that set of domains. Now assign the nodes to domains. DIAGNOSTICS2:",DIAGNOSTICS2
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " there are "//&
+                          & TRIM(NumberToVString(NumberNodesWithThatSetOfDomains,"*",ERR,ERROR)) // &
+                          & " nodes with that set of domains. Now assign the nodes to domains. ",ERR,ERROR,*999)
+                        !PRINT *, MyComputationalNodeNumber, ": there are ", NumberNodesWithThatSetOfDomains, &
+                        !  & " nodes with that set of domains. Now assign the nodes to domains. DIAGNOSTICS2:",DIAGNOSTICS2
                       ENDIF
                       
                       ! get first of the shared domains
@@ -7032,17 +7164,34 @@ CONTAINS
                             ! compute the number of nodes from the current set of nodes that have the same domains that should belong to adjacent domain
                             NumberInCurrentSetToClaim = NINT((1.0 - PortionToDistribute) * NumberNodesWithThatSetOfDomains)
                             
-                            
                             IF (DIAGNOSTICS2) THEN
-                              PRINT *, MyComputationalNodeNumber, ": Domain ", DomainToAssignNodesTo
-                              PRINT *, MyComputationalNodeNumber, ":   has ", NumberInteriorNodesOnRank, " interior, ",&
-                                & NumberLocalNodesOnRank, " total, ", NumberSharedNodesOnRank, " shared nodes",&
-                                & ", AdjacentDomainIdx2=",AdjacentDomainIdx2
-                              PRINT *, MyComputationalNodeNumber, ":   NumberNodesAboveOptimum=",NumberNodesAboveOptimum
-                              PRINT *, MyComputationalNodeNumber, ":   PortionToDistribute=",PortionToDistribute
-                              PRINT *, MyComputationalNodeNumber, ":   NumberInCurrentSetToClaim=",NumberInCurrentSetToClaim
-                              PRINT *, MyComputationalNodeNumber, ":   already got ",&
-                                & NumberNodesInDomain(DomainToAssignNodesToIdx)," nodes"
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " Domain "//&
+                                & TRIM(NumberToVString(DomainToAssignNodesTo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "   has "//&
+                                & TRIM(NumberToVString(NumberInteriorNodesOnRank,"*",ERR,ERROR))//" interior, "//&
+                                & TRIM(NumberToVString(NumberLocalNodesOnRank,"*",ERR,ERROR))//" total, "//&
+                                & TRIM(NumberToVString(NumberSharedNodesOnRank,"*",ERR,ERROR))//" shared nodes, "//&
+                                & "AdjacentDomainIdx2="//&
+                                & TRIM(NumberToVString(AdjacentDomainIdx2,"*",ERR,ERROR)),ERR,ERROR,*999)
+                              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "   NumberNodesAboveOptimum=", &
+                                & NumberNodesAboveOptimum,ERR,ERROR,*999)
+                              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "   PortionToDistribute=",PortionToDistribute, &
+                                & ERR,ERROR,*999)
+                              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "   NumberInCurrentSetToClaim=", &
+                                & NumberInCurrentSetToClaim,ERR,ERROR,*999)
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "   already got "// &
+                                & TRIM(NumberToVString(NumberNodesInDomain(DomainToAssignNodesToIdx),"*",ERR,ERROR))// &
+                                & " nodes",ERR,ERROR,*999)
+                            
+                              !PRINT *, MyComputationalNodeNumber, ": Domain ", DomainToAssignNodesTo
+                              !PRINT *, MyComputationalNodeNumber, ":   has ", NumberInteriorNodesOnRank, " interior, ",&
+                              !  & NumberLocalNodesOnRank, " total, ", NumberSharedNodesOnRank, " shared nodes",&
+                              !  & ", AdjacentDomainIdx2=",AdjacentDomainIdx2
+                              !PRINT *, MyComputationalNodeNumber, ":   NumberNodesAboveOptimum=",NumberNodesAboveOptimum
+                              !PRINT *, MyComputationalNodeNumber, ":   PortionToDistribute=",PortionToDistribute
+                              !PRINT *, MyComputationalNodeNumber, ":   NumberInCurrentSetToClaim=",NumberInCurrentSetToClaim
+                              !PRINT *, MyComputationalNodeNumber, ":   already got ",&
+                              !  & NumberNodesInDomain(DomainToAssignNodesToIdx)," nodes"
                             ENDIF
                             
                             ! if there weren't enough nodes assigned to adjacent domain DomainToAssignNodesToIdx yet, the domain which will claim this node is found
@@ -7067,16 +7216,25 @@ CONTAINS
                           
                           IF (DIAGNOSTICS2) THEN
                             GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx2)
-                            PRINT *, MyComputationalNodeNumber, ": assign node ",GlobalNodeNo," to domain ",DomainToAssignNodesTo, &
-                              & ", now it has ",NumberNodesInDomain(DomainToAssignNodesToIdx)," nodes"
+                            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " assign node "//&
+                              & TRIM(NumberToVString(GlobalNodeNo,"*",ERR,ERROR))//" to domain "//&
+                              & TRIM(NumberToVString(DomainToAssignNodesTo,"*",ERR,ERROR))//", now it has "//&
+                              & TRIM(NumberToVString(NumberNodesInDomain(DomainToAssignNodesToIdx),"*",ERR,ERROR))//&
+                              & " nodes",ERR,ERROR,*999)
+                              
+                            !PRINT *, MyComputationalNodeNumber, ": assign node ",GlobalNodeNo," to domain ",DomainToAssignNodesTo, &
+                            !  & ", now it has ",NumberNodesInDomain(DomainToAssignNodesToIdx)," nodes"
                           ENDIF
                           
                         ENDIF
                       ENDDO  ! SharedNodeIdx2                                          
                     ELSE
                       IF (DIAGNOSTICS2) THEN
-                        PRINT *, MyComputationalNodeNumber, ": node already assigned to domain ", &
-                          & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " node already assigned to domain "//&
+                          & TRIM(NumberToVString(BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx),"*",ERR,ERROR))&
+                          & ,ERR,ERROR,*999)
+                        !PRINT *, MyComputationalNodeNumber, ": node already assigned to domain ", &
+                        !  & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
                       ENDIF
                     ENDIF  ! node not yet assigned to domain
                     
@@ -7177,9 +7335,9 @@ CONTAINS
                       DomainNo = BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
                       
                       IF (DIAGNOSTICS1) THEN
-                        PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
-                          & ", node global ",NodeGlobalNo, " is at border boundary/ghost element, ", &
-                          & "DomainNo: ",DomainNo
+                        !PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
+                        !  & ", node global ",NodeGlobalNo, " is at border boundary/ghost element, ", &
+                        !  & "DomainNo: ",DomainNo
                       ENDIF
                       
                       ! only add to send buffer if it is owned by own domain
@@ -7198,7 +7356,7 @@ CONTAINS
                               DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":      boundary element is ghost on domain ",DomainNo
+                                !PRINT *, MyComputationalNodeNumber, ":      boundary element is ghost on domain ",DomainNo
                               ENDIF
                         
                               NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
@@ -7211,7 +7369,7 @@ CONTAINS
                                   & DomainNo2,ERR,ERROR,*999)
                                   
                                 IF (DIAGNOSTICS1) THEN
-                                  PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
+                                  !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
                                   NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE. 
@@ -7220,8 +7378,8 @@ CONTAINS
                               ENDDO  ! I
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
                               ENDIF
                               
                               IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
@@ -7241,7 +7399,7 @@ CONTAINS
                               DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":      boundary element is (recv) ghost on domain ",DomainNo
+                                !PRINT *, MyComputationalNodeNumber, ":      boundary element is (recv) ghost on domain ",DomainNo
                               ENDIF
                         
                               NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
@@ -7254,7 +7412,7 @@ CONTAINS
                                   & DomainNo2,ERR,ERROR,*999)
                                   
                                 IF (DIAGNOSTICS1) THEN
-                                  PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
+                                  !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
                                   NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE. 
@@ -7263,8 +7421,8 @@ CONTAINS
                               ENDDO  ! I
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
                               ENDIF
                               
                               IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
@@ -7284,7 +7442,7 @@ CONTAINS
                               DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":      boundary element is (further) ghost on domain ",DomainNo
+                                !PRINT *, MyComputationalNodeNumber, ":      boundary element is (further) ghost on domain ",DomainNo
                               ENDIF
                         
                               NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
@@ -7297,7 +7455,7 @@ CONTAINS
                                   & DomainNo2,ERR,ERROR,*999)
                                   
                                 IF (DIAGNOSTICS1) THEN
-                                  PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
+                                  !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
                                   NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE. 
@@ -7306,8 +7464,8 @@ CONTAINS
                               ENDDO  ! I
                               
                               IF (DIAGNOSTICS1) THEN
-                                PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
                               ENDIF
                               
                               IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
@@ -7327,9 +7485,9 @@ CONTAINS
                       ! if node is not at border between boundary and ghost elements, i.e. it is not in BoundaryAndGhostNodes
                       
                       IF (DIAGNOSTICS1) THEN
-                        PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
-                          & ", node global ",NodeGlobalNo, " is not at border boundary/ghost element, ", &
-                          & "BoundaryAndGhostNodes: ", BoundaryAndGhostNodes
+                       ! PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
+                       !   & ", node global ",NodeGlobalNo, " is not at border boundary/ghost element, ", &
+                       !   & "BoundaryAndGhostNodes: ", BoundaryAndGhostNodes
                       ENDIF
                       
                       ! get domains where boundary element is ghost element
@@ -7341,7 +7499,7 @@ CONTAINS
                             DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
                             
                             IF (DIAGNOSTICS1) THEN
-                              PRINT *, MyComputationalNodeNumber, ":    ghost on domain ", DomainNo, ", DomainIdx=",DomainIdx
+                              !PRINT *, MyComputationalNodeNumber, ":    ghost on domain ", DomainNo, ", DomainIdx=",DomainIdx
                             ENDIF
                             
                             ! add node to list to be send to domain of boundary element
@@ -7386,8 +7544,8 @@ CONTAINS
                   DEALLOCATE(IntegerArray)
                   
                   IF (DIAGNOSTICS1) THEN
-                    PRINT *, MyComputationalNodeNumber, ": send to ", DomainNo, ": ", &
-                      & SendBuffer(1:NumberToSendToDomain(DomainIdx),DomainIdx)
+                    !PRINT *, MyComputationalNodeNumber, ": send to ", DomainNo, ": ", &
+                    !  & SendBuffer(1:NumberToSendToDomain(DomainIdx),DomainIdx)
                   ENDIF
                   
                   ! number of nodes to be send to domain
@@ -7428,8 +7586,8 @@ CONTAINS
                     ENDDO
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": Received ", NumberOfNodesToReceive, " ghosts from rank ",DomainNo, &
-                        & ": ",ReceiveBuffer
+                      !PRINT *, MyComputationalNodeNumber, ": Received ", NumberOfNodesToReceive, " ghosts from rank ",DomainNo, &
+                      !  & ": ",ReceiveBuffer
                     ENDIF
                     
                     DEALLOCATE(ReceiveBuffer)
@@ -7532,8 +7690,8 @@ CONTAINS
                     InternalNodesIdx = InternalNodesIdx + 1
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": Node global ",InternalNodeGlobalNo," local ",LocalNodeNo,&
-                        & ", interior"
+                      !PRINT *, MyComputationalNodeNumber, ": Node global ",InternalNodeGlobalNo," local ",LocalNodeNo,&
+                      !  & ", interior"
                     ENDIF
                   ELSE
                     ! the next node is a boundary node
@@ -7543,8 +7701,8 @@ CONTAINS
                     BoundaryNodesIdx = BoundaryNodesIdx + 1
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": Node global ",BoundaryNodeGlobalNo," local ",LocalNodeNo,&
-                        & ", boundary"
+                      !PRINT *, MyComputationalNodeNumber, ": Node global ",BoundaryNodeGlobalNo," local ",LocalNodeNo,&
+                      !  & ", boundary"
                     ENDIF
                     
                     ! update LOCAL_GHOST_SEND_INDICES
@@ -7561,8 +7719,8 @@ CONTAINS
                           IF (AdjacentDomains(AdjacentDomainIdx) == DomainNo) THEN
                             
                             IF (DIAGNOSTICS1) THEN
-                              PRINT *, MyComputationalNodeNumber, ":    add local number to LOCAL_GHOST_SEND_INDICES of domain ", &
-                                & DomainNo,", AdjacentDomainIdx=",AdjacentDomainIdx
+                              !PRINT *, MyComputationalNodeNumber, ":    add local number to LOCAL_GHOST_SEND_INDICES of domain ", &
+                              !  & DomainNo,", AdjacentDomainIdx=",AdjacentDomainIdx
                             ENDIF
                             
                             CALL LIST_ITEM_ADD(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,LocalNodeNo,ERR,ERROR,*999)
@@ -7594,8 +7752,8 @@ CONTAINS
                   ! update LOCAL_GHOST_RECEIVE_INDICES
                   
                   IF (DIAGNOSTICS1) THEN
-                    PRINT *, MyComputationalNodeNumber, ": Node global ",GhostNodeGlobalNo," local ",LocalNodeNo-1,&
-                      & ", ghost, is at domain ",GhostDomain
+                    !PRINT *, MyComputationalNodeNumber, ": Node global ",GhostNodeGlobalNo," local ",LocalNodeNo-1,&
+                    !  & ", ghost, is at domain ",GhostDomain
                   ENDIF
                   
                   ! find entry ADJACENT_DOMAINS array for domainNo
@@ -7604,8 +7762,8 @@ CONTAINS
                     IF (NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER == GhostDomain) THEN
                       
                       IF (DIAGNOSTICS1) THEN
-                        PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
-                          & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx
+                        !PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
+                        !  & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx
                       ENDIF
                             
                       CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
@@ -7617,7 +7775,7 @@ CONTAINS
                   
                   IF (.NOT. AdacentDomainEntryFound.AND..TRUE.) THEN
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
+                      !PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
                     ENDIF
                   
                     ! create new AdjacentDomain entry in NODES_MAPPING%ADJACENT_DOMAINS
@@ -7634,8 +7792,8 @@ CONTAINS
                     
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS=",&
-                      NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                      !PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS=",&
+                      !  &NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     ENDIF
                     
                     
@@ -7651,7 +7809,7 @@ CONTAINS
                     
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": create lists"
+                      !PRINT *, MyComputationalNodeNumber, ": create lists"
                     ENDIF
                     
                     
@@ -7678,7 +7836,7 @@ CONTAINS
                   
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": reshape"
+                      !PRINT *, MyComputationalNodeNumber, ": reshape"
                     ENDIF
                     IF (NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
                       ALLOCATE(LocalGhostReceiveIndices(1),STAT=ERR)
@@ -7712,13 +7870,13 @@ CONTAINS
                     
                     
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ": add to list"
+                      !PRINT *, MyComputationalNodeNumber, ": add to list"
                     ENDIF
                     AdjacentDomainIdx = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     NumberAdjacentDomains = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     IF (DIAGNOSTICS1) THEN
-                      PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
-                        & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx
+                      !PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
+                      !  & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx
                     ENDIF
                           
                     CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
@@ -7743,12 +7901,12 @@ CONTAINS
                       
                   IF (DIAGNOSTICS1) THEN
                     AdjacentDomain = AdjacentDomains(AdjacentDomainIdx)
-                    PRINT *, MyComputationalNodeNumber, ": adjacent domain ",AdjacentDomain,", LOCAL_GHOST_SEND_INDICES:", &
-                      & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1: &
-                      & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS), &
-                      & ", LOCAL_GHOST_RECEIVE_INDICES: ",&
-                      & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1: &
-                      & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+                    !PRINT *, MyComputationalNodeNumber, ": adjacent domain ",AdjacentDomain,", LOCAL_GHOST_SEND_INDICES:", &
+                    !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1: &
+                    !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS), &
+                    !  & ", LOCAL_GHOST_RECEIVE_INDICES: ",&
+                    !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1: &
+                    !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
                   ENDIF
                 ENDDO
                 
@@ -7778,14 +7936,14 @@ CONTAINS
                       
               
                 IF (DIAGNOSTICS1) THEN
-                  PRINT *, MyComputationalNodeNumber, ": NUMBER_OF_DOMAIN_LOCAL:"
-                  DO I=0,NumberComputationalNodes-1
-                    PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
-                  ENDDO
-                  PRINT *, MyComputationalNodeNumber, ": NUMBER_OF_DOMAIN_GHOST:"
-                  DO I=0,NumberComputationalNodes-1
-                    PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_GHOST(I)
-                  ENDDO
+                  !PRINT *, MyComputationalNodeNumber, ": NUMBER_OF_DOMAIN_LOCAL:"
+                  !DO I=0,NumberComputationalNodes-1
+                  !  PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_LOCAL(I)
+                  !ENDDO
+                  !PRINT *, MyComputationalNodeNumber, ": NUMBER_OF_DOMAIN_GHOST:"
+                  !DO I=0,NumberComputationalNodes-1
+                  !  PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_GHOST(I)
+                  !ENDDO
                 ENDIF
                 
                 ! ----------------------------------------------

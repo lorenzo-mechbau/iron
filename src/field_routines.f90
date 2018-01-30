@@ -12147,18 +12147,11 @@ CONTAINS
                 FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
                 
                 ! ny = dof
-                
-                IF (DEBUGGING) THEN
-                  PRINT *, "Interpolation type: ", FIELD_COMPONENT%INTERPOLATION_TYPE
-                ENDIF
-                
                 SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
                 CASE(FIELD_CONSTANT_INTERPOLATION)
                   !Only process the non-ghosted dofs for constant interpolation
                   IF(domain_type_idx==1) THEN
                     variable_local_ny=variable_local_ny+1
-                    
-                    IF (DEBUGGING) PRINT *, "------ constant interpolation, non ghosted dofs ---------"
                     
                     !Allocate and set up global to local domain map for variable mapping
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
@@ -12218,34 +12211,13 @@ CONTAINS
                     VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                       & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
                   
-                    IF (DEBUGGING) THEN
-                      PRINT *, "increment local dofs offsets by 1"
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_LOCAL_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                      PRINT *, "increment ghost dofs offsets by number of dofs in local domain (1)"
-                      IF(component_idx == 1) PRINT *, "(component_idx==1, do not change ghost offsets)"
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_GHOST_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                    ENDIF
                   ELSE
-                  
-                    IF (DEBUGGING) PRINT *, "------ constant interpolation, ghost dofs ---------"
                   
                     !Adjust the ghost offsets
                     IF(component_idx>1) &
                       VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                       & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-1
                       
-                    IF (DEBUGGING) THEN
-                      PRINT *, "adjust ghost offsets, substract number of dofs in local domain (1)"
-                      IF(component_idx == 1) PRINT *, "(component_idx==1, do not change ghost offsets)"
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_GHOST_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                    ENDIF
-                    
                     !Adjust variable mapping local numbers
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
                     
@@ -12281,10 +12253,6 @@ CONTAINS
                   !Adjust the offsets
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
                     
-                  IF (DEBUGGING) THEN
-                    PRINT *, "adjust global dofs offset, add number global dofs (1)"
-                    PRINT *, "new value: ", VARIABLE_GLOBAL_DOFS_OFFSET
-                  ENDIF
                   
                 CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                   DOMAIN=>FIELD_COMPONENT%DOMAIN
@@ -12430,8 +12398,6 @@ CONTAINS
                       ENDDO !derivative_idx
                     ENDDO !node_idx
                     
-                    IF (DEBUGGING) PRINT *, "------ non ghosted dofs ---------"
-                    
                     ! loop over node based dofs
                     DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
                       
@@ -12502,41 +12468,15 @@ CONTAINS
                       & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                       & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL + DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
                   
-                    IF (DEBUGGING) THEN
-                      PRINT *, "increment local dofs offsets by "
-                      PRINT *, "   a) number of dofs in local domain: ", DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                      PRINT *, "   b) number of ghosts in local domain: ", DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_LOCAL_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                      PRINT *, "increment ghost dofs offsets by number of dofs in local domain ", &
-                        & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                      IF(component_idx == 1) PRINT *, "(component_idx==1, do not change ghost offsets)"
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_GHOST_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                    ENDIF
-                    
                   ELSE
                     ! ghost dofs
                   
-                    IF (DEBUGGING) PRINT *, "------ ghost dofs ---------"
-                    
                     !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                     !dofs are at the end of the local dofs.
                     !Adjust the ghost offsets
                     IF(component_idx>1) &
                       VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                       & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1) - DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                      
-                    IF (DEBUGGING) THEN
-                      PRINT *, "adjust ghost offsets, substract number of dofs in local domain ", &
-                       & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                      IF(component_idx == 1) PRINT *, "(component_idx==1, do not change ghost offsets)"
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_GHOST_DOFS_OFFSETS(domain_idx)                      
-                      ENDDO
-                    ENDIF
                       
                     !Adjust variable mapping local numbers
                     DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
@@ -12592,23 +12532,11 @@ CONTAINS
                       & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
                       
                     
-                    IF (DEBUGGING) THEN
-                      PRINT *, "adjust local dofs offsets"
-                      PRINT *, "   substract number of ghosts in local domain: ", DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
-                      DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                        PRINT *, "domain ", domain_idx, "new offset: ", VARIABLE_LOCAL_DOFS_OFFSETS(domain_idx)
-                      ENDDO
-                    ENDIF
                   ENDIF   !domain_type_idx
                   
                   !Adjust the global offset
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+DOFS_MAPPING%NUMBER_OF_GLOBAL
-                  
-                  IF (DEBUGGING) THEN
-                    PRINT *, "adjust global dofs offset, add number global dofs:", DOFS_MAPPING%NUMBER_OF_GLOBAL
-                    PRINT *, "new value: ", VARIABLE_GLOBAL_DOFS_OFFSET
-                  ENDIF
-                  
+                                    
                   !Handle local dofs domain mapping
                   DO ny=start_idx,stop_idx
                   
@@ -13271,13 +13199,7 @@ CONTAINS
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
           IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-          
-            IF (CALL_COUNTER == 10.AND.DEBUGGING.AND. variable_idx==4) THEN     !CALL_COUNTER==10 -> IndependentFieldM, variable_idx==4 -> CMFE_FIELD_U2_VARIABLE_TYPE
-              PRINT *, "before DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE"
-              CALL FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING(FIELD_VARIABLE_DOFS_MAPPING,&
-                & "before DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE",ERR,ERROR,*999)
-            ENDIF
-          
+                    
             CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(FIELD_VARIABLE_DOFS_MAPPING,ERR,ERROR,*999)
           ENDIF
         ENDDO !variable_idx
