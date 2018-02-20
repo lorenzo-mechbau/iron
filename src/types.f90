@@ -1131,6 +1131,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     LOGICAL :: CALCULATE_FACES !<Boolean flag to determine whether faces should be calculated
     LOGICAL :: CALCULATE_LINES !<Boolean flag to determine whether lines should be calculated
     LOGICAL :: CALCULATE_CENTROIDS !<Boolean flag to determine whether CENTROIDS should be calculated
+    LOGICAL :: CALCULATE_FV_LENGTHS !<Boolean flag to determine whether line vector from centroid to intersect point of face and line connecting centroids should be calculated
   END TYPE DECOMPOSITION_TYPE
 
   !>A buffer type to allow for an array of pointers to a DECOMPOSITION_TYPE.
@@ -1216,7 +1217,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE :: LENGTHS(:) !<LENGTHS(nl). The length of the nl'th line in the field decomposition.
     REAL(DP), ALLOCATABLE :: AREAS(:) !<AREAS(nf). The area of the nf'th face in the field decomposition.
     REAL(DP), ALLOCATABLE :: VOLUMES(:) !<VOLUMES(ne). The volume of the ne'th element in the field decomposition.
-    REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,nxi) position of the field decomposition's ne'th elements centroid in the xi'th dimension.
+    REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension.
+    REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction.
+    REAL(DP), ALLOCATABLE :: FV_LENGTH(:,:) ! FV_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction.
+    REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, ncoord are the x, y z components.
     INTEGER(INTG) :: NUMBER_OF_FIELDS_USING !<The number of fields that use these geometric parameters for their scaling.
     TYPE(FIELD_PTR_TYPE), POINTER :: FIELDS_USING(:) !< FIELDS_USINGS(field_idx). A pointer to the field_idx'th field that uses these geometric parameters for its scaling.
   END TYPE FIELD_GEOMETRIC_PARAMETERS_TYPE

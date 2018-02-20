@@ -11488,6 +11488,9 @@ CONTAINS
           IF(FIELD%DECOMPOSITION%CALCULATE_CENTROIDS) THEN
             CALL Field_GeometricParametersCentroidsCalculate(FIELD,ERR,ERROR,*999)
           ENDIF
+          IF(FIELD%DECOMPOSITION%CALCULATE_FV_LENGTHS) THEN
+            CALL Field_GeometricParametersFVLengthsCalculate(FIELD,ERR,ERROR,*999)
+          ENDIF
         ELSE
           LOCAL_ERROR="Field number "//TRIM(NUMBER_TO_VSTRING(FIELD%USER_NUMBER,"*",ERR,ERROR))//" is not a geometric field."
           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
@@ -11534,6 +11537,9 @@ CONTAINS
 !      IF(ALLOCATED(GEOMETRIC_PARAMETERS%AREAS)) DEALLOCATE(GEOMETRIC_PARAMETERS%AREAS) !temporarily commented out
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%VOLUMES)) DEALLOCATE(GEOMETRIC_PARAMETERS%VOLUMES)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTROID_POSITION)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTROID_POSITION)
+      IF(ALLOCATED(GEOMETRIC_PARAMETERS%HALFLENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%HALFLENGTH)
+      IF(ALLOCATED(GEOMETRIC_PARAMETERS%FV_LENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%FV_LENGTH)
+      IF(ALLOCATED(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)) DEALLOCATE(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)
       DEALLOCATE(GEOMETRIC_PARAMETERS)
     ENDIF
 
@@ -11580,11 +11586,27 @@ CONTAINS
 !          FIELD%GEOMETRIC_FIELD_PARAMETERS%AREAS=0.0_DP
 !        ENDIF
         IF(FIELD%DECOMPOSITION%CALCULATE_CENTROIDS) THEN
-          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
-            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS, FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
-            & MESH_COMPONENT_NUMBER)%PTR%MESH%NUMBER_OF_DIMENSIONS),STAT=ERR)
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(FIELD%DECOMPOSITION%numberOfElements, &
+            & FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate Centroids.",ERR,ERROR,*999)
             FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION=0.0_DP
+        ENDIF
+        IF(FIELD%DECOMPOSITION%CALCULATE_FV_LENGTHS) THEN
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(FIELD%DECOMPOSITION%numberOfElements &
+            & , 2*FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate HALFLENGTH.",ERR,ERROR,*999)
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH(FIELD%DECOMPOSITION%numberOfElements &
+            & , 2*FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate FV_LENGTH.",ERR,ERROR,*999)
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(FIELD%DECOMPOSITION%numberOfElements &
+            & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate SURFACE_VECTOR.",ERR,ERROR,*999)
+          !ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLINE_VECTOR(FIELD%DECOMPOSITION%numberOfElements &
+          !  & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR) !THIS WILL ONLY WORK FOR QUADS
+
+          FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH=0.0_DP
+          FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH=0.0_DP
+          FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR=0.0_DP
         ENDIF
         FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_VOLUMES=0
 
@@ -11959,7 +11981,7 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE Field_GeometricParametersFaceAreasCalculate
-  
+
   !
   !================================================================================================================================
   !
@@ -11968,13 +11990,13 @@ CONTAINS
   SUBROUTINE Field_GeometricParametersCentroidsCalculate(FIELD,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to calculate the element centroids for
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the geometric field to calculate the element centroids for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     REAL(DP) :: Node_pos,positionSum
 
-    INTEGER(INTG) :: element_idx,variable_idx,component_idx,domainNode,elementNode
+    INTEGER(INTG) :: element_idx,dimension_idx,domainNode,elementNode
     INTEGER(INTG) :: NUMBER_OF_NODES_PER_ELEMENT=4 !Fix this so it extracts this value from the field
 
 
@@ -11985,27 +12007,23 @@ CONTAINS
         IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
           IF(ASSOCIATED(FIELD%GEOMETRIC_FIELD_PARAMETERS)) THEN
             !Loop over the elements
-            DO element_idx=1,FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
-                & NUMBER_OF_ELEMENTS
-              DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
-                Do component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                  positionSum=0
-                  DO elementNode=1,NUMBER_OF_NODES_PER_ELEMENT
+            DO element_idx=1,FIELD%DECOMPOSITION%numberOfElements
+              Do dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
+                positionSum=0
+                DO elementNode=1,NUMBER_OF_NODES_PER_ELEMENT
+                  domainNode=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(elementNode)
 
-                    domainNode=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
-                      & ELEMENTS(element_idx)%ELEMENT_NODES(elementNode)
+                  CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,domainNode, &
+                    & dimension_idx,Node_pos,ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
 
-                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,domainNode, &
-                      & component_idx,Node_pos,ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                  positionSum=positionSum + Node_pos
+                ENDDO
 
-                    positionSum=positionSum + Node_pos
-                  ENDDO
-
-                  FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,component_idx)= &
-                    & positionSum/NUMBER_OF_NODES_PER_ELEMENT
+                FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,dimension_idx)= &
+                  & positionSum/NUMBER_OF_NODES_PER_ELEMENT
 
                 ENDDO
-              ENDDO
             ENDDO
           ENDIF
         ENDIF
@@ -12021,6 +12039,174 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE Field_GeometricParametersCentroidsCalculate
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Calculates the centroids for a field.
+  SUBROUTINE Field_GeometricParametersFVLengthsCalculate(FIELD,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the geometric field to calculate the FV LENGTHS for
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    !REAL(DP) ::
+
+    INTEGER(INTG) :: element_idx,xi_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2,
+    INTEGER(INTG) :: neighbourElement
+    REAL(DP) :: xVec_centroidP(3), xVec_centroidN(3),xVec_faceNode1(3),xVec_faceNode2(3),xVec_faceNode3(3)
+    REAL(DP) :: xVec_faceNode4(3), faceVec_1_2(3), faceVec_1_3(3), faceNormal(3), interceptPos(3)
+    REAL(DP) :: faceArea,faceNodePosition,boundaryHalfLength
+
+
+    ENTERS("Field_GeometricParametersFVLengthsCalculate",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(FIELD)) THEN
+      IF(FIELD%FIELD_FINISHED) THEN
+        IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
+            !Loop over the elements
+            DO element_idx=1,FIELD%DECOMPOSITION%numberOfElements
+              !iterate first through three negative xi directions then 3 negative xi directions
+              DO nic=-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                  & ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES,FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
+                  & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES
+
+                !Find the position of the current element centroid.
+                xVec_centroidP(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,1)
+                xVec_centroidP(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,2)
+                IF(FIELD%DECOMPOSITION%numberOfDimensions==3) THEN
+                  xVec_centroid1(3)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,3)
+                ENDIF
+                !Only find neighbouring centroid if there is an element there.
+                IF(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS(element)%ADJACENT_ELEMENTS(nic)%NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+
+                  neighbourElement=FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS(element)%ADJACENT_ELEMENTS(nic)%ADJACENT_ELEMENTS(nic)
+                  xVec_centroidN(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,1)
+                  xVec_centroidN(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,2)
+                  IF(FIELD%DECOMPOSITION%numberOfDimensions==3) THEN
+                    xVec_centroidN(3)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,3)
+                  ENDIF
+                ENDIF
+
+
+                SELECT CASE(nic)
+                CASE(-3)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(:,:,1,:)
+                CASE(-2)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(:,1,:,:)
+                CASE(-1)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(1,:,:,:)
+                CASE(1)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(2,:,:,:)
+                CASE(2)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(:,2,:,:)
+                CASE(3)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(:,:,2,:)
+                CASE(4)
+                  faceElementNodeNumbers=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%NODE_POSITION_INDEX_INV(:,:,:,2)
+                END SELECT
+
+                SELECT CASE(FIELD%DECOMPOSITION%numberOfDimensions)
+                CASE(2)
+                  !CALL Field_2D_NodePositionsOnXiDirectionFaceGet(FIELD,element_idx,nic,xVec_faceNode1,xVec_faceNode2, &
+                  !  & ,ERR,ERROR,*999)
+
+                  faceDomainNodeNumber1=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(1))
+                  faceDomainNodeNumber2=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(2))
+
+                  Do dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber1, &
+                      & dimension_idx,xVec_faceNode1(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber2, &
+                      & dimension_idx,xVec_faceNode2(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                  ENDDO
+
+                  SELECT CASE(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS(element)%ADJACENT_ELEMENTS(nic)%NUMBER_OF_ADJACENT_ELEMENTS)
+                  CASE(1)
+                    CALL LineInterceptLine(xVec_centroidP,xVec_centroidN,xVec_faceNode1,xVec_faceNode2,interceptPos,ERR, ERROR, *999)
+                  CASE(0)
+                    interceptPos=(xVec_faceNode1+xVec_faceNode2)/2
+                  END SELECT
+                  CALL SurfaceVectorFromTwoPoints(xVec_faceNode1,xVec_faceNode2, surfaceVector, ERR, ERROR, *999)
+                  FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,1)=surfaceVector(1) !Unsure if I can fill a whole vector in one call?
+                  FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,2)=surfaceVector(2)
+
+                CASE(3)
+
+                  faceDomainNodeNumber1=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(1))
+                  faceDomainNodeNumber2=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(2))
+                  faceDomainNodeNumber3=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(3))
+                  faceDomainNodeNumber4=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+                    & ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(4))
+
+                  Do dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber1, &
+                      & dimension_idx,xVec_faceNode1(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber2, &
+                      & dimension_idx,xVec_faceNode2(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber3, &
+                      & dimension_idx,xVec_faceNode3(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                    CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,faceDomainNodeNumber4, &
+                      & dimension_idx,xVec_faceNode4(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
+                  ENDDO
+
+
+                  faceVec_1_2=xVec_faceNode1-xVec_faceNode2
+                  faceVec_1_3=xVec_faceNode1-xVec_faceNode3
+                  CALL NormaliseCrossProduct(faceVec_1_2, faceVec_1_3, faceNormal, ERR, ERROR, *999)
+                  SELECT CASE(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS(element)%ADJACENT_ELEMENTS(nic)%NUMBER_OF_ADJACENT_ELEMENTS)
+                  CASE(1)
+                    CALL LineInterceptPlane(faceNormal, xVec_faceNode1, xVec_centroidP, xVec_centroidN, interceptPos, ERR, ERROR, *999) !Make this subroutine in maths.f90
+                  CASE(0)
+                    interceptPos=(xVec_faceNode1+xVec_faceNode2+xVec_faceNode3+xVec_faceNode4)/4
+                  END SELECT
+
+                  CALL AreaFromFourPoints(xVec_faceNode1,xVec_faceNode2,xVec_faceNode3,xVec_faceNode4, faceArea, &
+                    & ERR, ERROR, *999)
+                  surfaceVector=faceNormal*faceArea
+                  FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,1)=surfaceVector(1) !Unsure if I can fill a whole vector in one call?
+                  FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,2)=surfaceVector(2)
+                  FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,3)=surfaceVector(3)
+                END SELECT
+
+
+                CALL L2Norm(interceptPos-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(element_idx,nic), &
+                  & err,error,*)
+                IF(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS(element)%ADJACENT_ELEMENTS(nic)%NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+                  CALL L2Norm(xVec_centroidN-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH(element_idx,nic), &
+                    & err,error,*)
+                ENDIF
+
+              ENDDO
+            ENDDO
+          ENDIF
+        ENDIF
+      ENDIF
+    ENDIF
+
+
+
+
+    EXITS("Field_GeometricParametersFVLengthsCalculate")
+    RETURN
+999 ERRORSEXITS("Field_GeometricParametersFVLengthsCalculate",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE Field_GeometricParametersFVLengthsCalculate
 
   !
   !================================================================================================================================
