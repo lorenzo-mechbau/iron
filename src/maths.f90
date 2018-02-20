@@ -63,7 +63,7 @@ MODULE Maths
   !Interfaces
   INTERFACE AreaFromFourPoints
     MODULE PROCEDURE AreaFromFourPointsDP
-  END INTERFACE
+  END INTERFACE AreaFromFourPoints
 
 
   !>Returns hyperbolic cotangent of an argument
@@ -229,12 +229,17 @@ MODULE Maths
     MODULE PROCEDURE LInfNormVectorDP
   END INTERFACE LInfNorm
 
-  !Returns the intercept of a line (defined by two points) and another line (2D) defined by two points or a Plane defined by one point on the plane and it's normal
+  !Returns the intercept of a line (defined by two points) and another line (2D) (defined by two points)
   !TO DO include single precision
-  INTERFACE LineIntercept
+  INTERFACE LineInterceptLine
     MODULE PROCEDURE LineInterceptLineDP
+  END INTERFACE LineInterceptLine
+
+  !Returns the intercept of a line (defined by two points) and a Plane (defined by one point on the plane and it's normal)
+  !TO DO include single precision
+  INTERFACE LineInterceptPlane
     MODULE PROCEDURE LineInterceptPlaneDP
-  END INTERFACE
+  END INTERFACE LineInterceptPlane
 
   !>Calculates the Macaulay Bracket of a number
   INTERFACE MacaulayBracket
@@ -295,7 +300,7 @@ MODULE Maths
   !gets the 2D surface vector from two points
   INTERFACE SurfaceVectorFromTwoPoints
     MODULE PROCEDURE SurfaceVectorFromTwoPointsDP
-  END INTERFACE
+  END INTERFACE SurfaceVectorFromTwoPoints
 
   !>Calculates and returns the tensor product between matrices and vectors.
   INTERFACE TensorProduct
@@ -370,7 +375,9 @@ MODULE Maths
 
   PUBLIC LInfNorm
 
-  PUBLIC LineIntercept
+  PUBLIC LineInterceptLine
+
+  PUBLIC LineInterceptPlane
 
   PUBLIC MacaulayBracket
 
@@ -463,10 +470,6 @@ CONTAINS
     REAL(DP) :: crossArea_1,crossArea_2
 
     ENTERS("AreaFromFourPointsDP",err,error,*999)
-    ALLOCATE(cross1(3),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate cross1.",ERR,ERROR,*999)
-    ALLOCATE(cross2(3),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate cross2.",ERR,ERROR,*999)
 
     CALL CrossProduct(point2-point1,point3-point1,cross1,err,error, *999)
     CALL L2norm(cross1,crossArea_1,err,error, *999)
@@ -3719,7 +3722,7 @@ CONTAINS
     m2=line2_point2(2)-line2_point1(2)/(line2_point2(1)-line2_point1(1))
 
     interceptPos(2)=(-m1/m2*line2_point1(2)+m1*line2_point1(1)-m1*line1_point1(1)+line1_point1(2))/(1.0_DP-m1/m2)
-    interceptPos(1)=1/m2*(interceptPos(2)-line2_point1(2))+line2_point1(1)
+    interceptPos(1)=1.0_DP/m2*(interceptPos(2)-line2_point1(2))+line2_point1(1)
 
 
     EXITS("LineInterceptLineDP")
@@ -3732,6 +3735,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
+
   !<Finds the intercept between a line defined by two points and a plane defined by a point on the plane and a normal
   SUBROUTINE LineInterceptPlaneDP(linePoint1, linePoint2, normalVec, pointOnPlane,interceptPos,err,error,*)
 
@@ -3756,13 +3760,12 @@ CONTAINS
     d=normalVec(1)*pointOnPlane(1)+normalVec(2)*pointOnPlane(2)+normalVec(3)*pointOnPlane(3)
 
     !The parameterised equation of a line in 3space is (x1+t(x2-x1),y1+t(y2-y1),z1+t(z2-z1), we find this t value at intcpt by subbing this into the eqn for a plane
-    t=(d-a*linePoint1(1)-b*linePoint1(2)-c*linePoint(3))/(a*(linePoint2(1)-linePoint1(1))-b*(linePoint2(2)-linePoint1(2)) &
-      & -c*(linePoint2(3)-linePoint(3)))
+    t=(d-a*linePoint1(1)-b*linePoint1(2)-c*linePoint1(3))/(a*(linePoint2(1)-linePoint1(1))-b*(linePoint2(2)-linePoint1(2)) &
+      & -c*(linePoint2(3)-linePoint1(3)))
 
     !The intercept is then found by subbing t into the equation for the line
-    interceptPos(1)=linePoint1(1)-t*(linePoint2(1)-linePoint1(1))
-    interceptPos(2)=linePoint1(2)-t*(linePoint2(2)-linePoint1(2))
-    interceptPos(3)=linePoint1(3)-t*(linePoint2(3)-linePoint1(3))
+    interceptPos(:)=linePoint1(:)-t*(linePoint2(:)-linePoint1(:))
+
 
     EXITS("LineInterceptPlaneDP")
     RETURN
