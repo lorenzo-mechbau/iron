@@ -374,6 +374,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Decomposition_CalculateFacesSet,cmfe_Decomposition_CalculateLinesSet
 
+  PUBLIC cmfe_Decomposition_CalculateCentroidsSet,cmfe_Decomposition_CalculateFVLengthsSet
+
   PUBLIC cmfe_EquationsType,cmfe_Equations_Finalise,cmfe_Equations_Initialise
 
   PUBLIC cmfe_EquationsSetType,cmfe_EquationsSet_Finalise,cmfe_EquationsSet_Initialise
@@ -5255,6 +5257,18 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Decomposition_CalculateFacesSetNumber
     MODULE PROCEDURE cmfe_Decomposition_CalculateFacesSetObj
   END INTERFACE cmfe_Decomposition_CalculateFacesSet
+
+  !>Sets/changes whether Centroids should be calculated for the decomposition.
+  INTERFACE cmfe_Decomposition_CalculateCentroidsSet
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentroidsSetNumber
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentroidsSetObj
+  END INTERFACE cmfe_Decomposition_CalculateCentroidsSet
+
+  !>Sets/changes whether the finite volume lengths should be calculated for the decomposition.
+  INTERFACE cmfe_Decomposition_CalculateFVLengthsSet
+    MODULE PROCEDURE cmfe_Decomposition_CalculateFVLengthsSetNumber
+    MODULE PROCEDURE cmfe_Decomposition_CalculateFVLengthsSetObj
+  END INTERFACE cmfe_Decomposition_CalculateFVLengthsSet
 
   !>Finishes the creation of a mesh. \see OpenCMISS::Iron::cmfe_Mesh_CreateStart
   INTERFACE cmfe_Mesh_CreateFinish
@@ -43060,6 +43074,135 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Decomposition_CalculateFacesSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetNumber(regionUserNumber,meshUserNumber, &
+                                                     & decompositionUserNumber,CalculateCentroidsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentroidsSetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region.
+    INTEGER(INTG), INTENT(IN) :: meshUserNumber !<The user number of the mesh.
+    INTEGER(INTG), INTENT(IN) :: decompositionUserNumber !<The user number of the decomposition to set the decomposition type for.
+    LOGICAL, INTENT(IN) :: CalculateCentroidsFlag !<Boolean to determine whether to set centroids to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(REGION_TYPE), POINTER :: region
+
+    ENTERS("cmfe_Decomposition_CalculateCentroidsSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(mesh)
+    NULLIFY(decomposition)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_MeshGet(region,meshUserNumber,mesh,err,error,*999)
+    CALL Mesh_DecompositionGet(mesh,decompositionUserNumber,decomposition,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_CENTROIDS_SET(decomposition,CalculateCentroidsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentroidsSetNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalculateCentroidsSetNumber",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetObj(decomposition,CalculateCentroidsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentroidsSetObj)
+
+    !Argument variables
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate centroids flag for.
+    LOGICAL, INTENT(IN) :: CalculateCentroidsFlag !<Boolean to determine whether to set centroids to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Decomposition_CalculateCentroidsSetObj",err,error,*999)
+
+    CALL DECOMPOSITION_CALCULATE_CENTROIDS_SET(decomposition%decomposition,CalculateCentroidsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentroidsSetObj")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalculateCentroidsSetObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetNumber(regionUserNumber,meshUserNumber, &
+                                                     & decompositionUserNumber,CalculateFVLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateFVLengthsSetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region.
+    INTEGER(INTG), INTENT(IN) :: meshUserNumber !<The user number of the mesh.
+    INTEGER(INTG), INTENT(IN) :: decompositionUserNumber !<The user number of the decomposition to set the decomposition type for.
+    LOGICAL, INTENT(IN) :: CalculateFVLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(REGION_TYPE), POINTER :: region
+
+    ENTERS("cmfe_Decomposition_CalculateFVLengthsSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(mesh)
+    NULLIFY(decomposition)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_MeshGet(region,meshUserNumber,mesh,err,error,*999)
+    CALL Mesh_DecompositionGet(mesh,decompositionUserNumber,decomposition,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_FV_LENGTHS_SET(decomposition,CalculateFVLengthsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateFVLengthsSetNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLengthsSetNumber",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetObj(decomposition,CalculateFVLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateFVLengthsSetObj)
+
+    !Argument variables
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate FV_lengths flag for.
+    LOGICAL, INTENT(IN) :: CalculateFVLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Decomposition_CalculateFVLengthsSetObj",err,error,*999)
+
+    CALL DECOMPOSITION_CALCULATE_FV_LENGTHS_SET(decomposition%decomposition,CalculateFVLengthsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateFVLengthsSetObj")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLengthsSetObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetObj
 
   !
   !================================================================================================================================

@@ -12081,17 +12081,18 @@ CONTAINS
             start_nic=1
           CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
             start_nic=-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
-                & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+              & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+          CASE DEFAULT
+            !do nothing
           END SELECT
 
           !Loop over the elements
           DO element_idx=1,FIELD%DECOMPOSITION%numberOfElements
             !iterate first through three negative xi directions then 3 negative xi directions
             DO nic=start_nic,FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
-                & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES
-              IF(nic==0) THEN
-                CYCLE
-              ENDIF
+              & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES
+              IF(nic==0) CYCLE
+
               !Find the position of the current element centroid.
               xVec_centroidP(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,1)
               xVec_centroidP(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,2)
@@ -12100,7 +12101,7 @@ CONTAINS
               ENDIF
               !Only find neighbouring centroid if there is an element there.
               IF(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ADJACENT_ELEMENTS(nic)% &
-                  & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+                & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
 
                 neighbourElement=FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ADJACENT_ELEMENTS(nic)% &
                   & ADJACENT_ELEMENTS(1)
@@ -12175,7 +12176,7 @@ CONTAINS
                 faceDomainNodeNumber3=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
                   & TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(3))
                 IF(FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
-                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE) THEN
+                  & ELEMENTS%ELEMENTS(element_idx)%BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE) THEN
                   faceDomainNodeNumber4=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
                     & TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(4))
                 ENDIF
@@ -12188,7 +12189,7 @@ CONTAINS
                   CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
                     & faceDomainNodeNumber3,dimension_idx,xVec_faceNode3(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
                   IF(FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
-                      & ELEMENTS%ELEMENTS(element_idx)%BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE) THEN
+                    & ELEMENTS%ELEMENTS(element_idx)%BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE) THEN
                     CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
                       & faceDomainNodeNumber4,dimension_idx,xVec_faceNode4(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
                   ENDIF
@@ -12212,6 +12213,9 @@ CONTAINS
                   & ERR, ERROR, *999)
                 surfaceVector=faceNormal*faceArea
                 FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,:)=surfaceVector(:)
+
+              CASE DEFAULT
+                !do nothing
 
               END SELECT
 
