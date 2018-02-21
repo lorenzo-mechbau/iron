@@ -3714,16 +3714,29 @@ CONTAINS
     INTEGER(INTG) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local variables
-    REAL(DP) :: m1, m2 !the gradients of line 1 and 2 respectively
+    REAL(DP) :: m1, m2, eps=0.000000001_DP !the gradients of line 1 and 2 respectively
 
     ENTERS("LineInterceptLineDP",err,error,*999)
 
-    m1=line1_point2(2)-line1_point1(2)/(line1_point2(1)-line1_point1(1))
-    m2=line2_point2(2)-line2_point1(2)/(line2_point2(1)-line2_point1(1))
+    IF(ABS(line1_point2(1)-line1_point1(1))<eps) THEN
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
 
-    interceptPos(2)=(-m1/m2*line2_point1(2)+m1*line2_point1(1)-m1*line1_point1(1)+line1_point1(2))/(1.0_DP-m1/m2)
-    interceptPos(1)=1.0_DP/m2*(interceptPos(2)-line2_point1(2))+line2_point1(1)
+      interceptPos(1)=(line1_point2(1)+line1_point1(1))/2.0_DP
+      interceptPos(2)=m2*(interceptPos(1)-line2_point1(1))+Line2_point1(2)
 
+    ELSEIF(ABS(line2_point2(1)-line2_point1(1))<eps) THEN
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+
+      interceptPos(1)=(line2_point2(1)+line2_point1(1))/2.0_DP
+      interceptPos(2)=m1*(interceptPos(1)-line1_point1(1))+line1_point1(2)
+
+    ELSE
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
+
+      interceptPos(2)=(-m1/m2*line2_point1(2)+m1*line2_point1(1)-m1*line1_point1(1)+line1_point1(2))/(1.0_DP-m1/m2)
+      interceptPos(1)=1.0_DP/m2*(interceptPos(2)-line2_point1(2))+line2_point1(1)
+    ENDIF
 
     EXITS("LineInterceptLineDP")
     RETURN
@@ -4089,12 +4102,18 @@ CONTAINS
     INTEGER(INTG) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local variables
-    REAL(DP) :: length !the gradients of line 1 and 2 respectively
+    REAL(DP) :: length
+    REAL(DP) :: unNormalised(3)=[0,0,0],normal(3)=[0,0,0], lineVec(3)=[0,0,0]
 
     ENTERS("SurfaceVectorFromTwoPointsDP",err,error,*999)
-    CALL L2Norm(point1-point2,length,err,error,*999)
-    surfaceVector(1)=length*(point1(2)-point2(2))
-    surfaceVector(2)=-length*(point1(1)-point2(1))
+    lineVec=point1-point2
+    CALL L2Norm(lineVec,length,err,error,*999)
+    unNormalised(1)=lineVec(2)
+    unNormalised(2)=-lineVec(1)
+
+    CALL NormaliseVectorDP(unNormalised,normal,err,error,*999)
+
+    surfaceVector=length*normal
 
 
     EXITS("SurfaceVectorFromTwoPointsDP")

@@ -11593,13 +11593,20 @@ CONTAINS
         ENDIF
         IF(FIELD%DECOMPOSITION%CALCULATE_FV_LENGTHS) THEN
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(FIELD%DECOMPOSITION%numberOfElements &
-            & , 2*FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+            & ,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+            & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
+            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate HALFLENGTH.",ERR,ERROR,*999)
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH(FIELD%DECOMPOSITION%numberOfElements &
-            & , 2*FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+            & ,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+            & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
+            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate FV_LENGTH.",ERR,ERROR,*999)
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(FIELD%DECOMPOSITION%numberOfElements &
-            & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+            & ,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
+            & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
+            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES, &
+            & FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate SURFACE_VECTOR.",ERR,ERROR,*999)
           !ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLINE_VECTOR(FIELD%DECOMPOSITION%numberOfElements &
           !  & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR) !THIS WILL ONLY WORK FOR QUADS
@@ -12054,10 +12061,11 @@ CONTAINS
     !Local Variables
     !REAL(DP) ::
 
-    INTEGER(INTG) :: element_idx,xi_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2, dimension_idx
+    INTEGER(INTG) :: element_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2, dimension_idx
     INTEGER(INTG) :: neighbourElement,faceDomainNodeNumber3, faceDomainNodeNumber4, nic, start_nic,localLineNumber, localfaceNumber
-    REAL(DP) :: xVec_centroidP(3), xVec_centroidN(3),xVec_faceNode1(3),xVec_faceNode2(3),xVec_faceNode3(3)
-    REAL(DP) :: xVec_faceNode4(3), faceVec_1_2(3), faceVec_1_3(3), faceNormal(3), interceptPos(3), surfaceVector(3)
+    REAL(DP) :: xVec_centroidP(3)=[0,0,0], xVec_centroidN(3)=[0,0,0],xVec_faceNode1(3)=[0,0,0],xVec_faceNode2(3)=[0,0,0]
+    REAL(DP) :: xVec_faceNode4(3)=[0,0,0], faceVec_1_2(3)=[0,0,0], faceVec_1_3(3)=[0,0,0], faceNormal(3)=[0,0,0]
+    REAL(DP) :: xVec_faceNode3(3)=[0,0,0], interceptPos(3)=[0,0,0], surfaceVector(3)=[0,0,0]
     REAL(DP) :: faceArea,faceNodePosition,boundaryHalfLength
 
 
@@ -12068,12 +12076,12 @@ CONTAINS
         IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
 
           SELECT CASE(FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
-            & ELEMENTS%ELEMENTS(element_idx)%BASIS%TYPE)
+            & ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
           CASE(BASIS_SIMPLEX_TYPE)
             start_nic=1
           CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
             start_nic=-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
-                & ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES
+                & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
           END SELECT
 
           !Loop over the elements
@@ -12081,7 +12089,9 @@ CONTAINS
             !iterate first through three negative xi directions then 3 negative xi directions
             DO nic=start_nic,FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
                 & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS%NUMBER_OF_XI_COORDINATES
-
+              IF(nic==0) THEN
+                CYCLE
+              ENDIF
               !Find the position of the current element centroid.
               xVec_centroidP(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,1)
               xVec_centroidP(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,2)
@@ -12093,7 +12103,7 @@ CONTAINS
                   & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
 
                 neighbourElement=FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ADJACENT_ELEMENTS(nic)% &
-                  & ADJACENT_ELEMENTS(nic)
+                  & ADJACENT_ELEMENTS(1)
 
                 xVec_centroidN(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,1)
                 xVec_centroidN(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,2)
