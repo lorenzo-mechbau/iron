@@ -63,6 +63,7 @@ MODULE Maths
   !Interfaces
   INTERFACE AreaFromFourPoints
     MODULE PROCEDURE AreaFromFourPointsDP
+    MODULE PROCEDURE AreaFromFourPointsSP
   END INTERFACE AreaFromFourPoints
 
 
@@ -233,12 +234,14 @@ MODULE Maths
   !TO DO include single precision
   INTERFACE LineInterceptLine
     MODULE PROCEDURE LineInterceptLineDP
+    MODULE PROCEDURE LineInterceptLineSP
   END INTERFACE LineInterceptLine
 
   !Returns the intercept of a line (defined by two points) and a Plane (defined by one point on the plane and it's normal)
   !TO DO include single precision
   INTERFACE LineInterceptPlane
     MODULE PROCEDURE LineInterceptPlaneDP
+    MODULE PROCEDURE LineInterceptPlaneSP
   END INTERFACE LineInterceptPlane
 
   !>Calculates the Macaulay Bracket of a number
@@ -300,6 +303,7 @@ MODULE Maths
   !gets the 2D surface vector from two points
   INTERFACE SurfaceVectorFromTwoPoints
     MODULE PROCEDURE SurfaceVectorFromTwoPointsDP
+    MODULE PROCEDURE SurfaceVectorFromTwoPointsSP
   END INTERFACE SurfaceVectorFromTwoPoints
 
   !>Calculates and returns the tensor product between matrices and vectors.
@@ -486,7 +490,42 @@ CONTAINS
 
   END SUBROUTINE AreaFromFourPointsDP
 
+  !
+  !================================================================================================================================
+  !
 
+
+  !>Finds the area of a quadrilateral in 3D given its four vertices
+  SUBROUTINE AreaFromFourPointsSP(point1,point2,point3,point4,Area,err,error,*)
+
+    !Argument variables
+    REAL(SP), INTENT(IN) :: point1(:) !<The position vector of a point on face
+    REAL(SP), INTENT(IN) :: point2(:) !<The position vector  of a different point on face
+    REAL(SP), INTENT(IN) :: point3(:) !<The position vector  of a different point on face
+    REAL(SP), INTENT(IN) :: point4(:) !<The position vector  of a different point on face
+    REAL(SP), INTENT(OUT) :: Area !<On exit, the area of the quadrilateral
+    INTEGER(INTG) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    REAL(SP) :: cross1(3),cross2(3)
+    REAL(SP) :: crossArea_1,crossArea_2
+
+    ENTERS("AreaFromFourPointsSP",err,error,*999)
+
+    CALL CrossProduct(point2-point1,point3-point1,cross1,err,error, *999)
+    CALL L2norm(cross1,crossArea_1,err,error, *999)
+
+    CALL CrossProduct(point3-point4,point2-point4,cross2,err,error, *999)
+    CALL L2norm(cross2,crossArea_2,err,error, *999)
+
+    Area=(crossArea_1+crossArea_2)/2.0_SP
+
+    EXITS("AreaFromFourPointsSP")
+    RETURN
+999 ERRORSEXITS("AreaFromFourPointsSP",err,error)
+    RETURN 1
+
+  END SUBROUTINE AreaFromFourPointsSP
 
   !
   !================================================================================================================================
@@ -3760,6 +3799,64 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Finds the intercept between two lines in 2D. These two lines are defined by two points each
+  SUBROUTINE LineInterceptLineSP(line1_point1,line1_point2,line2_point1,line2_point2,interceptPos,err,error,*)
+
+    !Argument variables
+    REAL(SP), INTENT(IN) :: line1_point1(:) !<The position vector of a point on line one
+    REAL(SP), INTENT(IN) :: line1_point2(:) !<The position vector  of a different point on line one
+    REAL(SP), INTENT(IN) :: line2_point1(:) !<The position vector  of a point on line two
+    REAL(SP), INTENT(IN) :: line2_point2(:) !<The position vector  of a different point on line two
+    REAL(SP), INTENT(OUT) :: interceptPos(:) !<On exit, the position vector of the intercept
+    INTEGER(INTG) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    REAL(SP) :: m1, m2, eps=0.000000001_SP !the gradients of line 1 and 2 respectively
+
+    ENTERS("LineInterceptLineSP",err,error,*999)
+
+    IF(ABS(line1_point2(1)-line1_point1(1))<eps) THEN
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
+
+      interceptPos(1)=(line1_point2(1)+line1_point1(1))/2.0_SP
+      interceptPos(2)=m2*(interceptPos(1)-line2_point1(1))+Line2_point1(2)
+
+    ELSEIF(ABS(line2_point2(1)-line2_point1(1))<eps) THEN
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+
+      interceptPos(1)=(line2_point2(1)+line2_point1(1))/2.0_SP
+      interceptPos(2)=m1*(interceptPos(1)-line1_point1(1))+line1_point1(2)
+    ELSEIF(ABS(line1_point2(2)-line1_point1(2))<eps) THEN
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
+
+      interceptPos(2)=(line2_point2(2)+line2_point1(2))/2.0_SP
+      interceptPos(1)=1.0_SP/m2*(interceptPos(2)-line2_point1(2))+Line2_point1(1)
+
+    ELSEIF(ABS(line2_point2(2)-line2_point1(2))<eps) THEN
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+
+      interceptPos(2)=(line2_point2(2)+line2_point1(2))/2.0_SP
+      interceptPos(1)=1.0_SP/m1*(interceptPos(2)-line1_point1(2))+line1_point1(1)
+
+    ELSE
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
+
+      interceptPos(2)=(-m1/m2*line2_point1(2)+m1*line2_point1(1)-m1*line1_point1(1)+line1_point1(2))/(1.0_SP-m1/m2)
+      interceptPos(1)=1.0_SP/m2*(interceptPos(2)-line2_point1(2))+line2_point1(1)
+    ENDIF
+
+    EXITS("LineInterceptLineSP")
+    RETURN
+999 ERRORSEXITS("LineInterceptLineSP",err,error)
+    RETURN 1
+
+  END SUBROUTINE LineInterceptLineSP
+
+  !
+  !================================================================================================================================
+  !
+
   !<Finds the intercept between a line defined by two points and a plane defined by a point on the plane and a normal
   SUBROUTINE LineInterceptPlaneDP(linePoint1, linePoint2, normalVec, pointOnPlane,interceptPos,err,error,*)
 
@@ -3801,6 +3898,49 @@ CONTAINS
   !
   !================================================================================================================================
   !
+
+  !<Finds the intercept between a line defined by two points and a plane defined by a point on the plane and a normal
+  SUBROUTINE LineInterceptPlaneSP(linePoint1, linePoint2, normalVec, pointOnPlane,interceptPos,err,error,*)
+
+    !Argument variables
+    REAL(SP), INTENT(IN) :: linePoint1(:) !< the position vector of a point on the line
+    REAL(SP), INTENT(IN) :: linePoint2(:) !< the position vector of a different point on the line
+    REAL(SP), INTENT(IN) :: normalVec(:) !< the normal to the plane
+    REAL(SP), INTENT(IN) :: pointOnPlane(:) !< the position vector of a point on the plane
+    REAL(SP), INTENT(OUT) :: interceptPos(:) !<On exit, the position vector of the intercept
+    INTEGER(INTG) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    REAL(SP) :: t !< The t variable in the parameterised equation for a line in 3D
+    REAL(SP) :: a,b,c,d !< the parameters for a plane in ax+by+cz=d
+
+    ENTERS("LineInterceptPlaneSP",err,error,*999)
+
+    !First calculate the parameters of the plane equation ax+by+cz=d
+    a=normalVec(1)
+    b=normalVec(2)
+    c=normalVec(3)
+    d=normalVec(1)*pointOnPlane(1)+normalVec(2)*pointOnPlane(2)+normalVec(3)*pointOnPlane(3)
+
+    !The parameterised equation of a line in 3space is (x1+t(x2-x1),y1+t(y2-y1),z1+t(z2-z1), we find this t value at intcpt by subbing this into the eqn for a plane
+    t=(d-a*linePoint1(1)-b*linePoint1(2)-c*linePoint1(3))/(a*(linePoint2(1)-linePoint1(1))-b*(linePoint2(2)-linePoint1(2)) &
+      & -c*(linePoint2(3)-linePoint1(3)))
+
+    !The intercept is then found by subbing t into the equation for the line
+    interceptPos(:)=linePoint1(:)-t*(linePoint2(:)-linePoint1(:))
+
+
+    EXITS("LineInterceptPlaneSP")
+    RETURN
+999 ERRORSEXITS("LineInterceptPlaneSP",err,error)
+    RETURN 1
+
+  END SUBROUTINE LineInterceptPlaneSP
+
+  !
+  !================================================================================================================================
+  !
+
 
   !>Calculates the Macaulay bracket <x> of a single precision number x
   PURE FUNCTION MacaulayBracketSP(x)
@@ -4133,6 +4273,41 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SurfaceVectorFromTwoPointsDP
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Finds the surface vector of a line in 2D (length multiplied by its normal)
+  SUBROUTINE SurfaceVectorFromTwoPointsSP(point1,point2,surfaceVector,err,error,*)
+
+    !Argument variables
+    REAL(SP), INTENT(IN) :: point1(:) !<The position vector of a point on line
+    REAL(SP), INTENT(IN) :: point2(:) !<The position vector of the second point on the line
+    REAL(SP), INTENT(OUT) :: surfaceVector(:) !<On exit, the position vector of the intercept
+    INTEGER(INTG) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    REAL(SP) :: length
+    REAL(SP) :: unNormalised(3)=[0,0,0],normal(3)=[0,0,0], lineVec(3)=[0,0,0]
+
+    ENTERS("SurfaceVectorFromTwoPointsSP",err,error,*999)
+    lineVec=point1-point2
+    CALL L2Norm(lineVec,length,err,error,*999)
+    unNormalised(1)=lineVec(2)
+    unNormalised(2)=-lineVec(1)
+
+    CALL NormaliseVectorSP(unNormalised,normal,err,error,*999)
+
+    surfaceVector=length*normal
+
+
+    EXITS("SurfaceVectorFromTwoPointsSP")
+    RETURN
+999 ERRORSEXITS("SurfaceVectorFromTwoPointsSP",err,error)
+    RETURN 1
+
+  END SUBROUTINE SurfaceVectorFromTwoPointsSP
 
   !
   !================================================================================================================================
