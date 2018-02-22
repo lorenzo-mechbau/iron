@@ -390,6 +390,8 @@ CONTAINS
                 newDecomposition%DECOMPOSITION_TYPE=DECOMPOSITION_ALL_TYPE
                 newDecomposition%NUMBER_OF_DOMAINS=1
                 newDecomposition%numberOfElements=mesh%NUMBER_OF_ELEMENTS
+                newDecomposition%CALCULATE_CENTROIDS=.FALSE.
+                newDecomposition%CALCULATE_FV_LENGTHS=.FALSE.
                 ALLOCATE(newDecomposition%ELEMENT_DOMAIN(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate new decomposition element domain.",ERR,ERROR,*999)
                 newDecomposition%ELEMENT_DOMAIN=0

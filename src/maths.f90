@@ -3729,6 +3729,17 @@ CONTAINS
 
       interceptPos(1)=(line2_point2(1)+line2_point1(1))/2.0_DP
       interceptPos(2)=m1*(interceptPos(1)-line1_point1(1))+line1_point1(2)
+    ELSEIF(ABS(line1_point2(2)-line1_point1(2))<eps) THEN
+      m2=(line2_point2(2)-line2_point1(2))/(line2_point2(1)-line2_point1(1))
+
+      interceptPos(2)=(line2_point2(2)+line2_point1(2))/2.0_DP
+      interceptPos(1)=1.0_DP/m2*(interceptPos(2)-line2_point1(2))+Line2_point1(1)
+
+    ELSEIF(ABS(line2_point2(2)-line2_point1(2))<eps) THEN
+      m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))
+
+      interceptPos(2)=(line2_point2(2)+line2_point1(2))/2.0_DP
+      interceptPos(1)=1.0_DP/m1*(interceptPos(2)-line1_point1(2))+line1_point1(1)
 
     ELSE
       m1=(line1_point2(2)-line1_point1(2))/(line1_point2(1)-line1_point1(1))

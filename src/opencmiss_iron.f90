@@ -43107,7 +43107,7 @@ CONTAINS
 
     EXITS("cmfe_Decomposition_CalculateCentroidsSetNumber")
     RETURN
-999 ERRORSEXITS("cmfe_Decomposition_CalculateCentroidsSetNumber",err,error)
+999 ERRORSEXITS("cmfe_Decomposition_CalcCentroid",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
@@ -43172,7 +43172,7 @@ CONTAINS
 
     EXITS("cmfe_Decomposition_CalculateFVLengthsSetNumber")
     RETURN
-999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLengthsSetNumber",err,error)
+999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLen",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
