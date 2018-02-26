@@ -4243,18 +4243,21 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finds the surface vector of a line in 2D (length multiplied by its normal)
-  SUBROUTINE SurfaceVectorFromTwoPointsDP(point1,point2,surfaceVector,err,error,*)
+  !>Finds the surface vector of a line in 2D (length multiplied by its normal) and ensures that it is pointing outwwards with respect to the centroid position.
+  SUBROUTINE SurfaceVectorFromTwoPointsDP(point1,point2,centroid_pos,surfaceVector,err,error,*)
 
     !Argument variables
     REAL(DP), INTENT(IN) :: point1(:) !<The position vector of a point on line
     REAL(DP), INTENT(IN) :: point2(:) !<The position vector of the second point on the line
+    REAL(DP), INTENT(IN) :: centroid_pos(:) !<The position vector of the second point on the line
     REAL(DP), INTENT(OUT) :: surfaceVector(:) !<On exit, the position vector of the intercept
     INTEGER(INTG) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local variables
-    REAL(DP) :: length
+    REAL(DP) :: length, gradient
     REAL(DP) :: unNormalised(3)=[0,0,0],normal(3)=[0,0,0], lineVec(3)=[0,0,0]
+    INTEGER(INTG) :: n !either -1 or 1, ensures surface vector is outwards
+
 
     ENTERS("SurfaceVectorFromTwoPointsDP",err,error,*999)
     lineVec=point1-point2
@@ -4264,7 +4267,37 @@ CONTAINS
 
     CALL NormaliseVectorDP(unNormalised,normal,err,error,*999)
 
-    surfaceVector=length*normal
+    surfaceVector=normal*length
+
+    IF(surfaceVector(1)>=0) THEN
+      n=1
+    ELSE
+      n=-1
+    ENDIF
+
+    IF(point1(1)>=centroid_pos(1) .AND. point2(1)>=centroid_pos(1)) THEN
+      n=n*1 !this can be commented out to "do nothing"
+    ELSEIF(point1(1)<centroid_pos(1) .AND. point2(1)<centroid_pos(1)) THEN
+      n=n*-1
+    ELSEIF((point1(2)+point2(2))/2_DP>centroid_pos(2)) THEN
+      gradient=(point1(2)-point2(2))/(point1(1)-point2(1))
+      IF(gradient>0) THEN
+        n=n*-1
+      ELSE
+        n=n*1 !this can be commented out to "do nothing"
+      ENDIF
+    ELSE !Equivalent to ELSEIF((point1(2)+point2(2))/2_DP<=centroid_pos(2)) THEN
+      gradient=(point1(2)-point2(2))/(point1(1)-point2(1))
+      IF(gradient>0) THEN
+        n=n*1 !this can be commented out to "do nothing"
+      ELSE
+        n=n*-1
+      ENDIF
+    ENDIF
+
+    surfaceVector=surfaceVector*n
+
+
 
 
     EXITS("SurfaceVectorFromTwoPointsDP")

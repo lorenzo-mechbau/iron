@@ -12146,9 +12146,9 @@ CONTAINS
                   CALL LineInterceptLine(xVec_centroidP,xVec_centroidN,xVec_faceNode1,xVec_faceNode2,interceptPos, &
                     & ERR, ERROR, *999)
                 CASE(0)
-                  interceptPos=(xVec_faceNode1+xVec_faceNode2)/2.0_DP
+                  interceptPos=(xVec_faceNode1+xVec_faceNode2)/2.0_DP !Unsure if this needs to have a case for SP
                 END SELECT
-                CALL SurfaceVectorFromTwoPoints(xVec_faceNode1,xVec_faceNode2, surfaceVector, ERR, ERROR, *999)
+                CALL SurfaceVectorFromTwoPoints(xVec_faceNode1,xVec_faceNode2, xVec_centroidP, surfaceVector, ERR, ERROR, *999)
                 FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,1)=surfaceVector(1) !Unsure if I can fill a whole vector in one call?
                 FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(element_idx,nic,2)=surfaceVector(2)
 
