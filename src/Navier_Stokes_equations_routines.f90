@@ -466,6 +466,22 @@ CONTAINS
                 & SETUP_TYPE,"*",err,error))// " is not implemented for a Navier-Stokes fluid."
               CALL FlagError(localError,err,error,*999)
             END SELECT
+          CASE(EQUATIONS_SET_FV_STATIC_NAVIER_STOKES_SUBTYPE)
+            SELECT CASE(EQUATIONS_SET_SETUP%ACTION_TYPE)
+            CASE(EQUATIONS_SET_SETUP_START_ACTION)
+              CALL NavierStokes_EquationsSetSolutionMethodSet(EQUATIONS_SET, &
+                & EQUATIONS_SET_FV_SOLUTION_METHOD,err,error,*999)
+              EQUATIONS_SET%SOLUTION_METHOD=EQUATIONS_SET_FV_SOLUTION_METHOD
+              CALL EquationsSet_LabelSet(EQUATIONS_SET,"Navier-Stokes equations set",err,error,*999)
+            CASE(EQUATIONS_SET_SETUP_FINISH_ACTION)
+              !Do nothing
+            CASE DEFAULT
+              localError="The action type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%ACTION_TYPE, &
+                & "*",err,error))// " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP% &
+                & SETUP_TYPE,"*",err,error))// " is not implemented for a Navier-Stokes fluid."
+              CALL FlagError(localError,err,error,*999)
+            END SELECT
+
           CASE DEFAULT
             localError="The equation set subtype of "//TRIM(NumberToVString(EQUATIONS_SET%SPECIFICATION(3),"*",err,error))// &
               & " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%SETUP_TYPE,"*",err,error))// &
