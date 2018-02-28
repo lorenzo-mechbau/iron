@@ -148,7 +148,7 @@ CONTAINS
         CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
         CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-          CALL FlagError("Not implemented.",err,error,*999)
+          EQUATIONS_SET%SOLUTION_METHOD=EQUATIONS_SET_FV_SOLUTION_METHOD
         CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
         CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -466,22 +466,6 @@ CONTAINS
                 & SETUP_TYPE,"*",err,error))// " is not implemented for a Navier-Stokes fluid."
               CALL FlagError(localError,err,error,*999)
             END SELECT
-          CASE(EQUATIONS_SET_FV_STATIC_NAVIER_STOKES_SUBTYPE)
-            SELECT CASE(EQUATIONS_SET_SETUP%ACTION_TYPE)
-            CASE(EQUATIONS_SET_SETUP_START_ACTION)
-              CALL NavierStokes_EquationsSetSolutionMethodSet(EQUATIONS_SET, &
-                & EQUATIONS_SET_FV_SOLUTION_METHOD,err,error,*999)
-              EQUATIONS_SET%SOLUTION_METHOD=EQUATIONS_SET_FV_SOLUTION_METHOD
-              CALL EquationsSet_LabelSet(EQUATIONS_SET,"Navier-Stokes equations set",err,error,*999)
-            CASE(EQUATIONS_SET_SETUP_FINISH_ACTION)
-              !Do nothing
-            CASE DEFAULT
-              localError="The action type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%ACTION_TYPE, &
-                & "*",err,error))// " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP% &
-                & SETUP_TYPE,"*",err,error))// " is not implemented for a Navier-Stokes fluid."
-              CALL FlagError(localError,err,error,*999)
-            END SELECT
-
           CASE DEFAULT
             localError="The equation set subtype of "//TRIM(NumberToVString(EQUATIONS_SET%SPECIFICATION(3),"*",err,error))// &
               & " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%SETUP_TYPE,"*",err,error))// &
@@ -700,7 +684,12 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
+
+                  !Default geometric field scaling
+                  CALL FIELD_SCALING_TYPE_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
+                  CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
+
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -766,7 +755,7 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -914,7 +903,12 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
+
+                  CALL FIELD_SCALING_TYPE_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_SCALING_TYPE, &
+                    & err,error,*999)
+                  CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,GEOMETRIC_SCALING_TYPE, &
+                    & err,error,*999)
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -981,7 +975,7 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -1119,7 +1113,12 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
+
+                  CALL FIELD_SCALING_TYPE_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_SCALING_TYPE, &
+                    & err,error,*999)
+                  CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,GEOMETRIC_SCALING_TYPE, &
+                    & err,error,*999)
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -1186,7 +1185,7 @@ CONTAINS
                 CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                  CALL FlagError("Not implemented.",err,error,*999)
+                  !do nothing for interpolation
                 CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                   CALL FlagError("Not implemented.",err,error,*999)
                 CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -2374,7 +2373,48 @@ CONTAINS
               CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
               CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-                CALL FlagError("Not implemented.",err,error,*999)
+              !Finish the creation of the equations
+              !!!!!!!!!!!!!!!!!!!!! TEMPORARY
+                CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
+                CALL Equations_CreateFinish(equations,err,error,*999)
+                NULLIFY(vectorEquations)
+                CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+                !Create the equations mapping.
+                CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_U_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
+                CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_U_VARIABLE_TYPE], &
+                  & err,error,*999)
+                CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_U_VARIABLE_TYPE, &
+                  & err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
+                !Create the equations matrices
+                CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
+                ! Use the analytic Jacobian calculation
+                CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                  & err,error,*999)!Unsure what to do with this line
+                !Will have to change the following for optimum Finite Volume matrix storage
+                SELECT CASE(equations%sparsityType)
+                CASE(EQUATIONS_MATRICES_FULL_MATRICES)
+                  CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                    & err,error,*999)
+                  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                    & err,error,*999)
+                CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
+                  CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                    & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                    & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                  CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                    & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                  CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                    & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                CASE DEFAULT
+                  localError="The equations matrices sparsity type of "// &
+                    & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                  CALL FlagError(localError,err,error,*999)
+                END SELECT
+                CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
+                !!!!!!!!!!!!!!!!!!!!! TEMPORARY FINISHED
               CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
               CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
