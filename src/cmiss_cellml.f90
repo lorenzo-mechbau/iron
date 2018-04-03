@@ -194,6 +194,7 @@ MODULE CMISS_CELLML
 
   PUBLIC CELLML_ENVIRONMENTS_FINALISE,CELLML_ENVIRONMENTS_INITIALISE
   
+  PUBLIC CELLML_INTERMEDIATE_MAX_NUMBER_SET
 CONTAINS
 
   !
@@ -324,7 +325,7 @@ CONTAINS
                 CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  CellML user number = ",CELLML%USER_NUMBER,ERR,ERROR,*999)
               ENDIF
               !Loop over the dofs in the models field
-              DO dofIdx=1,MODELS_VARIABLE%TOTAL_NUMBER_OF_DOFS
+              DO dofIdx=1,MODELS_VARIABLE%NUMBER_OF_DOFS
                 modelIdx=MODELS_DATA(dofIdx)
                 IF(modelIdx>0) THEN
                   MODEL_MAPS=>FIELD_MAPS%MODEL_MAPS(modelIdx)%PTR
@@ -902,7 +903,7 @@ CONTAINS
                 CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  CellML user number = ",CELLML%USER_NUMBER,ERR,ERROR,*999)
               ENDIF
               !Loop over the dofs in the models field
-              DO dofIdx=1,MODELS_VARIABLE%TOTAL_NUMBER_OF_DOFS
+              DO dofIdx=1,MODELS_VARIABLE%NUMBER_OF_DOFS
                 modelIdx=MODELS_DATA(dofIdx)
                 IF(modelIdx>0) THEN
                   MODEL_MAPS=>FIELD_MAPS%MODEL_MAPS(modelIdx)%PTR
@@ -2584,7 +2585,7 @@ CONTAINS
               !check for the first non-zero model index
               source_dof_idx=0
               first_dof_idx=1
-              DO source_dof_idx=1,MODELS_VARIABLE%TOTAL_NUMBER_OF_DOFS
+              DO source_dof_idx=1,MODELS_VARIABLE%NUMBER_OF_DOFS
                 model_idx=MODELS_DATA(source_dof_idx)
                 IF(model_idx>=0) THEN
                   MODELS_FIELD%ONLY_ONE_MODEL_INDEX=model_idx
@@ -2600,7 +2601,7 @@ CONTAINS
                 ENDIF
               ENDDO
               IF(model_idx>=0.AND.model_idx<=CELLML%NUMBER_OF_MODELS) THEN
-                DO source_dof_idx=(first_dof_idx+1),MODELS_VARIABLE%TOTAL_NUMBER_OF_DOFS
+                DO source_dof_idx=(first_dof_idx+1),MODELS_VARIABLE%NUMBER_OF_DOFS
                   model_idx=MODELS_DATA(source_dof_idx)
                   IF(model_idx>=0.AND.model_idx<=CELLML%NUMBER_OF_MODELS) THEN
                     IF(model_idx/=MODELS_FIELD%ONLY_ONE_MODEL_INDEX.AND.model_idx/=0) THEN
@@ -2815,7 +2816,28 @@ CONTAINS
   !
   !=================================================================================================================================
   !
+  
+  ! sets the MAXIMUM_NUMBER_OF_INTERMEDIATE of a CellML object :: only for debugging
+  SUBROUTINE CELLML_INTERMEDIATE_MAX_NUMBER_SET(CELLML,NUMBER,ERR,ERROR,*)
+    !Argument variables
+    TYPE(CELLML_TYPE), POINTER :: CELLML ! The CellML environment object on which will be operated.
+    INTEGER(INTG), INTENT(IN) :: NUMBER ! The number that MAXIMUM_NUMBER_OF_INTERMEDIATES shall be set to.
+    INTEGER(INTG), INTENT(OUT) :: ERR ! The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR ! The error string.
+    
+    ENTERS("CELLML_INTERMEDIATE_MAX_NUMBER_SET",ERR,ERROR,*999)
 
+    CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE=NUMBER
+      
+    EXITS("CELLML_INTERMEDIATE_MAX_NUMBER_SET")
+    RETURN
+999 ERRORSEXITS("CELLML_INTERMEDIATE_MAX_NUMBER_SET",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE CELLML_INTERMEDIATE_MAX_NUMBER_SET
+  !
+  !=================================================================================================================================
+  !
+    
   !>Finish the creation of the models field for the given CellML environment.
   SUBROUTINE CELLML_MODELS_FIELD_CREATE_FINISH(CELLML,ERR,ERROR,*)
     !Argument variables
@@ -3590,6 +3612,7 @@ CONTAINS
                   ENDIF
                   CALL CELLML_INTERMEDIATE_FIELD_INITIALISE(CELLML,ERR,ERROR,*999)
                   IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
+                    !WRITE(*,*) 'INTERMEDIATE_FIELD is not auto created'
                     !Now check the supplied field.
                     CALL FIELD_DATA_TYPE_CHECK(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_DP_TYPE,ERR,ERROR,*999)
                     CALL FIELD_TYPE_CHECK(INTERMEDIATE_FIELD,FIELD_GENERAL_TYPE,ERR,ERROR,*999)
@@ -3604,6 +3627,7 @@ CONTAINS
                         & CELLML_FIELD_MAPS%SOURCE_FIELD_INTERPOLATION_TYPE,ERR,ERROR,*999)
                     ENDDO !component_idx
                   ELSE
+                    !WRITE(*,*) 'INTERMEDIATE_FIELD is auto created'
                     CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD_AUTO_CREATED=.TRUE.
                     !Create the CellML environment intermediate field
                     CALL FIELD_CREATE_START(INTERMEDIATE_FIELD_USER_NUMBER,REGION,CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD, &
@@ -3616,13 +3640,14 @@ CONTAINS
                       & CELLML_FIELD_MAPS%SOURCE_FIELD_DOMAIN%DECOMPOSITION,ERR,ERROR,*999)
                     CALL FIELD_GEOMETRIC_FIELD_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,CELLML_FIELD_MAPS% &
                       & SOURCE_GEOMETRIC_FIELD,ERR,ERROR,*999)
-                    CALL FIELD_NUMBER_OF_VARIABLES_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,1,ERR,ERROR,*999)
-                    CALL FIELD_VARIABLE_TYPES_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,[FIELD_U_VARIABLE_TYPE], &
+                    CALL FIELD_NUMBER_OF_VARIABLES_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,1,ERR,ERROR,*999)            ! why one?
+                    CALL FIELD_VARIABLE_TYPES_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,[FIELD_U_VARIABLE_TYPE], &        ! why u-type?
                       & ERR,ERROR,*999)
                     CALL FIELD_VARIABLE_LABEL_SET(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE, &
                       & "IntermediateVariable",ERR,ERROR,*999)
                     CALL FIELD_DOF_ORDER_TYPE_SET(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE, &
                       & FIELD_CONTIGUOUS_COMPONENT_DOF_ORDER,ERR,ERROR,*999)
+                    !WRITE(*,*) 'number of components: ', CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE
                     CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD, &
                       & FIELD_U_VARIABLE_TYPE,CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE,ERR,ERROR,*999)
                     DO component_idx=1,CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE

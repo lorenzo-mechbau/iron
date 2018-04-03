@@ -50,6 +50,7 @@ MODULE COORDINATE_ROUTINES
   USE ISO_VARYING_STRING
   USE KINDS
   USE MATHS
+  USE PRINT_TYPES_ROUTINES
   USE STRINGS
   USE TYPES
   
@@ -643,7 +644,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the covariant metric tensor GL(i,j), the contravariant metric tensor GU(i,J), the Jacobian and derivative of the interpolated coordinate system (XI_i) with respect to the given coordinate (X_j) system (DXI_DX) at a point (X - normally a Gauss point). Old cmiss name: XGMG
+  !>Calculates the covariant metric tensor GL(i,j), the contravariant metric tensor GU(i,J), the Jacobian and derivative of the interpolated 
+  !>coordinate system (XI_i) with respect to the given coordinate (X_j) system (DXI_DX) at a point (X - normally a Gauss point). Old cmiss name: XGMG
   SUBROUTINE COORDINATE_METRICS_CALCULATE(COORDINATE_SYSTEM,JACOBIAN_TYPE,METRICS,ERR,ERROR,*)
 
     !Argument variables
@@ -657,10 +659,18 @@ CONTAINS
     REAL(DP) :: DET_GL,DET_DX_DXI,DX_DXI2(3),DX_DXI3(3),FF,G1,G3,LENGTH,MU,R,RC,RCRC,RR,SCALE
     TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: INTERPOLATED_POINT
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: DEBUGGING  = .FALSE.
 
     NULLIFY(INTERPOLATED_POINT)
 
     ENTERS("COORDINATE_METRICS_CALCULATE",ERR,ERROR,*999)
+
+    IF (DEBUGGING) THEN
+      PRINT*, ""
+      PRINT*, ""
+      PRINT*, "      in COORDINATE_METRICS_CALCULATE, METRICS%NUMBER_OF_XI_DIMENSIONS:", METRICS%NUMBER_OF_XI_DIMENSIONS, &
+        & "METRICS%NUMBER_OF_X_DIMENSIONS", METRICS%NUMBER_OF_X_DIMENSIONS
+    ENDIF
 
     IF(ASSOCIATED(COORDINATE_SYSTEM)) THEN
       IF(ASSOCIATED(METRICS)) THEN
@@ -668,10 +678,12 @@ CONTAINS
         IF(ASSOCIATED(INTERPOLATED_POINT)) THEN
           IF(INTERPOLATED_POINT%PARTIAL_DERIVATIVE_TYPE>=FIRST_PART_DERIV) THEN
 
+            ! Initialize
             SELECT CASE(METRICS%NUMBER_OF_XI_DIMENSIONS)
             CASE(1)
               !Calculate the derivatives of X with respect to XI
               nu=PARTIAL_DERIVATIVE_FIRST_DERIVATIVE_MAP(1)
+              IF(DEBUGGING) PRINT*, "      set dx_dxi(1,1) to interpolated_point%Values(1,",nu,")"
               METRICS%DX_DXI(1:METRICS%NUMBER_OF_X_DIMENSIONS,1)=INTERPOLATED_POINT%VALUES(1:METRICS%NUMBER_OF_X_DIMENSIONS,nu)
               !Initialise the covariant metric tensor to the identity matrix
               METRICS%GL(1,1)=1.0_DP
@@ -715,9 +727,15 @@ CONTAINS
               CASE(1)
                 DO mi=1,METRICS%NUMBER_OF_XI_DIMENSIONS
                   DO ni=1,METRICS%NUMBER_OF_XI_DIMENSIONS
+                    IF (DEBUGGING) PRINT*, "      GL(",mi,",",ni,")=",METRICS%DX_DXI(1,mi),"*",METRICS%DX_DXI(1,ni)
                     METRICS%GL(mi,ni)=METRICS%DX_DXI(1,mi)*METRICS%DX_DXI(1,ni)                    
                   ENDDO !ni
                 ENDDO !mi
+                
+                IF (DEBUGGING) THEN
+                  PRINT*, "      1D: METRICS%NUMBER_OF_XI_DIMENSIONS: ",METRICS%NUMBER_OF_XI_DIMENSIONS
+                  PRINT*, "      GL: ",METRICS%GL
+                ENDIF
               CASE(2)
                 DO mi=1,METRICS%NUMBER_OF_XI_DIMENSIONS
                   DO ni=1,METRICS%NUMBER_OF_XI_DIMENSIONS
@@ -806,7 +824,11 @@ CONTAINS
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
             END SELECT
             
-            !Calcualte the contravariant metric tensor
+            IF (DEBUGGING) THEN
+              PRINT*, "      METRICS%GL: ", METRICS%GL
+            ENDIF
+            
+            !Calculate the contravariant metric tensor
             CALL INVERT(METRICS%GL(1:METRICS%NUMBER_OF_XI_DIMENSIONS,1:METRICS%NUMBER_OF_XI_DIMENSIONS), &
               & METRICS%GU(1:METRICS%NUMBER_OF_XI_DIMENSIONS,1:METRICS%NUMBER_OF_XI_DIMENSIONS),DET_GL, &
               & ERR,ERROR,*999)

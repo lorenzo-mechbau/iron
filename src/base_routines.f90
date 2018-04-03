@@ -328,6 +328,8 @@ MODULE BASE_ROUTINES
 
   PUBLIC FlagError,FlagWarning
   
+  PUBLIC gdbParallelDebuggingBarrier
+  
   PUBLIC OUTPUT_SET_OFF,OUTPUT_SET_ON
 
   PUBLIC OutputSetOn,OutputSetOff
@@ -358,7 +360,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Records the entry into the named procedure and initialises the error code \see BASE_ROUTINES::ENTERS
+  !>Records the entry into the named procedure and initialises the error code \see BASE_ROUTINES::EXITS
   SUBROUTINE ENTERS(NAME,ERR,ERROR,*)
 
     !Argument variables
@@ -375,7 +377,9 @@ CONTAINS
     IF(DIAG_OR_TIMING) THEN
       !$OMP CRITICAL(ENTERS_1)
       ALLOCATE(NEW_ROUTINE_PTR,STAT=ERR)
+#ifndef _OPENMP
       IF(ERR/=0) CALL FlagError("Could not allocate new routine stack item.",ERR,ERROR,*999)
+#endif
       NEW_ROUTINE_PTR%DIAGNOSTICS=.FALSE.
       NEW_ROUTINE_PTR%TIMING=.FALSE.
       NEW_ROUTINE_PTR%NAME=NAME(1:LEN_TRIM(NAME))
@@ -424,14 +428,20 @@ CONTAINS
           DIAGNOSTICS5=.FALSE.
         ENDIF
         IF(ROUTINE_PTR%DIAGNOSTICS) THEN
-          WRITE(OP_STRING,'("*** Enters: ",A)') NAME(1:LEN_TRIM(NAME))
-          CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+          IF(DIAGNOSTICS2) THEN
+            WRITE(OP_STRING,'("*** Enters: ",A)') NAME(1:LEN_TRIM(NAME))
+#ifndef _OPENMP
+            CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+#endif
+          ENDIF
         ELSE IF(ASSOCIATED(ROUTINE_PTR%PREVIOUS_ROUTINE)) THEN
           !CPB 16/05/2007 Only show the calls if we have level 3 diagnostics or higher
           IF(DIAGNOSTICS3) THEN
             IF(ROUTINE_PTR%PREVIOUS_ROUTINE%DIAGNOSTICS) THEN
               WRITE(OP_STRING,'("*** Calls : ",A)') NAME(1:LEN_TRIM(NAME))
+#ifndef _OPENMP
               CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+#endif
             ENDIF
           ENDIF
         ENDIF
@@ -518,8 +528,12 @@ CONTAINS
         PREVIOUS_ROUTINE_PTR=>ROUTINE_PTR%PREVIOUS_ROUTINE
         IF(DIAGNOSTICS) THEN
           IF(ROUTINE_PTR%DIAGNOSTICS) THEN
-            WRITE(OP_STRING,'("*** Exits : ",A)') NAME(1:LEN_TRIM(NAME))
-            CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+            IF(DIAGNOSTICS2) THEN
+              WRITE(OP_STRING,'("*** Exits : ",A)') NAME(1:LEN_TRIM(NAME))
+#ifndef _OPENMP
+              CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+#endif
+            ENDIF
           ENDIF
           IF(ASSOCIATED(PREVIOUS_ROUTINE_PTR)) THEN
             IF(PREVIOUS_ROUTINE_PTR%DIAGNOSTICS) THEN
@@ -563,6 +577,7 @@ CONTAINS
             ENDIF
           ENDIF
           IF(ROUTINE_PTR%TIMING) THEN
+#ifndef _OPENMP
             IF(.NOT.TIMING_SUMMARY) THEN
               WRITE(OP_STRING,'("*** Timing : ",A)') NAME(1:LEN_TRIM(NAME))
               CALL WRITE_STR(TIMING_OUTPUT_TYPE,ERR,ERROR,*999)
@@ -592,6 +607,7 @@ CONTAINS
                 CALL WRITE_STR(TIMING_OUTPUT_TYPE,ERR,ERROR,*999)
               ENDIF
             ENDIF
+#endif
           ENDIF
         ENDIF
 
@@ -611,6 +627,32 @@ CONTAINS
 
 999 RETURN
   END SUBROUTINE EXITS
+
+  !
+  !================================================================================================================================
+  !
+  !> Make all processes wait until one sets the variable gdb_resume to 1 via a debugger (e.g. gdb)
+  SUBROUTINE gdbParallelDebuggingBarrier()
+    INTEGER(Intg) :: Gdb_Resume
+    INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
+    INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
+    Gdb_Resume = 0
+
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+
+    IF (NumberOfComputationalNodes > 0) THEN
+      PRINT*, "Node ", ComputationalNodeNumber, ", UID ",GETPID()," is waiting for Gdb_Resume=", Gdb_Resume &
+        & , " to become 1 " // NEW_LINE('A') // "sudo gdb cuboid ",GETPID(), NEW_LINE('A') //"select-frame 2" // &
+        & NEW_LINE('A') // "set var gdb_resume = 1" // NEW_LINE('A') // &
+        & "info locals" // NEW_LINE('A') // "next"
+      DO WHILE (Gdb_Resume == 0)
+        CALL Sleep(1)
+      ENDDO
+      PRINT*, "Node ", ComputationalNodeNumber, " resumes because gdb_resume=", Gdb_Resume, "."
+    ENDIF
+
+  END SUBROUTINE gdbParallelDebuggingBarrier
 
   !
   !================================================================================================================================
@@ -705,6 +747,9 @@ CONTAINS
     STRING_LENGTH=LEN_TRIM(STRING)
     ERROR=STRING(1:STRING_LENGTH)
 
+    PRINT *, "ERROR: ", TRIM(STRING)
+    CALL ABORT()
+    
     RETURN 1
   END SUBROUTINE FLAG_ERROR_C
 
@@ -724,6 +769,8 @@ CONTAINS
     IF(ERR==0) ERR=1
     ERROR=STRING
 
+    PRINT *, "ERROR: ", CHAR(STRING)
+    CALL ABORT()
     RETURN 1
   END SUBROUTINE FLAG_ERROR_VS
 
@@ -883,7 +930,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Sets diagnositics off. \see BASE_ROUTINES::DIAGNOSTICS_SET_OFF,OPENCMISS::CMISSDiagnosticsSetOff
+  !>Sets diagnositics off. \see BASE_ROUTINES::DIAGNOSTICS_SET_ON,OPENCMISS::CMISSDiagnosticsSetOn
   SUBROUTINE DIAGNOSTICS_SET_OFF(ERR,ERROR,*)
 
     !Argument variables
@@ -937,7 +984,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Sets diagnositics on. \see BASE_ROUTINES::DIAGNOSTICS_SET_ON,OPENCMISS::CMISSDiagnosticsSetOn
+  !>Sets diagnositics on. \see BASE_ROUTINES::DIAGNOSTICS_SET_OFF,OPENCMISS::CMISSDiagnosticsSetOff
   SUBROUTINE DIAGNOSTICS_SET_ON(DIAG_TYPE,LEVEL_LIST,DIAG_FILENAME,ROUTINE_LIST,ERR,ERROR,*)
 
     !Argument variables
@@ -1512,43 +1559,43 @@ CONTAINS
     IF(DIAG_FILE_OPEN.AND.ID==DIAGNOSTIC_OUTPUT_TYPE) THEN
       DO i=1,NUMBER_RECORDS
         IF(END_LINE(i)<=MAX_OUTPUT_WIDTH) THEN
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(A)') OP_STRING(i)(1:END_LINE(i))
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i))
         ELSE IF(END_LINE(i)>MAX_OUTPUT_WIDTH.AND.END_LINE(i)<=MAXSTRLEN) THEN
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
         ELSE
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
         ENDIF
       ENDDO !i
     ELSE IF(TIMING_FILE_OPEN.AND.ID==TIMING_OUTPUT_TYPE) THEN
       DO i=1,NUMBER_RECORDS
         IF(END_LINE(i)<=MAX_OUTPUT_WIDTH) THEN
-          WRITE(TIMING_FILE_UNIT,'(A)') OP_STRING(i)(1:END_LINE(i))
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i))
         ELSE IF(END_LINE(i)>MAX_OUTPUT_WIDTH.AND.END_LINE(i)<=MAXSTRLEN) THEN
-          WRITE(TIMING_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(TIMING_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
         ELSE
-          WRITE(TIMING_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(TIMING_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
         ENDIF
       ENDDO !i
     ELSE
       IF(ID<=9) THEN !not file output
         DO i=1,NUMBER_RECORDS
           IF(END_LINE(i)<=MAX_OUTPUT_WIDTH) THEN
-            WRITE(*,'(A)') OP_STRING(i)(1:END_LINE(i))
+            WRITE(*,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i))
           ELSE IF(END_LINE(i)>MAX_OUTPUT_WIDTH.AND.END_LINE(i)<=MAXSTRLEN) THEN
-            WRITE(*,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(*,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
+            WRITE(*,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(*,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
           ELSE
-            WRITE(*,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(*,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
+            WRITE(*,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(*,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
           ENDIF
         ENDDO !i
       ELSE !file output
         DO i=1,NUMBER_RECORDS
-          WRITE(ID,'(A)') OP_STRING(i)(1:END_LINE(i))
+          WRITE(ID,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i))
         ENDDO !i
       ENDIF
 
@@ -1557,13 +1604,13 @@ CONTAINS
       IF(ECHO_OUTPUT) THEN
         DO i=1,NUMBER_RECORDS
           IF(END_LINE(i)<=MAX_OUTPUT_WIDTH) THEN
-            WRITE(ECHO_FILE_UNIT,'(A)') OP_STRING(i)(1:END_LINE(i))
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i))
           ELSE IF(END_LINE(i)>MAX_OUTPUT_WIDTH.AND.END_LINE(i)<=MAXSTRLEN) THEN
-            WRITE(ECHO_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(ECHO_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:END_LINE(i))
           ELSE
-            WRITE(ECHO_FILE_UNIT,'(A)') OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(ECHO_FILE_UNIT,'(A)') OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN)
           ENDIF
         ENDDO !i
       ENDIF

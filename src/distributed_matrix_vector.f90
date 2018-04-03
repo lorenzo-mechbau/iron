@@ -59,6 +59,7 @@ MODULE DISTRIBUTED_MATRIX_VECTOR
   USE STRINGS
   USE TYPES
   USE LINKEDLIST_ROUTINES
+  USE CUSTOM_PROFILING
 
 #include "macros.h"
 
@@ -115,7 +116,7 @@ MODULE DISTRIBUTED_MATRIX_VECTOR
 
   !Module variables
 
-  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=100000000
+  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=1    ! 100000000  ! beware of MPI maximum tag number which is only guaranteed to be >32767!
 
   !Interfaces
 
@@ -903,12 +904,13 @@ CONTAINS
       CMISS_MATRIX%BASE_TAG_NUMBER=DISTRIBUTED_DATA_ID
       DOMAIN_MAPPING=>CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING
       IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
-        IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
+        !IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
           DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
-        ELSE
-          DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
-            & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
-        END IF
+        !ELSE
+        !  DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
+        !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
+        !  ! DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1 should also be okay in this case since communication is determined by message envelope (sender, dest, tag, comm)
+        !END IF
         CALL MATRIX_CREATE_FINISH(CMISS_MATRIX%MATRIX,ERR,ERROR,*999)
       ELSE
         CALL FlagError("Distributed matrix row domain mapping is not associated.",ERR,ERROR,*998)
@@ -2673,12 +2675,20 @@ CONTAINS
               !Set up the Local to Global mappings
               ALLOCATE(PETSC_MATRIX%GLOBAL_ROW_NUMBERS(PETSC_MATRIX%M),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate global row numbers for PETSc distributed matrix.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed matrix petsc, block storage (local to global mapping)", &
+               & PETSC_MATRIX%M, INT(SIZEOF(PETSC_MATRIX%GLOBAL_ROW_NUMBERS)))
+#endif
               DO i=1,PETSC_MATRIX%M
                 PETSC_MATRIX%GLOBAL_ROW_NUMBERS(i)=ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(i)-1 !PETSc uses 0 based indexing
               ENDDO !i
               !Set up the matrix
               ALLOCATE(PETSC_MATRIX%DATA_DP(PETSC_MATRIX%DATA_SIZE),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate PETSc matrix data.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed matrix petsc, block storage", &
+                & PETSC_MATRIX%DATA_SIZE, INT(SIZEOF(PETSC_MATRIX%DATA_DP)))
+#endif
               CALL Petsc_MatCreateDense(COMPUTATIONAL_ENVIRONMENT%MPI_COMM,PETSC_MATRIX%M,PETSC_MATRIX%N, &
                 & PETSC_MATRIX%GLOBAL_M,PETSC_MATRIX%GLOBAL_N,PETSC_MATRIX%DATA_DP,PETSC_MATRIX%MATRIX,ERR,ERROR,*999)
             CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
@@ -2688,14 +2698,26 @@ CONTAINS
               !Set up the Local to Global mappings
               ALLOCATE(PETSC_MATRIX%GLOBAL_ROW_NUMBERS(PETSC_MATRIX%M),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate global row numbers for PETSc distributed matrix.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed matrix petsc, diagonal storage (local to global mapping)", &
+                & PETSC_MATRIX%M, INT(SIZEOF(PETSC_MATRIX%GLOBAL_ROW_NUMBERS)))
+#endif
               DO i=1,PETSC_MATRIX%M
                 PETSC_MATRIX%GLOBAL_ROW_NUMBERS(i)=ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(i)-1 !PETSc uses 0 based indexing
               ENDDO !i
               !Set up the matrix
               ALLOCATE(PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS(PETSC_MATRIX%N),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate diagonal number of non zeros.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed matrix petsc, diagonal storage", &
+                & PETSC_MATRIX%N, INT(SIZEOF(PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS)))
+#endif
               ALLOCATE(PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS(PETSC_MATRIX%N),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate off diagonal number of non zeros.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed matrix petsc, diagonal storage, offdiag", &
+                & PETSC_MATRIX%N, INT(SIZEOF(PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS)))
+#endif
               PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS=1
               PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS=0
               !Create the PETsc AIJ matrix
@@ -2720,6 +2742,10 @@ CONTAINS
                   !Set up the Local to Global mappings
                   ALLOCATE(PETSC_MATRIX%GLOBAL_ROW_NUMBERS(PETSC_MATRIX%M),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate global row numbers for PETSc distributed matrix.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed matrix petsc, compr. row storage (local to global mapping)", &
+                    & PETSC_MATRIX%M, INT(SIZEOF(PETSC_MATRIX%GLOBAL_ROW_NUMBERS)))
+#endif
                   PETSC_MATRIX%MAXIMUM_COLUMN_INDICES_PER_ROW=0
                   DO i=1,PETSC_MATRIX%M
                     PETSC_MATRIX%GLOBAL_ROW_NUMBERS(i)=ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(i)-1 !PETSc uses 0 based indexing
@@ -3007,16 +3033,32 @@ CONTAINS
                           !Allocate the PETSc sparsity storage arrays
                           ALLOCATE(PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS(PETSC_MATRIX%M),STAT=ERR)
                           IF(ERR/=0) CALL FlagError("Could not allocate PETSc matrix diagonal number of non zeros.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingMemory("distributed matrix petsc, compr. row storage diag", &
+                            & PETSC_MATRIX%M, INT(SIZEOF(PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS)))
+#endif
                           PETSC_MATRIX%DIAGONAL_NUMBER_NON_ZEROS=0
                           ALLOCATE(PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS(PETSC_MATRIX%M),STAT=ERR)
                           IF(ERR/=0) CALL FlagError("Could not allocate PETSc matrix off diagonal number of non zeros.", &
                             & ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingMemory("distributed matrix petsc, compr. row storage, offdiag", &
+                            & PETSC_MATRIX%M, INT(SIZEOF(PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS)))
+#endif
                           PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS=0
                           ALLOCATE(PETSC_MATRIX%ROW_INDICES(PETSC_MATRIX%M+1),STAT=ERR)
                           IF(ERR/=0) CALL FlagError("Could not allocate PETSc matrix row indices.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingMemory("distributed matrix petsc, compr. row storage, row ind.", &
+                            & PETSC_MATRIX%M+1, INT(SIZEOF(PETSC_MATRIX%ROW_INDICES)))
+#endif
                           PETSC_MATRIX%ROW_INDICES(1:PETSC_MATRIX%M+1)=ROW_INDICES(1:PETSC_MATRIX%M+1)
                           ALLOCATE(PETSC_MATRIX%COLUMN_INDICES(PETSC_MATRIX%NUMBER_NON_ZEROS),STAT=ERR)
                           IF(ERR/=0) CALL FlagError("Could not allocate PETSc matrix column indices.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingMemory("distributed matrix petsc, compr. row storage, col. ind.", &
+                            & PETSC_MATRIX%NUMBER_NON_ZEROS, INT(SIZEOF(PETSC_MATRIX%COLUMN_INDICES)))
+#endif
                           PETSC_MATRIX%COLUMN_INDICES(1:PETSC_MATRIX%NUMBER_NON_ZEROS)= &
                             & COLUMN_INDICES(1:PETSC_MATRIX%NUMBER_NON_ZEROS)
                           !Check the column indices are correct and calculate number of diagonal and off-diagonal columns
@@ -5922,7 +5964,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("DISTRIBUTED_VECTOR_COPY_DP",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FROM_VECTOR)) THEN
@@ -6286,7 +6328,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: domain_idx,domain_idx2,domain_no,DUMMY_ERR,my_computational_node_number
+    INTEGER(INTG) :: domain_idx,domain_idx2,domain_no,DUMMY_ERR,MyComputationalNodeNumber
     LOGICAL :: FOUND
     TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING
@@ -6300,96 +6342,192 @@ CONTAINS
         DOMAIN_MAPPING=>DISTRIBUTED_VECTOR%DOMAIN_MAPPING
         IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
           CMISS_VECTOR%DATA_SIZE=CMISS_VECTOR%N
+          ! allocate memory for data
           SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
           CASE(MATRIX_VECTOR_INTG_TYPE)
             ALLOCATE(CMISS_VECTOR%DATA_INTG(CMISS_VECTOR%DATA_SIZE),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector integer data.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+            CALL CustomProfilingMemory("distributed vector cmiss INTG", &
+              & CMISS_VECTOR%DATA_SIZE, INT(SIZEOF(CMISS_VECTOR%DATA_INTG)))
+#endif
           CASE(MATRIX_VECTOR_SP_TYPE)
             ALLOCATE(CMISS_VECTOR%DATA_SP(CMISS_VECTOR%DATA_SIZE),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector single precsion data.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+            CALL CustomProfilingMemory("distributed vector cmiss SP", &
+              & CMISS_VECTOR%DATA_SIZE, INT(SIZEOF(CMISS_VECTOR%DATA_SP)))
+#endif
           CASE(MATRIX_VECTOR_DP_TYPE)
             ALLOCATE(CMISS_VECTOR%DATA_DP(CMISS_VECTOR%DATA_SIZE),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector double precsion data.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+            CALL CustomProfilingMemory("distributed vector cmiss DP", &
+              & CMISS_VECTOR%DATA_SIZE, INT(SIZEOF(CMISS_VECTOR%DATA_DP)))
+#endif
           CASE(MATRIX_VECTOR_L_TYPE)
             ALLOCATE(CMISS_VECTOR%DATA_L(CMISS_VECTOR%DATA_SIZE),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector logical data.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+            CALL CustomProfilingMemory("distributed vector cmiss L", &
+              & CMISS_VECTOR%DATA_SIZE, INT(SIZEOF(CMISS_VECTOR%DATA_L)))
+#endif
           CASE DEFAULT
             LOCAL_ERROR="The distributed vector data type of "// &
               & TRIM(NumberToVString(DISTRIBUTED_VECTOR%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
+          
+          ! get base tag number from global counter and increase counter
           CMISS_VECTOR%BASE_TAG_NUMBER=DISTRIBUTED_DATA_ID
-          IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
+          !IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
             DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
-          ELSE
-            DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
-              & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
-          END IF
+          !ELSE
+          !  DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
+          !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)
+          !END IF
+          
+          ! if there are adjacent domains
           IF(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS>0) THEN
-            my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
             IF(ERR/=0) GOTO 999
+            
             IF(DISTRIBUTED_VECTOR%GHOSTING_TYPE==DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) THEN
+            
+              ! fill transfers information for each of the adjacent domains
               ALLOCATE(CMISS_VECTOR%TRANSFERS(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate CMISS distributed vector transfer buffers.",ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+              CALL CustomProfilingMemory("distributed vector cmiss, ghosts", &
+                & DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, INT(SIZEOF(CMISS_VECTOR%TRANSFERS)))
+#endif
+
+              ! loop over adjacent domains
               DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                
+                ! initialize data structure
                 CALL DistributedVector_CmissTransferInitialise(CMISS_VECTOR,domain_idx,ERR,ERROR,*999)
+                
+                ! set buffer sizes and data type
                 CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_SIZE=DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
                   & NUMBER_OF_SEND_GHOSTS
                 CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE= &
                   & DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS
                 CMISS_VECTOR%TRANSFERS(domain_idx)%DATA_TYPE=DISTRIBUTED_VECTOR%DATA_TYPE
-                CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
-                  & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(my_computational_node_number)+domain_idx-1
+                
+                ! choose send tag number such that communication is unique
+                ! message envelope (sender, dest, tag, comm), thus tag only needs to distinguish between different matrix/vector objects
+                !CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
+                !  & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(MyComputationalNodeNumber)+domain_idx-1
+                CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER
+                  
+                ! get adjacent domain
                 domain_no=DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER
-                FOUND=.FALSE.
-                DO domain_idx2=DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no),DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no+1)-1
-                  IF(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(domain_idx2)==my_computational_node_number) THEN
-                    FOUND=.TRUE.
-                    EXIT
-                  ENDIF
-                ENDDO !domain_idx2
-                IF(FOUND) THEN
-                  domain_idx2=domain_idx2-DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+1
-                  CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
-                    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+domain_idx2-1
-                ELSE
-                  CALL FlagError("Could not find domain to set the receive tag number.",ERR,ERROR,*999)
-                ENDIF
+                CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER
+                
+                !FOUND=.FALSE.
+                !DO domain_idx2=DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no),DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no+1)-1
+                !  IF(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(domain_idx2)==MyComputationalNodeNumber) THEN
+                !    FOUND=.TRUE.
+                !    EXIT
+                !  ENDIF
+                !ENDDO !domain_idx2
+                !IF(FOUND) THEN
+                !  domain_idx2=domain_idx2-DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+1
+                !  CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER=CMISS_VECTOR%BASE_TAG_NUMBER + &
+                !    & DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)+domain_idx2-1
+                !ELSE
+                !  CALL FlagError("Could not find domain to set the receive tag number.",ERR,ERROR,*999)
+                !ENDIF
+                
+                ! allocate send and receive buffers
                 SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
                 CASE(DISTRIBUTED_MATRIX_VECTOR_INTG_TYPE)
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_INTG(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & SEND_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector send integer transfer buffer.",ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, send buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & SEND_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_INTG)))
+#endif
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_INTG(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & RECEIVE_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector receive integer transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, recv buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & RECEIVE_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_INTG)))
+#endif
+
                 CASE(DISTRIBUTED_MATRIX_VECTOR_SP_TYPE)
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_SP(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & SEND_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector send single precision transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, send buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & SEND_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_SP)))
+#endif
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SP(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & RECEIVE_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector receive single precision transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, recv buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & RECEIVE_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SP)))
+#endif
+
                 CASE(DISTRIBUTED_MATRIX_VECTOR_DP_TYPE)
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_DP(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & SEND_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector send double precision transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, send buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & SEND_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_DP)))
+#endif
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_DP(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & RECEIVE_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector receive double precision transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, recv buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & RECEIVE_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_DP)))
+#endif
+
                 CASE(DISTRIBUTED_MATRIX_VECTOR_L_TYPE)
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_L(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_SIZE), &
                     & STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector send logical transfer buffer.",ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, send buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & SEND_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%SEND_BUFFER_L)))
+#endif
+
+
                   ALLOCATE(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_L(CMISS_VECTOR%TRANSFERS(domain_idx)% &
                     & RECEIVE_BUFFER_SIZE),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate distributed vector receive logical transfer buffer.", &
                     & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                  CALL CustomProfilingMemory("distributed vector cmiss, recv buffer", CMISS_VECTOR%TRANSFERS(domain_idx)% &
+                    & RECEIVE_BUFFER_SIZE, INT(SIZEOF(CMISS_VECTOR%TRANSFERS(domain_idx)%RECEIVE_BUFFER_L)))
+#endif
+
                 CASE DEFAULT
                   LOCAL_ERROR="The distributed vector data type of "// &
                     & TRIM(NumberToVString(DISTRIBUTED_VECTOR%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -7590,8 +7728,15 @@ CONTAINS
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
           DISTRIBUTED_VECTOR%PETSC%GLOBAL_N=DISTRIBUTED_VECTOR%DOMAIN_MAPPING%NUMBER_OF_GLOBAL
+
           ALLOCATE(DISTRIBUTED_VECTOR%PETSC%GLOBAL_NUMBERS(DISTRIBUTED_VECTOR%PETSC%N),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate PETSc distributed vector global numbers.",ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+          CALL CustomProfilingMemory("distributed vector petsc", &
+            & DISTRIBUTED_VECTOR%PETSC%N, INT(SIZEOF(DISTRIBUTED_VECTOR%PETSC%GLOBAL_NUMBERS)))
+#endif
+
           DISTRIBUTED_VECTOR%PETSC%USE_OVERRIDE_VECTOR=.FALSE.
           CALL Petsc_VecInitialise(DISTRIBUTED_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
           CALL Petsc_VecInitialise(DISTRIBUTED_VECTOR%PETSC%OVERRIDE_VECTOR,ERR,ERROR,*999)          
@@ -7991,6 +8136,10 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: domain_idx,i,MPI_IERROR,NUMBER_OF_COMPUTATIONAL_NODES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: FLAG
+    
+    INTEGER :: COMM, COMM_KEYVAL, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND) :: TAG_UB
     
     ENTERS("DISTRIBUTED_VECTOR_UPDATE_START",ERR,ERROR,*999)
 
@@ -8041,12 +8190,24 @@ CONTAINS
                   DO domain_idx=1,DISTRIBUTED_VECTOR%DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
                     CASE(MATRIX_VECTOR_INTG_TYPE)
+                      
                       CALL MPI_IRECV(DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_INTG, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,MPI_INTEGER, &
                         & DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(INTG) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG)
+                      
+                      !PRINT*, "FLAG: ", FLAG, ", TAG_UB: ",TAG_UB,", MPI_IERROR:",MPI_IERROR
+                      
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8068,6 +8229,13 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(SP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8089,6 +8257,15 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(DP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG, IERROR)
+                      !PRINT*, "TAG_UB:",TAG_UB,", FLAG:",FLAG,", IERROR:",IERROR,", MPI_ANY_TAG:",MPI_ANY_TAG
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8110,6 +8287,13 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(L) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &

@@ -190,7 +190,7 @@ MODULE CmissPetsc
   MatOption, PARAMETER :: PETSC_MAT_USE_INODES = MAT_USE_INODES !<Matrix will using an inode version of code
   MatOption, PARAMETER :: PETSC_MAT_HERMITIAN = MAT_HERMITIAN !<Hermitian matrix, the transpose is the complex conjugation
   MatOption, PARAMETER :: PETSC_MAT_SYMMETRY_ETERNAL = MAT_SYMMETRY_ETERNAL !<Matrix will always be symmetric
-  MatOption, PARAMETER :: PETSC_MAT_DUMMY = MAT_DUMMY
+ ! MatOption, PARAMETER :: PETSC_MAT_DUMMY = MAT_DUMMY
   MatOption, PARAMETER :: PETSC_MAT_IGNORE_LOWER_TRIANGULAR = MAT_IGNORE_LOWER_TRIANGULAR !<Ignore any additions or insertions in the lower triangular part of the matrix
   MatOption, PARAMETER :: PETSC_MAT_ERROR_LOWER_TRIANGULAR = MAT_ERROR_LOWER_TRIANGULAR
   MatOption, PARAMETER :: PETSC_MAT_GETROW_UPPERTRIANGULAR = MAT_GETROW_UPPERTRIANGULAR
@@ -1114,11 +1114,12 @@ MODULE CmissPetsc
       PetscInt ierr
     END SUBROUTINE SNESLineSearchSetComputeNorms
 
-    SUBROUTINE SnesLineSearchSetMonitor(linesearch,flag,ierr)
-      SNESLineSearch linesearch
-      PetscBool flag
-      PetscInt ierr
-    END SUBROUTINE SnesLineSearchSetMonitor
+! commented out, because not available on cray (hazelhen)
+!    SUBROUTINE SnesLineSearchSetMonitor(linesearch,flag,ierr)
+!      SNESLineSearch linesearch
+!      PetscBool flag
+!      PetscInt ierr
+!    END SUBROUTINE SnesLineSearchSetMonitor
 
     SUBROUTINE SnesLineSearchSetNorms(snes,xnorm,fnorm,ynorm,ierr)
       SNES snes
@@ -1169,6 +1170,11 @@ MODULE CmissPetsc
       Vec currentsolution
       PetscInt ierr
     END SUBROUTINE TSGetSolution
+    
+ !   SUBROUTINE TSGLCreate_IRKS(ts,ierr)
+ !     TS ts
+ !     PetscInt ierr
+ !   END SUBROUTINE TSGLCreate_IRKS  
     
     SUBROUTINE TSMonitorSet(ts,mfunction,mctx,monitordestroy,ierr)
       USE TYPES
@@ -1230,6 +1236,12 @@ MODULE CmissPetsc
       PetscReal time_step
       PetscInt ierr
     END SUBROUTINE TSSetTimeStep
+    
+    SUBROUTINE TSGetTimeStepNumber(ts,n,ierr)
+      TS ts
+      PetscInt n
+      PetscInt ierr
+    END SUBROUTINE TSGetTimeStepNumber
     
     SUBROUTINE TSSetType(ts,tstype,ierr)
       TS ts
@@ -1594,7 +1606,8 @@ MODULE CmissPetsc
     & PETSC_MAT_NEW_DIAGONALS,PETSC_MAT_IGNORE_OFF_PROC_ENTRIES,PETSC_MAT_NEW_NONZERO_LOCATION_ERR, &
     & PETSC_MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_MAT_USE_HASH_TABLE,PETSC_MAT_KEEP_NONZERO_PATTERN, &
     & PETSC_MAT_IGNORE_ZERO_ENTRIES,PETSC_MAT_USE_INODES,PETSC_MAT_HERMITIAN,PETSC_MAT_SYMMETRY_ETERNAL, &
-    & PETSC_MAT_DUMMY,PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
+!    & PETSC_MAT_DUMMY,PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
+    & PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
     & PETSC_MAT_UNUSED_NONZERO_LOCATION_ERR,PETSC_MAT_SPD,PETSC_MAT_NO_OFF_PROC_ENTRIES,PETSC_MAT_NO_OFF_PROC_ZERO_ROWS
 
   PUBLIC PETSC_MAT_SOLVER_SUPERLU,PETSC_MAT_SOLVER_SUPERLU_DIST,PETSC_MAT_SOLVER_UMFPACK,PETSC_MAT_SOLVER_CHOLMOD, &
@@ -1708,7 +1721,9 @@ MODULE CmissPetsc
 
   PUBLIC Petsc_TSCreate,Petsc_TSDestroy,Petsc_TSGetSolution,Petsc_TSMonitorSet,Petsc_TSSetDuration,Petsc_TSSetExactFinalTime, &
     & Petsc_TSSetFromOptions,Petsc_TSSetInitialTimeStep,Petsc_TSSetProblemType,Petsc_TSSetRHSFunction,Petsc_TSSetSolution, &
-    & Petsc_TSSetTimeStep,Petsc_TSSetType,Petsc_TSSolve,Petsc_TSStep,Petsc_TSSundialsSetTolerance,Petsc_TSSundialsSetType
+    & Petsc_TSSetTimeStep,Petsc_TSGetTImeStepNumber, Petsc_TSSetType,Petsc_TSSolve,Petsc_TSStep,Petsc_TSSundialsSetTolerance, &
+    & Petsc_TSSundialsSetType!, Petsc_TSGLCreate_IRKS ! muss noch alphabetisch einsortiert werden..
+    !MISSING: TSSetTolerances, TSGLCreate_IRKS needed to set up GL scheme. (to build gl->schemes[], otherwise error in TSSolve(){...TSSetUP(){...TSSetUp_GL(){TSGLGetMaxSizes()}}})
 
   !Vector routines and constants
 
@@ -1891,7 +1906,7 @@ CONTAINS
     RETURN 1
     
   END SUBROUTINE Petsc_ISFinalise
-    
+  
   !
   !================================================================================================================================
   !
@@ -4773,7 +4788,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Buffer routine to the PETSc SNESSetJacobian routine for solver contexts.
+  !>Buffer routine to the PETSc SNESGetJacobian routine for solver contexts.
   SUBROUTINE Petsc_SnesGetJacobianSolver(snes,a,b,jFunction,err,error,*)
 
     !Argument Variables
@@ -4807,7 +4822,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Buffer routine to the PETSc SNESSetJacobian routine for solver contexts.
+  !>Buffer routine to the PETSc SNESGetJacobian routine for solver contexts.
   SUBROUTINE Petsc_SnesGetJacobianSpecial(snes,a,err,error,*)
 
     !Argument Variables
@@ -5662,17 +5677,18 @@ CONTAINS
 
     ENTERS("Petsc_SnesLineSearchSetMonitor",err,error,*999)
 
-    IF(monitorLinesearch) THEN
-      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_TRUE,err)
-    ELSE
-      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_FALSE,err)
-    ENDIF
-    IF(err/=0) THEN
-      IF(petscHandleError) THEN
-        CHKERRQ(err)
-      ENDIF
-      CALL FlagError("PETSc error in SNESLineSearchSetMonitor.",err,error,*999)
-    ENDIF
+! commented out because it is not available on hazelhen (cray system of hlrs stuttgart)
+!    IF(monitorLinesearch) THEN
+!      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_TRUE,err)
+!    ELSE
+!      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_FALSE,err)
+!    ENDIF
+!    IF(err/=0) THEN
+!      IF(petscHandleError) THEN
+!        CHKERRQ(err)
+!      ENDIF
+!      CALL FlagError("PETSc error in SNESLineSearchSetMonitor.",err,error,*999)
+!    ENDIF
 
     EXITS("Petsc_SnesLineSearchSetMonitor")
     RETURN
@@ -5963,6 +5979,35 @@ CONTAINS
   !
   !================================================================================================================================
   !
+    
+!  !>Buffer routine to the PETSc TSGLCreate_IRKS routine.
+!  SUBROUTINE Petsc_TSGLCreate_IRKS(ts,err,error,*)
+!
+!    TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to create the IRKS schemes for (one of more options for GL)
+!    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+!    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+!    !Local Variables
+!
+!    ENTERS("Petsc_TSGLCreate_IRKS",err,error,*999)
+!
+!    CALL TSGLCreate_IRKS(ts%ts,err)
+!    IF(err/=0) THEN
+!      IF(petscHandleError) THEN
+!        CHKERRQ(err)
+!      ENDIF
+!      CALL FlagError("PETSc error in TSGLCreate_IRKS.",err,error,*999)
+!    ENDIF
+!    
+!    EXITS("Petsc_TSGLCreate_IRKS")
+!    RETURN
+!999 ERRORSEXITS("Petsc_TSGLCreate_IRKS",err,error)
+!    RETURN 1
+!    
+!  END SUBROUTINE Petsc_TSGLCreate_IRKS
+
+  !
+  !================================================================================================================================
+  !
 
   !>Buffer routine to the PETSc TSMonitorSet routine.
   SUBROUTINE Petsc_TSMonitorSet(ts,mFunction,ctx,err,error,*)
@@ -6038,12 +6083,12 @@ CONTAINS
 
     ENTERS("Petsc_TSSetExactFinalTime",err,error,*999)
 
-    IF(exactFinalTime) THEN
-      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err)
+    IF(exactFinalTime) THEN ! CARE! This sets PetSc's 'eftopt' as the interpolate version! not as the match version! the interface to C language probably does not provide the 'match'
+      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err) ! have to do it anyway, since I found a line in src/ts/impls/implicit/sundials/sundials.c: ...below...
     ELSE
       CALL TSSetExactFinalTime(ts%ts,PETSC_FALSE,err)
     ENDIF
-    
+!..above: if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) !S!E!T!E!R!R!Q!(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for exact final time option 'MATCHSTEP' when using Sundials");
     IF(err/=0) THEN
       IF(petscHandleError) THEN
         CHKERRQ(err)
@@ -6123,6 +6168,12 @@ CONTAINS
   !
       
   !>Buffer routine to the PETSc TSSetProblemType routine.
+  !- probType - One of TS_LINEAR, TS_NONLINEAR where these types refer to problems of the forms
+  !
+  !       U_t - A U = 0      (linear)
+  !       U_t - A(t) U = 0   (linear)
+  !       F(t,U,U_t) = 0     (nonlinear)
+  !
   SUBROUTINE Petsc_TSSetProblemType(ts,probType,err,error,*)
 
     TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to set the problem type for
@@ -6240,6 +6291,38 @@ CONTAINS
     
   END SUBROUTINE Petsc_TSSetTimeStep
   
+  !
+  !================================================================================================================================
+  !
+  
+    ! Aaron needed (needs) this
+  !>Buffer routine to the PETSc TSGetTimeStepNumber routine.
+  SUBROUTINE Petsc_TSGetTimeStepNumber(ts,N,err,error,*)
+
+    !Argument Variables
+    TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to get the step number of
+    INTEGER(INTG), INTENT(OUT) :: N !<On exit, the number of time steps
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+
+    ENTERS("Petsc_TSGetTimeStepNumber",err,error,*999)
+
+    CALL  TSGetTimeStepNumber(ts%ts,N,err)
+    IF(err/=0) THEN
+      IF(petscHandleError) THEN
+        CHKERRQ(err)
+      ENDIF
+      CALL FlagError("PETSc error in TSGetTimeStepNumber.",err,error,*999)
+    ENDIF
+        
+    EXITS("Petsc_TSGetTimeStepNumber")
+    RETURN
+999 ERRORSEXITS("Petsc_TSGetTimeStepNumber",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Petsc_TSGetTimeStepNumber
+
+
   !
   !================================================================================================================================
   !

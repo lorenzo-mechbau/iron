@@ -9,8 +9,6 @@ set(IRON_HEADERS
     external_dae_solver_routines.h
     FieldExport.h
     FieldExportConstants.h
-    macros.h
-    dllexport.h
 )
 set(IRON_Fortran_SRC
     advection_diffusion_equation_routines.f90
@@ -37,7 +35,8 @@ set(IRON_Fortran_SRC
     computational_environment.f90
     constants.f90
     control_loop_routines.f90
-    coordinate_routines.f90
+    coordinate_routines.f90 
+    custom_profiling.f90
     Darcy_equations_routines.f90
     Darcy_pressure_equations_routines.f90
     data_point_routines.f90
@@ -66,6 +65,7 @@ set(IRON_Fortran_SRC
     fluid_mechanics_routines.f90
     fsi_routines.f90
     generated_mesh_routines.f90
+    global_to_local_map_replacement_routines.f90
     Hamilton_Jacobi_equations_routines.f90
     Helmholtz_equations_routines.f90
     #Helmholtz_TEMPLATE_equations_routines.f90
@@ -98,6 +98,7 @@ set(IRON_Fortran_SRC
     opencmiss_iron.f90
     Poiseuille_equations_routines.f90
     Poisson_equations_routines.f90
+    print_types_routines.f90
     problem_constants.f90
     problem_routines.f90
     reaction_diffusion_equation_routines.f90

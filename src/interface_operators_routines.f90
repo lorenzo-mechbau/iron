@@ -216,7 +216,7 @@ CONTAINS
                 !\todo defaults to first mesh component, generalise
                 !XI=InterfaceOperators_InterfToCoupledMeshGaussTransform( &
                 !  & elementConnectivity,interfaceConnectivityBasis,GaussPoint,err,error)
-                XI(1:interfaceDependentBasis%NUMBER_OF_XI)=InterfaceOperators_InterfToCoupledMeshGaussTransform( &
+                XI(1:SIZE(elementConnectivity%XI,1))=InterfaceOperators_InterfToCoupledMeshGaussTransform( &
                   & elementConnectivity,interfaceConnectivityBasis,GaussPoint,err,error)
                 !XI=interfaceCondition%interface%pointsConnectivity%pointsConnectivity(GaussPoint,coupledMeshIdx)%xi
                 ! Loop over number of Lagrange variable components as not all components in the dependent field variable may be coupled

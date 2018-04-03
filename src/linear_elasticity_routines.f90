@@ -135,6 +135,7 @@ CONTAINS
             NULLIFY(GEOMETRIC_VARIABLE)
             CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE,GEOMETRIC_VARIABLE,ERR,ERROR,*999)
             NULLIFY(GEOMETRIC_PARAMETERS)
+           
             CALL FIELD_PARAMETER_SET_DATA_GET(GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GEOMETRIC_PARAMETERS, &
               & ERR,ERROR,*999)
             !
@@ -1329,6 +1330,8 @@ CONTAINS
               DO mhs=1,TOTAL_DEPENDENT_BASIS_EP
                 DO nhs=mhs,TOTAL_DEPENDENT_BASIS_EP
                   !!TODO::Bring 2D plane stress/strain element thickness in through a field - element constant when it can be exported by field i/o. Currently brought in through material field (Temporary)
+                  ! NOTE because this was confusing. at the moment, for 1D/2D we assume isotropy
+                  !      and use the first material parameter as cross-sectional area in 1D and thickness in 2D
                   EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX(mhs,nhs)=EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX(mhs,nhs)* &
                     & MATERIALS_INTERP_POINT%values(1,1)
                 ENDDO !nhs
@@ -1741,11 +1744,11 @@ CONTAINS
                 !Set the default values for the materials field
                 DO component_idx=1,3
                   CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,component_idx,30.0E6_DP,ERR,ERROR,*999)
+                    & FIELD_VALUES_SET_TYPE,component_idx,30.0E6_DP,ERR,ERROR,*999) !Young's modulus
                 ENDDO !component_idx
                 DO component_idx=4,6
                   CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,component_idx,0.25_DP,ERR,ERROR,*999)
+                    & FIELD_VALUES_SET_TYPE,component_idx,0.25_DP,ERR,ERROR,*999) ! Poisson's ratio
                 ENDDO !component_idx
               ENDIF
             ELSE
@@ -2098,6 +2101,8 @@ CONTAINS
                 CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_DP_TYPE,ERR,ERROR,*999)
                 !2 Components for 2D Isotropic Linear Elasticity
                 !TODO:: Temporarily set to 3 to allow thickness to passed in. Remove once a thickness, element constant field is defined and can be exported/viewed by cmgui
+                ! added NOTE w.r.t. TODO: this was confusing. at the moment, we have three material parameters
+                !                         i.e. thickness, Young's modulus, Poisson's ratio!
                 CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,3,ERR,ERROR,*999) 
               ENDIF
             ELSE
@@ -2111,9 +2116,11 @@ CONTAINS
                 CALL FIELD_CREATE_FINISH(EQUATIONS_MATERIALS%MATERIALS_FIELD,ERR,ERROR,*999)
                 !Set the default values for the materials field
                 CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,1,30.0E6_DP,ERR,ERROR,*999) !Young's Modulus
+                & FIELD_VALUES_SET_TYPE,1,1.0_DP,ERR,ERROR,*999) !thickness
                 CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,2,0.25_DP,ERR,ERROR,*999) !Poisson's Ratio
+                & FIELD_VALUES_SET_TYPE,2,30.0E6_DP,ERR,ERROR,*999) !Young's modulus
+                CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
+                & FIELD_VALUES_SET_TYPE,3,0.25_DP,ERR,ERROR,*999) !Poisson's Ratio
               ENDIF
             ELSE
               CALL FlagError("Equations set materials is not associated.",ERR,ERROR,*999)
@@ -2452,7 +2459,7 @@ CONTAINS
                 CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VECTOR_DIMENSION_TYPE, &
                   & ERR,ERROR,*999)
                 CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_DP_TYPE,ERR,ERROR,*999)
-                !2 Components for 2D Isotropic Linear Elasticity
+                !2 Components for 1D Isotropic Linear Elasticity: cross-sectional area, Young's modulus
                 CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,2,ERR,ERROR,*999) 
               ENDIF
             ELSE
@@ -2466,9 +2473,9 @@ CONTAINS
                 CALL FIELD_CREATE_FINISH(EQUATIONS_MATERIALS%MATERIALS_FIELD,ERR,ERROR,*999)
                 !Set the default values for the materials field
                 CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,1,30.0E6_DP,ERR,ERROR,*999) !Young's Modulus
+                & FIELD_VALUES_SET_TYPE,1,1.0_DP,ERR,ERROR,*999) !cross-sectional area
                 CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_MATERIALS%MATERIALS_FIELD,FIELD_U_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,2,0.25_DP,ERR,ERROR,*999) !Poisson's Ratio
+                & FIELD_VALUES_SET_TYPE,2,30.0E6_DP,ERR,ERROR,*999) !Young's Modulus
               ENDIF
             ELSE
               CALL FlagError("Equations set materials is not associated.",ERR,ERROR,*999)
