@@ -10606,8 +10606,9 @@ CONTAINS
     
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
-    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
-    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! new code
+    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! Code that doesn't get executed when this is set to false. 
+                                                                     ! Should be removed upon removal of GLOBAL_TO_LOCAL_MAP.
+    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! New code.
     
     LOGICAL :: DIAGNOSTICS2 = .FALSE.
     
@@ -10623,6 +10624,7 @@ CONTAINS
       MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       IF(ERR/=0) GOTO 999
       
+      ! Print functions called only for rank 0!!!
       IF (MyComputationalNodeNumber == 0) THEN
         DIAGNOSTICS2 = .TRUE.
       ENDIF
@@ -10656,7 +10658,8 @@ CONTAINS
         FIELD=>Field0
       ENDIF
       
-      ! output elements mapping
+      ! Output elements mapping
+      ! Diagnostic2 true -> rank 0 (see above)
       IF (DIAGNOSTICS2.AND..TRUE.) THEN
         DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
           DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
@@ -10670,6 +10673,9 @@ CONTAINS
             PRINT *, ""
             PRINT *, "============= component ", component_idx," elements mapping ==========="
             CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
+            PRINT *, "============= component ", component_idx," nodes mapping ==========="
+            CALL Print_DOMAIN_MAPPING(NODES_MAPPING, 3,1000)
+          
           ENDDO
         ENDDO
       ENDIF
@@ -13344,10 +13350,18 @@ CONTAINS
         ENDIF
 
         
+        ! always only rank 0! (Diagnostic2 true)
         IF (DIAGNOSTICS2) THEN
           PRINT *, ""
           PRINT *, "============= old implementation ==========="
           PRINT *, "----------- field domain mapping -----------"
+          
+          !  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+          !  TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+          !  DOMAIN_MAPPINGS=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+          !  ELEMENTS_MAPPING=>FIELD_COMPONENT%DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
+          !  NODES_MAPPING=>DOMAIN_MAPPINGS%NODES
+          
           variable_idx = 1
           CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
           PRINT *, "----------- field dof to param map -----------"
