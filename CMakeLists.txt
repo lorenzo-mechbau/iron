@@ -2,6 +2,32 @@ cmake_minimum_required (VERSION 3.3 FATAL_ERROR)
 project(Iron VERSION 0.7.0 LANGUAGES C CXX Fortran)# Need all languages as iron's deps cover all (link phase) 
 include(CMakeDependentOption)
 
+set(_CORRECT_CMAKE_MODULE_PATH FALSE)
+# First check if the CMAKE_MODULE_PATH is already set properly.
+foreach(_PATH ${CMAKE_MODULE_PATH})
+    if (EXISTS "${_PATH}/OCMiscFunctions.cmake")
+        set(_CORRECT_CMAKE_MODULE_PATH TRUE)
+        break()
+    endif ()
+endforeach()
+
+if (NOT _CORRECT_CMAKE_MODULE_PATH)
+    # Check bare minimum configuration
+    set(IRON_CMAKE_MODULE_PATH "${IRON_CMAKE_MODULE_PATH}" CACHE STRING "Location of OpenCMISS CMake modules.")
+    if (EXISTS "${IRON_CMAKE_MODULE_PATH}/OpenCMISS/OCMiscFunctions.cmake")
+        list(APPEND CMAKE_MODULE_PATH "${IRON_CMAKE_MODULE_PATH}/FindModuleWrappers")
+        list(APPEND CMAKE_MODULE_PATH "${IRON_CMAKE_MODULE_PATH}")
+        list(APPEND CMAKE_MODULE_PATH "${IRON_CMAKE_MODULE_PATH}/OpenCMISS")
+        set(_CORRECT_CMAKE_MODULE_PATH TRUE)
+    endif ()
+endif ()
+
+if (NOT _CORRECT_CMAKE_MODULE_PATH)
+    message(STATUS "CMAKE_MODULE_PATH: '${CMAKE_MODULE_PATH}'")
+    message(STATUS "IRON_CMAKE_MODULE_PATH: '${IRON_CMAKE_MODULE_PATH}'")
+    message(FATAL_ERROR "'OCMiscFunctions.cmake' was not found on the module path.  Check the value of CMAKE_MODULE_PATH and/or IRON_CMAKE_MODULE_PATH.")
+endif ()
+
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _uppercase_CMAKE_BUILD_TYPE)
 if (_uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELWITHDEBINFO)$")
   set(IS_DEBUG_BUILD TRUE)
@@ -95,7 +121,7 @@ endif()
 
 # This include file is in the main "manage" directory.
 # We can include this here as iron is an integrated part of the overall build system.
-SET(IRON_UPSTREAM_DEPS PETSC SUNDIALS HYPRE MUMPS SCALAPACK PARMETIS)
+set(IRON_UPSTREAM_DEPS SCALAPACK PARMETIS MUMPS HYPRE SUNDIALS PETSC)
 foreach(DEP ${IRON_UPSTREAM_DEPS})
     if (WITH_${DEP})
         message(STATUS "Looking for ${DEP}..")
@@ -248,7 +274,7 @@ endif()
 add_subdirectory(bindings)
 
 # Install steps
-install(TARGETS iron
+install(TARGETS ${IRON_TARGETS}
     EXPORT iron-config
     RUNTIME DESTINATION bin
     COMPONENT Runtime
@@ -270,10 +296,12 @@ install(FILES
     DESTINATION ${PACKAGE_CONFIG_DIR}
     COMPONENT Development
 )
+
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake
     "include(CMakeFindDependencyMacro)\r\n"
     "set(${PROJECT_NAME}_IMPORT_PREFIX \${_IMPORT_PREFIX})\r\n"
 )
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "if (${IRON_BUILD_STATIC_LIBRARY})\r\n")
 foreach(IRON_DEP ${IRON_UPSTREAM_DEPS})
     if (WITH_${IRON_DEP})
         file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "find_dependency(${IRON_DEP})\r\n")
@@ -286,7 +314,9 @@ endif()
 if (WITH_FIELDML)
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "find_dependency(FIELDML-API)\r\n")
 endif()
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "set(_IMPORT_PREFIX \${${PROJECT_NAME}_IMPORT_PREFIX})")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "endif ()\r\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake "set(_IMPORT_PREFIX \${${PROJECT_NAME}_IMPORT_PREFIX})\r\n")
+
 install(FILES 
     ${CMAKE_CURRENT_BINARY_DIR}/iron-config-dependencies.cmake
     DESTINATION ${PACKAGE_CONFIG_DIR}

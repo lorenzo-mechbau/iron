@@ -1,20 +1,21 @@
 MODULE DARCY_EQUATIONS_ROUTINES
 
   USE BaseRoutines
-  USE BASIS_ROUTINES
+  USE BasisRoutines
+  USE BasisAccessRoutines
   USE BOUNDARY_CONDITIONS_ROUTINES
   USE Constants
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines
   USE ComputationEnvironment
   USE COORDINATE_ROUTINES
-  USE DISTRIBUTED_MATRIX_VECTOR
+  USE DistributedMatrixVector
   USE DOMAIN_MAPPINGS
   USE EquationsRoutines
   USE EquationsAccessRoutines
   USE EquationsMappingRoutines
   USE EquationsMatricesRoutines
-  USE EQUATIONS_SET_CONSTANTS
+  USE EquationsSetConstants
   USE EquationsSetAccessRoutines
   USE FIELD_ROUTINES
   USE FIELD_IO_ROUTINES
@@ -25,7 +26,7 @@ MODULE DARCY_EQUATIONS_ROUTINES
   USE ISO_VARYING_STRING
   USE Kinds
   USE Maths
-  USE MATRIX_VECTOR
+  USE MatrixVector
   USE MESH_ROUTINES
   USE NODE_ROUTINES
   USE PROBLEM_CONSTANTS
@@ -7732,7 +7733,7 @@ CONTAINS
 
                 NUMBER_OF_DOFS = DEPENDENT_FIELD_DARCY%VARIABLE_TYPE_MAP(FIELD_V_VARIABLE_TYPE)%ptr%NUMBER_OF_DOFS
 
-                DO dof_number = 3/4*NUMBER_OF_DOFS + 1, NUMBER_OF_DOFS
+                DO dof_number = nint(3.0/4.0*NUMBER_OF_DOFS) + 1, NUMBER_OF_DOFS
                   !'3/4' only works for equal order interpolation in (u,v,w) and p
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(DEPENDENT_FIELD_DARCY, &
                     & FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,dof_number, &

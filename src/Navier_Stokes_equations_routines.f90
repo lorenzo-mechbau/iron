@@ -4,7 +4,7 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE ADVECTION_EQUATION_ROUTINES
   USE ANALYTIC_ANALYSIS_ROUTINES
   USE BaseRoutines
-  USE BASIS_ROUTINES
+  USE BasisRoutines
   USE BOUNDARY_CONDITIONS_ROUTINES
   USE CHARACTERISTIC_EQUATION_ROUTINES
   USE CmissMPI
@@ -14,7 +14,7 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE Constants
   USE CONTROL_LOOP_ROUTINES
   USE COORDINATE_ROUTINES
-  USE DISTRIBUTED_MATRIX_VECTOR
+  USE DistributedMatrixVector
   USE DOMAIN_MAPPINGS
   USE EquationsRoutines
   USE EquationsAccessRoutines
@@ -22,7 +22,7 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE EquationsMappingAccessRoutines
   USE EquationsMatricesRoutines
   USE EquationsMatricesAccessRoutines
-  USE EQUATIONS_SET_CONSTANTS
+  USE EquationsSetConstants
   USE EquationsSetAccessRoutines
   USE FIELD_ROUTINES
   USE FieldAccessRoutines
@@ -33,9 +33,9 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE Kinds
-  USE LAPACK
+  USE Lapack
   USE Maths
-  USE MATRIX_VECTOR
+  USE MatrixVector
   USE MESH_ROUTINES
   USE MeshAccessRoutines
 #ifndef NOMPIMOD
@@ -2744,7 +2744,7 @@ CONTAINS
                           CALL NavierStokes_PreSolveUpdateBoundaryConditions(SOLVER,ERR,ERROR,*999)
                         ! --- A d v e c t i o n   S o l v e r ---
                         CASE(EQUATIONS_SET_ADVECTION_SUBTYPE)
-                          CALL ADVECTION_PRE_SOLVE(SOLVER,err,error,*999)
+                          CALL Advection_PreSolve(solver,err,error,*999)
                         CASE DEFAULT
                           localError="Equations set subtype "//TRIM(NUMBER_TO_VSTRING(EQUATIONS_SET%SPECIFICATION(3),"*", &
                             & err,error))//" is not valid for a nonlinear Navier-Stokes solver."
@@ -2937,7 +2937,7 @@ CONTAINS
                   END IF
                 ELSE
                   ! --- A d v e c t i o n   S o l v e r ---
-                  CALL ADVECTION_PRE_SOLVE(SOLVER,err,error,*999)
+                  CALL Advection_PreSolve(solver,err,error,*999)
                 END IF
                 ! Update boundary conditions
                 CALL NavierStokes_PreSolveUpdateBoundaryConditions(SOLVER,err,error,*999)
@@ -7390,10 +7390,10 @@ CONTAINS
                                                   materialsField=>EQUATIONS_SET%MATERIALS%MATERIALS_FIELD
                                                   !Define MU_PARAM, density=1
                                                   MU_PARAM=materialsField%variables(1)%parameter_sets%parameter_sets(1)%ptr% &
-                                                    & parameters%cmiss%data_dp(1)
+                                                    & parameters%cmiss%dataDP(1)
                                                   !Define RHO_PARAM, density=2
                                                   RHO_PARAM=materialsField%variables(1)%parameter_sets%parameter_sets(1)%ptr% &
-                                                    & parameters%cmiss%data_dp(2)
+                                                    & parameters%cmiss%dataDP(2)
                                                   CALL NAVIER_STOKES_ANALYTIC_FUNCTIONS_EVALUATE(ANALYTIC_FUNCTION_TYPE,X, &
                                                     & CURRENT_TIME,variable_type,GLOBAL_DERIV_INDEX,componentIdx, &
                                                     & NUMBER_OF_DIMENSIONS,FIELD_VARIABLE%NUMBER_OF_COMPONENTS, &
@@ -12088,7 +12088,7 @@ CONTAINS
       & pressureInterpolatedPoint,independentInterpolatedPoint
     TYPE(FIELD_INTERPOLATED_POINT_METRICS_TYPE), POINTER :: pointMetrics
     TYPE(QUADRATURE_SCHEME_TYPE), POINTER :: quadratureScheme1,quadratureScheme2
-    INTEGER(INTG) :: boundaryIdx, boundaryNumber, xiDirection(3), orientation
+    INTEGER(INTG) :: boundaryIdx, boundaryNumber, xiDirection(4), orientation
     INTEGER(INTG) :: componentIdx, componentIdx2, gaussIdx
     INTEGER(INTG) :: elementBaseDofIdx, nodeIdx, elementNodeIdx
     INTEGER(INTG) :: nodeDerivativeIdx,meshComponentNumber1,globalNodeDerivativeIdx,elementParameterIdx
@@ -12233,14 +12233,16 @@ CONTAINS
             SELECT CASE(dependentBasis1%TYPE)
             CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
               xiDirection(3)=ABS(face%XI_DIRECTION)
+              xiDirection(1)=OTHER_XI_DIRECTIONS3(xiDirection(3),2,1)
+              xiDirection(2)=OTHER_XI_DIRECTIONS3(xiDirection(3),3,1)
+              orientation=SIGN(1,OTHER_XI_ORIENTATIONS3(xiDirection(1),xiDirection(2))*face%XI_DIRECTION)
+            CASE(BASIS_SIMPLEX_TYPE)
+              orientation=1
             CASE DEFAULT
               localError="Face integration for basis type "//TRIM(NUMBER_TO_VSTRING(dependentBasis1%TYPE,"*",ERR,ERROR))// &
                 & " is not yet implemented for Navier-Stokes boundary integration."
               CALL FlagError(localError,ERR,ERROR,*999)
             END SELECT
-            xiDirection(1)=OTHER_XI_DIRECTIONS3(xiDirection(3),2,1)
-            xiDirection(2)=OTHER_XI_DIRECTIONS3(xiDirection(3),3,1)
-            orientation=SIGN(1,OTHER_XI_ORIENTATIONS3(xiDirection(1),xiDirection(2))*face%XI_DIRECTION)
             basis1=>decomposition%DOMAIN(meshComponentNumber1)%PTR%TOPOLOGY%FACES%FACES(boundaryNumber)%BASIS
             basis2=>decomposition%DOMAIN(meshComponentNumber2)%PTR%TOPOLOGY%FACES%FACES(boundaryNumber)%BASIS
             CALL FIELD_INTERPOLATION_PARAMETERS_FACE_GET(FIELD_VALUES_SET_TYPE,boundaryNumber, &
@@ -12267,13 +12269,15 @@ CONTAINS
             SELECT CASE(dependentBasis1%TYPE)
             CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
               xiDirection(2)=ABS(line%XI_DIRECTION)
+              xiDirection(1)=OTHER_XI_DIRECTIONS2(xiDirection(2))
+              orientation=SIGN(1,OTHER_XI_ORIENTATIONS2(xiDirection(1))*line%XI_DIRECTION)
+            CASE(BASIS_SIMPLEX_TYPE)
+              orientation=1
             CASE DEFAULT
               localError="Line integration for basis type "//TRIM(NUMBER_TO_VSTRING(dependentBasis1%TYPE,"*",ERR,ERROR))// &
                 & " is not yet implemented for Navier-Stokes boundary integration."
               CALL FlagError(localError,ERR,ERROR,*999)
             END SELECT
-            xiDirection(1)=OTHER_XI_DIRECTIONS2(xiDirection(2))
-            orientation=SIGN(1,OTHER_XI_ORIENTATIONS2(xiDirection(1))*line%XI_DIRECTION)
             basis1=>decomposition%DOMAIN(meshComponentNumber1)%PTR%TOPOLOGY%LINES%LINES(boundaryNumber)%BASIS
             basis2=>decomposition%DOMAIN(meshComponentNumber2)%PTR%TOPOLOGY%LINES%LINES(boundaryNumber)%BASIS
             CALL FIELD_INTERPOLATION_PARAMETERS_LINE_GET(FIELD_VALUES_SET_TYPE,boundaryNumber, &
@@ -13777,7 +13781,7 @@ CONTAINS
 999 ERRORSEXITS("NavierStokes_Couple3D1D",err,error)
     RETURN 1
 
-  END SUBROUTINE
+  END SUBROUTINE NavierStokes_Couple3D1D
 
   !
   !================================================================================================================================

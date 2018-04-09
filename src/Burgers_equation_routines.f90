@@ -46,18 +46,19 @@ MODULE BURGERS_EQUATION_ROUTINES
 
   USE ANALYTIC_ANALYSIS_ROUTINES
   USE BaseRoutines
-  USE BASIS_ROUTINES
+  USE BasisRoutines
+  USE BasisAccessRoutines
   USE BOUNDARY_CONDITIONS_ROUTINES
   USE Constants
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines
-  USE DISTRIBUTED_MATRIX_VECTOR
+  USE DistributedMatrixVector
   USE DOMAIN_MAPPINGS
   USE EquationsRoutines
   USE EquationsAccessRoutines
   USE EquationsMappingRoutines
   USE EquationsMatricesRoutines
-  USE EQUATIONS_SET_CONSTANTS
+  USE EquationsSetConstants
   USE EquationsSetAccessRoutines
   USE FIELD_ROUTINES
   USE FieldAccessRoutines
@@ -65,7 +66,7 @@ MODULE BURGERS_EQUATION_ROUTINES
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE Kinds
-  USE MATRIX_VECTOR
+  USE MatrixVector
   USE PROBLEM_CONSTANTS
   USE Strings
   USE SOLVER_ROUTINES
@@ -1778,7 +1779,30 @@ CONTAINS
             END IF
             CALL SYSTEM('mkdir -p ./output')
             SELECT CASE(CONTROL_LOOP%PROBLEM%SPECIFICATION(3))
-            CASE(PROBLEM_STATIC_BURGERS_SUBTYPE,PROBLEM_DYNAMIC_BURGERS_SUBTYPE)
+            CASE(PROBLEM_STATIC_BURGERS_SUBTYPE)
+              CALL CONTROL_LOOP_TIMES_GET(CONTROL_LOOP,START_TIME,STOP_TIME,CURRENT_TIME,TIME_INCREMENT, &
+                & CURRENT_LOOP_ITERATION,OUTPUT_ITERATION_NUMBER,err,error,*999)
+              SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+                  !Make sure the equations sets are up to date
+                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%ptr
+                    FILENAME="./output/"//"STATIC_SOLUTION"
+                    METHOD="FORTRAN"
+                    IF(SOLVER%outputType>=SOLVER_PROGRESS_OUTPUT) THEN
+                      CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"...",err,error,*999)
+                      CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Now export fields... ",err,error,*999)
+                    ENDIF
+                    Fields=>EQUATIONS_SET%REGION%FIELDS
+                    CALL FIELD_IO_NODES_EXPORT(Fields,FILENAME,METHOD,err,error,*999)
+                    CALL FIELD_IO_ELEMENTS_EXPORT(Fields,FILENAME,METHOD,err,error,*999)
+                    NULLIFY(Fields)
+                  ENDDO
+                ENDIF
+              ENDIF
+            CASE(PROBLEM_DYNAMIC_BURGERS_SUBTYPE)
               CALL CONTROL_LOOP_TIMES_GET(CONTROL_LOOP,START_TIME,STOP_TIME,CURRENT_TIME,TIME_INCREMENT, &
                 & CURRENT_LOOP_ITERATION,OUTPUT_ITERATION_NUMBER,err,error,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
