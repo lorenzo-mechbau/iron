@@ -2384,7 +2384,7 @@ CONTAINS
                 CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
                 CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_U_VARIABLE_TYPE], &
                   & err,error,*999)
-                CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_U_VARIABLE_TYPE, &
+                CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELUDELN_VARIABLE_TYPE, &
                   & err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
                 CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
                 !Create the equations matrices
