@@ -566,7 +566,5 @@ MODULE EquationsSetConstants
   !>@}
   !>@}
 
-  
-END MODULE EquationsSetConstants
 
-END MODULE EQUATIONS_SET_CONSTANTS
+END MODULE EquationsSetConstants
