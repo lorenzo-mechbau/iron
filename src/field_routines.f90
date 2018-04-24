@@ -11814,7 +11814,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the line lengths from the parameters of a geometric field. Old CMISS name LINSCA
+  !>Calculates the line lengths from the parameters of a geomhttps://www.google.com/search?client=ubuntu&channel=fs&q=symplectic&ie=utf-8&oe=utf-8etric field. Old CMISS name LINSCA
   SUBROUTINE Field_GeometricParametersLineLengthsCalculate(FIELD,ERR,ERROR,*)
 
     !Argument variables
@@ -12089,7 +12089,6 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     REAL(DP) :: Node_pos,positionSum
-
     INTEGER(INTG) :: element_idx,dimension_idx,domainNode,elementNode
     INTEGER(INTG) :: NUMBER_OF_NODES_PER_ELEMENT=4 !Fix this so it extracts this value from the field
 
@@ -12101,7 +12100,7 @@ CONTAINS
         IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
           IF(ASSOCIATED(FIELD%GEOMETRIC_FIELD_PARAMETERS)) THEN
             !Loop over the elements
-            DO element_idx=1,FIELD%DECOMPOSITION%numberOfElements
+            DO element_idx=1,FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
               Do dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
                 positionSum=0
                 DO elementNode=1,NUMBER_OF_NODES_PER_ELEMENT
@@ -12117,7 +12116,7 @@ CONTAINS
                 FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,dimension_idx)= &
                   & positionSum/NUMBER_OF_NODES_PER_ELEMENT
 
-                ENDDO
+              ENDDO
             ENDDO
           ENDIF
         ENDIF
@@ -12129,7 +12128,8 @@ CONTAINS
 
     EXITS("Field_GeometricParametersCentroidsCalculate")
     RETURN
-999 ERRORSEXITS("Field_GeometricParametersCentroidsCalculate",ERR,ERROR)
+999 ERRORS("Field_GeometricParametersCentroidsCalculate",ERR,ERROR)
+    EXITS("Field_GeometricParametersCentroidsCalculate")
     RETURN 1
 
   END SUBROUTINE Field_GeometricParametersCentroidsCalculate

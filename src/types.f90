@@ -983,6 +983,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS !<Pointer to the element mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES !<Pointer to the node mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS !<Pointer to the dof mappings for the domain decomposition.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: FACES !<Pointer to the dof mappings for the domain decomposition.
   END TYPE DOMAIN_MAPPINGS_TYPE
 
   !>A pointer to the domain decomposition for this domain.
@@ -1218,10 +1219,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE :: LENGTHS(:) !<LENGTHS(nl). The length of the nl'th line in the field decomposition.
     REAL(DP), ALLOCATABLE :: AREAS(:) !<AREAS(nf). The area of the nf'th face in the field decomposition.
     REAL(DP), ALLOCATABLE :: VOLUMES(:) !<VOLUMES(ne). The volume of the ne'th element in the field decomposition.
-    REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension.
-    REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction.
-    REAL(DP), ALLOCATABLE :: FV_LENGTH(:,:) ! FV_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction.
-    REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, ncoord are the x, y z components.
+    REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension .
+    REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction in the field decomposition.
+    REAL(DP), ALLOCATABLE :: FV_LENGTH(:,:) ! FV_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
+    REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, in the field decomposition, ncoord are the x, y z components. 
     INTEGER(INTG) :: NUMBER_OF_FIELDS_USING !<The number of fields that use these geometric parameters for their scaling.
     TYPE(FIELD_PTR_TYPE), POINTER :: FIELDS_USING(:) !< FIELDS_USINGS(field_idx). A pointer to the field_idx'th field that uses these geometric parameters for its scaling.
   END TYPE FIELD_GEOMETRIC_PARAMETERS_TYPE

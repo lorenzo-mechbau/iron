@@ -283,7 +283,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Finishes the creation of a domain decomposition on a given mesh. \see OPENCMISS::Iron::cmfe_DecompositionCreateFinish
   SUBROUTINE DECOMPOSITION_CREATE_FINISH(DECOMPOSITION,ERR,ERROR,*)
 
@@ -4470,6 +4469,10 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*999)
+
+        !Map the local face numbers to the global numbers
+        !REMOVETHISCOMMENT
+        !CALL DOMAIN_MAPPINGS_FACES_CALCULATE(DOMAIN,ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
@@ -4967,6 +4970,7 @@ CONTAINS
 997 ERRORSEXITS("DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE
+
 
   !
   !================================================================================================================================
