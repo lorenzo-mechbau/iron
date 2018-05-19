@@ -10606,9 +10606,9 @@ CONTAINS
     
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
-    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! Code that doesn't get executed when this is set to false. 
+    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! Code that doesn't get executed when this is set to false. 
                                                                      ! Should be removed upon removal of GLOBAL_TO_LOCAL_MAP.
-    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! New code.
+    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! New code.
     
     LOGICAL :: DIAGNOSTICS2 = .FALSE.
     
@@ -10631,7 +10631,7 @@ CONTAINS
       
       ! algorithm
       ! at first compute number of dofs and total number of dofs where nodes mapping gets computed
-      ! the create list with all to all
+      ! then create list with all to all
       
       !        break no. ->
       ! rank   (glob.node,dof) (0,0)  (4,12) (9,13) (12,24) ...
@@ -10640,7 +10640,7 @@ CONTAINS
       !
       !  from that local to global dof numbering can be computed
       
-      
+      ! field1 and 2 will be compared at the end of function
       IF (USE_OLD_GLOBAL_IMPLEMENTATION.AND.USE_NEW_LOCAL_IMPLEMENTATION) THEN   
         
         NULLIFY(FIELD1)
@@ -10663,10 +10663,13 @@ CONTAINS
       IF (DIAGNOSTICS2.AND..TRUE.) THEN
         DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
           DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+            
             FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
             TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
             !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
             DOMAIN_MAPPINGS=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+           
+            ! TOPOLOGY not needed!! 
             ELEMENTS_MAPPING=>FIELD_COMPONENT%DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
             NODES_MAPPING=>DOMAIN_MAPPINGS%NODES
             
@@ -10722,6 +10725,9 @@ CONTAINS
             ENDDO
           ENDIF
           
+          ! sum all dofs and store below in FIELD_VARIABLE_DOFS_MAPPING
+          
+          
           ! loop over components of current field variable
           DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
             FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
@@ -10738,15 +10744,15 @@ CONTAINS
               NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + 1
             
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-              NUMBER_OF_ELEMENT_DOFS = NUMBER_OF_ELEMENT_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
-              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_LOCAL
-              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_ELEMENT_DOFS = NUMBER_OF_ELEMENT_DOFS +                 ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS +   ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS +   ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
               NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
             
             CASE(FIELD_NODE_BASED_INTERPOLATION)
-              NUMBER_OF_NODE_DOFS = NUMBER_OF_NODE_DOFS + DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
-              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + DOFS_MAPPING%NUMBER_OF_LOCAL
-              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_NODE_DOFS = NUMBER_OF_NODE_DOFS +                       DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS +   DOFS_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS +   DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
               NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + DOFS_MAPPING%NUMBER_OF_GLOBAL
             
             CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
@@ -10789,6 +10795,7 @@ CONTAINS
           FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL = NUMBER_OF_GLOBAL_VARIABLE_DOFS
           FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAINS = NumberComputationalNodes
           
+          ! Data for all components!!
           IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": number dofs local: ", NUMBER_OF_LOCAL_VARIABLE_DOFS, &
             & ", total: ", TOTAL_NUMBER_OF_VARIABLE_DOFS,", global: ", NUMBER_OF_GLOBAL_VARIABLE_DOFS
             
@@ -10796,7 +10803,8 @@ CONTAINS
           ! allocate DOF_TYPE
           ! DOF_TYPE(1,dofNo) = type of dof: 1=constant, 2=element based, 3=node based, 4=point based
           ! DOF_TYPE(2,dofNo) = index of corresponding DOF2PARAM_MAP
-          ! FIELD_CONSTANT_DOF_TYPE=1, FIELD_ELEMENT_DOF_TYPE=2, FIELD_NODE_DOF_TYPE=3, FIELD_GRID_POINT_DOF_TYPE=4, FIELD_GAUSS_POINT_DOF_TYPE=5, FIELD_DATA_POINT_DOF_TYPE=6
+          ! FIELD_CONSTANT_DOF_TYPE=1, FIELD_ELEMENT_DOF_TYPE=2, FIELD_NODE_DOF_TYPE=3, 
+          ! FIELD_GRID_POINT_DOF_TYPE=4, FIELD_GAUSS_POINT_DOF_TYPE=5, FIELD_DATA_POINT_DOF_TYPE=6
 
           ! allocate dof to parameter mappings
           ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
@@ -10833,8 +10841,8 @@ CONTAINS
           IF(ERR/=0) CALL FlagError("Could not allocate DOMAIN_LIST of size "//&
               & TRIM(NUMBER_TO_VSTRING(TOTAL_NUMBER_OF_VARIABLE_DOFS,"*",ERR,ERROR))//".",ERR,ERROR,*999)
             
-          ! allocate adjacent domains array, use information from first component
-          ! get nodes mapping of first component
+          ! Allocate adjacent domains array, use information from first component.
+          ! Get nodes mapping of first component, which is already available.
           component_idx = 1
           FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
           NODES_MAPPING=>FIELD_COMPONENT%DOMAIN%MAPPINGS%NODES
@@ -10866,6 +10874,7 @@ CONTAINS
           ! create helper objects for nodal dofs
           IF(NUMBER_OF_NODE_DOFS>0) THEN
             ! allocate helper arrays
+            ! all integer allocatable
             ALLOCATE(NumberBreaks(0:NumberComputationalNodes-1),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaks",ERR,ERROR,*999)
             
@@ -10884,6 +10893,7 @@ CONTAINS
           ! create helper objects for element dofs
           IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
           
+           ! all integer allocatable
             ALLOCATE(FirstDofGlobalNo(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate FirstDofGlobalNo",ERR,ERROR,*999)
           
@@ -10899,16 +10909,21 @@ CONTAINS
             CurrentElementDofIdx = 1
           ENDIF
           
-          ConstantDofIdx = 1
+          ConstantDofIdx     = 1
           
-          CurrentDofLocalNo = 1    ! counter of local dof no, gets increased while iterating over the newly visited dofs
+          CurrentDofLocalNo  = 1   ! counter of local dof no, gets increased while iterating over the newly visited dofs
           CurrentDofGlobalNo = 1   ! counter of global dof no, analoguous to local dof counter
           InternalDofIdx = 1       ! counter of the idx for DOMAIN_LIST
+       
         
           ! loop over components of current field variable
           DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
             FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
             TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+            ! In MESH_TYPE:
+            ! TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:)
+            ! A pointer to the topology mesh_component_idx'th mesh component.
+            ! MeshComponentTopologyPtrType contains a ptr to MeshComponentTopologyType! 
             !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
             DOMAIN_MAPPINGS=>FIELD_COMPONENT%DOMAIN%MAPPINGS
             ELEMENTS_MAPPING=>FIELD_COMPONENT%DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
@@ -10938,8 +10953,12 @@ CONTAINS
               ! exchange the number of breaks on every rank
               ! merge information from every rank
               NumberBreaks(MyComputationalNodeNumber) = LocalNumberBreaks
-              CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
-                & NumberBreaks,1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+              ! If output buffer is identical to the input buffer:
+              ! This is specified by providing a special argument value, MPI_IN_PLACE 
+              ! instead of the send buffer or the receive buffer
+              CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, & ! send bf, count, type
+                               & NumberBreaks,1,MPI_INTEGER, & ! rcv bf,  count, type
+                               & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
               CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 
               IF (DIAGNOSTICS2) THEN
@@ -10947,6 +10966,8 @@ CONTAINS
                 PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", number breaks: ",NumberBreaks
               ENDIF
                   
+                  
+              ! Create a doftable:     
               ! DofTable
               !                         1 break: 2 values
               !        break no. ->     /--^-\
@@ -10981,7 +11002,10 @@ CONTAINS
                 & TRIM(NUMBER_TO_VSTRING(GlobalNumberBreaks*2,"*",ERR,ERROR))//".",ERR,ERROR,*999)
               
               ! reset row that belongs to own rank to 0
-              DofTable(RowOffset(MyComputationalNodeNumber):RowOffset(MyComputationalNodeNumber)+LocalNumberBreaks) = 0
+              ! ???
+              !DofTable(RowOffset(MyComputationalNodeNumber):RowOffset(MyComputationalNodeNumber)+LocalNumberBreaks) = 0
+              ! should be:
+              DofTable(RowOffset(MyComputationalNodeNumber):(RowOffset(MyComputationalNodeNumber)+LocalNumberBreaks*2-1)) = 0
               
               ! fill table with own values
               BreakIdx = 0
@@ -11025,6 +11049,7 @@ CONTAINS
               ENDDO   ! NodeLocalNo
               
               ! add last node also as break
+              ! last node added with last sequence (even if no break)
               DofTableIndex = RowOffset(MyComputationalNodeNumber) + BreakIdx*2
               DofTable(DofTableIndex+0) = PreviousNodeGlobalNo
               DofTable(DofTableIndex+1) = NumberDofsInSequence
@@ -11040,22 +11065,31 @@ CONTAINS
               !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": pre DofTable:",DofTable
                   
               ! merge information from every rank
+              ! MPI_Allgatherv(sendbuf, sendcount, sendtype,
+                              !recvbuf, recvcounts, displs, : displacements = offsets (zero-based!!!!)
+                              !recvtype, comm, ierror)
+
+              ! why is sendcount 0?...
               CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
-                & DofTable,NumberBreaksDouble,RowOffsetZeroBased,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                                & DofTable,NumberBreaksDouble,RowOffsetZeroBased, &
+                                & MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+              
               CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
                         
               IF (DIAGNOSTICS2) THEN
                 PRINT *, MyComputationalNodeNumber, ": DofTable: "
                 DO I = 0,NumberComputationalNodes-1
                   WRITE (*,'(2(I0,A))',ADVANCE='NO') MyComputationalNodeNumber, ": rank ",I," "
+                  ! = int char int char
                   DO BreakIdx=0,NumberBreaks(I)-1
                     WRITE (*,'(2(A,I0),A)',ADVANCE='NO') "(",DofTable(RowOffset(I)+BreakIdx*2), &
                       & ",",DofTable(RowOffset(I)+BreakIdx*2+1),")"
+                    ! = char int char int char
                   ENDDO
                   PRINT *, ""
                 ENDDO
               ENDIF
-                        
+
               !        break no. ->             
               ! rank   (glob.node,dof)  (4,13) (12,24) ...
               !  |
@@ -11073,8 +11107,14 @@ CONTAINS
               ! loop over all break-free sequences
               DO
                 
-                ! determine rank that has the lowest global node no. above the current start node
-                ! loop over ranks
+                ! Determine RANK that has the lowest global node no. above the current start node
+                
+                ! Get the lowest global NODE in the dof table for all ranks
+                ! and respective number of DOFS in the break-free sequence.
+                
+                ! Then, store the minimum.
+                
+                ! Loop over ranks
                 DO I = 0,NumberComputationalNodes-1
                   ! determine the first global no. above the current on rank I (NodeOnCurrentComputationalNodeGlobalNo)
                   NodeOnCurrentComputationalNodeGlobalNo = 0
@@ -11103,49 +11143,53 @@ CONTAINS
                     ! store NodeOnCurrentComputationalNodeGlobalNo if it is the lowest node so far
                     IF (NodeStopGlobalNo == -1 .OR. NodeOnCurrentComputationalNodeGlobalNo < NodeStopGlobalNo) THEN
                       NodeStopGlobalNo = NodeOnCurrentComputationalNodeGlobalNo
-                      CurrentRank = I
-                      NumberDofsCurrentSequence = NumberDofsOnCurrentComputationalNode
+                      CurrentRank = I ! store rank
+                      NumberDofsCurrentSequence = NumberDofsOnCurrentComputationalNode ! store sequence number
                     ENDIF
                   ENDIF
-                ENDDO  ! I
+                ENDDO  ! I (loop over ranks)
                 
-                
+                ! print the result
                 IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": range [", NodeStartGlobalNo, ",", NodeStopGlobalNo, "]", &
                     & " on rank", CurrentRank
                   
+                ! RANK has been determined.  
                 
-                ! the current range of nodes [NodeStartGlobalNo,NodeStopGlobalNo] is on rank CurrentRank
-                ! and has number of dofs NumberDofsCurrentSequence, starting from CurrentDofGlobalNo
+                ! The current range of nodes [NodeStartGlobalNo,NodeStopGlobalNo] is on rank CurrentRank
+                ! and has number of dofs NumberDofsCurrentSequence, starting from CurrentDofGlobalNo (which is 1)
                 
-                ! add up dof no.s
+                ! Add up dof no.s
+                ! All is one to begin!
                 IF (CurrentRank == MyComputationalNodeNumber) THEN
                   ! loop over nodes of current break-free sequences
                   DO
                     NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
                           
                     IF (DIAGNOSTICS2) WRITE(*,'(5(I0,A))',ADVANCE='no') MyComputationalNodeNumber, ": on this rank, node global ", &
-                      & NodeGlobalNo,", local ",NodeLocalNo,", (node idx",LocalInternalNodeIdx,&
-                      & ", local ",NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx),"),  is internal: "
+                      & NodeGlobalNo,", local ",NodeLocalNo,", (node idx ",LocalInternalNodeIdx,&
+                      & ", local ",NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx),"),  is internal: " 
                           
                     ! check if current node is internal or boundary
                     CurrentNodeIsInternal = .FALSE.
-                    IF (NodeLocalNo == NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx) &
+                    IF (NodeLocalNo == NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx) & ! not sure why. Anyway, internals come first.
                       & .AND. LocalInternalNodeIdx <= NODES_MAPPING%INTERNAL_FINISH) THEN
                       CurrentNodeIsInternal = .TRUE.
                       LocalInternalNodeIdx = LocalInternalNodeIdx + 1
                     ENDIF
                     
                     IF (DIAGNOSTICS2) WRITE(*,*) CurrentNodeIsInternal
-                          
+                    
+                    ! Take num. of ders on node      
                     NumberDerivatives = TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives 
                     
-                    ! allocate parameter to dof map for nodes
+                    ! Allocate parameter to dof map for nodes
+                    ! NODE_PARAM2DOF_MAP was allocated previously
                     ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(&
                       & NumberDerivatives),STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes derivative map for node local "//&
                       & TRIM(NUMBER_TO_VSTRING(NodeLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
               
-                    ! loop over dofs for current node, derivatives
+                    ! Loop over dofs for current node, that is over derivatives.
                     DO DerivativeIdx=1,NumberDerivatives
                     
                       !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": derivative ", DerivativeIdx, "/", NumberDerivatives
@@ -11160,7 +11204,7 @@ CONTAINS
                         & TRIM(NUMBER_TO_VSTRING(NodeLocalNo,"*",ERR,ERROR))//", derivative index "//&
                         & TRIM(NUMBER_TO_VSTRING(DerivativeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
                         
-                      DO VersionIdx=1,NumberVersions
+                      DO VersionIdx=1,NumberVersions ! Only 1 version normally (what are versions???)
                 
                       !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": version ", VersionIdx, "/", NumberVersions
                       
@@ -11180,6 +11224,7 @@ CONTAINS
                           & "dof idx ",InternalDofIdx-1,", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo
                         
                         ! setup dof to parameter map
+                        ! All info about dof in here!!!
                         FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_NODE_DOF_TYPE
                         FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=NodeDofIdx
                         FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,NodeDofIdx)=VersionIdx
@@ -11196,16 +11241,18 @@ CONTAINS
                         !  & DerivativeIdx, &
                         !  & ",",VersionIdx,")=",CurrentDofLocalNo
                     
-                        ! set NUMBER_OF_SEND_GHOSTS
+                        ! Set NUMBER_OF_SEND_GHOSTS
                         
-                        ! find out on which domains (if any) the corresponding ghost nodes reside from nodes mapping
-                        ! loop over the adjacent domains of the nodes mapping which are the same as for the dofs mapping
+                        ! From nodes mapping: Find out on which domains (if any) the corresponding ghost nodes reside
+                        ! Loop over the adjacent domains of the nodes mapping which are the same as for the dofs mapping
+                        ! Adj domains of nodes == Adj domains of dofs
                         DO AdjacentDomainIdx = 1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                         
                           NodeIsOnCurrentAdjacentDomain = .FALSE.
                           ! check if node is a ghost on the adjacent domain with index AdjacentDomainIdx
                           
-                          ! loop over send ghost local numbers
+                          ! Loop over send ghost local numbers
+                          ! -> If NODE is among SEND ghosts TO the adj domain, set vbl below as true.  
                           DO GhostSendIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
                             ! if node was found on adjacent domain AdjacentDomainIdx
                             IF (NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
@@ -11215,7 +11262,7 @@ CONTAINS
                             ENDIF
                           ENDDO
                           
-                          ! if the current node is on the current adjacent domain as ghost node
+                          ! if the current node is on the current adjacent domain as GHOST node (i.e. send ghost on current domain)
                           IF (NodeIsOnCurrentAdjacentDomain) THEN
                             
                             ! add current dof to LOCAL_GHOST_SEND_INDICES
@@ -11224,7 +11271,7 @@ CONTAINS
                             
                             ! add CurrentDofLocalNo to LOCAL_GHOST_SEND_INDICES 
                             IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS == 1) THEN
-                              ! array does not yet exist, allocate with size 1
+                              ! Array does not yet exist, allocate with size 1
                               ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)% &
                                 & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
                               IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
@@ -11233,17 +11280,20 @@ CONTAINS
                                 & = CurrentDofLocalNo
                             ELSE
                               ! array already exists, increase size by 1
+                              ! USE RESHAPE!!!
                               FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
                                 & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES, &
-                                & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS], &
-                                & [CurrentDofLocalNo])
+                                & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS], & ! new shape
+                                & [CurrentDofLocalNo]) ! the new array may be padded with elements from PAD 
                             ENDIF
                       
                           ENDIF
                         ENDDO  ! AdjacentDomainIdx
                             
+
+                            
                         ! advance local and global dof no
-                        CurrentDofLocalNo = CurrentDofLocalNo + 1
+                        CurrentDofLocalNo  = CurrentDofLocalNo + 1
                         CurrentDofGlobalNo = CurrentDofGlobalNo + 1
                       ENDDO  ! VersionIdx
                     ENDDO  ! DerivativeIdx
@@ -11255,6 +11305,7 @@ CONTAINS
                       EXIT
                     ENDIF
                   ENDDO   ! loop over nodes in break-free sequence
+               
                 ELSE 
                   ! node range is not on own rank
                   
@@ -11272,9 +11323,13 @@ CONTAINS
                 
               ENDDO   ! loop over break-free sequences
               
+             
+              
               DEALLOCATE(DofTable)
             
             ! endif (node-based interpolation)
+            
+            ! start element-based interpolation
             ELSEIF (FIELD_COMPONENT%INTERPOLATION_TYPE == FIELD_ELEMENT_BASED_INTERPOLATION) THEN
               
               Element1LocalNo = 1
@@ -11401,7 +11456,9 @@ CONTAINS
               ENDDO ! ElementIdx
               CurrentDofGlobalNo = CurrentDofGlobalNo + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
             
-            ! endif (node-based interpolation)
+            ! endif (element-based interpolation)
+            
+            ! start constant-based interpolation
             ELSEIF (FIELD_COMPONENT%INTERPOLATION_TYPE == FIELD_CONSTANT_INTERPOLATION) THEN
             
               ! add global dof no to LOCAL_TO_GLOBAL_MAP
@@ -11444,11 +11501,16 @@ CONTAINS
           
           FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_START:&
             & FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_FINISH) = IntegerArray(1:NumberBoundaryDofs)
+            ! boundary dofs ALL components
           IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": collected ",NumberBoundaryDofs,&
             & "boundary dofs (local no.):", IntegerArray
           
           DEALLOCATE(IntegerArray)
           
+          
+          
+          
+          ! here!!!
           ! set start index in DOMAIN_LIST for ghost dofs
           FIELD_VARIABLE_DOFS_MAPPING%GHOST_START = InternalDofIdx
             
@@ -13362,7 +13424,7 @@ CONTAINS
           !  ELEMENTS_MAPPING=>FIELD_COMPONENT%DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
           !  NODES_MAPPING=>DOMAIN_MAPPINGS%NODES
           
-          variable_idx = 1
+          variable_idx = 1 ! 1 is max!!
           CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
           PRINT *, "----------- field dof to param map -----------"
           CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
@@ -13374,7 +13436,7 @@ CONTAINS
       
       
       IF (USE_OLD_GLOBAL_IMPLEMENTATION.AND.USE_NEW_LOCAL_IMPLEMENTATION) THEN   
-        ! compare FIELD1 and FIELD
+        ! compare FIELD1 and FIELD2
         
         CALL DOMAIN_MAPPINGS_COMPARE(FIELD1%VARIABLES(variable_idx)%DOMAIN_MAPPING, &
           & FIELD2%VARIABLES(variable_idx)%DOMAIN_MAPPING, "DOF", ERR,ERROR,*999)
@@ -13396,7 +13458,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises the dofs to parameters mapping for a field varaible and deallocates all memory.
+  !>Finalises the dofs to parameters mapping for a field variable and deallocates all memory.
   SUBROUTINE FIELD_DOF_TO_PARAM_MAP_FINALISE(DOF_TO_PARAM_MAP,ERR,ERROR,*)
 
     !Argument variables
