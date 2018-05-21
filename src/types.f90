@@ -441,6 +441,7 @@ MODULE Types
     TYPE(BASIS_TYPE), POINTER :: BASIS !<A pointer to the basis function for the element.
     INTEGER(INTG), ALLOCATABLE :: MESH_ELEMENT_NODES(:) !<MESH_ELEMENT_NODES(nn). The mesh node number in the mesh of the nn'th local node in the element. Old CMISS name NPNE(nn,nbf,ne).
     INTEGER(INTG), ALLOCATABLE :: GLOBAL_ELEMENT_NODES(:) !<GLOBAL_ELEMENT_NODES(nn). The global node number in the mesh of the nn'th local node in the element. Old CMISS name NPNE(nn,nbf,ne).
+    INTEGER(INTG), ALLOCATABLE :: GLOBAL_ELEMENT_FACES(:) !<GLOBAL_ELEMENT_FACES(-nic:nic). The global FACE number in the mesh of the nic'th direction local face in the element.
     INTEGER(INTG), ALLOCATABLE :: USER_ELEMENT_NODE_VERSIONS(:,:) !< USER_ELEMENT_NODE_VERSIONS(derivative_idx,element_node_idx).  The version number for the nn'th user node's nk'th derivative. Size of array dependent on the maximum number of derivatives for the basis of the specified element.
     INTEGER(INTG), ALLOCATABLE :: USER_ELEMENT_NODES(:) !<USER_ELEMENT_NODES(nn). The user node number in the mesh of the nn'th local node in the element. Old CMISS name NPNE(nn,nbf,ne).
     TYPE(MESH_ADJACENT_ELEMENT_TYPE), ALLOCATABLE :: ADJACENT_ELEMENTS(:) !<ADJACENT_ELEMENTS(-nic:nic). The adjacent elements information in the nic'th xi coordinate direction. Note that -nic gives the adjacent element before the element in the nic'th direction and +nic gives the adjacent element after the element in the nic'th direction. The ni=0 index will give the information on the current element. Old CMISS name NXI(-ni:ni,0:nei,ne).
@@ -479,6 +480,18 @@ MODULE Types
     LOGICAL :: boundaryNode !<Is .TRUE. if the mesh node is on the boundary of the mesh, .FALSE. if not.
   END TYPE MeshNodeType
 
+  !>Contains the topology information for a global face of a mesh.
+  TYPE MeshFaceType
+    !INTEGER(INTG) :: meshNumber !<The mesh face number in the mesh.
+    INTEGER(INTG) :: globalNumber !<The global face number in the mesh.
+    !INTEGER(INTG) :: userNumber !<The corresponding user number for the face.
+    !INTEGER(INTG) :: numberOfDerivatives !<The number of global derivatives at the face for the mesh. Old CMISS name NKT(nj,np).
+    !TYPE(MeshFaceDerivativeType), ALLOCATABLE :: derivatives(:) !<derivatives(derivativeIdx). Contains information on the derivativeIdx'th derivative of the face.
+    INTEGER(INTG) :: numberOfSurroundingElements !<The number of elements surrounding the face in the mesh. Old CMISS name NENP(np,0,0:nr).
+    INTEGER(INTG), POINTER :: surroundingElements(:) !<surroudingElements(localElementIdx). The global element number of the localElementIdx'th element that is surrounding the face.
+    !LOGICAL :: boundaryFace !<Is .TRUE. if the mesh face is on the boundary of the mesh, .FALSE. if not.
+  END TYPE MeshFaceType
+
   !>Contains the information for the nodes of a mesh.
   TYPE MeshNodesType
     TYPE(MeshComponentTopologyType), POINTER :: meshComponentTopology !<The pointer to the mesh component topology for the nodes information.
@@ -486,6 +499,14 @@ MODULE Types
     TYPE(MeshNodeType), ALLOCATABLE :: nodes(:) !<nodes(nodeIdx). The pointer to the array of topology information for the nodes of the mesh. node(nodeIdx) contains the topological information for the nodeIdx'th global node of the mesh. \todo Should this be allocatable???
     TYPE(TREE_TYPE), POINTER :: nodesTree !<A tree mapping the mesh global number to the region nodes global number.
   END TYPE MeshNodesType
+
+  !>Contains the information for the Faces of a mesh.
+  TYPE MeshFacesType
+    TYPE(MeshComponentTopologyType), POINTER :: meshComponentTopology !<The pointer to the mesh component topology for the Faces information.
+    INTEGER(INTG) :: numberOfFaces !<The number of Faces in the mesh.
+    TYPE(MeshFaceType), ALLOCATABLE :: faces(:) !<nodes(FaceIdx). The pointer to the array of topology information for the Faces of the mesh. Faces(FaceIdx) contains the topological information for the FaceIdx'th global face of the mesh. \todo Should this be allocatable???
+    !TYPE(TREE_TYPE), POINTER :: nodesTree !<A tree mapping the mesh global number to the region nodes global number.
+  END TYPE MeshFacesType
 
   TYPE MeshElementDataPointType
     INTEGER(INTG) :: userNumber !<User number of the projected data point
@@ -519,6 +540,7 @@ MODULE Types
     TYPE(MESH_TYPE), POINTER :: mesh !<Pointer to the parent mesh.
     INTEGER(INTG) :: meshComponentNumber !<The mesh component number for this mesh topology.
     TYPE(MeshNodesType), POINTER :: nodes !<Pointer to the nodes within the mesh topology.
+    TYPE(MeshFacesType), POINTER :: faces !<Pointer to the nodes within the mesh topology.
     TYPE(MeshElementsType), POINTER :: elements !<Pointer to the elements within the mesh topology.
     TYPE(MeshDofsType), POINTER :: dofs !<Pointer to the dofs within the mesh topology.
     TYPE(MeshDataPointsType), POINTER :: dataPoints !<Pointer to the data points within the mesh topology
@@ -939,9 +961,11 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: DOMAIN_NUMBER !<The number of the domain that is adjacent to a domain in a mapping.
     INTEGER(INTG) :: NUMBER_OF_SEND_GHOSTS !<The number of ghost locals in the current domain that are to be sent to this domain.
     INTEGER(INTG) :: NUMBER_OF_RECEIVE_GHOSTS !<The number of ghost locals in the current domain that are to be received from this domain.
-    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts in the current domain that are to be sent to this domain.
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts (actually boundary nodes/elements/dofs) in the current domain that are to be sent to this domain.
     INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_RECEIVE_INDICES(:) !<LOCAL_GHOST_RECEIVE_INDICES(i). The local numbers of the ghosts in the current domain that are to be received from this domain.
-  END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
+    INTEGER(INTG) :: NUMBER_OF_FURTHER_LINKED_GHOSTS !<The number of further linked ghost numbers that are needed such that all ghost nodes know all their shared domains, this is only needed for element mappings
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_FURTHER_INDICES(:) !<LOCAL_GHOST_FURTHER_INDICES(i) local number of a linked element, this is only needed for element mappings
+END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
 
   !>Contains the local information for a global mapping number for a domain mapping.
   TYPE DOMAIN_GLOBAL_MAPPING_TYPE
@@ -1222,7 +1246,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension .
     REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction in the field decomposition.
     REAL(DP), ALLOCATABLE :: FV_LENGTH(:,:) ! FV_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
-    REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, in the field decomposition, ncoord are the x, y z components. 
+    REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, in the field decomposition, ncoord are the x, y z components.
     INTEGER(INTG) :: NUMBER_OF_FIELDS_USING !<The number of fields that use these geometric parameters for their scaling.
     TYPE(FIELD_PTR_TYPE), POINTER :: FIELDS_USING(:) !< FIELDS_USINGS(field_idx). A pointer to the field_idx'th field that uses these geometric parameters for its scaling.
   END TYPE FIELD_GEOMETRIC_PARAMETERS_TYPE
