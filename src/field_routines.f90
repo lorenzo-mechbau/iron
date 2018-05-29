@@ -11507,9 +11507,6 @@ CONTAINS
           
           DEALLOCATE(IntegerArray)
           
-          
-          
-          
           ! here!!!
           ! set start index in DOMAIN_LIST for ghost dofs
           FIELD_VARIABLE_DOFS_MAPPING%GHOST_START = InternalDofIdx
