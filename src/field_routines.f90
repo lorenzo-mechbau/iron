@@ -113,10 +113,11 @@ MODULE FIELD_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: FIELD_CONSTANT_INTERPOLATION=1 !<Constant interpolation. One parameter for the field \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_BASED_INTERPOLATION=2 !<Element based interpolation. Parameters are different in each element \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_NODE_BASED_INTERPOLATION=3 !<Node based interpolation. Parameters are nodal based and a basis function is used \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_BASED_INTERPOLATION=4 !<Grid point based interpolation. Parameters are different at each grid point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_BASED_INTERPOLATION=5 !<Gauss point based interpolation. Parameters are different at each Gauss point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_BASED_INTERPOLATION=6 !<data point based interpolation. Parameters are different at each data point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_FACE_BASED_INTERPOLATION=3 !<Face based interpolation. Parameters are different in each face \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_NODE_BASED_INTERPOLATION=4 !<Node based interpolation. Parameters are nodal based and a basis function is used \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_BASED_INTERPOLATION=5 !<Grid point based interpolation. Parameters are different at each grid point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_BASED_INTERPOLATION=6 !<Gauss point based interpolation. Parameters are different at each Gauss point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_BASED_INTERPOLATION=7 !<data point based interpolation. Parameters are different at each data point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   !>@}
 
 !> \addtogroup FIELD_ROUTINES_DofTypes FIELD_ROUTINES::DofTypes
@@ -125,10 +126,11 @@ MODULE FIELD_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: FIELD_CONSTANT_DOF_TYPE=1 !<The dof is from a field variable component with constant interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_DOF_TYPE=2 !<The dof is from a field variable component with element based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_NODE_DOF_TYPE=3 !<The dof is from a field variable component with node based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_DOF_TYPE=4 !<The dof is from a field variable component with grid point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_DOF_TYPE=5 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_DOF_TYPE=6 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_FACE_DOF_TYPE=3 !<The dof is from a field variable component with element based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_NODE_DOF_TYPE=4 !<The dof is from a field variable component with node based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_DOF_TYPE=5 !<The dof is from a field variable component with grid point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_DOF_TYPE=6 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_DOF_TYPE=7 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
   !>@}
 
   !> \addtogroup FIELD_ROUTINES_DataTypes FIELD_ROUTINES::DataTypes
@@ -1068,7 +1070,8 @@ MODULE FIELD_ROUTINES
   PUBLIC FIELD_GEOMETRIC_TYPE,FIELD_FIBRE_TYPE,FIELD_GENERAL_TYPE,FIELD_MATERIAL_TYPE,FIELD_GEOMETRIC_GENERAL_TYPE
 
   PUBLIC FIELD_CONSTANT_INTERPOLATION,FIELD_ELEMENT_BASED_INTERPOLATION,FIELD_NODE_BASED_INTERPOLATION, &
-    & FIELD_GRID_POINT_BASED_INTERPOLATION,FIELD_GAUSS_POINT_BASED_INTERPOLATION,FIELD_DATA_POINT_BASED_INTERPOLATION
+    & FIELD_GRID_POINT_BASED_INTERPOLATION,FIELD_GAUSS_POINT_BASED_INTERPOLATION,FIELD_DATA_POINT_BASED_INTERPOLATION, &
+    & FIELD_FACE_BASED_INTERPOLATION
 
   PUBLIC FIELD_CONSTANT_DOF_TYPE,FIELD_ELEMENT_DOF_TYPE,FIELD_NODE_DOF_TYPE,FIELD_GRID_POINT_DOF_TYPE,FIELD_GAUSS_POINT_DOF_TYPE, &
     & FIELD_DATA_POINT_DOF_TYPE
@@ -1344,6 +1347,10 @@ CONTAINS
                     & " which is not element based interpolation."
                   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 IF(FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%INTERPOLATION_TYPE/=FIELD_NODE_BASED_INTERPOLATION) THEN
                   LOCAL_ERROR="Invalid interpolation type. The interpolation type for component number "// &
@@ -1462,6 +1469,8 @@ CONTAINS
                   CASE(FIELD_CONSTANT_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
+                  CASE(FIELD_FACE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
@@ -1594,6 +1603,10 @@ CONTAINS
                   & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                   & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                 CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by constant for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1706,6 +1719,10 @@ CONTAINS
                   & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                   & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                 CALL FlagError(localError,err,error,*999)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 localError="Can not get the dof by user data point for component number "// &
                   & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -1859,6 +1876,10 @@ CONTAINS
                 ELSE
                   CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                 ENDIF
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by user element for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1972,6 +1993,10 @@ CONTAINS
                   & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                   & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                 CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -2776,6 +2801,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -2998,6 +3027,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -3219,6 +3252,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -3469,6 +3506,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -4204,6 +4245,9 @@ CONTAINS
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=1
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=0
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=-1
@@ -5841,6 +5885,10 @@ CONTAINS
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -5887,6 +5935,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !ni
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
@@ -5941,6 +5993,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !nu
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
                   INTERPOLATED_POINT%VALUES(component_idx,nu)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS% &
@@ -6076,6 +6132,10 @@ CONTAINS
                                           CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                             PHYSICAL_POINT%VALUES(component_idx)=FIELD_INTERPOLATION_PARAMETERS% &
                                               & PARAMETERS(1,component_idx)
+                                          CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                               & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6104,6 +6164,10 @@ CONTAINS
                                           CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                             !There is no graident for element interpolation
                                             PHYSICAL_POINT%VALUES(component_idx)=0.0_DP
+                                          CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
                                               & GEOMETRIC_INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
@@ -6178,6 +6242,8 @@ CONTAINS
                                     CASE(FIELD_CONSTANT_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                                      !Do nothing
+                                    CASE(FIELD_FACE_BASED_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                                       PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -6353,6 +6419,10 @@ CONTAINS
                                             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                               PHYSICAL_POINT%VALUES(component_idx)=FIELD_INTERPOLATION_PARAMETERS% &
                                                 & PARAMETERS(1,component_idx)
+                                            CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                                 & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6381,6 +6451,10 @@ CONTAINS
                                             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                               !There is no graident for element interpolation
                                               PHYSICAL_POINT%VALUES(component_idx)=0.0_DP
+                                            CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
                                                 & GEOMETRIC_INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
@@ -6455,6 +6529,8 @@ CONTAINS
                                       CASE(FIELD_CONSTANT_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                                        !Do nothing
+                                      CASE(FIELD_FACE_BASED_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_NODE_BASED_INTERPOLATION)
                                         PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -6611,6 +6687,10 @@ CONTAINS
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
 !                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
 !                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -6661,6 +6741,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !ni
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
 !                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
@@ -6723,6 +6807,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !nu
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
 !                   INTERPOLATED_POINT%VALUES(component_idx,nu)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS% &
@@ -6845,6 +6933,10 @@ CONTAINS
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_XI(INTERPOLATION_PARAMETERS% &
                   & BASES(component_idx)%PTR,NO_PART_DERIV,XI,INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx),ERR,ERROR)
@@ -6891,6 +6983,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !ni
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_XI(INTERPOLATION_PARAMETERS% &
@@ -6946,6 +7042,10 @@ CONTAINS
                   CALL COORDINATE_INTERPOLATION_ADJUST(COORDINATE_SYSTEM,nu,INTERPOLATED_POINT%VALUES(component_idx,nu), &
                     & ERR,ERROR,*999)
                 ENDDO !nu
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
                   INTERPOLATED_POINT%VALUES(component_idx,nu)=BASIS_INTERPOLATE_XI(INTERPOLATION_PARAMETERS% &
@@ -7187,6 +7287,10 @@ CONTAINS
                                       & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based&
                                       & interpolation."
                                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                                  CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                    !!!!!
+                                    CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                    !!!!!
                                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                                     DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                                     IF(ASSOCIATED(DOMAIN)) THEN
@@ -8132,6 +8236,10 @@ CONTAINS
                     & ELEMENT_PARAM2DOF_MAP%ELEMENTS(ELEMENT_NUMBER)
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=1
                   INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)=FIELD_PARAMETER_SET_DATA(dof_idx)
+                CASE(FIELD_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   ELEMENTS_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -8435,6 +8543,10 @@ CONTAINS
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
+                CASE(FIELD_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -8643,6 +8755,10 @@ CONTAINS
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
+                CASE(FIELD_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -8799,6 +8915,10 @@ CONTAINS
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=1
               INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)=1.0_DP
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9485,6 +9605,10 @@ CONTAINS
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=1
               INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)=1.0_DP
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9612,6 +9736,10 @@ CONTAINS
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=1
               INTERPOLATION_PARAMETERS%PARAMETERS(1,component_idx)=1.0_DP
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9892,189 +10020,2874 @@ CONTAINS
       & NUMBER_OF_CONSTANT_DOFS,NUMBER_OF_ELEMENT_DOFS,NUMBER_OF_NODE_DOFS,NUMBER_OF_GRID_POINT_DOFS,NUMBER_OF_GAUSS_POINT_DOFS, &
       & NUMBER_OF_LOCAL_VARIABLE_DOFS,TOTAL_NUMBER_OF_VARIABLE_DOFS,NUMBER_OF_DOMAINS,variable_global_ny, &
       & variable_local_ny,domain_idx,domain_no,constant_nyy,element_ny,element_nyy,node_ny,node_nyy,grid_point_nyy, &
-      & Gauss_point_nyy,version_idx,derivative_idx,ny,NUMBER_OF_COMPUTATIONAL_NODES, &
-      & myComputationalNodeNumber,domain_type_stop,start_idx,stop_idx,element_idx,node_idx,NUMBER_OF_LOCAL, NGP, MAX_NGP, &
+      & Gauss_point_nyy,version_idx,derivative_idx,ny,NumberComputationalNodes, &
+      & MyComputationalNodeNumber,domain_type_stop,start_idx,stop_idx,element_idx,node_idx,NUMBER_OF_LOCAL, NGP, MAX_NGP, &
       & gp,MPI_IERROR,NUMBER_OF_GLOBAL_DOFS,gauss_point_idx,NUMBER_OF_DATA_POINT_DOFS,data_point_nyy,dataPointIdx,elementIdx, &
-      & localDataNumber,globalElementNumber
+      & localDataNumber,globalElementNumber,GlobalNumberBreaks, LocalNumberBreaks, PreviousNodeGlobalNo, NodeLocalNo, &
+      & NodeGlobalNo, BreakIdx, NumberDofsInSequence, DofTableIndex, DerivativeIdx, LocalInternalNodeIdx, CurrentRank, &
+      & NodeStartGlobalNo, NodeStopGlobalNo, NumberDofsCurrentSequence, LocalNodeIdx, I, NodeOnCurrentComputationalNodeGlobalNo, &
+      & NumberDofsOnCurrentComputationalNode, NumberDofs, VersionIdx, DofLocalNo, DofGlobalNo, NodeDofIdx, NumberBoundaryDofs, &
+      & MaximumNumberNodesSend, MaximumNumberNodesReceive, NodeSendIdx, FirstGhostNodeLocalNo, LastGhostNodeLocalNo, &
+      & NodeReceiveIdx, MaxNumberDerivativesAtGhostNode, NumberVersions, StartDofGlobalNo, InternalDofIdx, AdjacentDomainIdx, &
+      & GhostNodeNo, NumberDerivatives, CurrentDofLocalNo, CurrentDofGlobalNo, GhostReceiveIdx, GhostSendIdx, &
+      & MaximumNumberNodesCommunicate, ElementDofIdx, CurrentElementDofIdx, ElementGlobalNo, ElementLocalNo, Element1LocalNo, &
+      & AdjacentDomainNo, AdjacentDomainIdx2, ConstantDofIdx, countIfFace, NUMBER_OF_FACE_DOFS, face_nyy, face_Idx, faceDofIdx, &
+      & PreviousFaceGlobalNo, FaceLocalNo, FaceGlobalNo, LocalInternalFaceIdx, FaceReceiveIdx, MaxNumberDerivativesAtGhostFace, &
+      & FaceStartGlobalNo, FaceStopGlobalNo, LocalFaceIdx, FaceOnCurrentComputationalNodeGlobalNo, GhostFaceNo, &
+      & MaximumNumberFacesSend, MaximumNumberFacesReceive, FaceSendIdx, FirstGhostFaceLocalNo, LastGhostFaceLocalNo, &
+      & MaximumNumberFacesCommunicate
+
     INTEGER(INTG), ALLOCATABLE :: VARIABLE_LOCAL_DOFS_OFFSETS(:),VARIABLE_GHOST_DOFS_OFFSETS(:), &
-      & localDataParamCount(:),ghostDataParamCount(:)
+        & localDataParamCount(:),ghostDataParamCount(:), NumberBreaksNode(:), RowOffsetNode(:), DofTable(:), IntegerArray(:), &
+        & SendBuffer2(:,:), ReceiveBuffer2(:,:), SendBuffer3(:,:,:), ReceiveBuffer3(:,:,:), ReceiveRequestHandle(:), &
+        & SendRequestHandle(:), NumberDerivativesAtGhostNode(:), NodeDofSpecification(:,:), NumberBreaksDoubleNode(:), &
+        & RowOffsetZeroBasedNode(:), FirstDofGlobalNo(:), Element1GlobalNo(:), FirstElementDofIdx(:), FirstDofLocalNo(:), &
+        & RowOffsetFace(:), RowOffsetZeroBasedFace(:), NumberBreaksFace(:), NumberBreaksDoubleFace(:), &
+        & NumberDerivativesAtGhostFace(:), FaceDofSpecification(:,:)
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: decompositionTopology
     TYPE(DOMAIN_TYPE), POINTER :: domain
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping,DOFS_MAPPING,FIELD_VARIABLE_DOFS_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping,DOFS_MAPPING,FIELD_VARIABLE_DOFS_MAPPING,ELEMENTS_MAPPING, &
+      & NODES_MAPPING, FACES_MAPPING
+    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: domainMappings
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(FIELD_VARIABLE_COMPONENT_TYPE), POINTER :: FIELD_COMPONENT
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(BASIS_TYPE), POINTER :: BASIS
+    TYPE(LIST_TYPE), POINTER :: BoundaryDofLocalNosList
+    LOGICAL :: CurrentNodeIsInternal, AdjacentDomainFound, NodeIsOnCurrentAdjacentDomain, CurrentElementIsInternal, &
+      & ElementIsOnCurrentAdjacentDomain, CurrentFaceIsInternal, FaceIsOnCurrentAdjacentDomain
 
     ENTERS("FIELD_MAPPINGS_CALCULATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FIELD)) THEN
-      NUMBER_OF_COMPUTATIONAL_NODES=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+      NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
-      !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
-      !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
+
+
+      !The following line is what the if statement should be, for now we will just use new implementation if one of the components has FACE_interpolation
+      !IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
+      countIfFace=0
       DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
-        NUMBER_OF_CONSTANT_DOFS=0
-        NUMBER_OF_ELEMENT_DOFS=0
-        NUMBER_OF_NODE_DOFS=0
-        NUMBER_OF_GRID_POINT_DOFS=0
-        NUMBER_OF_GAUSS_POINT_DOFS=0
-        NUMBER_OF_DATA_POINT_DOFS=0
-        NUMBER_OF_LOCAL_VARIABLE_DOFS=0
-        TOTAL_NUMBER_OF_VARIABLE_DOFS=0
-        NUMBER_OF_GLOBAL_VARIABLE_DOFS=0
         DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-          FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-          SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
-          CASE(FIELD_CONSTANT_INTERPOLATION)
-            NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS+1
-            NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+1
-            TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+1
-            NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+1
-          CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-            DOMAIN=>FIELD_COMPONENT%DOMAIN
-            DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-            NUMBER_OF_ELEMENT_DOFS=NUMBER_OF_ELEMENT_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-            NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
-            TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-            NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS
-          CASE(FIELD_NODE_BASED_INTERPOLATION)
-            DOMAIN=>FIELD_COMPONENT%DOMAIN
-            DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-            NUMBER_OF_NODE_DOFS=NUMBER_OF_NODE_DOFS+DOMAIN_TOPOLOGY%DOFS%TOTAL_NUMBER_OF_DOFS
-            NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_DOFS
-            TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%TOTAL_NUMBER_OF_DOFS
-            NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_GLOBAL_DOFS
-          CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
-            CALL FlagError("Not implemented.",ERR,ERROR,*999)
-          CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-            DOMAIN=>FIELD_COMPONENT%DOMAIN
-            DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-            MAX_NGP = -1
-            DO element_idx=1,DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
-              BASIS=>DOMAIN_TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS
-              NGP=BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%NUMBER_OF_GAUSS
-              MAX_NGP=MAX(MAX_NGP,NGP)
-            ENDDO !element_idx
-            CALL MPI_ALLREDUCE(MPI_IN_PLACE,MAX_NGP,1,MPI_INTEGER,MPI_MAX,computationalEnvironment%mpiCommunicator,MPI_IERROR)
-            CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
-            NUMBER_OF_GAUSS_POINT_DOFS=NUMBER_OF_GAUSS_POINT_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
-            NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS*MAX_NGP
-            TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
-            NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS*MAX_NGP
-          CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-            ! Data points do not have domain topology or mappings, since they're the same across all mesh components
-            decompositionTopology=>FIELD%DECOMPOSITION%TOPOLOGY
-            NUMBER_OF_DATA_POINT_DOFS=NUMBER_OF_DATA_POINT_DOFS+decompositionTopology%dataPoints%totalNumberOfDataPoints
-            NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+decompositionTopology%dataPoints%numberOfDataPoints
-            TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+decompositionTopology% &
-              & dataPoints%totalNumberOfDataPoints
-            NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+decompositionTopology%dataPoints% &
-              & numberOfGlobalDataPoints
-          CASE DEFAULT
-            LOCAL_ERROR="The interpolation type of "// &
-              & TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
-              & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NumberToVString(component_idx,"*",ERR,ERROR))// &
-              & " of variable type  "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
-            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-          END SELECT
-        ENDDO !component_idx
-        !Allocate the DOF to parameters (nodes, elements, gauss, components etc.) maps.
-        FIELD%VARIABLES(variable_idx)%NUMBER_OF_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS
-        FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
-        FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS
-        ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
-        IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter map.",ERR,ERROR,*999)
-        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
-        IF(NUMBER_OF_CONSTANT_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(NUMBER_OF_CONSTANT_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter constant map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS
-        ENDIF
-        IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,NUMBER_OF_ELEMENT_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter element map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS=NUMBER_OF_ELEMENT_DOFS
-        ENDIF
-        IF(NUMBER_OF_NODE_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NUMBER_OF_NODE_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter node map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS=NUMBER_OF_NODE_DOFS
-        ENDIF
-        IF(NUMBER_OF_GRID_POINT_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GRID_POINT_DOF2PARAM_MAP(2,NUMBER_OF_GRID_POINT_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter grid point map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS=NUMBER_OF_GRID_POINT_DOFS
-        ENDIF
-        IF(NUMBER_OF_GAUSS_POINT_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,NUMBER_OF_GAUSS_POINT_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter Gauss point map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS=NUMBER_OF_GAUSS_POINT_DOFS
-        ENDIF
-        IF(NUMBER_OF_DATA_POINT_DOFS>0) THEN
-          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(3,NUMBER_OF_DATA_POINT_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter Gauss point map.",ERR,ERROR,*999)
-          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS=NUMBER_OF_DATA_POINT_DOFS
-        ENDIF
-      ENDDO !variable_idx
-      !Allocate the mapping arrays
-      DECOMPOSITION=>FIELD%DECOMPOSITION
-      ALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
-      IF(ERR/=0) CALL FlagError("Could not allocate variable local dofs offsets.",ERR,ERROR,*999)
-      ALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
-      IF(ERR/=0) CALL FlagError("Could not allocate variable ghost dofs offsets.",ERR,ERROR,*999)
-      !We want to ensure that the ghost DOFs are at the end so loop over the DOFs in two passes. The first pass will process
-      !the local DOFs for each variable component and the second pass will process the ghost DOFs for each variable component.
-      IF(NUMBER_OF_COMPUTATIONAL_NODES==1) THEN
-        domain_type_stop=1 !Local only
-      ELSE
-        domain_type_stop=2 !Local+Ghosts
-      ENDIF
-      !Calculate the local and global numbers and set up the mappings
-      DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
-        constant_nyy=0
-        element_nyy=0
-        node_nyy=0
-        grid_point_nyy=0
-        Gauss_point_nyy=0
-        data_point_nyy=0
-        variable_local_ny=0
-        FIELD_VARIABLE_DOFS_MAPPING=>FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING
-        IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate variable dofs mapping global to local map.",ERR,ERROR,*999)
-          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL=FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS
-        ENDIF
-        !The ordering of the DOFs with respect to components is arbitrary. Allow for two orderings: The first ordering is that
-        !all the DOFs from one component are processed before all the DOFs of the next component. This is known as "separated"
-        !component DOF ordering. The second ordering is to process all the components for a particular parameter (e.g., node)
-        !and then process all the components for the next parameter. This is known as "contiguous" component DOF ordering.
-        !Continguous component ordering only works if each of the components has the same DOF structure. For this reason
-        !separate component ordering is the default.
-        SELECT CASE(FIELD%VARIABLES(variable_idx)%DOF_ORDER_TYPE)
-        CASE(FIELD_SEPARATED_COMPONENT_DOF_ORDER)
-          !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
-          VARIABLE_GHOST_DOFS_OFFSETS=0
-          DO domain_type_idx=1,domain_type_stop
-            VARIABLE_GLOBAL_DOFS_OFFSET=0
-            VARIABLE_LOCAL_DOFS_OFFSETS=0
+          IF(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE==FIELD_FACE_BASED_INTERPOLATION) THEN
+            countIfFace=countIfFace+1
+          ELSE
+            !do nothing
+          ENDIF
+        ENDDO
+      ENDDO
+
+      IF(countIfFace>=1) THEN
+
+        !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
+        !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
+        DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
+          NUMBER_OF_CONSTANT_DOFS=0
+          NUMBER_OF_ELEMENT_DOFS=0
+          NUMBER_OF_FACE_DOFS=0
+          NUMBER_OF_NODE_DOFS=0
+          NUMBER_OF_GRID_POINT_DOFS=0
+          NUMBER_OF_GAUSS_POINT_DOFS=0
+          NUMBER_OF_DATA_POINT_DOFS=0
+          NUMBER_OF_LOCAL_VARIABLE_DOFS=0  ! n dofs internal and boundary
+          TOTAL_NUMBER_OF_VARIABLE_DOFS=0  ! n dofs internal, boundary and ghost
+          NUMBER_OF_GLOBAL_VARIABLE_DOFS=0 ! global n dofs
+
+          ! output interpolation type for all components
+          IF (DIAGNOSTICS2) THEN
             DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-              NUMBER_OF_LOCAL=0
               FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+              domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+              ELEMENTS_MAPPING=>domainMappings%ELEMENTS
+              NODES_MAPPING=>domainMappings%NODES
+              DOFS_MAPPING=>domainMappings%DOFS
+
+              IF (DIAGNOSTICS2) WRITE(*, '(I0,A,I0)', ADVANCE = "NO") MyComputationalNodeNumber, ": component ", component_idx
+
               SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
               CASE(FIELD_CONSTANT_INTERPOLATION)
-                !Only process the non-ghosted dofs for constant interpolation
-                IF(domain_type_idx==1) THEN
-                  variable_local_ny=variable_local_ny+1
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_CONSTANT_INTERPOLATION"
+
+              CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_BASED_INTERPOLATION"
+
+              CASE(FIELD_NODE_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_NODE_BASED_INTERPOLATION"
+              END SELECT
+            ENDDO
+          ENDIF
+
+          ! loop over components of current field variable
+          DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+            FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+            domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+            ELEMENTS_MAPPING=>domainMappings%ELEMENTS
+            FACES_MAPPING=>domainMappings%FACES
+            NODES_MAPPING=>domainMappings%NODES
+            DOFS_MAPPING=>domainMappings%DOFS   ! dofs_mapping contains only some information like DOFS_MAPPING%NUMBER_OF_LOCAL, that was set in domainMappings_NODES_CALCULATE, the real dofs mapping is FIELD_VARIABLE_DOFS_MAPPING
+
+            SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
+            CASE(FIELD_CONSTANT_INTERPOLATION)
+              NUMBER_OF_CONSTANT_DOFS = NUMBER_OF_CONSTANT_DOFS + 1
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + 1
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + 1
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + 1
+
+            CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+              NUMBER_OF_ELEMENT_DOFS = NUMBER_OF_ELEMENT_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
+
+              ! allocate param_to_dof_map for elements
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
+                & STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+              NUMBER_OF_FACE_DOFS = NUMBER_OF_FACE_DOFS + FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + FACES_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + FACES_MAPPING%NUMBER_OF_GLOBAL
+
+              ! allocate param_to_dof_map for faces
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
+                & STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+            CASE(FIELD_NODE_BASED_INTERPOLATION)
+              NUMBER_OF_NODE_DOFS = NUMBER_OF_NODE_DOFS + DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + DOFS_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + DOFS_MAPPING%NUMBER_OF_GLOBAL
+
+              ! allocate param_to_dof_map for nodes
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes map.",ERR,ERROR,*999)
+
+            CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE DEFAULT
+              LOCAL_ERROR="The interpolation type of "// &
+                & TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
+                & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                & " of variable type  "//TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            END SELECT
+
+            ! These were formally allocated for every component.
+            ! !todo/ These should only be called if that interpolation type is present
+            ! ! allocate param_to_dof_map for nodes
+            ! ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+            ! IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes map.",ERR,ERROR,*999)
+            !
+            ! ! allocate param_to_dof_map for elements
+            ! ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
+            !   & STAT=ERR)
+            ! IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+            !
+            ! ! allocate param_to_dof_map for faces
+            ! ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
+            !   & STAT=ERR)
+            ! IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+          ENDDO !component_idx
+
+          ! mapping from variable data (multiple components) to storage positions (dofs)
+          FIELD_VARIABLE_DOFS_MAPPING=>FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING
+
+          FIELD%VARIABLES(variable_idx)%NUMBER_OF_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS
+          FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS
+          FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS
+
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_LOCAL = NUMBER_OF_LOCAL_VARIABLE_DOFS
+          FIELD_VARIABLE_DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL = TOTAL_NUMBER_OF_VARIABLE_DOFS
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL = NUMBER_OF_GLOBAL_VARIABLE_DOFS
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAINS = NumberComputationalNodes
+
+          IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": number dofs local: ", NUMBER_OF_LOCAL_VARIABLE_DOFS, &
+            & ", total: ", TOTAL_NUMBER_OF_VARIABLE_DOFS,", global: ", NUMBER_OF_GLOBAL_VARIABLE_DOFS
+
+          ! a 'parameter' is the catch-all term for nodes, elements, gauss, components etc.
+          ! allocate DOF_TYPE
+          ! DOF_TYPE(1,dofNo) = type of dof: 1=constant, 2=element based, 3=node based, 4=point based
+          ! DOF_TYPE(2,dofNo) = index of corresponding DOF2PARAM_MAP
+          ! FIELD_CONSTANT_DOF_TYPE=1, FIELD_ELEMENT_DOF_TYPE=2, FIELD_NODE_DOF_TYPE=3, FIELD_GRID_POINT_DOF_TYPE=4, FIELD_GAUSS_POINT_DOF_TYPE=5, FIELD_DATA_POINT_DOF_TYPE=6
+
+          ! allocate dof to parameter mappings
+          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter map.",ERR,ERROR,*999)
+          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
+
+          ! allocate DOF2PARAM_MAP for constant dofs
+          IF(NUMBER_OF_CONSTANT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(NUMBER_OF_CONSTANT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter constant map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS
+          ENDIF
+
+          ! allocate DOF2PARAM_MAP for element based dofs
+          IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,NUMBER_OF_ELEMENT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter element map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS=NUMBER_OF_ELEMENT_DOFS
+          ENDIF
+
+          ! allocate DOF2PARAM_MAP for face based dofs
+          IF(NUMBER_OF_FACE_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(2,NUMBER_OF_FACE_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter face map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS=NUMBER_OF_FACE_DOFS
+          ENDIF
+
+          ! allocate DOF2PARAM_MAP for node based dofs
+          IF(NUMBER_OF_NODE_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NUMBER_OF_NODE_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter node map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS=NUMBER_OF_NODE_DOFS
+          ENDIF
+
+          ! allocate storage for domain mapping
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_TO_GLOBAL_MAP of size "//&
+              & TRIM(NUMBER_TO_VSTRING(TOTAL_NUMBER_OF_VARIABLE_DOFS,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate DOMAIN_LIST of size "//&
+              & TRIM(NUMBER_TO_VSTRING(TOTAL_NUMBER_OF_VARIABLE_DOFS,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+
+          ! allocate adjacent domains array, use information from first component
+          ! get nodes mapping of first component
+          component_idx = 1
+          FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+          NODES_MAPPING=>FIELD_COMPONENT%DOMAIN%MAPPINGS%NODES
+
+          ! set number of adjacent domains from nodes mapping
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+          ! allocate adjacent domains array
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate ADJACENT_DOMAINS",ERR,ERROR,*999)
+
+          ! initialize adjacent domains array
+          DO AdjacentDomainIdx=1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+            !CALL domainMappings_ADJACENT_DOMAIN_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx), &
+            !  & ERR,ERROR,*999)
+            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = 0
+            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = 0
+            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
+            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER &
+              & = NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+          ENDDO
+
+          ! create list that collects boundary dofs
+          NULLIFY(BoundaryDofLocalNosList)
+          CALL LIST_CREATE_START(BoundaryDofLocalNosList,ERR,ERROR,*999)
+          CALL LIST_DATA_TYPE_SET(BoundaryDofLocalNosList,LIST_INTG_TYPE,ERR,ERROR,*999)
+          CALL LIST_CREATE_FINISH(BoundaryDofLocalNosList,ERR,ERROR,*999)
+
+          ! create helper objects for nodal dofs
+          IF(NUMBER_OF_NODE_DOFS>0) THEN
+            ! allocate helper arrays
+            ALLOCATE(NumberBreaksNode(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksNode",ERR,ERROR,*999)
+
+            ALLOCATE(NumberBreaksDoubleNode(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksDoubleNode",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetNode(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetNode",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetZeroBasedNode(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetZeroBasedNode",ERR,ERROR,*999)
+
+            NodeDofIdx = 1
+          ENDIF
+
+          ! create helper objects for face dofs
+          IF(NUMBER_OF_FACE_DOFS>0) THEN
+            ! allocate helper arrays
+            ALLOCATE(NumberBreaksFace(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksFace",ERR,ERROR,*999)
+
+            ALLOCATE(NumberBreaksDoubleFace(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksDoubleFace",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetFace(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetFace",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetZeroBasedFace(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetZeroBasedFace",ERR,ERROR,*999)
+
+            faceDofIdx = 1
+          ENDIF
+
+          ! create helper objects for element dofs
+          IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
+
+            ALLOCATE(FirstDofGlobalNo(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate FirstDofGlobalNo",ERR,ERROR,*999)
+
+            ALLOCATE(Element1GlobalNo(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate FirstElementGlobalNo",ERR,ERROR,*999)
+
+            ALLOCATE(FirstDofLocalNo(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate FirstDofGlobalNo",ERR,ERROR,*999)
+
+            ALLOCATE(FirstElementDofIdx(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate FirstElementGlobalNo",ERR,ERROR,*999)
+
+            CurrentElementDofIdx = 1
+          ENDIF
+
+          ConstantDofIdx = 1
+
+          CurrentDofLocalNo = 1    ! counter of local dof no, gets increased while iterating over the newly visited dofs
+          CurrentDofGlobalNo = 1   ! counter of global dof no, analoguous to local dof counter
+          InternalDofIdx = 1       ! counter of the idx for DOMAIN_LIST
+
+          ! loop over components of current field variable
+          DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+            FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+            TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+            !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
+            domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+            ELEMENTS_MAPPING=>domainMappings%ELEMENTS
+            NODES_MAPPING=>domainMappings%NODES
+            FACES_MAPPING=>domainMappings%FACES
+
+            ! handle node based interpolation dofs
+            SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
+            CASE(FIELD_NODE_BASED_INTERPOLATION)
+
+              ! Count number of 'breaks' in contiguous global node numbering on current domain. A break is when there
+              ! is a jump in the global node number for successive local node numbers.
+              LocalNumberBreaks = 0
+              PreviousNodeGlobalNo = -1
+
+              ! loop over internal and boundary nodes
+              DO NodeLocalNo = 1,NODES_MAPPING%NUMBER_OF_LOCAL
+                NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+
+                ! if there is a jump in global node no. count break
+                IF (NodeGlobalNo /= PreviousNodeGlobalNo+1 .AND. PreviousNodeGlobalNo /= -1) THEN
+                  LocalNumberBreaks = LocalNumberBreaks + 1
+                ENDIF
+                PreviousNodeGlobalNo = NodeGlobalNo
+              ENDDO
+              ! add last node also as break
+              LocalNumberBreaks = LocalNumberBreaks + 1
+
+              ! exchange the number of breaks on every rank
+              ! merge information from every rank
+              NumberBreaksNode(MyComputationalNodeNumber) = LocalNumberBreaks
+              CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
+                & NumberBreaksNode,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, " ------------------------------------ "
+                PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", number breaks: ",NumberBreaksNode
+              ENDIF
+
+              ! DofTable
+              !                         1 break: 2 values
+              !        break no. ->     /--^-\
+              ! rank   (glob.node,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! ---------------------------
+              ! explanation of the triple values:
+              !    global node: the last global node no. that is on the rank before the break
+              !    dof: number of dofs in last break-free sequence
+              !
+              ! the table is laid out row-major as a 1D array where each row has NumberBreaksNode(rank) entries
+
+              ! compute the row offsets, i.e. the indices where each row starts
+              RowOffsetNode(0) = 1
+              DO I = 1,NumberComputationalNodes-1
+                RowOffsetNode(I) = RowOffsetNode(I-1) + NumberBreaksNode(I-1)*2
+              ENDDO
+
+              ! compute global number of breaks as sum over all LocalNumberBreaks
+              GlobalNumberBreaks = 0
+              DO I = 0,NumberComputationalNodes-1
+                GlobalNumberBreaks = GlobalNumberBreaks + NumberBreaksNode(I)
+              ENDDO
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": RowOffsetNode: ", RowOffsetNode, &
+                & ", GlobalNumberBreaks=", GlobalNumberBreaks
+
+              ! allocate lookup table
+              ALLOCATE(DofTable(GlobalNumberBreaks*2),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate DofTable of size "//&
+                & TRIM(NUMBER_TO_VSTRING(GlobalNumberBreaks*2,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+
+              ! reset row that belongs to own rank to 0
+              DofTable(RowOffsetNode(MyComputationalNodeNumber):RowOffsetNode(MyComputationalNodeNumber)+LocalNumberBreaks) = 0
+
+              ! fill table with own values
+              BreakIdx = 0
+              NumberDofsInSequence = 0
+              PreviousNodeGlobalNo = -1
+
+              ! loop over internal and boundary nodes
+              DO NodeLocalNo = 1,NODES_MAPPING%NUMBER_OF_LOCAL
+                NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
+
+                ! if there is a jump in global node no. count break
+                IF (NodeGlobalNo /= PreviousNodeGlobalNo+1 .AND. PreviousNodeGlobalNo /= -1) THEN
+
+                  DofTableIndex = RowOffsetNode(MyComputationalNodeNumber) + BreakIdx*2
+                  BreakIdx = BreakIdx + 1
+
+                  ! set first entry of pair in lookup table: global node no. end
+                  DofTable(DofTableIndex+0) = PreviousNodeGlobalNo
+
+                  ! set second entry of pair in lookup table: number of dofs in break-free sequence
+                  DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": jump, (",PreviousNodeGlobalNo,NumberDofsInSequence,")"
+
+                  ! reset dof counter
+                  NumberDofsInSequence = 0
+                ENDIF
+
+                ! advance local dof no by number of dofs on current node
+                DO DerivativeIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                  NumberDofsInSequence = NumberDofsInSequence + &
+                    & TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                ENDDO
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDofsInSequence: ", NumberDofsInSequence
+                PreviousNodeGlobalNo = NodeGlobalNo
+
+              ENDDO   ! NodeLocalNo
+
+              ! add last node also as break
+              DofTableIndex = RowOffsetNode(MyComputationalNodeNumber) + BreakIdx*2
+              DofTable(DofTableIndex+0) = PreviousNodeGlobalNo
+              DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": last: (",PreviousNodeGlobalNo,NumberDofsInSequence,")"
+
+              ! create auxiliary arrays for allgatherv
+              NumberBreaksDoubleNode = 2*NumberBreaksNode
+              RowOffsetZeroBasedNode = RowOffsetNode-1
+
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberBreaksDoubleNode:",NumberBreaksDoubleNode, &
+              !  & ", RowOffsetNode:",RowOffsetNode, ", RowOffsetZeroBasedNode:",RowOffsetZeroBasedNode
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": pre DofTable:",DofTable
+
+              ! merge information from every rank
+              CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
+                & DofTable,NumberBreaksDoubleNode,RowOffsetZeroBasedNode,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, ": DofTable: "
+                DO I = 0,NumberComputationalNodes-1
+                  WRITE (*,'(2(I0,A))',ADVANCE='NO') MyComputationalNodeNumber, ": rank ",I," "
+                  DO BreakIdx=0,NumberBreaksNode(I)-1
+                    WRITE (*,'(2(A,I0),A)',ADVANCE='NO') "(",DofTable(RowOffsetNode(I)+BreakIdx*2), &
+                      & ",",DofTable(RowOffsetNode(I)+BreakIdx*2+1),")"
+                  ENDDO
+                  PRINT *, ""
+                ENDDO
+              ENDIF
+
+              !        break no. ->
+              ! rank   (glob.node,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! find out global dof no. of first local dof
+              NodeLocalNo = 1
+              LocalInternalNodeIdx = 1
+
+              CurrentRank = 0
+              NodeStartGlobalNo = 1
+              NodeStopGlobalNo = -1
+              NumberDofsCurrentSequence = 0
+              LocalNodeIdx = NODES_MAPPING%INTERNAL_START
+
+              ! loop over all break-free sequences
+              DO
+
+                ! determine rank that has the lowest global node no. above the current start node
+                ! loop over ranks
+                DO I = 0,NumberComputationalNodes-1
+                  ! determine the first global no. above the current on rank I (NodeOnCurrentComputationalNodeGlobalNo)
+                  NodeOnCurrentComputationalNodeGlobalNo = 0
+                  NumberDofsOnCurrentComputationalNode = 0
+
+                  ! loop over breaks
+                  DO BreakIdx = 0,NumberBreaksNode(I)-1
+
+                    ! get global number of break
+                    NodeGlobalNo = DofTable(RowOffsetNode(I)+BreakIdx*2)
+                    NumberDofs = DofTable(RowOffsetNode(I)+BreakIdx*2+1)
+
+                    ! store it if it is the first after start node
+                    IF (NodeGlobalNo >= NodeStartGlobalNo) THEN
+                      NodeOnCurrentComputationalNodeGlobalNo = NodeGlobalNo
+                      NumberDofsOnCurrentComputationalNode = NumberDofs
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":   rank ", I, &
+                    & ", node global ", NodeOnCurrentComputationalNodeGlobalNo, ", ndofs: ", NumberDofsOnCurrentComputationalNode
+
+                  ! if a node was found on rank I
+                  IF (NodeOnCurrentComputationalNodeGlobalNo /= 0) THEN
+                    ! store NodeOnCurrentComputationalNodeGlobalNo if it is the lowest node so far
+                    IF (NodeStopGlobalNo == -1 .OR. NodeOnCurrentComputationalNodeGlobalNo < NodeStopGlobalNo) THEN
+                      NodeStopGlobalNo = NodeOnCurrentComputationalNodeGlobalNo
+                      CurrentRank = I
+                      NumberDofsCurrentSequence = NumberDofsOnCurrentComputationalNode
+                    ENDIF
+                  ENDIF
+                ENDDO  ! I
+
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": range [", NodeStartGlobalNo, ",", NodeStopGlobalNo, "]", &
+                    & " on rank", CurrentRank
+
+
+                ! the current range of nodes [NodeStartGlobalNo,NodeStopGlobalNo] is on rank CurrentRank
+                ! and has number of dofs NumberDofsCurrentSequence, starting from CurrentDofGlobalNo
+
+                ! add up dof no.s
+                IF (CurrentRank == MyComputationalNodeNumber) THEN
+                  ! loop over nodes of current break-free sequences
+                  DO
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+
+                    IF (DIAGNOSTICS2) WRITE(*,'(5(I0,A))',ADVANCE='no') MyComputationalNodeNumber, ": on this rank, node global ", &
+                      & NodeGlobalNo,", local ",NodeLocalNo,", (node idx",LocalInternalNodeIdx,&
+                      & ", local ",NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx),"),  is internal: "
+
+                    ! check if current node is internal or boundary
+                    CurrentNodeIsInternal = .FALSE.
+                    IF (NodeLocalNo == NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx) &
+                      & .AND. LocalInternalNodeIdx <= NODES_MAPPING%INTERNAL_FINISH) THEN
+                      CurrentNodeIsInternal = .TRUE.
+                      LocalInternalNodeIdx = LocalInternalNodeIdx + 1
+                    ENDIF
+
+                    IF (DIAGNOSTICS2) WRITE(*,*) CurrentNodeIsInternal
+
+                    NumberDerivatives = TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+
+                    ! allocate parameter to dof map for nodes
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(&
+                      & NumberDerivatives),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes derivative map for node local "//&
+                      & TRIM(NUMBER_TO_VSTRING(NodeLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                    ! loop over dofs for current node, derivatives
+                    DO DerivativeIdx=1,NumberDerivatives
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": derivative ", DerivativeIdx, "/", NumberDerivatives
+
+                      NumberVersions = TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+
+                      ! allocate parameter to dof map for node, derivative, versions
+                      ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(DerivativeIdx)%&
+                        & VERSIONS(NumberVersions),&
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes derivative versions map for node local "//&
+                        & TRIM(NUMBER_TO_VSTRING(NodeLocalNo,"*",ERR,ERROR))//", derivative index "//&
+                        & TRIM(NUMBER_TO_VSTRING(DerivativeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                      DO VersionIdx=1,NumberVersions
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": version ", VersionIdx, "/", NumberVersions
+
+                        ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                        FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                        ! if internal node, add dof index to DOMAIN_LIST
+                        IF (CurrentNodeIsInternal) THEN
+                          FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                          InternalDofIdx = InternalDofIdx + 1
+                        ELSE
+                          ! if node is not internal, save boundary dofs
+                          CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, CurrentDofLocalNo, ERR, ERROR, *999)
+                        ENDIF
+
+                        IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    d",DerivativeIdx,"v",VersionIdx,&
+                          & "dof idx ",InternalDofIdx-1,", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo
+
+                        ! setup dof to parameter map
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_NODE_DOF_TYPE
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=NodeDofIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,NodeDofIdx)=VersionIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,NodeDofIdx)=DerivativeIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,NodeDofIdx)=NodeLocalNo
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NodeDofIdx)=component_idx
+                        NodeDofIdx = NodeDofIdx + 1   ! this is the index when iterating over all node dofs of this field variable
+
+                        ! setup reverse parameter to dof map
+                        FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                          & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                        !IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": set dof(",NodeLocalNo,",",&
+                        !  & DerivativeIdx, &
+                        !  & ",",VersionIdx,")=",CurrentDofLocalNo
+
+                        ! set NUMBER_OF_SEND_GHOSTS
+
+                        ! find out on which domains (if any) the corresponding ghost nodes reside from nodes mapping
+                        ! loop over the adjacent domains of the nodes mapping which are the same as for the dofs mapping
+                        DO AdjacentDomainIdx = 1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                          NodeIsOnCurrentAdjacentDomain = .FALSE.
+                          ! check if node is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                          ! loop over send ghost local numbers
+                          DO GhostSendIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                            ! if node was found on adjacent domain AdjacentDomainIdx
+                            IF (NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                              & == NodeLocalNo) THEN
+                              NodeIsOnCurrentAdjacentDomain = .TRUE.
+                              EXIT
+                            ENDIF
+                          ENDDO
+
+                          ! if the current node is on the current adjacent domain as ghost node
+                          IF (NodeIsOnCurrentAdjacentDomain) THEN
+
+                            ! add current dof to LOCAL_GHOST_SEND_INDICES
+                            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS &
+                              = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS + 1
+
+                            ! add CurrentDofLocalNo to LOCAL_GHOST_SEND_INDICES
+                            IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                              ! array does not yet exist, allocate with size 1
+                              ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)% &
+                                & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                              IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1) &
+                                & = CurrentDofLocalNo
+                            ELSE
+                              ! array already exists, increase size by 1
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                                & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES, &
+                                & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS], &
+                                & [CurrentDofLocalNo])
+                            ENDIF
+
+                          ENDIF
+                        ENDDO  ! AdjacentDomainIdx
+
+                        ! advance local and global dof no
+                        CurrentDofLocalNo = CurrentDofLocalNo + 1
+                        CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+                      ENDDO  ! VersionIdx
+                    ENDDO  ! DerivativeIdx
+
+                    NodeLocalNo = NodeLocalNo + 1
+
+                    IF (NodeGlobalNo == NodeStopGlobalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": Node global ", NodeGlobalNo, " is stop node, exit"
+                      EXIT
+                    ENDIF
+                  ENDDO   ! loop over nodes in break-free sequence
+                ELSE
+                  ! node range is not on own rank
+
+                  ! advance global dof no by number of dofs on foreign rank
+                  CurrentDofGlobalNo = CurrentDofGlobalNo + NumberDofsCurrentSequence
+                ENDIF
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NodeStopGlobalNo=",NodeStopGlobalNo,&
+                  & ", end:",NODES_MAPPING%NUMBER_OF_GLOBAL
+                IF (NodeStopGlobalNo == NODES_MAPPING%NUMBER_OF_GLOBAL) EXIT
+
+                ! advance start and stop node to next sequence
+                NodeStartGlobalNo = NodeStopGlobalNo+1
+                NodeStopGlobalNo = -1     ! unknown
+
+              ENDDO   ! loop over break-free sequences
+
+              IF(ALLOCATED(DofTable)) DEALLOCATE(DofTable)
+
+
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+
+              ! Count number of 'breaks' in contiguous global face numbering on current domain. A break is when there
+              ! is a jump in the global face number for successive local face numbers.
+              LocalNumberBreaks = 0
+              PreviousFaceGlobalNo = -1
+
+              ! loop over internal and boundary faces
+              DO FaceLocalNo = 1,FACES_MAPPING%NUMBER_OF_LOCAL
+                FaceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(FaceLocalNo)
+
+                ! if there is a jump in global face no. count break
+                IF (FaceGlobalNo /= PreviousFaceGlobalNo+1 .AND. PreviousFaceGlobalNo /= -1) THEN
+                  LocalNumberBreaks = LocalNumberBreaks + 1
+                ENDIF
+                PreviousFaceGlobalNo = FaceGlobalNo
+              ENDDO
+              ! add last face also as break
+              LocalNumberBreaks = LocalNumberBreaks + 1
+
+              ! exchange the number of breaks on every rank
+              ! merge information from every rank
+              NumberBreaksFace(MyComputationalNodeNumber) = LocalNumberBreaks
+              CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
+                & NumberBreaksFace,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, " ------------------------------------ "
+                PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", number breaks: ",NumberBreaksFace
+              ENDIF
+
+              ! DofTable
+              !                         1 break: 2 values
+              !        break no. ->     /--^-\
+              ! rank   (glob.face,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! ---------------------------
+              ! explanation of the triple values:
+              !    global face: the last global face no. that is on the rank before the break
+              !    dof: number of dofs in last break-free sequence
+              !
+              ! the table is laid out row-major as a 1D array where each row has NumberBreaksFace(rank) entries
+
+              ! compute the row offsets, i.e. the indices where each row starts
+              RowOffsetFace(0) = 1
+              DO I = 1,NumberComputationalNodes-1
+                RowOffsetFace(I) = RowOffsetFace(I-1) + NumberBreaksFace(I-1)*2
+              ENDDO
+
+              ! compute global number of breaks as sum over all LocalNumberBreaks
+              GlobalNumberBreaks = 0
+              DO I = 0,NumberComputationalNodes-1
+                GlobalNumberBreaks = GlobalNumberBreaks + NumberBreaksFace(I)
+              ENDDO
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": RowOffsetFace: ", RowOffsetFace, &
+                & ", GlobalNumberBreaks=", GlobalNumberBreaks
+
+              ! allocate lookup table
+              ALLOCATE(DofTable(GlobalNumberBreaks*2),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate DofTable of size "//&
+                & TRIM(NUMBER_TO_VSTRING(GlobalNumberBreaks*2,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+
+              ! reset row that belongs to own rank to 0
+              DofTable(RowOffsetFace(MyComputationalNodeNumber):RowOffsetFace(MyComputationalNodeNumber)+LocalNumberBreaks) = 0
+
+              ! fill table with own values
+              BreakIdx = 0
+              NumberDofsInSequence = 0
+              PreviousFaceGlobalNo = -1
+
+              ! loop over internal and boundary faces
+              DO FaceLocalNo = 1,FACES_MAPPING%NUMBER_OF_LOCAL
+                FaceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(FaceLocalNo)
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": face global ",FaceGlobalNo
+
+                ! if there is a jump in global face no. count break
+                IF (FaceGlobalNo /= PreviousFaceGlobalNo+1 .AND. PreviousFaceGlobalNo /= -1) THEN
+
+                  DofTableIndex = RowOffsetFace(MyComputationalNodeNumber) + BreakIdx*2
+                  BreakIdx = BreakIdx + 1
+
+                  ! set first entry of pair in lookup table: global face no. end
+                  DofTable(DofTableIndex+0) = PreviousFaceGlobalNo
+
+                  ! set second entry of pair in lookup table: number of dofs in break-free sequence
+                  DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": jump, (",PreviousFaceGlobalNo,NumberDofsInSequence,")"
+
+                  ! reset dof counter
+                  NumberDofsInSequence = 0
+                ENDIF
+
+                !! advance local dof no by number of dofs on current face
+                !DO DerivativeIdx=1,TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives
+                !  NumberDofsInSequence = NumberDofsInSequence + &
+                !    & TOPOLOGY%FACES%FACES(FaceGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                !ENDDO
+                NumberDofsInSequence = NumberDofsInSequence + 1 !Currently faces don't have derivatives so only one dof on face
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDofsInSequence: ", NumberDofsInSequence
+                PreviousFaceGlobalNo = FaceGlobalNo
+
+              ENDDO   ! FaceLocalNo
+
+              ! add last face also as break
+              DofTableIndex = RowOffsetFace(MyComputationalNodeNumber) + BreakIdx*2
+              DofTable(DofTableIndex+0) = PreviousFaceGlobalNo
+              DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": last: (",PreviousFaceGlobalNo,NumberDofsInSequence,")"
+
+              ! create auxiliary arrays for allgatherv
+              NumberBreaksDoubleFace = 2*NumberBreaksFace
+              RowOffsetZeroBasedFace = RowOffsetFace-1
+
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberBreaksDoubleFace:",NumberBreaksDoubleFace, &
+              !  & ", RowOffsetFace:",RowOffsetFace, ", RowOffsetZeroBasedFace:",RowOffsetZeroBasedFace
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": pre DofTable:",DofTable
+
+              ! merge information from every rank
+              CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
+                & DofTable,NumberBreaksDoubleFace,RowOffsetZeroBasedFace,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, ": DofTable: "
+                DO I = 0,NumberComputationalNodes-1
+                  WRITE (*,'(2(I0,A))',ADVANCE='NO') MyComputationalNodeNumber, ": rank ",I," "
+                  DO BreakIdx=0,NumberBreaksFace(I)-1
+                    WRITE (*,'(2(A,I0),A)',ADVANCE='NO') "(",DofTable(RowOffsetFace(I)+BreakIdx*2), &
+                      & ",",DofTable(RowOffsetFace(I)+BreakIdx*2+1),")"
+                  ENDDO
+                  PRINT *, ""
+                ENDDO
+              ENDIF
+
+              !        break no. ->
+              ! rank   (glob.face,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! find out global dof no. of first local dof
+              FaceLocalNo = 1
+              LocalInternalFaceIdx = 1
+
+              CurrentRank = 0
+              FaceStartGlobalNo = 1
+              FaceStopGlobalNo = -1
+              NumberDofsCurrentSequence = 0
+              LocalFaceIdx = FACES_MAPPING%INTERNAL_START
+
+              ! loop over all break-free sequences
+              DO
+
+                ! determine rank that has the lowest global face no. above the current start face
+                ! loop over ranks
+                DO I = 0,NumberComputationalNodes-1
+                  ! determine the first global no. above the current on rank I (FaceOnCurrentComputationalNodeGlobalNo)
+                  FaceOnCurrentComputationalNodeGlobalNo = 0
+                  NumberDofsOnCurrentComputationalNode = 0
+
+                  ! loop over breaks
+                  DO BreakIdx = 0,NumberBreaksFace(I)-1
+
+                    ! get global number of break
+                    FaceGlobalNo = DofTable(RowOffsetFace(I)+BreakIdx*2)
+                    NumberDofs = DofTable(RowOffsetFace(I)+BreakIdx*2+1)
+
+                    ! store it if it is the first after start face
+                    IF (FaceGlobalNo >= FaceStartGlobalNo) THEN
+                      FaceOnCurrentComputationalNodeGlobalNo = FaceGlobalNo
+                      NumberDofsOnCurrentComputationalNode = NumberDofs
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":   rank ", I, &
+                    & ", face global ", FaceOnCurrentComputationalNodeGlobalNo, ", ndofs: ", NumberDofsOnCurrentComputationalNode
+
+                  ! if a face was found on rank I
+                  IF (FaceOnCurrentComputationalNodeGlobalNo /= 0) THEN
+                    ! store FaceOnCurrentComputationalNodeGlobalNo if it is the lowest face so far
+                    IF (FaceStopGlobalNo == -1 .OR. FaceOnCurrentComputationalNodeGlobalNo < FaceStopGlobalNo) THEN
+                      FaceStopGlobalNo = FaceOnCurrentComputationalNodeGlobalNo
+                      CurrentRank = I
+                      NumberDofsCurrentSequence = NumberDofsOnCurrentComputationalNode
+                    ENDIF
+                  ENDIF
+                ENDDO  ! I
+
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": range [", FaceStartGlobalNo, ",", FaceStopGlobalNo, "]", &
+                    & " on rank", CurrentRank
+
+
+                ! the current range of faces [FaceStartGlobalNo,FaceStopGlobalNo] is on rank CurrentRank
+                ! and has number of dofs NumberDofsCurrentSequence, starting from CurrentDofGlobalNo
+
+                ! add up dof no.s
+                IF (CurrentRank == MyComputationalNodeNumber) THEN
+                  ! loop over faces of current break-free sequences
+                  DO
+                    FaceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(FaceLocalNo)
+
+                    IF (DIAGNOSTICS2) WRITE(*,'(5(I0,A))',ADVANCE='no') MyComputationalNodeNumber, ": on this rank, face global ", &
+                      & FaceGlobalNo,", local ",FaceLocalNo,", (face idx",LocalInternalFaceIdx,&
+                      & ", local ",FACES_MAPPING%DOMAIN_LIST(LocalInternalFaceIdx),"),  is internal: "
+
+                    ! check if current face is internal or boundary
+                    CurrentFaceIsInternal = .FALSE.
+                    IF (FaceLocalNo == FACES_MAPPING%DOMAIN_LIST(LocalInternalFaceIdx) &
+                      & .AND. LocalInternalFaceIdx <= FACES_MAPPING%INTERNAL_FINISH) THEN
+                      CurrentFaceIsInternal = .TRUE.
+                      LocalInternalFaceIdx = LocalInternalFaceIdx + 1
+                    ENDIF
+
+                    IF (DIAGNOSTICS2) WRITE(*,*) CurrentFaceIsInternal
+
+                    !NumberDerivatives = TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives
+                    NumberDerivatives = 1 !For faces we assume there is only one derivative for now
+
+
+                    ! allocate parameter to dof map for faces
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(&
+                      & NumberDerivatives),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces derivative map for face local "//&
+                      & TRIM(NUMBER_TO_VSTRING(FaceLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                    ! loop over dofs for current face, derivatives
+                    DO DerivativeIdx=1,NumberDerivatives
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": derivative ", DerivativeIdx, "/", NumberDerivatives
+
+                      NumberVersions = 1 !TOPOLOGY%FACES%FACES(FaceGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions !For faces we assume there is only one version for now
+
+                      ! allocate parameter to dof map for face, derivative, versions
+                      ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(DerivativeIdx)%&
+                        & VERSIONS(NumberVersions),&
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces derivative versions map for face local "//&
+                        & TRIM(NUMBER_TO_VSTRING(FaceLocalNo,"*",ERR,ERROR))//", derivative index "//&
+                        & TRIM(NUMBER_TO_VSTRING(DerivativeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                      DO VersionIdx=1,NumberVersions
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": version ", VersionIdx, "/", NumberVersions
+
+                        ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                        FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                        ! if internal face, add dof index to DOMAIN_LIST
+                        IF (CurrentFaceIsInternal) THEN
+                          FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                          InternalDofIdx = InternalDofIdx + 1
+                        ELSE
+                          ! if face is not internal, save boundary dofs
+                          CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, CurrentDofLocalNo, ERR, ERROR, *999)
+                        ENDIF
+
+                        IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    d",DerivativeIdx,"v",VersionIdx,&
+                          & "dof idx ",InternalDofIdx-1,", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo
+
+                        ! setup dof to parameter map
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_FACE_DOF_TYPE
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=FaceDofIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(1,FaceDofIdx)=VersionIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(2,FaceDofIdx)=DerivativeIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(3,FaceDofIdx)=FaceLocalNo
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(4,FaceDofIdx)=component_idx
+                        FaceDofIdx = FaceDofIdx + 1   ! this is the index when iterating over all face dofs of this field variable
+
+                        ! setup reverse parameter to dof map
+                        FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                          & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                        !IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": set dof(",FaceLocalNo,",",&
+                        !  & DerivativeIdx, &
+                        !  & ",",VersionIdx,")=",CurrentDofLocalNo
+
+                        ! set NUMBER_OF_SEND_GHOSTS
+
+                        ! find out on which domains (if any) the corresponding ghost faces reside from faces mapping
+                        ! loop over the adjacent domains of the faces mapping which are the same as for the dofs mapping
+                        DO AdjacentDomainIdx = 1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                          FaceIsOnCurrentAdjacentDomain = .FALSE.
+                          ! check if face is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                          ! loop over send ghost local numbers
+                          DO GhostSendIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                            ! if face was found on adjacent domain AdjacentDomainIdx
+                            IF (FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                              & == FaceLocalNo) THEN
+                              FaceIsOnCurrentAdjacentDomain = .TRUE.
+                              EXIT
+                            ENDIF
+                          ENDDO
+
+                          ! if the current face is on the current adjacent domain as ghost face
+                          IF (FaceIsOnCurrentAdjacentDomain) THEN
+
+                            ! add current dof to LOCAL_GHOST_SEND_INDICES
+                            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS &
+                              = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS + 1
+
+                            ! add CurrentDofLocalNo to LOCAL_GHOST_SEND_INDICES
+                            IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                              ! array does not yet exist, allocate with size 1
+                              ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)% &
+                                & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                              IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1) &
+                                & = CurrentDofLocalNo
+                            ELSE
+                              ! array already exists, increase size by 1
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                                & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES, &
+                                & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS], &
+                                & [CurrentDofLocalNo])
+                            ENDIF
+
+                          ENDIF
+                        ENDDO  ! AdjacentDomainIdx
+
+                        ! advance local and global dof no
+                        CurrentDofLocalNo = CurrentDofLocalNo + 1
+                        CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+                      ENDDO  ! VersionIdx
+                    ENDDO  ! DerivativeIdx
+
+                    FaceLocalNo = FaceLocalNo + 1
+
+                    IF (FaceGlobalNo == FaceStopGlobalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": Face global ", FaceGlobalNo, " is stop face, exit"
+                      EXIT
+                    ENDIF
+                  ENDDO   ! loop over faces in break-free sequence
+                ELSE
+                  ! face range is not on own rank
+
+                  ! advance global dof no by number of dofs on foreign rank
+                  CurrentDofGlobalNo = CurrentDofGlobalNo + NumberDofsCurrentSequence
+                ENDIF
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": FaceStopGlobalNo=",FaceStopGlobalNo,&
+                  & ", end:",FACES_MAPPING%NUMBER_OF_GLOBAL
+                IF (FaceStopGlobalNo == FACES_MAPPING%NUMBER_OF_GLOBAL) EXIT
+
+                ! advance start and stop face to next sequence
+                FaceStartGlobalNo = FaceStopGlobalNo+1
+                FaceStopGlobalNo = -1     ! unknown
+
+              ENDDO   ! loop over break-free sequences
+
+              IF(ALLOCATED(DofTable)) DEALLOCATE(DofTable)
+
+            CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+
+              Element1LocalNo = 1
+              FirstDofLocalNo(component_idx) = CurrentDofLocalNo
+
+              Element1GlobalNo(component_idx) = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(Element1LocalNo)
+              FirstDofGlobalNo(component_idx) = CurrentDofGlobalNo
+
+              FirstElementDofIdx(component_idx) = CurrentElementDofIdx
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", Element1GlobalNo: ", &
+                & Element1GlobalNo(component_idx), ", FirstDofGlobalNo: ", FirstDofGlobalNo(component_idx)
+
+              ! loop over interior and boundary elements
+              DO ElementIdx = ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
+                ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+                ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+
+                ! compute the dof global no from the element global no
+                DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - 1
+                !DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - Element1GlobalNo(component_idx)
+                DofLocalNo = FirstDofLocalNo(component_idx) + ElementLocalNo - Element1LocalNo
+                ElementDofIdx = FirstElementDofIdx(component_idx) + ElementLocalNo - Element1LocalNo
+
+                ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
+
+                CurrentElementIsInternal = ElementIdx <= ELEMENTS_MAPPING%INTERNAL_FINISH
+
+                ! if internal element, add dof index to DOMAIN_LIST
+                IF (CurrentElementIsInternal) THEN
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = DofLocalNo
+                  InternalDofIdx = InternalDofIdx + 1
+                ELSE
+                  ! if element is not internal, save boundary dofs
+                  CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, DofLocalNo, ERR, ERROR, *999)
+                ENDIF
+
+                IF (DIAGNOSTICS2) THEN
+                  PRINT *, MyComputationalNodeNumber, ":    element idx ",ElementIdx," local ",ElementLocalNo, &
+                    & " global ",ElementGlobalNo,", dof idx ",InternalDofIdx-1, &
+                    & ", local",DofLocalNo,", global",DofGlobalNo
+                  PRINT *, MyComputationalNodeNumber, ":    ElementDofIdx=",ElementDofIdx," (first: ", &
+                    & FirstElementDofIdx(component_idx),")"
+                ENDIF
+
+                ! setup dof to parameter map
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_ELEMENT_DOF_TYPE
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=ElementDofIdx
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,ElementDofIdx)=ElementLocalNo
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,ElementDofIdx)=component_idx
+                CurrentElementDofIdx = CurrentElementDofIdx + 1   ! counter of number of ElementDofIdx used
+
+                ! setup reverse parameter to dof map
+                FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ElementLocalNo) = DofLocalNo
+
+                ! set NUMBER_OF_SEND_GHOSTS
+
+                ! find out on which domains (if any) the corresponding ghost elements reside from elements mapping
+                ! loop over the adjacent domains of the elements mapping which are the same as for the dofs mapping
+                DO AdjacentDomainIdx = 1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ElementIsOnCurrentAdjacentDomain = .FALSE.
+                  ! check if element is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                  ! loop over send ghost local numbers
+                  DO GhostSendIdx = 1,ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    ! if element was found on adjacent domain AdjacentDomainIdx
+                    IF (ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                      & == ElementLocalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    adjacent domain idx ", AdjacentDomainIdx,&
+                        & " no ", ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                        & " is send current element, add SEND_GHOST"
+
+                      AdjacentDomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                      ElementIsOnCurrentAdjacentDomain = .TRUE.
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  ! if the current element is on the current adjacent domain as ghost element
+                  IF (ElementIsOnCurrentAdjacentDomain) THEN
+
+                    ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                    DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                        EXIT
+                      ENDIF
+                    ENDDO
+
+                    ! add current dof to LOCAL_GHOST_SEND_INDICES
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS &
+                      = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS + 1
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    add local dof no",DofLocalNo, &
+                      & " to ADJACENT_DOMAINS(",AdjacentDomainIdx2,") (domain ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx2)%DOMAIN_NUMBER,"), now has ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS &
+                      & (AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS," SEND_GHOSTS"
+
+                    ! add DofLocalNo to LOCAL_GHOST_SEND_INDICES
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                      ! array does not yet exist, allocate with size 1
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)% &
+                        & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES(1) &
+                        & = DofLocalNo
+                    ELSE
+                      ! array already exists, increase size by 1
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                        & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES, &
+                        & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS], &
+                        & [DofLocalNo])
+                    ENDIF
+
+                  ENDIF
+                ENDDO  ! AdjacentDomainIdx
+
+                ! advance local dof no, this is not the dof local no counter that is used but it is increased the right number of times
+                CurrentDofLocalNo = CurrentDofLocalNo + 1
+
+
+              ENDDO ! ElementIdx
+              CurrentDofGlobalNo = CurrentDofGlobalNo + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
+
+            ! endif (node-based interpolation)
+            CASE(FIELD_CONSTANT_INTERPOLATION)
+
+              ! add global dof no to LOCAL_TO_GLOBAL_MAP
+              FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+              ! add dof index to DOMAIN_LIST
+              FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+              InternalDofIdx = InternalDofIdx + 1
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    constant dof, dof idx ",InternalDofIdx-1, &
+                  & ", local",CurrentDofLocalNo,", global",DofGlobalNo
+
+              ! setup dof to parameter map
+              FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_CONSTANT_DOF_TYPE
+              FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=ConstantDofIdx
+              FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(ConstantDofIdx)=component_idx
+              ConstantDofIdx = ConstantDofIdx + 1   ! index for CONSTANT_DOF2PARAM_MAP
+
+              ! setup reverse parameter to dof map
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP = CurrentDofLocalNo
+
+              CurrentDofLocalNo = CurrentDofLocalNo + 1
+              CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+
+            CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+            CASE DEFAULT
+              LOCAL_ERROR="The interpolation type of "// &
+                & TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
+                & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                & " of variable type  "//TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            END SELECT
+
+          ENDDO  ! component_idx
+
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_INTERNAL = InternalDofIdx-1
+          FIELD_VARIABLE_DOFS_MAPPING%INTERNAL_START=1
+          FIELD_VARIABLE_DOFS_MAPPING%INTERNAL_FINISH=InternalDofIdx-1
+          FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_START=InternalDofIdx
+
+          ! add boundary nodes to DOMAIN_LIST
+          CALL LIST_DETACH_AND_DESTROY(BoundaryDofLocalNosList,NumberBoundaryDofs,IntegerArray,&
+            & ERR,ERROR,*999)
+
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_BOUNDARY = NumberBoundaryDofs
+          InternalDofIdx = InternalDofIdx + NumberBoundaryDofs
+          FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_FINISH = InternalDofIdx - 1
+
+          FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_START:&
+            & FIELD_VARIABLE_DOFS_MAPPING%BOUNDARY_FINISH) = IntegerArray(1:NumberBoundaryDofs)
+          IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": collected ",NumberBoundaryDofs,&
+            & "boundary dofs (local no.):", IntegerArray
+
+          IF(ALLOCATED(IntegerArray)) DEALLOCATE(IntegerArray)
+
+          ! set start index in DOMAIN_LIST for ghost dofs
+          FIELD_VARIABLE_DOFS_MAPPING%GHOST_START = InternalDofIdx
+
+          ! handle ghost dofs, only if multiple domains
+          IF (NumberComputationalNodes /= 1) THEN
+
+            ! loop over components of current field variable
+            DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+              FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+              TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+              domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+              ELEMENTS_MAPPING=>domainMappings%ELEMENTS
+              NODES_MAPPING=>domainMappings%NODES
+              FACES_MAPPING=>domainMappings%FACES
+
+              ! handle ghosts for node based interpolation dofs
+              SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
+              CASE(FIELD_NODE_BASED_INTERPOLATION)
+
+                ! set ghost dofs, use nodes boundary/ghost information and communicate global dof no.s
+
+                ! determine maximum number of nodes to send and receive for all adjacent domains
+                MaximumNumberNodesSend = 0
+                MaximumNumberNodesReceive = 0
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  MaximumNumberNodesSend = MAX(MaximumNumberNodesSend, &
+                    & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
+                  MaximumNumberNodesReceive = MAX(MaximumNumberNodesReceive, &
+                    & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+                ENDDO
+                MaximumNumberNodesCommunicate = MAX(MaximumNumberNodesSend,MaximumNumberNodesReceive)
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberNodesCommunicate,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": MaximumNumberNodesSend=",MaximumNumberNodesSend, &
+                  & ", MaximumNumberNodesReceive=",MaximumNumberNodesReceive, &
+                  & ", MaximumNumberNodesCommunicate=",MaximumNumberNodesCommunicate
+
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer2(MaximumNumberNodesCommunicate,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer2",ERR,ERROR,*999)
+
+                ALLOCATE(ReceiveBuffer2(MaximumNumberNodesCommunicate,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer2",ERR,ERROR,*999)
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! exchange number of derivatives
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO NodeSendIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    NodeLocalNo = NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(NodeSendIdx)
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send to adj domain ",NODES_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,"idx ", AdjacentDomainIdx, &
+                      & " (NodeSendIdx=",NodeSendIdx,"), node global ",NodeGlobalNo,&
+                      & ", n derivatives: ",TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                    SendBuffer2(NodeSendIdx,AdjacentDomainIdx) = TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                  ENDDO
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
+                    & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
+                    & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO   ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received number of derivatives at nodes to unified array, which collects all values for ghost nodes
+                FirstGhostNodeLocalNo = NODES_MAPPING%DOMAIN_LIST(NODES_MAPPING%GHOST_START)
+                LastGhostNodeLocalNo = NODES_MAPPING%DOMAIN_LIST(NODES_MAPPING%GHOST_FINISH)
+
+                ! allocate array for number of derivatives at every ghost node, index is the local node no.
+                ALLOCATE(NumberDerivativesAtGhostNode(FirstGhostNodeLocalNo:LastGhostNodeLocalNo),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate NumberDerivativesAtGhostNode",ERR,ERROR,*999)
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO NodeReceiveIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    NodeLocalNo = NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(NodeReceiveIdx)
+
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv from adj domain ", &
+                      & NODES_MAPPING%ADJACENT_DOMAINS( &
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,", idx", AdjacentDomainIdx, &
+                      & ", node local ",NodeLocalNo,", n derivatives: ",ReceiveBuffer2(NodeReceiveIdx,AdjacentDomainIdx)
+
+                    ! get entry in receive buffer
+                    NumberDerivativesAtGhostNode(NodeLocalNo) = ReceiveBuffer2(NodeReceiveIdx,AdjacentDomainIdx)
+                  ENDDO  ! NodeReceiveIdx
+                ENDDO   ! AdjacentDomainIdx
+
+                ! find out maximum number of derivatives at a node
+                MaxNumberDerivativesAtGhostNode = 0
+                DO GhostNodeNo = FirstGhostNodeLocalNo,LastGhostNodeLocalNo
+                  MaxNumberDerivativesAtGhostNode = MAX(MaxNumberDerivativesAtGhostNode, NumberDerivativesAtGhostNode(GhostNodeNo))
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDerivativesAtGhostNode(local ",GhostNodeNo,")=",&
+                    & NumberDerivativesAtGhostNode(GhostNodeNo)
+
+                ENDDO  ! GhostNodeNo
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxNumberDerivativesAtGhostNode,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                ! transfer information that reproduces all global ghost numbers at ghost nodes to the domains where it is a boundary node, each
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer3(0:MaxNumberDerivativesAtGhostNode, MaximumNumberNodesCommunicate,&
+                  & NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer",ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": allocate send buffer for ", &
+                  & MaxNumberDerivativesAtGhostNode, " derivatives"
+                ! SendBuffer(0,NodeSendIdx,AdjacentDomainIdx) = global dof no of first dof at this node
+                ! SendBuffer(1:DerivativeIdx,NodeSendIdx,AdjacentDomainIdx) = for each derivative the number of versions
+
+                ALLOCATE(ReceiveBuffer3(0:MaxNumberDerivativesAtGhostNode,MaximumNumberNodesCommunicate,&
+                  & NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer",ERR,ERROR,*999)
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! prepare send buffer and start send commands
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO NodeSendIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    NodeLocalNo = NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(NodeSendIdx)
+                    NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
+
+                    DerivativeIdx = 1
+                    VersionIdx = 1
+
+                    ! get first dof at this node
+                    DofLocalNo = FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)% &
+                      & DERIVATIVES(DerivativeIdx)%VERSIONS(VersionIdx)
+
+                    IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": node local ",NodeLocalNo, &
+                      ", global ",NodeGlobalNo, " first dof at this node local: ", DofLocalNo
+
+                    DofGlobalNo = FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT "(5(I0,A),I0)", MyComputationalNodeNumber, ": get dof(",NodeLocalNo,",",DerivativeIdx, &
+                      & ",",VersionIdx,")=local ",DofLocalNo, " global ",DofGlobalNo
+
+                    ! store in send buffer
+                    SendBuffer3(0,NodeSendIdx,AdjacentDomainIdx) = DofGlobalNo
+
+                    ! fill send buffer with number of versions for each derivative
+                    DO DerivativeIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfDerivatives
+                      NumberVersions = TOPOLOGY%NODES%NODES(NodeGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo," has ",TOPOLOGY%NODES%&
+                      !  & NODES(NodeGlobalNo)%numberOfDerivatives," derivatives, sendbuffer ",AdjacentDomainIdx, &
+                      !  & " DerivativeIdx=",DerivativeIdx, &
+                      !  & " NumberVersions=",NumberVersions
+
+                      SendBuffer3(DerivativeIdx,NodeSendIdx,AdjacentDomainIdx) = NumberVersions
+                    ENDDO  ! DerivativeIdx
+                  ENDDO  ! NodeSendIdx
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send buffer to adj idx ", AdjacentDomainIdx,": ", &
+                  !  & SendBuffer3(:,:,AdjacentDomainIdx)
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostNode+1), &
+                    & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostNode+1), &
+                    & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO  ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received ghost node value sets received from different adjacent domains to unified array, which collects all values for ghost nodes
+                ! allocate NodeDofSpecification
+                ALLOCATE(NodeDofSpecification(0:MaxNumberDerivativesAtGhostNode,FirstGhostNodeLocalNo:LastGhostNodeLocalNo), &
+                 & STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate NodeDofSpecification",ERR,ERROR,*999)
+                ! NodeDofSpecification(0,NodeLocalNo) = first dof global no at this node
+                ! NodeDofSpecification(1:MaxNumberDerivativesAtGhostNode,NodeLocalNo) = number of versions for derivatives at this node
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO NodeReceiveIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    NodeLocalNo = NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(NodeReceiveIdx)
+
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv buffer from adj idx ", AdjacentDomainIdx,": ", &
+                    !  & ReceiveBuffer3(:,:,AdjacentDomainIdx)
+
+                    ! copy entry in receive buffer to entry of node
+                    DO I = 0,MaxNumberDerivativesAtGhostNode
+                      NodeDofSpecification(I,NodeLocalNo) = ReceiveBuffer3(I,NodeReceiveIdx,AdjacentDomainIdx)
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local node ",NodeLocalNo, &
+                      !  & ", I=",I,", NodeReceiveIdx=",NodeReceiveIdx,", value=",NodeDofSpecification(I,NodeLocalNo)
+                    ENDDO
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local node ",NodeLocalNo, &
+                    !  & ", received (first dof,n versions): ", NodeDofSpecification(:,NodeLocalNo)
+
+
+                    ! NodeDofSpecification(0,NodeLocalNo) = first dof global no at this node
+                    ! NodeDofSpecification(1:MaxNumberDerivativesAtGhostNode,NodeLocalNo) = number of versions for derivatives at this node
+
+                  ENDDO  ! NodeReceiveIdx
+                ENDDO  ! AdjacentDomainIdx
+
+                ! set dof indices at ghost nodes from NodeDofSpecification
+                ! loop over ghost nodes
+                DO NodeLocalNo = FirstGhostNodeLocalNo,LastGhostNodeLocalNo
+
+                  ! find adjacent domain where current node resides
+                  AdjacentDomainIdx = 1
+                  AdjacentDomainFound = .FALSE.
+                  DO WHILE(.NOT. AdjacentDomainFound)
+
+                    ! check if node is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == NodeLocalNo) THEN
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+
+                    ENDDO
+                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                  ENDDO  ! DO WHILE
+
+                  ! get dof information for current ghost node
+                  StartDofGlobalNo = NodeDofSpecification(0,NodeLocalNo)
+                  CurrentDofGlobalNo = StartDofGlobalNo
+
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": ghost node local",NodeLocalNo,", start dof global",&
+                    & StartDofGlobalNo, ", n versions for ",NumberDerivativesAtGhostNode(NodeLocalNo),"derivatives: ", &
+                    & NodeDofSpecification(1:NumberDerivativesAtGhostNode(NodeLocalNo),NodeLocalNo)
+
+                  ! allocate parameter to dof map for nodes
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(&
+                    & NumberDerivativesAtGhostNode(NodeLocalNo)),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes derivative map.",ERR,ERROR,*999)
+
+                  ! loop over derivatives at ghost node
+                  DO DerivativeIdx = 1, NumberDerivativesAtGhostNode(NodeLocalNo)
+
+                    NumberVersions = NodeDofSpecification(DerivativeIdx,NodeLocalNo)
+
+                    ! allocate parameter to dof map for node, derivative, versions
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                      & VERSIONS(NumberVersions),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes derivative map.",ERR,ERROR,*999)
+
+                    ! loop over versions of derivatives
+                    DO VersionIdx = 1,NumberVersions
+
+                      ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                      FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                      FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                      InternalDofIdx = InternalDofIdx + 1
+
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    dof idx",InternalDofIdx-1,&
+                        & ", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo, ", NodeDofIdx=",NodeDofIdx
+
+                      ! setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_NODE_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=NodeDofIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,NodeDofIdx)=VersionIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,NodeDofIdx)=DerivativeIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,NodeDofIdx)=NodeLocalNo
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NodeDofIdx)=component_idx
+                      NodeDofIdx = NodeDofIdx + 1   ! this is the index when iterating over all node dofs of this field variable
+
+                      ! setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NodeLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                        & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                      ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS &
+                        = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                      ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                        ! array does not yet exist, allocate with size 1
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                          & = CurrentDofLocalNo
+                      ELSE
+                        ! array already exists, increase size by 1
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                          & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES, &
+                          & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS], &
+                          & [CurrentDofLocalNo])
+                      ENDIF
+
+                      CurrentDofLocalNo = CurrentDofLocalNo + 1
+                      CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+
+                    ENDDO  ! VersionIdx
+                  ENDDO ! DerivativeIdx
+
+                ENDDO  ! NodeLocalNo
+
+
+                ! deallocate send and receive buffers
+                IF(ALLOCATED(NodeDofSpecification)) DEALLOCATE(NodeDofSpecification)
+                IF(ALLOCATED(SendBuffer2)) DEALLOCATE(SendBuffer2)
+                IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
+
+                IF(ALLOCATED(SendBuffer3)) DEALLOCATE(SendBuffer3)
+                IF(ALLOCATED(ReceiveBuffer3)) DEALLOCATE(ReceiveBuffer3)
+                IF(ALLOCATED(NumberDerivativesAtGhostNode)) DEALLOCATE(NumberDerivativesAtGhostNode)
+
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+
+                ! set ghost dofs, use faces boundary/ghost information and communicate global dof no.s
+
+                ! determine maximum number of faces to send and receive for all adjacent domains
+                MaximumNumberFacesSend = 0
+                MaximumNumberFacesReceive = 0
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  MaximumNumberFacesSend = MAX(MaximumNumberFacesSend, &
+                    & FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
+                  MaximumNumberFacesReceive = MAX(MaximumNumberFacesReceive, &
+                    & FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+                ENDDO
+                MaximumNumberFacesCommunicate = MAX(MaximumNumberFacesSend,MaximumNumberFacesReceive)
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberFacesCommunicate,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": MaximumNumberFacesSend=",MaximumNumberFacesSend, &
+                  & ", MaximumNumberFacesReceive=",MaximumNumberFacesReceive, &
+                  & ", MaximumNumberFacesCommunicate=",MaximumNumberFacesCommunicate
+
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer2(MaximumNumberFacesCommunicate,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer2",ERR,ERROR,*999)
+
+                SendBuffer2=0 !FIXTHIS: temporary for debugging
+
+                ALLOCATE(ReceiveBuffer2(MaximumNumberFacesCommunicate,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer2",ERR,ERROR,*999)
+
+                ReceiveBuffer2=0 !FIXTHIS: temporary for debugging
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! exchange number of derivatives
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO FaceSendIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    FaceLocalNo = FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(FaceSendIdx)
+                    FaceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(FaceLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send to adj domain ",FACES_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,"idx ", AdjacentDomainIdx, &
+                      & " (FaceSendIdx=",FaceSendIdx,"), face global ",FaceGlobalNo,&
+                      & ", n derivatives: ",1!TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives
+                    SendBuffer2(FaceSendIdx,AdjacentDomainIdx) = 1  !TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives (faces currently don't have derivatives so leave this as 1)
+                  ENDDO
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberFacesCommunicate,MPI_INTEGER, &
+                    & FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberFacesCommunicate,MPI_INTEGER, &
+                    & FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO   ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received number of derivatives at faces to unified array, which collects all values for ghost faces
+                FirstGhostFaceLocalNo = FACES_MAPPING%DOMAIN_LIST(FACES_MAPPING%GHOST_START)
+                LastGhostFaceLocalNo = FACES_MAPPING%DOMAIN_LIST(FACES_MAPPING%GHOST_FINISH)
+
+                ! allocate array for number of derivatives at every ghost face, index is the local face no.
+                ALLOCATE(NumberDerivativesAtGhostFace(FirstGhostFaceLocalNo:LastGhostFaceLocalNo),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate NumberDerivativesAtGhostFace",ERR,ERROR,*999)
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO FaceReceiveIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    FaceLocalNo = FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(FaceReceiveIdx)
+
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv from adj domain ", &
+                      & FACES_MAPPING%ADJACENT_DOMAINS( &
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,", idx", AdjacentDomainIdx, &
+                      & ", face local ",FaceLocalNo,", n derivatives: ",ReceiveBuffer2(FaceReceiveIdx,AdjacentDomainIdx)
+
+                    ! get entry in receive buffer
+                    NumberDerivativesAtGhostFace(FaceLocalNo) = ReceiveBuffer2(FaceReceiveIdx,AdjacentDomainIdx)
+                  ENDDO  ! FaceReceiveIdx
+                ENDDO   ! AdjacentDomainIdx
+
+                ! find out maximum number of derivatives at a face
+                MaxNumberDerivativesAtGhostFace = 0
+                DO GhostFaceNo = FirstGhostFaceLocalNo,LastGhostFaceLocalNo
+                  MaxNumberDerivativesAtGhostFace = MAX(MaxNumberDerivativesAtGhostFace, NumberDerivativesAtGhostFace(GhostFaceNo))
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDerivativesAtGhostFace(local ",GhostFaceNo,")=",&
+                    & NumberDerivativesAtGhostFace(GhostFaceNo)
+
+                ENDDO  ! GhostFaceNo
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxNumberDerivativesAtGhostFace,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                ! transfer information that reproduces all global ghost numbers at ghost faces to the domains where it is a boundary face, each
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer3(0:MaxNumberDerivativesAtGhostFace, MaximumNumberFacesCommunicate,&
+                  & FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer",ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": allocate send buffer for ", &
+                  & MaxNumberDerivativesAtGhostFace, " derivatives"
+                ! SendBuffer(0,FaceSendIdx,AdjacentDomainIdx) = global dof no of first dof at this face
+                ! SendBuffer(1:DerivativeIdx,FaceSendIdx,AdjacentDomainIdx) = for each derivative the number of versions
+
+                ALLOCATE(ReceiveBuffer3(0:MaxNumberDerivativesAtGhostFace,MaximumNumberFacesCommunicate,&
+                  & FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer",ERR,ERROR,*999)
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! prepare send buffer and start send commands
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO FaceSendIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    FaceLocalNo = FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(FaceSendIdx)
+                    FaceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(FaceLocalNo)
+
+                    DerivativeIdx = 1
+                    VersionIdx = 1
+
+                    ! get first dof at this face
+                    DofLocalNo = FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)% &
+                      & DERIVATIVES(DerivativeIdx)%VERSIONS(VersionIdx)
+
+                    IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": face local ",FaceLocalNo, &
+                      ", global ",FaceGlobalNo, " first dof at this face local: ", DofLocalNo
+
+                    DofGlobalNo = FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT "(5(I0,A),I0)", MyComputationalNodeNumber, ": get dof(",FaceLocalNo,",",DerivativeIdx, &
+                      & ",",VersionIdx,")=local ",DofLocalNo, " global ",DofGlobalNo
+
+                    ! store in send buffer
+                    SendBuffer3(0,FaceSendIdx,AdjacentDomainIdx) = DofGlobalNo
+
+                    ! fill send buffer with number of versions for each derivative
+                    DO DerivativeIdx=1,1 !TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives (faces currently don't have derivatives so leave this as 1)
+                      NumberVersions = 1 !TOPOLOGY%FACES%FACES(FaceGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions (faces currently don't have derivatives so leave this as 1)
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": face global ",FaceGlobalNo," has ", 1, !&TOPOLOGY%FACES%FACES(FaceGlobalNo)%numberOfDerivatives,
+                      !  & " derivatives, sendbuffer ",AdjacentDomainIdx, &
+                      !  & " DerivativeIdx=",DerivativeIdx, &
+                      !  & " NumberVersions=",NumberVersions
+
+                      SendBuffer3(DerivativeIdx,FaceSendIdx,AdjacentDomainIdx) = NumberVersions
+                    ENDDO  ! DerivativeIdx
+                  ENDDO  ! FaceSendIdx
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send buffer to adj idx ", AdjacentDomainIdx,": ", &
+                  !  & SendBuffer3(:,:,AdjacentDomainIdx)
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer3(:,:,AdjacentDomainIdx),MaximumNumberFacesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostFace+1), &
+                    & MPI_INTEGER,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer3(:,:,AdjacentDomainIdx),MaximumNumberFacesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostFace+1), &
+                    & MPI_INTEGER,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO  ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received ghost face value sets received from different adjacent domains to unified array, which collects all values for ghost faces
+                ! allocate FaceDofSpecification
+                ALLOCATE(FaceDofSpecification(0:MaxNumberDerivativesAtGhostFace,FirstGhostFaceLocalNo:LastGhostFaceLocalNo), &
+                 & STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate FaceDofSpecification",ERR,ERROR,*999)
+                ! FaceDofSpecification(0,FaceLocalNo) = first dof global no at this face
+                ! FaceDofSpecification(1:MaxNumberDerivativesAtGhostFace,FaceLocalNo) = number of versions for derivatives at this face
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO FaceReceiveIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    FaceLocalNo = FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(FaceReceiveIdx)
+
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv buffer from adj idx ", AdjacentDomainIdx,": ", &
+                    !  & ReceiveBuffer3(:,:,AdjacentDomainIdx)
+
+                    ! copy entry in receive buffer to entry of face
+                    DO I = 0,MaxNumberDerivativesAtGhostFace
+                      FaceDofSpecification(I,FaceLocalNo) = ReceiveBuffer3(I,FaceReceiveIdx,AdjacentDomainIdx)
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local face ",FaceLocalNo, &
+                      !  & ", I=",I,", FaceReceiveIdx=",FaceReceiveIdx,", value=",FaceDofSpecification(I,FaceLocalNo)
+                    ENDDO
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local face ",FaceLocalNo, &
+                    !  & ", received (first dof,n versions): ", FaceDofSpecification(:,FaceLocalNo)
+
+
+                    ! FaceDofSpecification(0,FaceLocalNo) = first dof global no at this face
+                    ! FaceDofSpecification(1:MaxNumberDerivativesAtGhostFace,FaceLocalNo) = number of versions for derivatives at this face
+
+                  ENDDO  ! FaceReceiveIdx
+                ENDDO  ! AdjacentDomainIdx
+
+                ! set dof indices at ghost faces from FaceDofSpecification
+                ! loop over ghost faces
+                DO FaceLocalNo = FirstGhostFaceLocalNo,LastGhostFaceLocalNo
+
+                  ! find adjacent domain where current face resides
+                  AdjacentDomainIdx = 1
+                  AdjacentDomainFound = .FALSE.
+                  DO WHILE(.NOT. AdjacentDomainFound)
+
+                    ! check if face is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (FACES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == FaceLocalNo) THEN
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+
+                    ENDDO
+                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                  ENDDO  ! DO WHILE
+
+                  ! get dof information for current ghost face
+                  StartDofGlobalNo = FaceDofSpecification(0,FaceLocalNo)
+                  CurrentDofGlobalNo = StartDofGlobalNo
+
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": ghost face local",FaceLocalNo,", start dof global",&
+                    & StartDofGlobalNo, ", n versions for ",NumberDerivativesAtGhostFace(FaceLocalNo),"derivatives: ", &
+                    & FaceDofSpecification(1:NumberDerivativesAtGhostFace(FaceLocalNo),FaceLocalNo)
+
+                  ! allocate parameter to dof map for faces
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(&
+                    & NumberDerivativesAtGhostFace(FaceLocalNo)),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces derivative map.",ERR,ERROR,*999)
+
+                  ! loop over derivatives at ghost face
+                  DO DerivativeIdx = 1, NumberDerivativesAtGhostFace(FaceLocalNo)
+
+                    NumberVersions = FaceDofSpecification(DerivativeIdx,FaceLocalNo)
+
+                    ! allocate parameter to dof map for face, derivative, versions
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                      & VERSIONS(NumberVersions),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces derivative map.",ERR,ERROR,*999)
+
+                    ! loop over versions of derivatives
+                    DO VersionIdx = 1,NumberVersions
+
+                      ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                      FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                      FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                      InternalDofIdx = InternalDofIdx + 1
+
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    dof idx",InternalDofIdx-1,&
+                        & ", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo, ", FaceDofIdx=",FaceDofIdx
+
+                      ! setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_FACE_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=FaceDofIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(1,FaceDofIdx)=VersionIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(2,FaceDofIdx)=DerivativeIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(3,FaceDofIdx)=FaceLocalNo
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(4,FaceDofIdx)=component_idx
+                      FaceDofIdx = FaceDofIdx + 1   ! this is the index when iterating over all face dofs of this field variable
+
+                      ! setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FaceLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                        & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                      ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS &
+                        = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                      ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                        ! array does not yet exist, allocate with size 1
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                          & = CurrentDofLocalNo
+                      ELSE
+                        ! array already exists, increase size by 1
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                          & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES, &
+                          & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS], &
+                          & [CurrentDofLocalNo])
+                      ENDIF
+
+                      CurrentDofLocalNo = CurrentDofLocalNo + 1
+                      CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+
+                    ENDDO  ! VersionIdx
+                  ENDDO ! DerivativeIdx
+
+                ENDDO  ! FaceLocalNo
+
+
+                ! deallocate send and receive buffers
+                IF(ALLOCATED(FaceDofSpecification)) DEALLOCATE(FaceDofSpecification)
+                IF(ALLOCATED(SendBuffer2)) DEALLOCATE(SendBuffer2)
+                IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
+
+                IF(ALLOCATED(SendBuffer3)) DEALLOCATE(SendBuffer3)
+                IF(ALLOCATED(ReceiveBuffer3)) DEALLOCATE(ReceiveBuffer3)
+                IF(ALLOCATED(NumberDerivativesAtGhostFace)) DEALLOCATE(NumberDerivativesAtGhostFace)
+
+
+              CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+
+                ! loop over ghost elements
+                DO ElementIdx = ELEMENTS_MAPPING%GHOST_START,ELEMENTS_MAPPING%GHOST_FINISH
+                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+
+                  ! compute the dof global no from the element global no
+                  DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - 1
+                  !DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - Element1GlobalNo(component_idx)
+
+                  ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                  FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = DofGlobalNo
+
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                  InternalDofIdx = InternalDofIdx + 1
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    dof idx",InternalDofIdx-1,&
+                    & ", local",CurrentDofLocalNo,", global",DofGlobalNo, ", CurrentElementDofIdx=",CurrentElementDofIdx
+
+                  ! setup dof to parameter map
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_ELEMENT_DOF_TYPE
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=CurrentElementDofIdx
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,CurrentElementDofIdx)=ElementLocalNo
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,CurrentElementDofIdx)=component_idx
+                  CurrentElementDofIdx = CurrentElementDofIdx + 1   ! this is the index when iterating over all element dofs of this field variable
+
+                  ! setup reverse parameter to dof map
+                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ElementLocalNo) = CurrentDofLocalNo
+
+                  ! find the adjacent domain that has the boundary element for this ghost element
+                  AdjacentDomainIdx = 1
+                  AdjacentDomainFound = .FALSE.
+                  DO WHILE(.NOT. AdjacentDomainFound)
+
+                    ! check if node is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == ElementLocalNo) THEN
+                        AdjacentDomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+
+                    ENDDO
+                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                  ENDDO
+
+                  ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                  DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS &
+                    = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                  ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                  IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                    ! array does not yet exist, allocate with size 1
+                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                      & STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                      & = CurrentDofLocalNo
+                  ELSE
+                    ! array already exists, increase size by 1
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                      & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES, &
+                      & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS], &
+                      & [CurrentDofLocalNo])
+                  ENDIF
+
+                  CurrentDofLocalNo = CurrentDofLocalNo + 1
+                ENDDO  ! ElementIdx
+
+              CASE(FIELD_CONSTANT_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+              CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                CALL FlagError("Not implemented.",ERR,ERROR,*999)
+
+              CASE DEFAULT
+                LOCAL_ERROR="The interpolation type of "// &
+                  & TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
+                  & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                  & " of variable type  "//TRIM(NUMBER_TO_VSTRING(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              END SELECT
+
+            ENDDO  ! component_idx
+          ENDIF  ! IF (NumberComputationalNodes /= 1)
+
+          ! compute ghost_finish and number of ghost dofs
+          FIELD_VARIABLE_DOFS_MAPPING%GHOST_FINISH = InternalDofIdx-1
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GHOST = FIELD_VARIABLE_DOFS_MAPPING%GHOST_FINISH + 1 &
+            & - FIELD_VARIABLE_DOFS_MAPPING%GHOST_START
+
+          ! exchange NUMBER_OF_DOMAIN_LOCAL and NUMBER_OF_DOMAIN_GHOST
+          ! allocate number_of_domain_local
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
+
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(MyComputationalNodeNumber) &
+            & = FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_LOCAL
+
+          CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
+            & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
+            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+          ! allocate number_of_domain_ghost
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_GHOST.",ERR,ERROR,*999)
+
+          FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST(MyComputationalNodeNumber) &
+            & = FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GHOST
+
+          CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
+            & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
+            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+          ! deallocate used arrays
+          IF(ALLOCATED(NumberBreaksNode)) DEALLOCATE(NumberBreaksNode)
+          IF(ALLOCATED(NumberBreaksDoubleNode)) DEALLOCATE(NumberBreaksDoubleNode)
+          IF(ALLOCATED(RowOffsetNode)) DEALLOCATE(RowOffsetNode)
+          IF(ALLOCATED(RowOffsetZeroBasedNode)) DEALLOCATE(RowOffsetZeroBasedNode)
+
+        ENDDO  ! variable_idx
+
+
+
+! -------------------------------------------------
+
+
+
+      ELSE
+        !This is the old global implementation
+        !IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+
+
+        !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
+        !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
+        DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
+          NUMBER_OF_CONSTANT_DOFS=0
+          NUMBER_OF_ELEMENT_DOFS=0
+          NUMBER_OF_FACE_DOFS=0
+          NUMBER_OF_NODE_DOFS=0
+          NUMBER_OF_GRID_POINT_DOFS=0
+          NUMBER_OF_GAUSS_POINT_DOFS=0
+          NUMBER_OF_DATA_POINT_DOFS=0
+          NUMBER_OF_LOCAL_VARIABLE_DOFS=0
+          TOTAL_NUMBER_OF_VARIABLE_DOFS=0
+          NUMBER_OF_GLOBAL_VARIABLE_DOFS=0
+          DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+            FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+            SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
+            CASE(FIELD_CONSTANT_INTERPOLATION)
+              NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS+1
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+1
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+1
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+1
+            CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+              DOMAIN=>FIELD_COMPONENT%DOMAIN
+              DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+              NUMBER_OF_ELEMENT_DOFS=NUMBER_OF_ELEMENT_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS
+            CASE(FIELD_FACE_BASED_INTERPOLATION)
+              DOMAIN=>FIELD_COMPONENT%DOMAIN
+              domainMappings=>DOMAIN%MAPPINGS
+              NUMBER_OF_FACE_DOFS=NUMBER_OF_FACE_DOFS+domainMappings%FACES%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+domainMappings%FACES%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+domainMappings%FACES%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+domainMappings%FACES%NUMBER_OF_GLOBAL
+            CASE(FIELD_NODE_BASED_INTERPOLATION)
+              DOMAIN=>FIELD_COMPONENT%DOMAIN
+              DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+              NUMBER_OF_NODE_DOFS=NUMBER_OF_NODE_DOFS+DOMAIN_TOPOLOGY%DOFS%TOTAL_NUMBER_OF_DOFS
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_DOFS
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%TOTAL_NUMBER_OF_DOFS
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%DOFS%NUMBER_OF_GLOBAL_DOFS
+            CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+              CALL FlagError("Not implemented.",ERR,ERROR,*999)
+            CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+              DOMAIN=>FIELD_COMPONENT%DOMAIN
+              DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+              MAX_NGP = -1
+              DO element_idx=1,DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
+                BASIS=>DOMAIN_TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%BASIS
+                NGP=BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%NUMBER_OF_GAUSS
+                MAX_NGP=MAX(MAX_NGP,NGP)
+              ENDDO !element_idx
+              CALL MPI_ALLREDUCE(MPI_IN_PLACE,MAX_NGP,1,MPI_INTEGER,MPI_MAX,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+              NUMBER_OF_GAUSS_POINT_DOFS=NUMBER_OF_GAUSS_POINT_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS*MAX_NGP
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+DOMAIN_TOPOLOGY%ELEMENTS%NUMBER_OF_GLOBAL_ELEMENTS*MAX_NGP
+            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+              ! Data points do not have domain topology or mappings, since they're the same across all mesh components
+              decompositionTopology=>FIELD%DECOMPOSITION%TOPOLOGY
+              NUMBER_OF_DATA_POINT_DOFS=NUMBER_OF_DATA_POINT_DOFS+decompositionTopology%dataPoints%totalNumberOfDataPoints
+              NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+decompositionTopology%dataPoints%numberOfDataPoints
+              TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+decompositionTopology% &
+                & dataPoints%totalNumberOfDataPoints
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+decompositionTopology%dataPoints% &
+                & numberOfGlobalDataPoints
+            CASE DEFAULT
+              LOCAL_ERROR="The interpolation type of "// &
+                & TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
+                & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NumberToVString(component_idx,"*",ERR,ERROR))// &
+                & " of variable type  "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            END SELECT
+          ENDDO !component_idx
+          !Allocate the DOF to parameters (nodes, elements, gauss, components etc.) maps.
+          FIELD%VARIABLES(variable_idx)%NUMBER_OF_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS
+          FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
+          FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS
+          ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,TOTAL_NUMBER_OF_VARIABLE_DOFS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter map.",ERR,ERROR,*999)
+          FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS
+          IF(NUMBER_OF_CONSTANT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(NUMBER_OF_CONSTANT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter constant map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS=NUMBER_OF_CONSTANT_DOFS
+          ENDIF
+          IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,NUMBER_OF_ELEMENT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter element map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS=NUMBER_OF_ELEMENT_DOFS
+          ENDIF
+          IF(NUMBER_OF_FACE_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%FACE_DOF2PARAM_MAP(2,NUMBER_OF_FACE_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter face map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS=NUMBER_OF_FACE_DOFS
+          ENDIF
+          IF(NUMBER_OF_NODE_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NUMBER_OF_NODE_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter node map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS=NUMBER_OF_NODE_DOFS
+          ENDIF
+          IF(NUMBER_OF_GRID_POINT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GRID_POINT_DOF2PARAM_MAP(2,NUMBER_OF_GRID_POINT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter grid point map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS=NUMBER_OF_GRID_POINT_DOFS
+          ENDIF
+          IF(NUMBER_OF_GAUSS_POINT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,NUMBER_OF_GAUSS_POINT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter Gauss point map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS=NUMBER_OF_GAUSS_POINT_DOFS
+          ENDIF
+          IF(NUMBER_OF_DATA_POINT_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(3,NUMBER_OF_DATA_POINT_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter Gauss point map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS=NUMBER_OF_DATA_POINT_DOFS
+          ENDIF
+        ENDDO !variable_idx
+
+
+        !Allocate the mapping arrays
+        DECOMPOSITION=>FIELD%DECOMPOSITION
+        ALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate variable local dofs offsets.",ERR,ERROR,*999)
+        ALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate variable ghost dofs offsets.",ERR,ERROR,*999)
+        !We want to ensure that the ghost DOFs are at the end so loop over the DOFs in two passes. The first pass will process
+        !the local DOFs for each variable component and the second pass will process the ghost DOFs for each variable component.
+        IF(NumberComputationalNodes==1) THEN
+          domain_type_stop=1 !Local only
+        ELSE
+          domain_type_stop=2 !Local+Ghosts
+        ENDIF
+        !Calculate the local and global numbers and set up the mappings
+        DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
+          constant_nyy=0
+          element_nyy=0
+          face_nyy=0
+          node_nyy=0
+          grid_point_nyy=0
+          Gauss_point_nyy=0
+          data_point_nyy=0
+          variable_local_ny=0
+          FIELD_VARIABLE_DOFS_MAPPING=>FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING
+          IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+            ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate variable dofs mapping global to local map.",ERR,ERROR,*999)
+            FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL=FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS
+          ENDIF
+          !The ordering of the DOFs with respect to components is arbitrary. Allow for two orderings: The first ordering is that
+          !all the DOFs from one component are processed before all the DOFs of the next component. This is known as "separated"
+          !component DOF ordering. The second ordering is to process all the components for a particular parameter (e.g., node)
+          !and then process all the components for the next parameter. This is known as "contiguous" component DOF ordering.
+          !Continguous component ordering only works if each of the components has the same DOF structure. For this reason
+          !separate component ordering is the default.
+          SELECT CASE(FIELD%VARIABLES(variable_idx)%DOF_ORDER_TYPE)
+          CASE(FIELD_SEPARATED_COMPONENT_DOF_ORDER)
+            !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
+            VARIABLE_GHOST_DOFS_OFFSETS=0
+            DO domain_type_idx=1,domain_type_stop
+              VARIABLE_GLOBAL_DOFS_OFFSET=0
+              VARIABLE_LOCAL_DOFS_OFFSETS=0
+              DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                NUMBER_OF_LOCAL=0
+                FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
+                CASE(FIELD_CONSTANT_INTERPOLATION)
+                  !Only process the non-ghosted dofs for constant interpolation
+                  IF(domain_type_idx==1) THEN
+                    variable_local_ny=variable_local_ny+1
+                    !Allocate and set up global to local domain map for variable mapping
+                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                      variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
+                      CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
+                        & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+                      NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+                        & ERR,ERROR,*999)
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(NUMBER_OF_DOMAINS), &
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                        & ERR,ERROR,*999)
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
+                        & ERR,ERROR,*999)
+                      !A constant dof is mapped to all domains.
+                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                      DO domain_idx=1,NUMBER_OF_DOMAINS
+                        domain_no=domain_idx-1
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                          & 1+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)=domain_no
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
+                          & DOMAIN_LOCAL_INTERNAL
+                      ENDDO !domain_idx
+                    ENDIF
+                    constant_nyy=constant_nyy+1
+                    !Setup dof to parameter map
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_CONSTANT_DOF_TYPE
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=constant_nyy
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(constant_nyy)=component_idx
+                    !Setup reverse parameter to dof map
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS=1
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP=variable_local_ny
+                    !Adjust the offsets
+                    VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
+                  ENDIF
+                CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  elementsMapping=>DOMAIN%MAPPINGS%ELEMENTS
+                  IF(domain_type_idx==1) THEN
+                    !Allocate parameter to dof map for this field variable component
+                    DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(DOMAIN_TOPOLOGY%ELEMENTS% &
+                      & TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof element map.",ERR,ERROR,*999)
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS= &
+                      & DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                    !Handle global dofs domain mapping
+                    DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
+                      !Handle field variable mappings
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                        CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
+                          & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+                        NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
+                          & ERR,ERROR,*999)
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
+                        ENDDO !domain_idx
+                      ENDIF
+                    ENDDO !ny
+                    start_idx=1
+                    stop_idx=elementsMapping%NUMBER_OF_LOCAL
+                    !Adjust the local and ghost offsets
+                    IF(component_idx>1) &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST
+                  ELSE
+                    !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
+                    !dofs are at the end of the local dofs.
+                    !Adjust the ghost offsets
+                    IF(component_idx>1) &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                    DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
+                      !Adjust variable mapping local numbers
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                        NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
+                          IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
+                            & DOMAIN_LOCAL_GHOST) THEN
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
+                          ELSE
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          ENDIF
+                        ENDDO !domain_idx
+                      ENDIF
+                    ENDDO !ny (global)
+                    start_idx=elementsMapping%NUMBER_OF_LOCAL+1
+                    stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
+                    !Adjust the local offsets
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_GHOST
+                  ENDIF
+                  !Adjust the global offset
+                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL
+                  !Handle local dofs domain mapping
+                  DO element_idx=start_idx,stop_idx
+                    variable_local_ny=variable_local_ny+1
+                    element_nyy=element_nyy+1
+                    !Setup dof to parameter map
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_ELEMENT_DOF_TYPE
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=element_nyy
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,element_nyy)=element_idx
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,element_nyy)=component_idx
+                    !Setup reverse parameter to dof map
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)=variable_local_ny
+                  ENDDO !element_idx
+                CASE(FIELD_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_NODE_BASED_INTERPOLATION)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
+                  IF(domain_type_idx==1) THEN
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES( &
+                      DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (nodes).",ERR,ERROR,*999)
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS = &
+                      & DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES
+                    !Loop through and allocate number of derivatives for each node in the domain
+                    DO node_idx=1,DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES
+                      ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES( &
+                        & DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (derivatives).", &
+                        & ERR,ERROR,*999)
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES = &
+                        & DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES
+                      DO derivative_idx=1,DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES
+                        ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
+                          & VERSIONS(DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (versions).", &
+                          & ERR,ERROR,*999)
+                        FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
+                          & NUMBER_OF_VERSIONS = DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+                      ENDDO !derivative_idx
+                    ENDDO !node_idx
+                    DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
+                      !Handle variable mapping
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                        CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
+                          & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+                        NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
+                          & ERR,ERROR,*999)
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
+                        ENDDO !domain_idx
+                      ENDIF
+                    ENDDO !ny (global)
+                    start_idx=1
+                    stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
+                    !Adjust the local and ghost offsets
+                    IF(component_idx>1) &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL+DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
+                  ELSE
+                    !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
+                    !dofs are at the end of the local dofs.
+                    !Adjust the ghost offsets
+                    IF(component_idx>1) &
+                      VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                    DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
+                      !Adjust variable mapping local numbers
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                        NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
+                          IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
+                            & DOMAIN_LOCAL_GHOST) THEN
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
+                          ELSE
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                           ENDIF
+                        ENDDO !domain_idx
+                      ENDIF
+                    ENDDO !ny (global)
+                    start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
+                    stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                    !Adjust the local offsets
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
+                  ENDIF
+                  !Adjust the global offset
+                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+DOFS_MAPPING%NUMBER_OF_GLOBAL
+                  !Handle local dofs domain mapping
+                  DO ny=start_idx,stop_idx
+                    variable_local_ny=variable_local_ny+1
+                    node_nyy=node_nyy+1
+                    version_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(1,ny)
+                    derivative_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(2,ny)
+                    node_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(3,ny)
+                    !Setup dof to parameter map
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_NODE_DOF_TYPE
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,node_nyy)=version_idx
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,node_nyy)=derivative_idx
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,node_nyy)=node_idx
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,node_nyy)=component_idx
+                    !Setup reverse parameter to dof map
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
+                      & VERSIONS(version_idx) = variable_local_ny
+                  ENDDO !ny
+                CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                  CALL FlagError("Not implemented.",ERR,ERROR,*999)
+                CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  elementsMapping=>DOMAIN%MAPPINGS%ELEMENTS
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  IF(domain_type_idx==1) THEN ! domain_type_idx==1 --> non ghosts
+                    !Allocate parameter to dof map for this field variable component
+                    DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
+                    ! GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(ng,element_idx). The field variable dof number of ng'th Gauss point in the element_idx'th element based parameter for this field variable component.
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(&
+                     & MAX_NGP,DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof Gauss point map.",ERR,ERROR,*999)
+                    ! this might be wasteful in worst case, but should generally be ok
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS= &
+                    &  DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
+                    !Handle global dofs domain mapping
+                    DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
+                     DO gp=1,MAX_NGP !
+                      !Handle field variable mappings
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny= (ny-1) * MAX_NGP + gp + VARIABLE_GLOBAL_DOFS_OFFSET
+                        CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
+                          & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+                        NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                          & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                          & ERR,ERROR,*999)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                          & ERR,ERROR,*999)
+                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          ! elt local number = 1 -> gp local = 1..max_ngp, etc
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                            & (DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx) - 1) * MAX_NGP + gp  &
+                            & + VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          ! domain and type same as element
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
+                        ENDDO !domain_idx
+                      ENDIF
+                     ENDDO ! gp
+                    ENDDO !ny
+                    start_idx=1
+                    stop_idx=elementsMapping%NUMBER_OF_LOCAL
+                    !Adjust the local and ghost offsets
+                    IF(component_idx>1) &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & (elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST)*MAX_NGP
+                  ELSE !domain_type_idx==2 --> ghosts
+                    !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
+                    !dofs are at the end of the local dofs.
+                    !Adjust the ghost offsets
+                    IF(component_idx>1) &
+                      VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                      & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
+                    DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
+                     DO gp=1,MAX_NGP !
+                      !Adjust variable mapping local numbers
+                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                        variable_global_ny= (ny-1) * MAX_NGP + gp + VARIABLE_GLOBAL_DOFS_OFFSET
+                        NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
+                        DO domain_idx=1,NUMBER_OF_DOMAINS
+                          domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
+                          IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
+                            & DOMAIN_LOCAL_GHOST) THEN
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
+                          ELSE
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                              & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          ENDIF
+                        ENDDO !domain_idx
+                      ENDIF
+                     ENDDO ! gp
+                    ENDDO !ny (global)
+                    start_idx=elementsMapping%NUMBER_OF_LOCAL+1
+                    stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
+                    !Adjust the local offsets
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                      & elementsMapping%NUMBER_OF_DOMAIN_GHOST*MAX_NGP
+                  ENDIF ! 2 passes for normal, ghost
+                  !Adjust the global offset
+                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL*MAX_NGP
+                  !Handle local dofs domain mapping
+                  DO element_idx=start_idx,stop_idx
+                   DO gp=1,MAX_NGP !
+                    variable_local_ny= variable_local_ny+1
+                    Gauss_point_nyy  = Gauss_point_nyy+1
+                     !Setup dof to parameter map
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_GAUSS_POINT_DOF_TYPE
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=Gauss_point_nyy
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(1,Gauss_point_nyy)=gp
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(2,Gauss_point_nyy)=element_idx
+                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,Gauss_point_nyy)=component_idx
+                    !Setup reverse parameter to dof map
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gp,element_idx)=variable_local_ny
+                   ENDDO !gp
+                  ENDDO !element_idx
+                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                  domain=>FIELD_COMPONENT%DOMAIN
+                  elementsMapping=>domain%MAPPINGS%ELEMENTS
+                  decompositionTopology=>domain%DECOMPOSITION%TOPOLOGY
+                  IF(domain_type_idx==1) THEN ! domain_type_idx==1 -> non ghosts
+                    !Allocate parameter to dof map for this field variable component
+                    !including both local and ghost data points on this computational domain.
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%DATA_POINTS(decompositionTopology% &
+                      & dataPoints%totalNumberOfDataPoints),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof data point map.",ERR,ERROR,*999)
+                    ! Number of data points
+                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS= &
+                      & decompositionTopology%dataPoints%totalNumberOfDataPoints
+                    ALLOCATE(localDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate data point parameter local count.",ERR,ERROR,*999)
+                    ALLOCATE(ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate data point parameter ghost count.",ERR,ERROR,*999)
+                    localDataParamCount=0
+                    ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)=decompositionTopology%dataPoints%numberOfDomainLocal
+                    !Looping through global elements and data points in the elements
+                    variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
+                    DO elementIdx=1,elementsMapping%NUMBER_OF_GLOBAL
+                      DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(elementIdx)
+                        IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                          variable_global_ny=variable_global_ny+1
+                          CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
+                            & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+                          NUMBER_OF_DOMAINS=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%NUMBER_OF_DOMAINS
+                          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                            & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                          IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+                            & ERR,ERROR,*999)
+                          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                            & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                          IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
+                            & ERR,ERROR,*999)
+                          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
+                            & LOCAL_TYPE(NUMBER_OF_DOMAINS),STAT=ERR)
+                          IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
+                            & ERR,ERROR,*999)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                          DO domain_idx=1,NUMBER_OF_DOMAINS
+                            domain_no=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
+                            IF(elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%LOCAL_TYPE(domain_idx)== &
+                              & DOMAIN_LOCAL_GHOST) THEN
+                              ghostDataParamCount(domain_no)=ghostDataParamCount(domain_no)+1
+                              FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & ghostDataParamCount(domain_no)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                            ELSE
+                              localDataParamCount(domain_no)=localDataParamCount(domain_no)+1
+                              FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                              & localDataParamCount(domain_no)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                            ENDIF
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
+                              & elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
+                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
+                              & elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%LOCAL_TYPE(domain_idx)
+                          ENDDO !domain_idx
+                        ENDIF
+                      ENDDO !dataPointIdx
+                    ENDDO !elementIdx
+                    IF(ALLOCATED(localDataParamCount)) DEALLOCATE(localDataParamCount)
+                    IF(ALLOCATED(ghostDataParamCount)) DEALLOCATE(ghostDataParamCount)
+                    start_idx=1 !the start idx for the elements
+                    stop_idx=elementsMapping%NUMBER_OF_LOCAL !the end idx for local elements
+                    !Adjust the local and ghost offsets
+                    IF(component_idx>1) THEN
+                      VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                        & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                        & decompositionTopology%dataPoints%numberOfDomainLocal
+                    ENDIF
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & decompositionTopology%dataPoints%numberOfDomainLocal+decompositionTopology%dataPoints%numberOfDomainGhost
+                  ELSE  ! domain_type_idx == 2 -> ghosts
+                    !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
+                    !dofs are at the end of the local dofs.
+                    !Adjust the ghost offsets
+                    IF(component_idx>1) THEN
+                      VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                        & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                        & decompositionTopology%dataPoints%numberOfDomainLocal
+                    ENDIF
+                    !Looping through global elements and data points in the elements
+                    variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
+                    DO elementIdx=1,elementsMapping%NUMBER_OF_GLOBAL
+                      DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(elementIdx)
+                        IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+                          variable_global_ny=variable_global_ny+1
+                          NUMBER_OF_DOMAINS=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%NUMBER_OF_DOMAINS
+                          DO domain_idx=1,NUMBER_OF_DOMAINS
+                            domain_no=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
+                            IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
+                              & DOMAIN_LOCAL_GHOST) THEN
+                              FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                                & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                                & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
+                            ELSE
+                              FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                                & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
+                                & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                            ENDIF
+                          ENDDO
+                        ENDIF
+                      ENDDO !dataPointIdx
+                    ENDDO !elementIdx
+                    !Adjust the local offsets
+                    VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                      & decompositionTopology%dataPoints%numberOfDomainGhost
+                    start_idx=elementsMapping%NUMBER_OF_LOCAL+1 !The start index for ghost elements
+                    stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL !The end index for local elements
+                  ENDIF
+                  !Adjust the global offset
+                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+decompositionTopology%dataPoints%&
+                    & numberOfGlobalDataPoints
+                  !Handle local dofs domain mapping
+                  DO elementIdx=start_idx,stop_idx
+                    globalElementNumber=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementIdx)
+                    DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(globalElementNumber)
+                      variable_local_ny=variable_local_ny+1 !reinitialise for every field variable, field variable dof idx
+                      data_point_nyy=data_point_nyy+1 !reinitialise for every field variable, field variable data point dof idx
+                      localDataNumber=decompositionTopology%dataPoints%elementDataPoint(elementIdx)%dataIndices(dataPointIdx)% &
+                        & localNumber
+                      !Setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_DATA_POINT_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=data_point_nyy
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(1,data_point_nyy)=localDataNumber
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(2,data_point_nyy)=elementIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(3,data_point_nyy)=component_idx
+                      !Setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%DATA_POINTS(localDataNumber)=variable_local_ny
+                    ENDDO !dataPointIdx
+                  ENDDO !elementIdx
+                CASE DEFAULT
+                  LOCAL_ERROR="The interpolation type of "// &
+                    & TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
+                    & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NumberToVString(component_idx,"*",ERR,ERROR))// &
+                    & " of variable type "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                END SELECT
+              ENDDO !component_idx
+            ENDDO !domain_type_idx
+          CASE(FIELD_CONTIGUOUS_COMPONENT_DOF_ORDER)
+            !Handle the case where all components for a particular DOF parameter are processed before all the component of the next
+            !parameter.
+            VARIABLE_LOCAL_DOFS_OFFSETS=0
+            VARIABLE_GLOBAL_DOFS_OFFSET=0
+            VARIABLE_GHOST_DOFS_OFFSETS=0
+            IF(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS>=1) THEN
+              SELECT CASE(FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%INTERPOLATION_TYPE)
+              CASE(FIELD_CONSTANT_INTERPOLATION)
+                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                  variable_local_ny=1+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
                   !Allocate and set up global to local domain map for variable mapping
                   IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
                     variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                     CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                       & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                    NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                    NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                     ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
                       & STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
@@ -10094,8 +12907,7 @@ CONTAINS
                       FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
                         & 1+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
                       FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)=domain_no
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                        & DOMAIN_LOCAL_INTERNAL
+                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)=DOMAIN_LOCAL_INTERNAL
                     ENDDO !domain_idx
                   ENDIF
                   constant_nyy=constant_nyy+1
@@ -10110,33 +12922,39 @@ CONTAINS
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
                   VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                     & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
-                ENDIF
+                ENDDO !component_idx
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                elementsMapping=>DOMAIN%MAPPINGS%ELEMENTS
-                IF(domain_type_idx==1) THEN
+                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
                   !Allocate parameter to dof map for this field variable component
-                  DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
                   ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(DOMAIN_TOPOLOGY%ELEMENTS% &
                     & TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof element map.",ERR,ERROR,*999)
                   FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS= &
                     & DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                  !Handle global dofs domain mapping
-                  DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
+                ENDDO !component_idx
+                !Handle global dofs domain mapping
+                element_ny=0
+                DO ny=1,elementsMapping%NUMBER_OF_GLOBAL ! elementsMapping has not been associated for this case !?!
+                  DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                    FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                    DOMAIN=>FIELD_COMPONENT%DOMAIN
+                    DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
                     !Handle field variable mappings
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                      element_ny=element_ny+1
+                      variable_global_ny=element_ny+VARIABLE_GLOBAL_DOFS_OFFSET
                       CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                         & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
                       NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
+                        & STAT=ERR)
                       IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
                         & ERR,ERROR,*999)
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(NUMBER_OF_DOMAINS), &
+                        & STAT=ERR)
                       IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
                         & ERR,ERROR,*999)
                       ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
@@ -10154,70 +12972,55 @@ CONTAINS
                           & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
                       ENDDO !domain_idx
                     ENDIF
-                  ENDDO !ny
-                  start_idx=1
-                  stop_idx=elementsMapping%NUMBER_OF_LOCAL
-                  !Adjust the local and ghost offsets
-                  IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                  ENDDO !component_idx
+                ENDDO !ny
+                !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
+                DO domain_type_idx=1,domain_type_stop
+                  IF(domain_type_idx==1) THEN
+                    start_idx=1
+                    stop_idx=elementsMapping%NUMBER_OF_LOCAL
+                  ELSE
+                    start_idx=elementsMapping%NUMBER_OF_LOCAL+1
+                    stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
+                  ENDIF
+                  !Handle local dofs domain mapping
+                  element_ny=0
+                  DO element_idx=start_idx,stop_idx
+                    DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                      FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                      element_ny=element_ny+1
+                      variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
+                      element_nyy=element_nyy+1
+                      !Setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_ELEMENT_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=element_nyy
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,element_nyy)=element_idx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,element_nyy)=component_idx
+                      !Setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)=variable_local_ny
+                    ENDDO !component_idx
+                  ENDDO !element_idx
+                  !Adjust the offsets
                   VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST
-                ELSE
-                  !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
-                  !dofs are at the end of the local dofs.
-                  !Adjust the ghost offsets
-                  IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_LOCAL
-                  DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
-                    !Adjust variable mapping local numbers
-                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
-                      NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
-                      DO domain_idx=1,NUMBER_OF_DOMAINS
-                        domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
-                        IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
-                          & DOMAIN_LOCAL_GHOST) THEN
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
-                        ELSE
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                        ENDIF
-                      ENDDO !domain_idx
-                    ENDIF
-                  ENDDO !ny (global)
-                  start_idx=elementsMapping%NUMBER_OF_LOCAL+1
-                  stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
-                  !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_GHOST
-                ENDIF
-                !Adjust the global offset
-                VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL
-                !Handle local dofs domain mapping
-                DO element_idx=start_idx,stop_idx
-                  variable_local_ny=variable_local_ny+1
-                  element_nyy=element_nyy+1
-                  !Setup dof to parameter map
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_ELEMENT_DOF_TYPE
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=element_nyy
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,element_nyy)=element_idx
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,element_nyy)=component_idx
-                  !Setup reverse parameter to dof map
-                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)=variable_local_ny
-                ENDDO !element_idx
+                    &  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                    & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                  IF(domain_type_idx==1) THEN
+                    VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                      & elementsMapping%NUMBER_OF_GLOBAL
+                  ENDIF
+                ENDDO !domain_type_idx
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
-                IF(domain_type_idx==1) THEN
-                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES( &
-                    DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES), &
+                    & STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (nodes).",ERR,ERROR,*999)
                   FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS = &
                     & DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES
@@ -10235,13 +13038,24 @@ CONTAINS
                       IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (versions).", &
                         & ERR,ERROR,*999)
                       FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
-                        & NUMBER_OF_VERSIONS = DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+                        NUMBER_OF_VERSIONS = DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
                     ENDDO !derivative_idx
                   ENDDO !node_idx
-                  DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
+                ENDDO !component_idx
+                !Handle global dofs domain mapping
+                !Should the contiguous components have an inner groupping for derivatives??? i.e., loop over nodes, components then
+                !derivatives????
+                node_ny=0
+                NUMBER_OF_GLOBAL_DOFS=FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL
+                DO ny=1,NUMBER_OF_GLOBAL_DOFS
+                  DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                    FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                    DOMAIN=>FIELD_COMPONENT%DOMAIN
+                    DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
                     !Handle variable mapping
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
+                      node_ny=node_ny+1
+                      variable_global_ny=node_ny+VARIABLE_GLOBAL_DOFS_OFFSET
                       CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                         & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
                       NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
@@ -10268,214 +13082,82 @@ CONTAINS
                           & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
                       ENDDO !domain_idx
                     ENDIF
-                  ENDDO !ny (global)
-                  start_idx=1
-                  stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
-                  !Adjust the local and ghost offsets
-                  IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                  ENDDO !component_idx
+                ENDDO !ny (global)
+                !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
+                DO domain_type_idx=1,domain_type_stop
+                  IF(domain_type_idx==1) THEN
+                    start_idx=1
+                    stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
+                  ELSE
+                    start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
+                    stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                  ENDIF
+                  !Handle local dofs domain mapping
+                  node_ny=0
+                  DO ny=start_idx,stop_idx
+                    DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                      FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                      DOMAIN=>FIELD_COMPONENT%DOMAIN
+                      node_ny=node_ny+1
+                      variable_local_ny=node_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
+                      node_nyy=node_nyy+1
+                      version_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(1,ny)
+                      derivative_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(2,ny)
+                      node_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(3,ny)
+                      !Setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_NODE_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,node_nyy)=version_idx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,node_nyy)=derivative_idx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,node_nyy)=node_idx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,node_nyy)=component_idx
+                      !Setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
+                        & VERSIONS(version_idx) = variable_local_ny
+                    ENDDO !component_idx
+                  ENDDO !ny
+                  !Adjust the offsets
                   VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                     & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                    & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL+DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
-                ELSE
-                  !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
-                  !dofs are at the end of the local dofs.
-                  !Adjust the ghost offsets
-                  IF(component_idx>1) &
-                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                  DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
-                    !Adjust variable mapping local numbers
-                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
-                      NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
-                      DO domain_idx=1,NUMBER_OF_DOMAINS
-                        domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
-                        IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
-                          & DOMAIN_LOCAL_GHOST) THEN
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
-                        ELSE
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                         ENDIF
-                      ENDDO !domain_idx
-                    ENDIF
-                  ENDDO !ny (global)
-                  start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
-                  stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                  !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
-                ENDIF
-                !Adjust the global offset
-                VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+DOFS_MAPPING%NUMBER_OF_GLOBAL
-                !Handle local dofs domain mapping
-                DO ny=start_idx,stop_idx
-                  variable_local_ny=variable_local_ny+1
-                  node_nyy=node_nyy+1
-                  version_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(1,ny)
-                  derivative_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(2,ny)
-                  node_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(3,ny)
-                  !Setup dof to parameter map
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_NODE_DOF_TYPE
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,node_nyy)=version_idx
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,node_nyy)=derivative_idx
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,node_nyy)=node_idx
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,node_nyy)=component_idx
-                  !Setup reverse parameter to dof map
-                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
-                    & VERSIONS(version_idx) = variable_local_ny
-                ENDDO !ny
+                    & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                    & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                  IF(domain_type_idx==1) THEN
+                    VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                      & DOFS_MAPPING%NUMBER_OF_GLOBAL
+                  ENDIF
+                ENDDO !domain_type_idx
               CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
                 CALL FlagError("Not implemented.",ERR,ERROR,*999)
               CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                elementsMapping=>DOMAIN%MAPPINGS%ELEMENTS
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                IF(domain_type_idx==1) THEN ! domain_type_idx==1 --> non ghosts
-                  !Allocate parameter to dof map for this field variable component
-                  DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
-                  ! GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(ng,element_idx). The field variable dof number of ng'th Gauss point in the element_idx'th element based parameter for this field variable component.
-                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(&
-                   & MAX_NGP,DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof Gauss point map.",ERR,ERROR,*999)
-                  ! this might be wasteful in worst case, but should generally be ok
+                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                  DOMAIN=>FIELD_COMPONENT%DOMAIN
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  !>todo find a better way than assuming NGP=MAX_NGP for all elements TODO
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(MAX_NGP,DOMAIN_TOPOLOGY% &
+                    & ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof gauss point map (gauss points).", &
+                    & ERR,ERROR,*999)
                   FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS= &
-                  &  DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS*MAX_NGP
-                  !Handle global dofs domain mapping
-                  DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
-                   DO gp=1,MAX_NGP !
-                    !Handle field variable mappings
-                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny= (ny-1) * MAX_NGP + gp + VARIABLE_GLOBAL_DOFS_OFFSET
-                      CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
-                        & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                      NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
-                        & ERR,ERROR,*999)
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                        & ERR,ERROR,*999)
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
-                        & STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                        & ERR,ERROR,*999)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
-                      DO domain_idx=1,NUMBER_OF_DOMAINS
-                        domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                        ! elt local number = 1 -> gp local = 1..max_ngp, etc
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                          & (DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx) - 1) * MAX_NGP + gp  &
-                          & + VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                        ! domain and type same as element
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
-                          & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                          & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
-                      ENDDO !domain_idx
-                    ENDIF
-                   ENDDO ! gp
-                  ENDDO !ny
-                  start_idx=1
-                  stop_idx=elementsMapping%NUMBER_OF_LOCAL
-                  !Adjust the local and ghost offsets
-                  IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
-                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                    & (elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST)*MAX_NGP
-                ELSE !domain_type_idx==2 --> ghosts
-                  !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
-                  !dofs are at the end of the local dofs.
-                  !Adjust the ghost offsets
-                  IF(component_idx>1) &
-                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
-                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
-                  DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
-                   DO gp=1,MAX_NGP !
-                    !Adjust variable mapping local numbers
-                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      variable_global_ny= (ny-1) * MAX_NGP + gp + VARIABLE_GLOBAL_DOFS_OFFSET
-                      NUMBER_OF_DOMAINS=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS
-                      DO domain_idx=1,NUMBER_OF_DOMAINS
-                        domain_no=FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)
-                        IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
-                          & DOMAIN_LOCAL_GHOST) THEN
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
-                        ELSE
-                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                            & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                        ENDIF
-                      ENDDO !domain_idx
-                    ENDIF
-                   ENDDO ! gp
-                  ENDDO !ny (global)
-                  start_idx=elementsMapping%NUMBER_OF_LOCAL+1
-                  stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
-                  !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
-                    & elementsMapping%NUMBER_OF_DOMAIN_GHOST*MAX_NGP
-                ENDIF ! 2 passes for normal, ghost
-                !Adjust the global offset
-                VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL*MAX_NGP
-                !Handle local dofs domain mapping
-                DO element_idx=start_idx,stop_idx
-                 DO gp=1,MAX_NGP !
-                  variable_local_ny= variable_local_ny+1
-                  Gauss_point_nyy  = Gauss_point_nyy+1
-                   !Setup dof to parameter map
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_GAUSS_POINT_DOF_TYPE
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=Gauss_point_nyy
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(1,Gauss_point_nyy)=gp
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(2,Gauss_point_nyy)=element_idx
-                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,Gauss_point_nyy)=component_idx
-                  !Setup reverse parameter to dof map
-                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gp,element_idx)=variable_local_ny
-                 ENDDO !gp
-                ENDDO !element_idx
-              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-                domain=>FIELD_COMPONENT%DOMAIN
-                elementsMapping=>domain%MAPPINGS%ELEMENTS
-                decompositionTopology=>domain%DECOMPOSITION%TOPOLOGY
-                IF(domain_type_idx==1) THEN ! domain_type_idx==1 -> non ghosts
-                  !Allocate parameter to dof map for this field variable component
-                  !including both local and ghost data points on this computational domain.
-                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%DATA_POINTS(decompositionTopology% &
-                    & dataPoints%totalNumberOfDataPoints),STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof data point map.",ERR,ERROR,*999)
-                  ! Number of data points
-                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS= &
-                    & decompositionTopology%dataPoints%totalNumberOfDataPoints
-                  ALLOCATE(localDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate data point parameter local count.",ERR,ERROR,*999)
-                  ALLOCATE(ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate data point parameter ghost count.",ERR,ERROR,*999)
-                  localDataParamCount=0
-                  ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)=decompositionTopology%dataPoints%numberOfDomainLocal
-                  !Looping through global elements and data points in the elements
-                  variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
-                  DO elementIdx=1,elementsMapping%NUMBER_OF_GLOBAL
-                    DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(elementIdx)
+                    & MAX_NGP*DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                ENDDO
+                !Handle global dofs domain mapping
+                element_ny=0
+                NUMBER_OF_GLOBAL_DOFS=FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%DOMAIN%MAPPINGS%ELEMENTS%NUMBER_OF_GLOBAL
+                DO ny=1,NUMBER_OF_GLOBAL_DOFS
+                  DO gauss_point_idx=1,MAX_NGP
+                    DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                      FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                      DOMAIN=>FIELD_COMPONENT%DOMAIN
+                      DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
+                      !Handle variable mapping
                       IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                        variable_global_ny=variable_global_ny+1
+                        element_ny=element_ny+1
+                        variable_global_ny=element_ny+VARIABLE_GLOBAL_DOFS_OFFSET
                         CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                           & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                        NUMBER_OF_DOMAINS=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%NUMBER_OF_DOMAINS
+                        NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
                         ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
                           & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
                         IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
@@ -10484,626 +13166,253 @@ CONTAINS
                           & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
                         IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
                           & ERR,ERROR,*999)
-                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                          & LOCAL_TYPE(NUMBER_OF_DOMAINS),STAT=ERR)
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
+                          & STAT=ERR)
                         IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
                           & ERR,ERROR,*999)
                         FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
                         DO domain_idx=1,NUMBER_OF_DOMAINS
-                          domain_no=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
-                          IF(elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%LOCAL_TYPE(domain_idx)== &
-                            & DOMAIN_LOCAL_GHOST) THEN
-                            ghostDataParamCount(domain_no)=ghostDataParamCount(domain_no)+1
-                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & ghostDataParamCount(domain_no)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                          ELSE
-                            localDataParamCount(domain_no)=localDataParamCount(domain_no)+1
-                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                            & localDataParamCount(domain_no)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                          ENDIF
+                          domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
+                          FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
                           FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
-                            & elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
                           FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                            & elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%LOCAL_TYPE(domain_idx)
+                            & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
                         ENDDO !domain_idx
                       ENDIF
-                    ENDDO !dataPointIdx
-                  ENDDO !elementIdx
-                  IF(ALLOCATED(localDataParamCount)) DEALLOCATE(localDataParamCount)
-                  IF(ALLOCATED(ghostDataParamCount)) DEALLOCATE(ghostDataParamCount)
-                  start_idx=1 !the start idx for the elements
-                  stop_idx=elementsMapping%NUMBER_OF_LOCAL !the end idx for local elements
-                  !Adjust the local and ghost offsets
-                  IF(component_idx>1) THEN
-                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                      & decompositionTopology%dataPoints%numberOfDomainLocal
+                    ENDDO !component_idx
+                  ENDDO !gauss_point_idx
+                ENDDO !ny (global)
+                !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
+                DO domain_type_idx=1,domain_type_stop
+                  IF(domain_type_idx==1) THEN
+                    start_idx=1
+                    stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
+                  ELSE
+                    start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
+                    stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
                   ENDIF
+                  !Handle local dofs domain mapping
+                  element_ny=0
+                  DO ny=start_idx,stop_idx
+                    DO gauss_point_idx=1,MAX_NGP
+                      DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+                        FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+                        DOMAIN=>FIELD_COMPONENT%DOMAIN
+                        element_ny=element_ny+1
+                        variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
+                        node_nyy=node_nyy+1
+                        !Setup dof to parameter map
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_GAUSS_POINT_DOF_TYPE
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(1,node_nyy)=gauss_point_idx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(2,node_nyy)=ny !element_idx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,node_nyy)=component_idx
+                        !Setup reverse parameter to dof map
+                        FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_point_idx,ny)= &
+                          & variable_local_ny
+                      ENDDO !component_idx
+                    ENDDO !gauss_point_idx
+                  ENDDO !ny
+                  !Adjust the offsets
                   VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                     & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                    & decompositionTopology%dataPoints%numberOfDomainLocal+decompositionTopology%dataPoints%numberOfDomainGhost
-                ELSE  ! domain_type_idx == 2 -> ghosts
-                  !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
-                  !dofs are at the end of the local dofs.
-                  !Adjust the ghost offsets
-                  IF(component_idx>1) THEN
-                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
-                      & decompositionTopology%dataPoints%numberOfDomainLocal
+                    & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                    & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
+                  IF(domain_type_idx==1) THEN
+                    VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                      & DOFS_MAPPING%NUMBER_OF_GLOBAL*MAX_NGP
                   ENDIF
-                  !Looping through global elements and data points in the elements
-                  variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
-                  DO elementIdx=1,elementsMapping%NUMBER_OF_GLOBAL
-                    DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(elementIdx)
-                      IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                        variable_global_ny=variable_global_ny+1
-                        NUMBER_OF_DOMAINS=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%NUMBER_OF_DOMAINS
-                        DO domain_idx=1,NUMBER_OF_DOMAINS
-                          domain_no=elementsMapping%GLOBAL_TO_LOCAL_MAP(elementIdx)%DOMAIN_NUMBER(domain_idx)
-                          IF(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)== &
-                            & DOMAIN_LOCAL_GHOST) THEN
-                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                              & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
-                          ELSE
-                            FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                              & FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)+ &
-                              & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                          ENDIF
-                        ENDDO
-                      ENDIF
-                    ENDDO !dataPointIdx
-                  ENDDO !elementIdx
-                  !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
-                    & decompositionTopology%dataPoints%numberOfDomainGhost
-                  start_idx=elementsMapping%NUMBER_OF_LOCAL+1 !The start index for ghost elements
-                  stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL !The end index for local elements
-                ENDIF
-                !Adjust the global offset
-                VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+decompositionTopology%dataPoints%&
-                  & numberOfGlobalDataPoints
-                !Handle local dofs domain mapping
-                DO elementIdx=start_idx,stop_idx
-                  globalElementNumber=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementIdx)
-                  DO dataPointIdx=1,decompositionTopology%dataPoints%numberOfelementDataPoints(globalElementNumber)
-                    variable_local_ny=variable_local_ny+1 !reinitialise for every field variable, field variable dof idx
-                    data_point_nyy=data_point_nyy+1 !reinitialise for every field variable, field variable data point dof idx
-                    localDataNumber=decompositionTopology%dataPoints%elementDataPoint(elementIdx)%dataIndices(dataPointIdx)% &
-                      & localNumber
-                    !Setup dof to parameter map
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_DATA_POINT_DOF_TYPE
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=data_point_nyy
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(1,data_point_nyy)=localDataNumber
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(2,data_point_nyy)=elementIdx
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DATA_POINT_DOF2PARAM_MAP(3,data_point_nyy)=component_idx
-                    !Setup reverse parameter to dof map
-                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%DATA_POINTS(localDataNumber)=variable_local_ny
-                  ENDDO !dataPointIdx
-                ENDDO !elementIdx
+                ENDDO !domain_type_idx
+              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                CALL FlagError("Not implemented.",ERR,ERROR,*999)
               CASE DEFAULT
                 LOCAL_ERROR="The interpolation type of "// &
                   & TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
-                  & "*",ERR,ERROR))//" is invalid for component number "//TRIM(NumberToVString(component_idx,"*",ERR,ERROR))// &
-                  & " of variable type "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                  & "*",ERR,ERROR))//" is invalid for component number 1 of variable type "//TRIM(NumberToVString( &
+                  & FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
                 CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
               END SELECT
-            ENDDO !component_idx
-          ENDDO !domain_type_idx
-        CASE(FIELD_CONTIGUOUS_COMPONENT_DOF_ORDER)
-          !Handle the case where all components for a particular DOF parameter are processed before all the component of the next
-          !parameter.
-          VARIABLE_LOCAL_DOFS_OFFSETS=0
-          VARIABLE_GLOBAL_DOFS_OFFSET=0
-          VARIABLE_GHOST_DOFS_OFFSETS=0
-          IF(FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS>=1) THEN
-            SELECT CASE(FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%INTERPOLATION_TYPE)
-            CASE(FIELD_CONSTANT_INTERPOLATION)
-              DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                variable_local_ny=1+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
-                !Allocate and set up global to local domain map for variable mapping
-                IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                  variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
-                  CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
-                    & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                  NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
-                  ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
-                    & STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
+            ELSE
+              CALL FlagError("The field must have at least one component.",ERR,ERROR,*999)
+            ENDIF
+          CASE DEFAULT
+            LOCAL_ERROR="The DOF order type of "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%DOF_ORDER_TYPE, &
+                & "*",ERR,ERROR))//" is invalid for variable type "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)% &
+                & VARIABLE_TYPE,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          END SELECT
+          IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+            CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(FIELD_VARIABLE_DOFS_MAPPING,ERR,ERROR,*999)
+          ENDIF
+        ENDDO !variable_idx
+        IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)
+        IF(ALLOCATED(VARIABLE_GHOST_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS)
+
+        IF(DIAGNOSTICS1) THEN
+          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Field DOF mappings:",ERR,ERROR,*999)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Field user number = ",FIELD%USER_NUMBER,ERR,ERROR,*999)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Number of variables = ",FIELD%NUMBER_OF_VARIABLES,ERR,ERROR,*999)
+          DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Variable : ",variable_idx,ERR,ERROR,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Variable type = ",FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE, &
+              & ERR,ERROR,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of local DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & NUMBER_OF_DOFS,ERR,ERROR,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Total number of local DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & TOTAL_NUMBER_OF_DOFS,ERR,ERROR,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of global DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & NUMBER_OF_GLOBAL_DOFS,ERR,ERROR,*999)
+            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    DOF to parameter map:",ERR,ERROR,*999)
+            DO variable_local_ny=1,FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      DOF : ",variable_local_ny,ERR,ERROR,*999)
+              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                & DOF_TYPE(:,variable_local_ny),'("        DOF type :",2(X,I8))','(18X,2(X,I8))',ERR,ERROR,*999)
+            ENDDO !variable_local_ny
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of constant DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Constant DOFs:",ERR,ERROR,*999)
+              DO constant_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Constant DOF : ",constant_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          DOF 2 Parameters : ", &
+                  & FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(constant_nyy),'(I8)',ERR,ERROR,*999)
+              ENDDO !constant_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of element DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Element DOFs:",ERR,ERROR,*999)
+              DO element_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Element DOF : ",element_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & ELEMENT_DOF2PARAM_MAP(:,element_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
+              ENDDO !element_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of face DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Face DOFs:",ERR,ERROR,*999)
+              DO face_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Face DOF : ",face_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & FACE_DOF2PARAM_MAP(:,face_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
+              ENDDO !face_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of nodal DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Nodal DOFs:",ERR,ERROR,*999)
+              DO node_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Node DOF : ",node_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,4,4,4,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & NODE_DOF2PARAM_MAP(:,node_nyy),'("          DOF 2 Parameters :",4(X,I8))','(28X,4(X,I8))',ERR,ERROR,*999)
+              ENDDO !node_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of grid point DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Grid point DOFs:",ERR,ERROR,*999)
+              DO grid_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Grid point DOF : ",grid_point_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & GRID_POINT_DOF2PARAM_MAP(:,grid_point_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))', &
+                  & ERR,ERROR,*999)
+              ENDDO !node_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of Gauss point DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Gauss point DOFs:",ERR,ERROR,*999)
+              DO Gauss_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Gauss point DOF : ",Gauss_point_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,3,3,3,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & GAUSS_POINT_DOF2PARAM_MAP(:,Gauss_point_nyy),'("          DOF 2 Parameters :",3(X,I8))','(28X,3(X,I8))', &
+                  & ERR,ERROR,*999)
+              ENDDO !node_nyy
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of data point DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      data point DOFs:",ERR,ERROR,*999)
+              DO data_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        data point DOF : ",data_point_nyy,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,3,3,3,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & DATA_POINT_DOF2PARAM_MAP(:,data_point_nyy),'("          DOF 2 Parameters :",3(X,I8))','(28X,3(X,I8))', &
+                  & ERR,ERROR,*999)
+              ENDDO !node_nyy
+            ENDIF
+            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    Parameter to DOF map:",ERR,ERROR,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of components = ",FIELD%VARIABLES(variable_idx)% &
+              & NUMBER_OF_COMPONENTS,ERR,ERROR,*999)
+            DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+              FIELD_COMPONENT => FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Component : ",component_idx,ERR,ERROR,*999)
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of constant parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS>0) THEN
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Constant DOF = ", &
+                  & FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP,ERR,ERROR,*999)
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of element parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS>0) THEN
+                DO element_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Element : ",element_idx,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"            Element DOF = ", &
+                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx), &
                     & ERR,ERROR,*999)
-                  ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(NUMBER_OF_DOMAINS), &
-                    & STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                    & ERR,ERROR,*999)
-                  ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
-                    & STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
-                    & ERR,ERROR,*999)
-                  !A constant dof is mapped to all domains.
-                  FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
-                  DO domain_idx=1,NUMBER_OF_DOMAINS
-                    domain_no=domain_idx-1
-                    FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                      & 1+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                    FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)=domain_no
-                    FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)=DOMAIN_LOCAL_INTERNAL
-                  ENDDO !domain_idx
-                ENDIF
-                constant_nyy=constant_nyy+1
-                !Setup dof to parameter map
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_CONSTANT_DOF_TYPE
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=constant_nyy
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(constant_nyy)=component_idx
-                !Setup reverse parameter to dof map
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS=1
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP=variable_local_ny
-                !Adjust the offsets
-                VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
-                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
-              ENDDO !component_idx
-            CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-              DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                !Allocate parameter to dof map for this field variable component
-                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(DOMAIN_TOPOLOGY%ELEMENTS% &
-                  & TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof element map.",ERR,ERROR,*999)
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS= &
-                  & DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-              ENDDO !component_idx
-              !Handle global dofs domain mapping
-              element_ny=0
-              DO ny=1,elementsMapping%NUMBER_OF_GLOBAL ! elementsMapping has not been associated for this case !?!
-                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                  DOMAIN=>FIELD_COMPONENT%DOMAIN
-                  DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
-                  !Handle field variable mappings
-                  IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                    element_ny=element_ny+1
-                    variable_global_ny=element_ny+VARIABLE_GLOBAL_DOFS_OFFSET
-                    CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
-                      & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                    NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
-                      & STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
-                      & ERR,ERROR,*999)
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(NUMBER_OF_DOMAINS), &
-                      & STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                      & ERR,ERROR,*999)
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
-                      & STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
-                      & ERR,ERROR,*999)
-                    FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
-                    DO domain_idx=1,NUMBER_OF_DOMAINS
-                      domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
-                    ENDDO !domain_idx
-                  ENDIF
-                ENDDO !component_idx
-              ENDDO !ny
-              !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
-              DO domain_type_idx=1,domain_type_stop
-                IF(domain_type_idx==1) THEN
-                  start_idx=1
-                  stop_idx=elementsMapping%NUMBER_OF_LOCAL
-                ELSE
-                  start_idx=elementsMapping%NUMBER_OF_LOCAL+1
-                  stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
-                ENDIF
-                !Handle local dofs domain mapping
-                element_ny=0
-                DO element_idx=start_idx,stop_idx
-                  DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                    FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                    element_ny=element_ny+1
-                    variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
-                    element_nyy=element_nyy+1
-                    !Setup dof to parameter map
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_ELEMENT_DOF_TYPE
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=element_nyy
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,element_nyy)=element_idx
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,element_nyy)=component_idx
-                    !Setup reverse parameter to dof map
-                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)=variable_local_ny
-                  ENDDO !component_idx
                 ENDDO !element_idx
-                !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                  &  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                  & elementsMapping%NUMBER_OF_DOMAIN_LOCAL
-                IF(domain_type_idx==1) THEN
-                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                    & elementsMapping%NUMBER_OF_GLOBAL
-                ENDIF
-              ENDDO !domain_type_idx
-            CASE(FIELD_NODE_BASED_INTERPOLATION)
-              DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES), &
-                  & STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (nodes).",ERR,ERROR,*999)
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS = &
-                  & DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES
-                !Loop through and allocate number of derivatives for each node in the domain
-                DO node_idx=1,DOMAIN_TOPOLOGY%NODES%TOTAL_NUMBER_OF_NODES
-                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES( &
-                    & DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES),STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (derivatives).", &
-                    & ERR,ERROR,*999)
-                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES = &
-                    & DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES
-                  DO derivative_idx=1,DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%NUMBER_OF_DERIVATIVES
-                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
-                      & VERSIONS(DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions),STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof node map (versions).", &
-                      & ERR,ERROR,*999)
-                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
-                      NUMBER_OF_VERSIONS = DOMAIN_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of face parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS>0) THEN
+                DO face_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Face : ",face_idx,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of Derivatives = ", &
+                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
+                  DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%NUMBER_OF_DERIVATIVES
+                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Derivative : ",derivative_idx,ERR,ERROR,*999)
+                    CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,FIELD_COMPONENT%PARAM_TO_DOF_MAP% &
+                      & FACE_PARAM2DOF_MAP%FACES(face_idx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
+                      & PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
+                      & '("              Version DOFs :",8(X,I8))','(23X,8(X,I8))',ERR,ERROR,*999)
+                  ENDDO !derivative_idx
+                ENDDO !face_idx
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of node parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS>0) THEN
+                DO node_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Node : ",node_idx,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of Derivatives = ", &
+                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
+                  DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES
+                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Derivative : ",derivative_idx,ERR,ERROR,*999)
+                    CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,FIELD_COMPONENT%PARAM_TO_DOF_MAP% &
+                      & NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
+                      & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
+                      & '("              Version DOFs :",8(X,I8))','(23X,8(X,I8))',ERR,ERROR,*999)
                   ENDDO !derivative_idx
                 ENDDO !node_idx
-              ENDDO !component_idx
-              !Handle global dofs domain mapping
-              !Should the contiguous components have an inner groupping for derivatives??? i.e., loop over nodes, components then
-              !derivatives????
-              node_ny=0
-              NUMBER_OF_GLOBAL_DOFS=FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL
-              DO ny=1,NUMBER_OF_GLOBAL_DOFS
-                DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                  FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                  DOMAIN=>FIELD_COMPONENT%DOMAIN
-                  DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
-                  !Handle variable mapping
-                  IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                    node_ny=node_ny+1
-                    variable_global_ny=node_ny+VARIABLE_GLOBAL_DOFS_OFFSET
-                    CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
-                      & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                    NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                      & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
-                      & ERR,ERROR,*999)
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                      & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                      & ERR,ERROR,*999)
-                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
-                      & STAT=ERR)
-                    IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
-                      & ERR,ERROR,*999)
-                    FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
-                    DO domain_idx=1,NUMBER_OF_DOMAINS
-                      domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                        & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
-                    ENDDO !domain_idx
-                  ENDIF
-                ENDDO !component_idx
-              ENDDO !ny (global)
-              !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
-              DO domain_type_idx=1,domain_type_stop
-                IF(domain_type_idx==1) THEN
-                  start_idx=1
-                  stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
-                ELSE
-                  start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
-                  stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                ENDIF
-                !Handle local dofs domain mapping
-                node_ny=0
-                DO ny=start_idx,stop_idx
-                  DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                    FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                    DOMAIN=>FIELD_COMPONENT%DOMAIN
-                    node_ny=node_ny+1
-                    variable_local_ny=node_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
-                    node_nyy=node_nyy+1
-                    version_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(1,ny)
-                    derivative_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(2,ny)
-                    node_idx=DOMAIN%TOPOLOGY%DOFS%DOF_INDEX(3,ny)
-                    !Setup dof to parameter map
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_NODE_DOF_TYPE
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(1,node_nyy)=version_idx
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(2,node_nyy)=derivative_idx
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(3,node_nyy)=node_idx
-                    FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,node_nyy)=component_idx
-                    !Setup reverse parameter to dof map
-                    FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)% &
-                      & VERSIONS(version_idx) = variable_local_ny
-                  ENDDO !component_idx
-                ENDDO !ny
-                !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                  & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                IF(domain_type_idx==1) THEN
-                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                    & DOFS_MAPPING%NUMBER_OF_GLOBAL
-                ENDIF
-              ENDDO !domain_type_idx
-            CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
-              CALL FlagError("Not implemented.",ERR,ERROR,*999)
-            CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-              DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                DOMAIN=>FIELD_COMPONENT%DOMAIN
-                DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                !>todo find a better way than assuming NGP=MAX_NGP for all elements TODO
-                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(MAX_NGP,DOMAIN_TOPOLOGY% &
-                  & ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate field component parameter to dof gauss point map (gauss points).", &
-                  & ERR,ERROR,*999)
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS= &
-                  & MAX_NGP*DOMAIN_TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-              ENDDO
-              !Handle global dofs domain mapping
-              element_ny=0
-              NUMBER_OF_GLOBAL_DOFS=FIELD%VARIABLES(variable_idx)%COMPONENTS(1)%DOMAIN%MAPPINGS%ELEMENTS%NUMBER_OF_GLOBAL
-              DO ny=1,NUMBER_OF_GLOBAL_DOFS
-                DO gauss_point_idx=1,MAX_NGP
-                  DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                    FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                    DOMAIN=>FIELD_COMPONENT%DOMAIN
-                    DOFS_MAPPING=>DOMAIN%MAPPINGS%ELEMENTS
-                    !Handle variable mapping
-                    IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-                      element_ny=element_ny+1
-                      variable_global_ny=element_ny+VARIABLE_GLOBAL_DOFS_OFFSET
-                      CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
-                        & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                      NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
-                        & ERR,ERROR,*999)
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
-                        & DOMAIN_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map domain number.", &
-                        & ERR,ERROR,*999)
-                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(NUMBER_OF_DOMAINS), &
-                        & STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local type.", &
-                        & ERR,ERROR,*999)
-                      FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
-                      DO domain_idx=1,NUMBER_OF_DOMAINS
-                        domain_no=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
-                          & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(domain_idx)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)= &
-                          & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(domain_idx)
-                        FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
-                          & DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_TYPE(domain_idx)
-                      ENDDO !domain_idx
-                    ENDIF
-                  ENDDO !component_idx
-                ENDDO !gauss_point_idx
-              ENDDO !ny (global)
-              !Loop over the domain types. Here domain_type_idx=1 for the non-ghosted dofs and =2 for the ghosted dofs.
-              DO domain_type_idx=1,domain_type_stop
-                IF(domain_type_idx==1) THEN
-                  start_idx=1
-                  stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
-                ELSE
-                  start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
-                  stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                ENDIF
-                !Handle local dofs domain mapping
-                element_ny=0
-                DO ny=start_idx,stop_idx
-                  DO gauss_point_idx=1,MAX_NGP
-                    DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-                      FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-                      DOMAIN=>FIELD_COMPONENT%DOMAIN
-                      element_ny=element_ny+1
-                      variable_local_ny=element_ny+VARIABLE_LOCAL_DOFS_OFFSETS(myComputationalNodeNumber)
-                      node_nyy=node_nyy+1
-                      !Setup dof to parameter map
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_GAUSS_POINT_DOF_TYPE
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,variable_local_ny)=node_nyy
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(1,node_nyy)=gauss_point_idx
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(2,node_nyy)=ny !element_idx
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%GAUSS_POINT_DOF2PARAM_MAP(3,node_nyy)=component_idx
-                      !Setup reverse parameter to dof map
-                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_point_idx,ny)= &
-                        & variable_local_ny
-                    ENDDO !component_idx
-                  ENDDO !gauss_point_idx
-                ENDDO !ny
-                !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
-                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
-                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                  & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
-                IF(domain_type_idx==1) THEN
-                  VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
-                    & DOFS_MAPPING%NUMBER_OF_GLOBAL*MAX_NGP
-                ENDIF
-              ENDDO !domain_type_idx
-            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-              CALL FlagError("Not implemented.",ERR,ERROR,*999)
-            CASE DEFAULT
-              LOCAL_ERROR="The interpolation type of "// &
-                & TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE, &
-                & "*",ERR,ERROR))//" is invalid for component number 1 of variable type "//TRIM(NumberToVString( &
-                & FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE,"*",ERR,ERROR))//"."
-              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT
-          ELSE
-            CALL FlagError("The field must have at least one component.",ERR,ERROR,*999)
-          ENDIF
-        CASE DEFAULT
-          LOCAL_ERROR="The DOF order type of "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)%DOF_ORDER_TYPE, &
-              & "*",ERR,ERROR))//" is invalid for variable type "//TRIM(NumberToVString(FIELD%VARIABLES(variable_idx)% &
-              & VARIABLE_TYPE,"*",ERR,ERROR))//"."
-          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-        END SELECT
-        IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
-          CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(FIELD_VARIABLE_DOFS_MAPPING,ERR,ERROR,*999)
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of grid point parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS>0) THEN
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of Gauss point parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS>0) THEN
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of data point parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS>0) THEN
+              ENDIF
+            ENDDO !component_idx
+          ENDDO !variable_idx
         ENDIF
-      ENDDO !variable_idx
-      IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)
-      IF(ALLOCATED(VARIABLE_GHOST_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS)
-
-      IF(DIAGNOSTICS1) THEN
-        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Field DOF mappings:",ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Field user number = ",FIELD%USER_NUMBER,ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Number of variables = ",FIELD%NUMBER_OF_VARIABLES,ERR,ERROR,*999)
-        DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Variable : ",variable_idx,ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Variable type = ",FIELD%VARIABLES(variable_idx)%VARIABLE_TYPE, &
-            & ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of local DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & NUMBER_OF_DOFS,ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Total number of local DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & TOTAL_NUMBER_OF_DOFS,ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of global DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & NUMBER_OF_GLOBAL_DOFS,ERR,ERROR,*999)
-          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    DOF to parameter map:",ERR,ERROR,*999)
-          DO variable_local_ny=1,FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      DOF : ",variable_local_ny,ERR,ERROR,*999)
-            CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-              & DOF_TYPE(:,variable_local_ny),'("        DOF type :",2(X,I8))','(18X,2(X,I8))',ERR,ERROR,*999)
-          ENDDO !variable_local_ny
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of constant DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Constant DOFs:",ERR,ERROR,*999)
-            DO constant_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_CONSTANT_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Constant DOF : ",constant_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          DOF 2 Parameters : ", &
-                & FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%CONSTANT_DOF2PARAM_MAP(constant_nyy),'(I8)',ERR,ERROR,*999)
-            ENDDO !constant_nyy
-          ENDIF
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of element DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Element DOFs:",ERR,ERROR,*999)
-            DO element_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_ELEMENT_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Element DOF : ",element_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                & ELEMENT_DOF2PARAM_MAP(:,element_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
-            ENDDO !element_nyy
-          ENDIF
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of nodal DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Nodal DOFs:",ERR,ERROR,*999)
-            DO node_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Node DOF : ",node_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,4,4,4,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                & NODE_DOF2PARAM_MAP(:,node_nyy),'("          DOF 2 Parameters :",4(X,I8))','(28X,4(X,I8))',ERR,ERROR,*999)
-            ENDDO !node_nyy
-          ENDIF
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of grid point DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Grid point DOFs:",ERR,ERROR,*999)
-            DO grid_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GRID_POINT_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Grid point DOF : ",grid_point_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                & GRID_POINT_DOF2PARAM_MAP(:,grid_point_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))', &
-                & ERR,ERROR,*999)
-            ENDDO !node_nyy
-          ENDIF
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of Gauss point DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Gauss point DOFs:",ERR,ERROR,*999)
-            DO Gauss_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_GAUSS_POINT_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Gauss point DOF : ",Gauss_point_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,3,3,3,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                & GAUSS_POINT_DOF2PARAM_MAP(:,Gauss_point_nyy),'("          DOF 2 Parameters :",3(X,I8))','(28X,3(X,I8))', &
-                & ERR,ERROR,*999)
-            ENDDO !node_nyy
-          ENDIF
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of data point DOFs = ",FIELD%VARIABLES(variable_idx)% &
-            & DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS,ERR,ERROR,*999)
-          IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS>0) THEN
-            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      data point DOFs:",ERR,ERROR,*999)
-            DO data_point_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_DATA_POINT_DOFS
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        data point DOF : ",data_point_nyy,ERR,ERROR,*999)
-              CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,3,3,3,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                & DATA_POINT_DOF2PARAM_MAP(:,data_point_nyy),'("          DOF 2 Parameters :",3(X,I8))','(28X,3(X,I8))', &
-                & ERR,ERROR,*999)
-            ENDDO !node_nyy
-          ENDIF
-          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    Parameter to DOF map:",ERR,ERROR,*999)
-          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of components = ",FIELD%VARIABLES(variable_idx)% &
-            & NUMBER_OF_COMPONENTS,ERR,ERROR,*999)
-          DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-            FIELD_COMPONENT => FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Component : ",component_idx,ERR,ERROR,*999)
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of constant parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS>0) THEN
-              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Constant DOF = ", &
-                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP,ERR,ERROR,*999)
-            ENDIF
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of element parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS>0) THEN
-              DO element_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Element : ",element_idx,ERR,ERROR,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"            Element DOF = ", &
-                  & FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx), &
-                  & ERR,ERROR,*999)
-              ENDDO !element_idx
-            ENDIF
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of node parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS>0) THEN
-              DO node_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Node : ",node_idx,ERR,ERROR,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of Derivatives = ", &
-                  & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
-                DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%NUMBER_OF_DERIVATIVES
-                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Derivative : ",derivative_idx,ERR,ERROR,*999)
-                  CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,FIELD_COMPONENT%PARAM_TO_DOF_MAP% &
-                    & NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
-                    & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
-                    & '("              Version DOFs :",8(X,I8))','(23X,8(X,I8))',ERR,ERROR,*999)
-                ENDDO !derivative_idx
-              ENDDO !node_idx
-            ENDIF
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of grid point parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS>0) THEN
-            ENDIF
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of Gauss point parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS>0) THEN
-            ENDIF
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of data point parameters = ", &
-              & FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS,ERR,ERROR,*999)
-            IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS>0) THEN
-            ENDIF
-          ENDDO !component_idx
-        ENDDO !variable_idx
-      ENDIF
-
+      ENDIF !countIfFace, should be select case with USE_NEW_LOCAL_IMPLEMENTATION
     ELSE
       CALL FlagError("Field is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -11370,8 +13679,8 @@ CONTAINS
           IF(FIELD%DECOMPOSITION%CALCULATE_CENTROIDS) THEN
             CALL Field_GeometricParametersCentroidsCalculate(FIELD,ERR,ERROR,*999)
           ENDIF
-          IF(FIELD%DECOMPOSITION%CALCULATE_FV_LENGTHS) THEN
-            CALL Field_GeometricParametersFVLengthsCalculate(FIELD,ERR,ERROR,*999)
+          IF(FIELD%DECOMPOSITION%CALCULATE_CENTRE_LENGTHS) THEN
+            CALL Field_GeometricParametersCentreLengthsCalculate(FIELD,ERR,ERROR,*999)
           ENDIF
           CALL Field_GeometricParametersElementVolumesCalculate(FIELD,ERR,ERROR,*999)
         ELSE
@@ -11421,7 +13730,7 @@ CONTAINS
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%VOLUMES)) DEALLOCATE(GEOMETRIC_PARAMETERS%VOLUMES)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTROID_POSITION)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTROID_POSITION)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%HALFLENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%HALFLENGTH)
-      IF(ALLOCATED(GEOMETRIC_PARAMETERS%FV_LENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%FV_LENGTH)
+      IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_LENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_LENGTH)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)) DEALLOCATE(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)
       DEALLOCATE(GEOMETRIC_PARAMETERS)
     ENDIF
@@ -11477,17 +13786,17 @@ CONTAINS
             IF(ERR/=0) CALL FlagError("Could not allocate Centroids.",ERR,ERROR,*999)
             FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION=0.0_DP
         ENDIF
-        IF(FIELD%DECOMPOSITION%CALCULATE_FV_LENGTHS) THEN
+        IF(FIELD%DECOMPOSITION%CALCULATE_CENTRE_LENGTHS) THEN
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
             & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate HALFLENGTH.",ERR,ERROR,*999)
-          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
             & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate FV_LENGTH.",ERR,ERROR,*999)
+          IF(ERR/=0) CALL FlagError("Could not allocate CENTRE_TO_CENTRE_LENGTH.",ERR,ERROR,*999)
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
@@ -11498,7 +13807,7 @@ CONTAINS
           !  & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR) !THIS WILL ONLY WORK FOR QUADS
 
           FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH=0.0_DP
-          FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH=0.0_DP
+          FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH=0.0_DP
           FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR=0.0_DP
           FIELD%GEOMETRIC_FIELD_PARAMETERS%VOLUMES=0.0_DP
         ENDIF
@@ -12138,37 +14447,40 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the centroids for a field.
-  SUBROUTINE Field_GeometricParametersFVLengthsCalculate(FIELD,ERR,ERROR,*)
+  !>Calculates the lengths from centroid to face and centroid to neighbouring centroids for a field.
+  SUBROUTINE Field_GeometricParametersCentreLengthsCalculate(FIELD,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the geometric field to calculate the FV LENGTHS for
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the geometric field to calculate the CENTRE LENGTHS for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     !REAL(DP) ::
 
-    INTEGER(INTG) :: element_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2, dimension_idx
-    INTEGER(INTG) :: neighbourElement,faceDomainNodeNumber3, faceDomainNodeNumber4, nic, start_nic,localLineNumber, localfaceNumber
+    INTEGER(INTG) :: element_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2, dimension_idx, &
+      & neighbourElement,faceDomainNodeNumber3, faceDomainNodeNumber4, nic, start_nic,localLineNumber, localfaceNumber, &
+      & mesh_component_idx
     REAL(DP) :: xVec_centroidP(3)=[0,0,0], xVec_centroidN(3)=[0,0,0],xVec_faceNode1(3)=[0,0,0],xVec_faceNode2(3)=[0,0,0]
     REAL(DP) :: xVec_faceNode4(3)=[0,0,0], faceVec_1_2(3)=[0,0,0], faceVec_1_3(3)=[0,0,0], faceNormal(3)=[0,0,0]
     REAL(DP) :: xVec_faceNode3(3)=[0,0,0], interceptPos(3)=[0,0,0], surfaceVector(3)=[0,0,0]
     REAL(DP) :: faceArea,faceNodePosition,boundaryHalfLength
 
 
-    ENTERS("Field_GeometricParametersFVLengthsCalculate",ERR,ERROR,*999)
+    ENTERS("Field_GeometricParametersCentreLengthsCalculate",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FIELD)) THEN
       IF(FIELD%FIELD_FINISHED) THEN
         IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
 
-          SELECT CASE(FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
-            & ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
+          mesh_component_idx=FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER
+
+          SELECT CASE(FIELD%DECOMPOSITION%DOMAIN(mesh_component_idx)%PTR%TOPOLOGY% &
+            & ELEMENTS%ELEMENTS(mesh_component_idx)%BASIS%TYPE)!Assumes all elements have the same basis
           CASE(BASIS_SIMPLEX_TYPE)
             start_nic=1
           CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-            start_nic=-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS% &
-              & ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+            start_nic=-FIELD%DECOMPOSITION%DOMAIN(mesh_component_idx)%PTR%TOPOLOGY%ELEMENTS% &
+              & ELEMENTS(mesh_component_idx)%BASIS%NUMBER_OF_XI_COORDINATES
           CASE DEFAULT
             !do nothing
           END SELECT
@@ -12311,7 +14623,7 @@ CONTAINS
                 & err,error,*999)
               IF(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ADJACENT_ELEMENTS(nic)% &
                 & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
-                CALL L2Norm(xVec_centroidN-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%FV_LENGTH(element_idx,nic), &
+                CALL L2Norm(xVec_centroidN-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH(element_idx,nic), &
                   & err,error,*999)
               ENDIF
 
@@ -12324,12 +14636,12 @@ CONTAINS
 
 
 
-    EXITS("Field_GeometricParametersFVLengthsCalculate")
+    EXITS("Field_GeometricParametersCentreLengthsCalculate")
     RETURN
-999 ERRORSEXITS("Field_GeometricParametersFVLengthsCalculate",ERR,ERROR)
+999 ERRORSEXITS("Field_GeometricParametersCentreLengthsCalculate",ERR,ERROR)
     RETURN 1
 
-  END SUBROUTINE Field_GeometricParametersFVLengthsCalculate
+  END SUBROUTINE Field_GeometricParametersCentreLengthsCalculate
 
   !
   !================================================================================================================================
@@ -13892,6 +16204,10 @@ CONTAINS
                                   ELSE
                                     CALL FlagError("From domain topology is not associated.",ERR,ERROR,*999)
                                   ENDIF
+                                CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                  !!!!!
+                                  CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                  !!!!!
                                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                                   FROM_DOMAIN_TOPOLOGY=>FROM_DOMAIN%TOPOLOGY
                                   IF(ASSOCIATED(FROM_DOMAIN_TOPOLOGY)) THEN
@@ -14222,6 +16538,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -14355,6 +16675,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -14488,6 +16812,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -14621,6 +16949,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -15152,6 +17484,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -15307,6 +17643,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -15463,6 +17803,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -15618,6 +17962,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -15752,6 +18100,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -15916,6 +18268,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -16080,6 +18436,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -16244,6 +18604,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -16413,6 +18777,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16552,6 +18920,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16691,6 +19063,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16830,6 +19206,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16966,6 +19346,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -17160,6 +19544,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -17354,6 +19742,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -17548,6 +19940,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -17739,6 +20135,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -17910,6 +20310,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -18081,6 +20485,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -18252,6 +20660,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -19410,6 +21822,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19543,6 +21959,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19677,6 +22097,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19810,6 +22234,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19944,6 +22372,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -20095,6 +22527,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -20246,6 +22682,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -20397,6 +22837,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -20565,6 +23009,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -20715,6 +23163,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -20863,6 +23315,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -21011,6 +23467,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -21478,6 +23938,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -21666,6 +24130,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -21854,6 +24322,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -22042,6 +24514,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -22232,6 +24708,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -22422,6 +24902,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -22612,6 +25096,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -22802,6 +25290,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -23015,6 +25507,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -23173,6 +25669,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -23331,6 +25831,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -23489,6 +25993,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -23623,6 +26131,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -23780,6 +26292,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -23944,6 +26460,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -24214,6 +26734,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24348,6 +26872,10 @@ CONTAINS
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
 
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24481,6 +27009,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24614,6 +27146,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24747,6 +27283,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -24899,6 +27439,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25051,6 +27595,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25203,6 +27751,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25358,6 +27910,10 @@ CONTAINS
         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
       CALL FlagError(localError,err,error,*999)
+    CASE(FIELD_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25458,6 +28014,10 @@ CONTAINS
         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
       CALL FlagError(localError,err,error,*999)
+    CASE(FIELD_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25558,6 +28118,10 @@ CONTAINS
         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
       CALL FlagError(localError,err,error,*999)
+    CASE(FIELD_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -25658,6 +28222,10 @@ CONTAINS
         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" which has element based interpolation."
       CALL FlagError(localError,err,error,*999)
+    CASE(FIELD_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -26199,6 +28767,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26354,6 +28926,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26508,6 +29084,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26662,6 +29242,10 @@ CONTAINS
                       ELSE
                         CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26800,6 +29384,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26940,6 +29528,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -27078,6 +29670,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -27216,6 +29812,10 @@ CONTAINS
                           & PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,"*",ERR,ERROR))//" elements."
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -27421,6 +30021,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -27615,6 +30219,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -27809,6 +30417,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -28003,6 +30615,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -28194,6 +30810,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -28365,6 +30985,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -28536,6 +31160,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -28707,6 +31335,10 @@ CONTAINS
                         & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -28881,6 +31513,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29047,6 +31683,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29213,6 +31853,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29379,6 +32023,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29542,6 +32190,10 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
                         & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",err,error))//" which has element based interpolation."
                       CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &

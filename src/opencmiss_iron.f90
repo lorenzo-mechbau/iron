@@ -374,7 +374,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Decomposition_CalculateFacesSet,cmfe_Decomposition_CalculateLinesSet
 
-  PUBLIC cmfe_Decomposition_CalculateCentroidsSet,cmfe_Decomposition_CalculateFVLengthsSet
+  PUBLIC cmfe_Decomposition_CalculateCentroidsSet,cmfe_Decomposition_CalculateCentreLengthsSet
 
   PUBLIC cmfe_EquationsType,cmfe_Equations_Finalise,cmfe_Equations_Initialise
 
@@ -3628,6 +3628,7 @@ MODULE OpenCMISS_Iron
   !>@{
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_CONSTANT_INTERPOLATION = FIELD_CONSTANT_INTERPOLATION !<Constant interpolation. One parameter for the field \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_BASED_INTERPOLATION = FIELD_ELEMENT_BASED_INTERPOLATION !<Element based interpolation. Parameters are different in each element \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_FACE_BASED_INTERPOLATION = FIELD_FACE_BASED_INTERPOLATION !<Face based interpolation. Parameters are different on each face \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_NODE_BASED_INTERPOLATION = FIELD_NODE_BASED_INTERPOLATION !<Node based interpolation. Parameters are nodal based and a basis function is used \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION = FIELD_GRID_POINT_BASED_INTERPOLATION !<Grid point based interpolation. Parameters are different at each grid point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION = FIELD_GAUSS_POINT_BASED_INTERPOLATION !<Gauss point based interpolation. Parameters are different at each Gauss point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
@@ -4298,7 +4299,7 @@ MODULE OpenCMISS_Iron
     & CMFE_FIELD_GEOMETRIC_GENERAL_TYPE
 
   PUBLIC CMFE_FIELD_CONSTANT_INTERPOLATION,CMFE_FIELD_ELEMENT_BASED_INTERPOLATION,CMFE_FIELD_NODE_BASED_INTERPOLATION, &
-    & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, &
+    & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, CMFE_FIELD_FACE_BASED_INTERPOLATION, &
     & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION
 
   PUBLIC CMFE_FIELD_NUMBER_OF_VARIABLE_SUBTYPES
@@ -5301,10 +5302,10 @@ MODULE OpenCMISS_Iron
   END INTERFACE cmfe_Decomposition_CalculateCentroidsSet
 
   !>Sets/changes whether the finite volume lengths should be calculated for the decomposition.
-  INTERFACE cmfe_Decomposition_CalculateFVLengthsSet
-    MODULE PROCEDURE cmfe_Decomposition_CalculateFVLengthsSetNumber
-    MODULE PROCEDURE cmfe_Decomposition_CalculateFVLengthsSetObj
-  END INTERFACE cmfe_Decomposition_CalculateFVLengthsSet
+  INTERFACE cmfe_Decomposition_CalculateCentreLengthsSet
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentreLengthsSetNumber
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentreLengthsSetObj
+  END INTERFACE cmfe_Decomposition_CalculateCentreLengthsSet
 
   !>Finishes the creation of a mesh. \see OpenCMISS::Iron::cmfe_Mesh_CreateStart
   INTERFACE cmfe_Mesh_CreateFinish
@@ -17015,7 +17016,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Gets the number of iterations for a time control loop identified by user number.
   SUBROUTINE cmfe_ControlLoop_NumberOfIterationsGetNumber0(problemUserNumber,controlLoopIdentifier,numberOfIterations,err)
     !DLLEXPORT(cmfe_ControlLoop_NumberOfIterationsGetNumber0)
@@ -43467,22 +43468,22 @@ CONTAINS
 
 
   !>Sets whether Centroids should be calculated
-  SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetNumber(regionUserNumber,meshUserNumber, &
-                                                     & decompositionUserNumber,CalculateFVLengthsFlag,err)
-    !DLLEXPORT(cmfe_Decomposition_CalculateFVLengthsSetNumber)
+  SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetNumber(regionUserNumber,meshUserNumber, &
+                                                     & decompositionUserNumber,CalculateCentreLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentreLengthsSetNumber)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region.
     INTEGER(INTG), INTENT(IN) :: meshUserNumber !<The user number of the mesh.
     INTEGER(INTG), INTENT(IN) :: decompositionUserNumber !<The user number of the decomposition to set the decomposition type for.
-    LOGICAL, INTENT(IN) :: CalculateFVLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
+    LOGICAL, INTENT(IN) :: CalculateCentreLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(MESH_TYPE), POINTER :: mesh
     TYPE(REGION_TYPE), POINTER :: region
 
-    ENTERS("cmfe_Decomposition_CalculateFVLengthsSetNumber",err,error,*999)
+    ENTERS("cmfe_Decomposition_CalculateCentreLengthsSetNumber",err,error,*999)
 
     NULLIFY(region)
     NULLIFY(mesh)
@@ -43490,41 +43491,41 @@ CONTAINS
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_MeshGet(region,meshUserNumber,mesh,err,error,*999)
     CALL Mesh_DecompositionGet(mesh,decompositionUserNumber,decomposition,err,error,*999)
-    CALL DECOMPOSITION_CALCULATE_FV_LENGTHS_SET(decomposition,CalculateFVLengthsFlag,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_CENTRE_LENGTHS_SET(decomposition,CalculateCentreLengthsFlag,err,error,*999)
 
-    EXITS("cmfe_Decomposition_CalculateFVLengthsSetNumber")
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetNumber")
     RETURN
-999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLen",err,error)
+999 ERRORSEXITS("cmfe_Decomposition_CalculateCentreLengthsSetNumber",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetNumber
+  END SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetNumber
 
   !
   !================================================================================================================================
   !
 
   !>Sets whether Centroids should be calculated
-  SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetObj(decomposition,CalculateFVLengthsFlag,err)
-    !DLLEXPORT(cmfe_Decomposition_CalculateFVLengthsSetObj)
+  SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetObj(decomposition,CalculateCentreLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentreLengthsSetObj)
 
     !Argument variables
-    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate FV_lengths flag for.
-    LOGICAL, INTENT(IN) :: CalculateFVLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate CENTRE_LENGTHS flag for.
+    LOGICAL, INTENT(IN) :: CalculateCentreLengthsFlag !<Boolean to determine whether to set the lengths from centroid to face and centroid to neighbouring centroid to be calculated.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
-    ENTERS("cmfe_Decomposition_CalculateFVLengthsSetObj",err,error,*999)
+    ENTERS("cmfe_Decomposition_CalculateCentreLengthsSetObj",err,error,*999)
 
-    CALL DECOMPOSITION_CALCULATE_FV_LENGTHS_SET(decomposition%decomposition,CalculateFVLengthsFlag,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_CENTRE_LENGTHS_SET(decomposition%decomposition,CalculateCentreLengthsFlag,err,error,*999)
 
-    EXITS("cmfe_Decomposition_CalculateFVLengthsSetObj")
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetObj")
     RETURN
-999 ERRORSEXITS("cmfe_Decomposition_CalculateFVLengthsSetObj",err,error)
+999 ERRORSEXITS("cmfe_Decomposition_CalculateCentreLengthsSetObj",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_Decomposition_CalculateFVLengthsSetObj
+  END SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetObj
 
   !
   !================================================================================================================================

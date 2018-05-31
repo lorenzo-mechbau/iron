@@ -1157,7 +1157,7 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     LOGICAL :: CALCULATE_FACES !<Boolean flag to determine whether faces should be calculated
     LOGICAL :: CALCULATE_LINES !<Boolean flag to determine whether lines should be calculated
     LOGICAL :: CALCULATE_CENTROIDS !<Boolean flag to determine whether CENTROIDS should be calculated
-    LOGICAL :: CALCULATE_FV_LENGTHS !<Boolean flag to determine whether line vector from centroid to intersect point of face and line connecting centroids should be calculated
+    LOGICAL :: CALCULATE_CENTRE_LENGTHS !<Boolean flag to determine whether line vector from centroid to intersect point of face and line connecting centroids should be calculated
   END TYPE DECOMPOSITION_TYPE
 
   !>A buffer type to allow for an array of pointers to a DECOMPOSITION_TYPE.
@@ -1245,7 +1245,7 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     REAL(DP), ALLOCATABLE :: VOLUMES(:) !<VOLUMES(ne). The volume of the ne'th element in the field decomposition.
     REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension .
     REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction in the field decomposition.
-    REAL(DP), ALLOCATABLE :: FV_LENGTH(:,:) ! FV_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
+    REAL(DP), ALLOCATABLE :: CENTRE_TO_CENTRE_LENGTH(:,:) ! CENTRE_TO_CENTRE_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
     REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, in the field decomposition, ncoord are the x, y z components.
     INTEGER(INTG) :: NUMBER_OF_FIELDS_USING !<The number of fields that use these geometric parameters for their scaling.
     TYPE(FIELD_PTR_TYPE), POINTER :: FIELDS_USING(:) !< FIELDS_USINGS(field_idx). A pointer to the field_idx'th field that uses these geometric parameters for its scaling.
@@ -1272,12 +1272,14 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     INTEGER(INTG), ALLOCATABLE :: DOF_TYPE(:,:) !<DOF_TYPE(i=1..2,ny). The parameter type of the ny'th dof. When i=1 the DOF_TYPE is the type of the dof, i.e., 1=constant field dof, 2=element based field dof, 3=node based field dof, 4=point based field dof. When i=2 the DOF_TYPE gives the nyy'th number of the different field types and is used to index the XXX_DOF2PARAM_MAP arrays.
     INTEGER(INTG) :: NUMBER_OF_CONSTANT_DOFS !<The number of constant degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_DOFS !<The number of element based degrees-of-freedom in the field dofs.
+    INTEGER(INTG) :: NUMBER_OF_FACE_DOFS !<The number of face based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_NODE_DOFS !<The number of node based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_GRID_POINT_DOFS !<The number of grid point based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_GAUSS_POINT_DOFS !<The number of Gauss point based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_DATA_POINT_DOFS !<The number of data point based degrees-of-freedom in the field dofs.
     INTEGER(INTG), ALLOCATABLE :: CONSTANT_DOF2PARAM_MAP(:) !<CONSTANT_DOF2PARAM_MAP(nyy). The mapping from constant field dofs to field parameters for the nyy'th constant field dof. The DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOF2PARAM_MAP(:,:) !<ELEMENT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from element based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
+    INTEGER(INTG), ALLOCATABLE :: FACE_DOF2PARAM_MAP(:,:) !<FACE_DOF2PARAM_MAP(i=1..2,nyy). The mapping from faced based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: NODE_DOF2PARAM_MAP(:,:) !<NODE_DOF2PARAM_MAP(i=1..4,nyy). The mapping from node based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the version number (version_idx) of the field parameter. When i=2 the DOF2PARAM_MAP gives the derivative number (derivative_idx) of the field parameter. When i=3 the DOF2PARAM_MAP gives the node number (node_idx) of the field parameter. When i=4 the DOF2PARAM_MAP gives the component number (component_idx) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: GRID_POINT_DOF2PARAM_MAP(:,:) !<GRID_POINT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from grid point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the grid point number (nq) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: GAUSS_POINT_DOF2PARAM_MAP(:,:) !<GAUSS_POINT_DOF2PARAM_MAP(i=1..3,nyy). The mapping from Gauss point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the Gauss point number (ng) of the field parameter. When i=2 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=3 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
@@ -1308,6 +1310,24 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element based parameter for this field variable component. \todo Allow for multiple element parameters per element.
   END TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
 
+  !>A type to hold the mapping from a field face derivative's versions to field dof numbers for a particular field variable component.
+  TYPE FIELD_FACE_PARAM_TO_DOF_MAP_DERIVATIVE_TYPE
+    INTEGER(INTG) :: NUMBER_OF_VERSIONS !<The number of versions for the face derivative parameters of this field variable component.
+    INTEGER(INTG), ALLOCATABLE :: VERSIONS(:) !<FACE_PARAM2DOF_MAP%FACES%(face_idx)%DERIVATIVES(derivative_idx)%VERSIONS(version_idx). The field variable dof number of the face_idx'th face's derivative_idx'th derivative's version_idx'th version.
+  END TYPE FIELD_FACE_PARAM_TO_DOF_MAP_DERIVATIVE_TYPE
+
+  !>A type to hold the mapping from a field face's derivative to field dof numbers for a particular field variable component.
+  TYPE FIELD_FACE_PARAM_TO_DOF_MAP_FACE_TYPE
+    INTEGER(INTG) :: NUMBER_OF_DERIVATIVES !<The number of derivatives for the face parameter of this field variable component.
+    TYPE(FIELD_FACE_PARAM_TO_DOF_MAP_DERIVATIVE_TYPE), ALLOCATABLE :: DERIVATIVES(:) ! The mapping from field face derivative parameter to a dof
+  END TYPE FIELD_FACE_PARAM_TO_DOF_MAP_FACE_TYPE
+
+  !>A type to hold the mapping from field faces to field dof numbers for a particular field variable component.
+  TYPE FIELD_FACE_PARAM_TO_DOF_MAP_TYPE
+    INTEGER(INTG) :: NUMBER_OF_FACE_PARAMETERS !<The number of face based field parameters for this field variable component.
+    TYPE(FIELD_FACE_PARAM_TO_DOF_MAP_FACE_TYPE), ALLOCATABLE :: FACES(:)  ! The mapping from field face parameter to a dof
+  END TYPE FIELD_FACE_PARAM_TO_DOF_MAP_TYPE
+
   !>A type to hold the mapping from field grid points to field dof numbers for a particular field variable component.
   TYPE FIELD_GRID_POINT_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_GRID_POINT_PARAMETERS !<The number of grid point based field parameters for this field variable component.
@@ -1331,6 +1351,7 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     INTEGER(INTG) :: NUMBER_OF_CONSTANT_PARAMETERS !<The number of constant field parameters for this field variable component. Note: this is currently always 1 but is included for completeness and to allow for multiple constants per field variable component in the future.
     INTEGER(INTG) :: CONSTANT_PARAM2DOF_MAP !<The field variable dof number of the constant parameter for this field variable component.
     TYPE(FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE) :: ELEMENT_PARAM2DOF_MAP !> A type to hold the mapping from field element parameters to field dof numbers
+    TYPE(FIELD_FACE_PARAM_TO_DOF_MAP_TYPE) :: FACE_PARAM2DOF_MAP !> A type to hold the mapping from field face parameters to field dof numbers
     TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_TYPE) :: NODE_PARAM2DOF_MAP !> A type to hold the mapping from field node parameters to field dof numbers
     TYPE(FIELD_GRID_POINT_PARAM_TO_DOF_MAP_TYPE) :: GRID_POINT_PARAM2DOF_MAP !> A type to hold the mapping from grid point element parameters to field dof numbers
     TYPE(FIELD_GAUSS_POINT_PARAM_TO_DOF_MAP_TYPE) :: GAUSS_POINT_PARAM2DOF_MAP !> A type to hold the mapping from field gauss point parameters to field dof numbers
