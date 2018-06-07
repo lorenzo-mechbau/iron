@@ -4558,32 +4558,34 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: myComputationalNodeNumber,numberComputationalNodes,componentIdx,numberBoundaryAndGhostFaces, &
+    INTEGER(INTG) :: myComputationalNodeNumber,numberComputationalNodes,componentIdx,numberBoundaryAndBoundaryPlaneFaces, &
       & faceGlobalNo, faceCount, elementGlobalNo, elementLocalNo, startNic, xicIdx, elementIdx, xicIdx2, &
-      & adjacentElementIdx, adjacentElementGlobalNo, boundaryAndGhostFaceIdx, adjacentElementLocalNo, I, J, &
-      & arrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
-      & numberNonBoundaryPlaneAndLocalFaces(2), numberLocalFaces, numberAdjacentDomains, MPI_IERROR, numberSharedFaces, sharedFaceIdx, &
-      & numberFacesWithThatSetOfDomains, sharedFaceIdx2, boundaryAndGhostFaceIdx2, domainToAssignFacesToIdx, &
+      & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementGlobalNo2, adjacentElementLocalNo, I, J, &
+      & arrayIndex, otherArrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
+      & numberNonBoundaryPlaneAndLocalFaces(2), numberLocalFaces, numberAdjacentDomains, MPI_IERROR, numberSharedFaces,  &
+      & numberFacesWithThatSetOfDomains, sharedFaceIdx2, boundaryAndBoundaryPlaneFaceIdx2, domainToAssignFacesToIdx, sharedFaceIdx,&
       & domainToAssignFacesTo, adjacentDomainIdx2, numberLocalFacesOnRank, numberNonBoundaryFacesOnRank, &
       & numberSharedFacesOnRank, numberInCurrentSetToClaim, numberGhostFaces, ghostFaceIdx, ghostFaceGlobalNo, ghostDomain, &
       & domainIdx, ghostElementIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfFacesToReceive, internalFacesIdx, &
       & boundaryFacesIdx, localFaceNo, domainListInternalIdx, domainListBoundaryIdx, internalFaceGlobalNo, boundaryFaceGlobalNo, &
-      & domainListGhostIdx, faceIdx, faceLocalNo, derivativeIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3
+      & domainListGhostIdx, faceIdx, faceLocalNo, derivativeIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, &
+      & otherElementLocalNo, otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, &
+      & extraAdjacentDomain, numberExtraAdjacentDomains
     !
-    INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndGhostFaces(:), sendRequestHandle(:), &
-      & numberNonBoundaryPlaneAndLocalFacesOnRank(:,:), receiveRequestHandle(:), boundaryAndGhostFacesDomain(:), &
+    INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndBoundaryPlaneFaces(:), sendRequestHandle(:), &
+      & numberNonBoundaryPlaneAndLocalFacesOnRank(:,:), receiveRequestHandle(:), boundaryAndBoundaryPlaneFacesDomain(:), &
       & numberFacesInDomain(:),adjacentDomains(:), localAndAdjacentDomains(:), ghostFaces(:), boundaryFaces(:), &
       & sendRequestHandle0(:), sendRequestHandle1(:), ghostFacesDomains(:,:), sendBuffer(:,:), numberToSendToDomain(:), &
-      & receiveBuffer(:), faceOnBoundaryPlane(:)
+      & receiveBuffer(:), faceOnBoundaryPlane(:), integerArray2D(:,:), boundaryAndGhostFaces(:), extraAdjacentDomains(:)
     TYPE(MESH_TYPE), POINTER :: mesh
     TYPE(MeshComponentTopologyType), POINTER :: topology
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: facesMapping
-    TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndGhostFacesList, adjacentDomainsList, localAndAdjacentDomainsList, &
-      & ghostFacesList, boundaryFacesList, ghostFacesDomainsList
+    TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndBoundaryPlaneFacesList, adjacentDomainsList, localAndAdjacentDomainsList, &
+      & ghostFacesList, boundaryFacesList, ghostFacesDomainsList,boundaryAndGhostFacesList, extraAdjacentDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
-       & localGhostReceiveIndices(:), newLocalGhostSendIndices, newLocalGhostReceiveIndices
+       & localGhostReceiveIndices(:), newLocalGhostSendIndices, newLocalGhostReceiveIndices, domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
     LOGICAL :: onOtherDomain,adacentDomainEntryFound
     TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: newAdjacentDomain
@@ -4684,21 +4686,27 @@ CONTAINS
     ALLOCATE(topology%faces%faces(faceCount))
 
 
+    !Iterate through the elements to allocate surrounding elements This should be done in an initialise subroutine
+    DO faceGlobalNo = 1,topology%faces%numberOfFaces
+
+      ALLOCATE(topology%faces%faces(faceGlobalNo)%surroundingElements(2))
+      topology%faces%faces(faceGlobalNo)%surroundingElements=-1
+      topology%faces%faces(faceGlobalNo)%globalNumber=faceGlobalNo
+      topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements=0
+
+    ENDDO
+
+
     !Iterate through the elements to assign them as neighbouring elements of the faces
     DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
       !Iterate through the faces of this element
       DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
         IF(xicIdx ==0) CYCLE
         faceGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
-        IF(ASSOCIATED(topology%faces%faces(faceGlobalNo)%surroundingElements)) THEN
-          !do nothing
-        ELSE
-          !FIXTHIS should be in the initialisation subroutine
-          ALLOCATE(topology%faces%faces(faceGlobalNo)%surroundingElements(2))
-          topology%faces%faces(faceGlobalNo)%surroundingElements=0
-          topology%faces%faces(faceGlobalNo)%globalNumber=faceGlobalNo
-        ENDIF
-        IF(topology%faces%faces(faceGlobalNo)%surroundingElements(1)==0) THEN
+
+
+
+        IF(topology%faces%faces(faceGlobalNo)%surroundingElements(1)==-1) THEN
           topology%faces%faces(faceGlobalNo)%surroundingElements(1)=elementGlobalNo
         ELSE
           topology%faces%faces(faceGlobalNo)%surroundingElements(2)=elementGlobalNo
@@ -4757,7 +4765,13 @@ CONTAINS
     ! sort list by global face number store number of internal faces in faceMapping
     CALL LIST_REMOVE_DUPLICATES(internalFacesList,err,error,*999)
     CALL LIST_DETACH_AND_DESTROY(internalFacesList,facesMapping%NUMBER_OF_INTERNAL,&
-    & internalFaces,err,error,*999)
+    & integerArray,err,error,*999)
+    ALLOCATE(internalFaces(facesMapping%NUMBER_OF_INTERNAL))
+    internalFaces=integerArray(1:facesMapping%NUMBER_OF_INTERNAL)
+
+    DEALLOCATE(integerArray)
+
+
 
     IF (DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
@@ -4769,7 +4783,14 @@ CONTAINS
     ENDIF
 
 
-    ! create list for boundary faces (global face numbers)
+    ! create list for boundary and boundary plane faces (global face numbers)
+    NULLIFY(boundaryAndBoundaryPlaneFacesList)
+    CALL LIST_CREATE_START(boundaryAndBoundaryPlaneFacesList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(boundaryAndBoundaryPlaneFacesList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(boundaryAndBoundaryPlaneFacesList,elementsMapping%NUMBER_OF_LOCAL,err,error,*999)
+    CALL LIST_CREATE_FINISH(boundaryAndBoundaryPlaneFacesList,err,error,*999)
+
+    ! create list for boundary and ghost faces (global face numbers)
     NULLIFY(boundaryAndGhostFacesList)
     CALL LIST_CREATE_START(boundaryAndGhostFacesList,err,error,*999)
     CALL LIST_DATA_TYPE_SET(boundaryAndGhostFacesList,LIST_INTG_TYPE,err,error,*999)
@@ -4777,7 +4798,7 @@ CONTAINS
     CALL LIST_CREATE_FINISH(boundaryAndGhostFacesList,err,error,*999)
 
     ! loop over boundary elements
-    DO elementIdx = elementsMapping%BOUNDARY_START,elementsMapping%BOUNDARY_FINISH
+    DO elementIdx = elementsMapping%BOUNDARY_START,elementsMapping%GHOST_FINISH
       elementLocalNo = elementsMapping%DOMAIN_LIST(elementIdx)
       elementGlobalNo = elementsMapping%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
 
@@ -4790,34 +4811,59 @@ CONTAINS
         ! if global face is not contained in internal faces list
         IF (.NOT. SORTED_ARRAY_CONTAINS_ELEMENT(internalFaces,faceGlobalNo,err,error)) THEN
 
-          ! Add face to boundary faces list (Important! This is called boundaryAndGhostFaces because it contains all the boundary &
+          ! Add face to boundary faces list (Important! This is called boundaryAndBoundaryPlaneFaces because it contains all the boundary &
           ! & boundary plane faces, even though some of the boundary plane faces will be ghost faces).
           CALL LIST_ITEM_ADD(boundaryAndGhostFacesList,faceGlobalNo,err,error,*999)
+          IF(elementIdx<=elementsMapping%BOUNDARY_FINISH) THEN
+            CALL LIST_ITEM_ADD(boundaryAndBoundaryPlaneFacesList,faceGlobalNo,err,error,*999)
+          ENDIF
 
         ENDIF
       ENDDO
     ENDDO
 
     ! Sort list by global face number and remove duplicates
+    CALL LIST_REMOVE_DUPLICATES(boundaryAndBoundaryPlaneFacesList,err,error,*999)
     CALL LIST_REMOVE_DUPLICATES(boundaryAndGhostFacesList,err,error,*999)
 
-    ! count number of faces that lie on boundary and are shared with other domains
+    ! count number of faces that lie on boundary and boundary plane and are shared with other domains
+    CALL LIST_DETACH_AND_DESTROY(boundaryAndBoundaryPlaneFacesList,numberBoundaryAndBoundaryPlaneFaces,integerArray,&
+      & err,error,*999)
+    ALLOCATE(boundaryAndBoundaryPlaneFaces(numberBoundaryAndBoundaryPlaneFaces))
+    boundaryAndBoundaryPlaneFaces = integerArray(1:numberBoundaryAndBoundaryPlaneFaces)
+
+    DEALLOCATE(integerArray)
+
+    ! count number of faces that are boundary or ghost and are shared with other domains
     CALL LIST_DETACH_AND_DESTROY(boundaryAndGhostFacesList,numberBoundaryAndGhostFaces,integerArray,&
       & err,error,*999)
+    ALLOCATE(boundaryAndGhostFaces(numberBoundaryAndGhostFaces))
     boundaryAndGhostFaces = integerArray(1:numberBoundaryAndGhostFaces)
 
     DEALLOCATE(integerArray)
 
-    !Allocate the array who's index will be 1 if that index of boundaryAndGhostFaces is on the boundary plane
-    ALLOCATE(faceOnBoundaryPlane(numberBoundaryAndGhostFaces))
-    faceOnBoundaryPlane=0
+    !Allocate the array who's index will be 1 if that index of boundaryAndBoundaryPlaneFaces is on the boundary plane
+    ALLOCATE(faceOnBoundaryPlane(numberBoundaryAndBoundaryPlaneFaces))
+    faceOnBoundaryPlane=-1
 
 
     ! allocate lists of foreign domains in which boundary faces are present
-    ALLOCATE(domainsOfFaceList(numberBoundaryAndGhostFaces),STAT=err)
+    ALLOCATE(domainsOfFaceList(numberBoundaryAndBoundaryPlaneFaces),STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate domain list.",err,error,*999)
 
-    DO I=1, numberBoundaryAndGhostFaces
+    ! allocate lists of foreign domains in which boundary faces are present
+    ALLOCATE(domainsOfBoundaryPlaneFaceList(numberBoundaryAndBoundaryPlaneFaces),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate domain list.",err,error,*999)
+
+    DO I=1, numberBoundaryAndBoundaryPlaneFaces
+      NULLIFY(domainsOfBoundaryPlaneFaceList(I)%PTR)
+      CALL LIST_CREATE_START(domainsOfBoundaryPlaneFaceList(I)%PTR,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(domainsOfBoundaryPlaneFaceList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(domainsOfBoundaryPlaneFaceList(I)%PTR,7,err,error,*999)
+      CALL LIST_CREATE_FINISH(domainsOfBoundaryPlaneFaceList(I)%PTR,err,error,*999)
+    ENDDO
+
+    DO I=1, numberBoundaryAndBoundaryPlaneFaces
       NULLIFY(domainsOfFaceList(I)%PTR)
       CALL LIST_CREATE_START(domainsOfFaceList(I)%PTR,err,error,*999)
       CALL LIST_DATA_TYPE_SET(domainsOfFaceList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
@@ -4828,53 +4874,95 @@ CONTAINS
 
     !Counter for number of faces on the boundary plane
     numberBoundaryPlaneFaces=0
-    ! fill domainsOfFaceList with all foreign domains for each boundary face
+    ! fill domainsOfBoundaryPlaneFaceList with all foreign domains for each boundary plane face
 
-    ! loop over boundary and ghost faces
-    DO boundaryAndGhostFaceIdx=1,numberBoundaryAndGhostFaces
-      faceGlobalNo=boundaryAndGhostFaces(boundaryAndGhostFaceIdx)
-
-      ! determine the other domains which have this face as boundary face
+    ! loop over boundary and boundary plane indices
+    DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
+      faceGlobalNo=boundaryAndBoundaryPlaneFaces(boundaryAndBoundaryPlaneFaceIdx)
 
       ! loop over adjacent elements of this face
       DO adjacentElementIdx=1,topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements
         adjacentElementGlobalNo=topology%faces%faces(faceGlobalNo)%surroundingElements(adjacentElementIdx)
 
-        ! determine local (ghost) number
-        ! if adjacent element is among the boundary elements, i.e is also on another domain
-        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(elementsMapping%LOCAL_TO_GLOBAL_MAP( &
-          & elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START: &
-          & elementsMapping%BOUNDARY_FINISH)),adjacentElementGlobalNo,arrayIndex, &
-          & err,error)) THEN
 
-          adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START + arrayIndex-1)
-
-          ! determine domain of adjacentElementLocalNo
-          DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
-
-              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
-
-              ! now it was found that faceGlobalNo is also on domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,domainNo,err,error,*999)
-            ENDIF
-          ENDDO  ! adjacentDomainIdx
-        ENDIF
-
-        !Determine if the face is on the boundary plane (If one of the faces adjacent elements is a ghost element then it is on the boundary plane)
+        ! if adjacent element is among the ghost elements, i.e is also on another domain
         IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(elementsMapping%LOCAL_TO_GLOBAL_MAP( &
           & elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START: &
           & elementsMapping%GHOST_FINISH)),adjacentElementGlobalNo,arrayIndex, &
           & err,error)) THEN
 
-          faceOnBoundaryPlane(boundaryAndGhostFaceIdx)=1
-          numberBoundaryPlaneFaces=numberBoundaryPlaneFaces+1
+          adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START + arrayIndex-1)
+          !otherElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START + otherArrayIndex-1)
+
+          ! determine domain of adjacentElementLocalNo
+          DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+              & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+
+              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+              ! now it was found that faceGlobalNo is also on domain domainNo, add to list
+              CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
+
+              faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx)=1
+              numberBoundaryPlaneFaces=numberBoundaryPlaneFaces+1
+            ENDIF
+          ENDDO  ! adjacentDomainIdx
         ENDIF
-
-
       ENDDO  ! adjacentElementIdx
-    ENDDO  ! boundaryAndGhostFaceIdx
+    ENDDO  ! boundaryAndBoundaryPlaneFaceIdx
+
+
+    ! loop over boundary and boundary plane indices and assign to each face the domains that have it as a ghost or boundary plane
+    DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
+      faceGlobalNo=boundaryAndBoundaryPlaneFaces(boundaryAndBoundaryPlaneFaceIdx)
+
+      ! loop over adjacent elements of this face
+      DO adjacentElementIdx=1,topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements
+        adjacentElementGlobalNo=topology%faces%faces(faceGlobalNo)%surroundingElements(adjacentElementIdx)
+
+        !adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START + arrayIndex-1)
+
+        !Iterate through elements surrounding the adjacent element
+        DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+          IF(xicIdx ==0) CYCLE
+          adjacentElementGlobalNo2=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx)% &
+            & ADJACENT_ELEMENTS(1)
+
+          ! if adjacent element is among the boundary or ghost elements, i.e is also on another domain
+          IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(elementsMapping%LOCAL_TO_GLOBAL_MAP( &
+            & elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START: &
+            & elementsMapping%GHOST_FINISH)),adjacentElementGlobalNo2,arrayIndex, &
+            & err,error)) THEN
+
+            adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START + arrayIndex-1)
+
+            ! determine domain of adjacentElementLocalNo2
+            !IMPORTANT FIXTHIS, this doesn't account for domains that may have faces as ghost but are not adjacent to the current rank
+            DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+
+              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+
+                ! now it was found that faceGlobalNo is also on domain domainNo, add to list
+                CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
+
+              ELSEIF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
+
+                ! now it was found that faceGlobalNo is also on domain domainNo, add to list
+                CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
+              ENDIF
+            ENDDO  ! adjacentDomainIdx
+
+          ENDIF
+        ENDDO
+      ENDDO  ! adjacentElementIdx
+    ENDDO  ! boundaryAndBoundaryPlaneFaceIdx
+
+    !!!!!!!!!!!!!!!FIXTHIS
 
 
     NULLIFY(adjacentDomainsList)
@@ -4882,20 +4970,34 @@ CONTAINS
     CALL LIST_DATA_TYPE_SET(adjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
     CALL LIST_CREATE_FINISH(adjacentDomainsList,err,error,*999)
 
+    NULLIFY(extraAdjacentDomainsList)
+    CALL LIST_CREATE_START(extraAdjacentDomainsList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(extraAdjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_CREATE_FINISH(extraAdjacentDomainsList,err,error,*999)
+
     ! remove duplicate entries for the domains for the faces
-    DO I=1, numberBoundaryAndGhostFaces
+    DO I=1, numberBoundaryAndBoundaryPlaneFaces
+      CALL LIST_REMOVE_DUPLICATES(domainsOfBoundaryPlaneFaceList(I)%PTR,err,error,*999)
       CALL LIST_REMOVE_DUPLICATES(domainsOfFaceList(I)%PTR,err,error,*999)
 
       ! add adjacent domains to adjacentDomainsList
+      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(I)%PTR,numberDomains,err,error,*999)
+      DO J=1,numberDomains
+        CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(I)%PTR,J,adjacentDomain,err,error,*999)
+        CALL LIST_ITEM_ADD(adjacentDomainsList,adjacentDomain,err,error,*999)
+      ENDDO
+
+      ! add adjacent domains to extraAdjacentDomainsList
       CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(I)%PTR,numberDomains,err,error,*999)
       DO J=1,numberDomains
-        CALL LIST_ITEM_GET(domainsOfFaceList(I)%PTR,J,adjacentDomain,err,error,*999)
-        CALL LIST_ITEM_ADD(adjacentDomainsList,adjacentDomain,err,error,*999)
+        CALL LIST_ITEM_GET(domainsOfFaceList(I)%PTR,J,extraAdjacentDomain,err,error,*999)
+        CALL LIST_ITEM_ADD(extraAdjacentDomainsList,extraAdjacentDomain,err,error,*999)
       ENDDO
     ENDDO
 
     ! determine distinct list of adjacent domains
     CALL LIST_REMOVE_DUPLICATES(adjacentDomainsList,err,error,*999)
+    CALL LIST_REMOVE_DUPLICATES(extraAdjacentDomainsList,err,error,*999)
 
     ! create sorted list that contains local domain and all adjacent domains
     NULLIFY(localAndAdjacentDomainsList)
@@ -4907,15 +5009,22 @@ CONTAINS
     CALL LIST_SORT(localAndAdjacentDomainsList,err,error,*999)
 
     CALL LIST_DETACH_AND_DESTROY(adjacentDomainsList,numberAdjacentDomains,integerArray,err,error,*999)
+    ALLOCATE(adjacentDomains(numberAdjacentDomains))
     adjacentDomains = integerArray(1:numberAdjacentDomains)
+    DEALLOCATE(integerArray)
+
+    CALL LIST_DETACH_AND_DESTROY(extraAdjacentDomainsList,numberExtraAdjacentDomains,integerArray,err,error,*999)
+    ALLOCATE(extraAdjacentDomains(numberExtraAdjacentDomains))
+    extraAdjacentDomains = integerArray(1:numberExtraAdjacentDomains)
     DEALLOCATE(integerArray)
 
     CALL LIST_DETACH_AND_DESTROY(localAndAdjacentDomainsList,numberLocalAndAdjacentDomains,integerArray,&
       & err,error,*999)
+    ALLOCATE(localAndAdjacentDomains(numberLocalAndAdjacentDomains))
     localAndAdjacentDomains = integerArray(1:numberLocalAndAdjacentDomains)
     DEALLOCATE(integerArray)
 
-    ! create list for each adjacent domain with shared faces
+    ! create list for each adjacent domain with shared faces at the boundary
     ALLOCATE(sharedFacesList(numberAdjacentDomains),STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate shared faces list.",err,error,*999)
 
@@ -4927,15 +5036,15 @@ CONTAINS
     ENDDO
 
     ! fill sharedFacesList
-    DO I=1,numberBoundaryAndGhostFaces
+    DO I=1,numberBoundaryAndBoundaryPlaneFaces
 
       ! loop over adjacent domains of face I
-      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(I)%PTR,numberDomains,err,error,*999)
+      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(I)%PTR,numberDomains,err,error,*999)
       DO J=1,numberDomains
-        CALL LIST_ITEM_GET(domainsOfFaceList(I)%PTR,J,adjacentDomain,err,error,*999)
+        CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(I)%PTR,J,adjacentDomain,err,error,*999)
 
         ! get index of sharedFacesList
-        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(adjacentDomains(1:numberAdjacentDomains),&
+        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(adjacentDomains,&
           & adjacentDomain,adjacentDomainIdx,err,error)) THEN
 
           ! add face to sharedFaceslist of domain adjacentDomainIdx
@@ -4945,15 +5054,15 @@ CONTAINS
     ENDDO
 
     ! initialize facesMapping%ADJACENT_DOMAINS
-    facesMapping%NUMBER_OF_ADJACENT_DOMAINS = numberAdjacentDomains
+    facesMapping%NUMBER_OF_ADJACENT_DOMAINS = numberExtraAdjacentDomains
 
     ! allocate ADJACENT_DOMAINS
     ALLOCATE(facesMapping%ADJACENT_DOMAINS(numberAdjacentDomains), STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate adjacent domains array with size "//&
       & TRIM(NUMBER_TO_VSTRING(numberAdjacentDomains,"*",err,error))//".",err,error,*999)
 
-    DO adjacentDomainIdx=1,numberAdjacentDomains
-      adjacentDomain = adjacentDomains(adjacentDomainIdx)
+    DO adjacentDomainIdx=1,numberExtraAdjacentDomains
+      adjacentDomain = extraAdjacentDomains(adjacentDomainIdx)
       facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER = adjacentDomain
       facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = 0
       facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = 0
@@ -4966,9 +5075,9 @@ CONTAINS
     ! count number of faces where boundary plane faces are counted as the resp. fraction such that the sum is 1 for all processes
     numberFaces = REAL(facesMapping%NUMBER_OF_INTERNAL,DP)
 
-    DO I=1,numberBoundaryAndGhostFaces
+    DO I=1,numberBoundaryAndBoundaryPlaneFaces
       IF(faceOnBoundaryPlane(I)==1) THEN
-        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(I)%PTR,numberDomains,err,error,*999)
+        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(I)%PTR,numberDomains,err,error,*999)
         numberFaces = numberFaces + 1.0_DP/(REAL(numberDomains,DP)+1.0_DP)
       ELSE
         numberFaces = numberFaces + 1.0_DP
@@ -4987,7 +5096,7 @@ CONTAINS
     optimalNumberFacesPerDomain = REAL(facesMapping%NUMBER_OF_GLOBAL,DP) / facesMapping%NUMBER_OF_DOMAINS
 
     ! exchange number of local faces among adjacent ranks
-    numberLocalFaces = facesMapping%NUMBER_OF_INTERNAL + numberBoundaryAndGhostFaces
+    numberLocalFaces = facesMapping%NUMBER_OF_INTERNAL + numberBoundaryAndBoundaryPlaneFaces
     !First entry is the number of local faces, not including boundary plane or ghost faces
     !Second entry is the number of local faces, including the boundary plane but not ghosts
     numberNonBoundaryPlaneAndLocalFaces(1) = numberLocalFaces-numberBoundaryPlaneFaces
@@ -5032,21 +5141,33 @@ CONTAINS
     CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
 
     ! assign boundary faces to domains
-    ! allocate boundaryAndGhostFacesDomain (This should be boundaryAndBoundaryPlaneFaces).
-    ALLOCATE(boundaryAndGhostFacesDomain(numberBoundaryAndGhostFaces), STAT=err)
-    IF(err/=0) CALL FlagError("Could not allocate boundaryAndGhostFacesDomain array with size "//&
-      & TRIM(NUMBER_TO_VSTRING(numberBoundaryAndGhostFaces,"*",err,error))//".",err,error,*999)
-    boundaryAndGhostFacesDomain = -1
+    ! allocate boundaryAndBoundaryPlaneFacesDomain
+    ALLOCATE(boundaryAndBoundaryPlaneFacesDomain(numberBoundaryAndBoundaryPlaneFaces), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate boundaryAndBoundaryPlaneFacesDomain array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberBoundaryAndBoundaryPlaneFaces,"*",err,error))//".",err,error,*999)
+    boundaryAndBoundaryPlaneFacesDomain = -1
 
     ALLOCATE(numberFacesInDomain(numberAdjacentDomains+1), STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate numberFacesInDomain array with size "//&
       & TRIM(NUMBER_TO_VSTRING(numberAdjacentDomains+1,"*",err,error))//".",err,error,*999)
     numberFacesInDomain = 0
 
+
+
     ! add local domain to domain list of each face
-    DO boundaryAndGhostFaceIdx=1,numberBoundaryAndGhostFaces
-      CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,myComputationalNodeNumber,err,error,*999)
-      CALL LIST_SORT(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,err,error,*999)
+    DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
+      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,myComputationalNodeNumber,err,error,*999)
+      CALL LIST_SORT(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,err,error,*999)
+      !Assign local domain to the boundary faces that are not on the boundary plane
+      IF(faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx) == -1) THEN
+        boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx) = myComputationalNodeNumber
+      ENDIF
+    ENDDO
+
+    ! add local domain to domain list of each face
+    DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
+      CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,myComputationalNodeNumber,err,error,*999)
+      CALL LIST_SORT(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,err,error,*999)
     ENDDO
 
 
@@ -5058,33 +5179,26 @@ CONTAINS
       ! loop over adjacent faces on that adjacent domain
       CALL LIST_NUMBER_OF_ITEMS_GET(sharedFacesList(adjacentDomainIdx)%PTR,numberSharedFaces,err,error,*999)
       DO sharedFaceIdx = 1,numberSharedFaces
-        CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx,boundaryAndGhostFaceIdx,&
+        CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx,boundaryAndBoundaryPlaneFaceIdx,&
           & err,error,*999)
 
-        !We only care about face if it is on the boundary plane (These are the only ones that have to be assigned to one domain or the other)
-        IF(faceOnBoundaryPlane(boundaryAndGhostFaceIdx) == 0) THEN
-          boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx) = myComputationalNodeNumber
-          CYCLE
-        ENDIF
+
 
         ! if face was not yet assigned to a domain (This array was initialised earlier in the subroutine to be -1)
-        IF (boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx) == -1) THEN
-          ! note: this face is shared by the domains in domainsOfFaceList(boundaryAndGhostFaceIdx) (includes local domain)
+        IF (boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx) == -1) THEN
+          ! note: this face is shared by the domains in domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx) (includes local domain)
 
           numberFacesWithThatSetOfDomains = 0
 
           ! loop over all further faces to find other faces that are shared by the same domains, count total number of them
           DO sharedFaceIdx2 = sharedFaceIdx,numberSharedFaces
-            CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx2,boundaryAndGhostFaceIdx2,&
+            CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx2,boundaryAndBoundaryPlaneFaceIdx2,&
               & err,error,*999)
 
-            !Cycle if the face of boundaryAndGhostFaceIdx2 is not on the boundary plane
-            IF(faceOnBoundaryPlane(boundaryAndGhostFaceIdx2) == 0) CYCLE
+            IF (boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx2) == -1) THEN
 
-            IF (boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx2) == -1) THEN
-
-              IF (LIST_EQUAL(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR, &
-                & domainsOfFaceList(boundaryAndGhostFaceIdx2)%PTR,err,error)) THEN
+              IF (LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+                & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
 
                 numberFacesWithThatSetOfDomains = numberFacesWithThatSetOfDomains+1
               ENDIF
@@ -5094,21 +5208,17 @@ CONTAINS
           ! get first of the shared domains
           numberFacesInDomain = 0
           domainToAssignFacesToIdx = 1
-          CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,domainToAssignFacesToIdx, &
+          CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainToAssignFacesToIdx, &
             & domainToAssignFacesTo,err,error,*999)
-          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,numberDomains,err,error,*999)
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,numberDomains,err,error,*999)
 
           ! again loop over all further faces with the same domains, assign them to domains
           DO sharedFaceIdx2 = sharedFaceIdx,numberSharedFaces
-            CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx2,boundaryAndGhostFaceIdx2,&
+            CALL LIST_ITEM_GET(sharedFacesList(adjacentDomainIdx)%PTR,sharedFaceIdx2,boundaryAndBoundaryPlaneFaceIdx2,&
                 & err,error,*999)
 
-            !Cycle if the face of boundaryAndGhostFaceIdx2 is not on the boundary plane
-            IF(faceOnBoundaryPlane(boundaryAndGhostFaceIdx2) == 0) CYCLE
-            IF(boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx2) /= -1) CYCLE
-
-            IF(LIST_EQUAL(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR, &
-              & domainsOfFaceList(boundaryAndGhostFaceIdx2)%PTR,err,error)) THEN
+            IF(LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+              & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
 
               DO
 
@@ -5145,13 +5255,13 @@ CONTAINS
 
                   ! now that domain has got enough faces, get the next domain
                   domainToAssignFacesToIdx = domainToAssignFacesToIdx + 1
-                  CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndGhostFaceIdx2)%PTR,domainToAssignFacesToIdx, &
+                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,domainToAssignFacesToIdx, &
                     & domainToAssignFacesTo,err,error,*999)
                 ENDIF
               ENDDO
 
               ! assign face sharedFaceIdx2 to domain domainToAssignFacesTo
-              boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx2) = domainToAssignFacesTo
+              boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx2) = domainToAssignFacesTo
 
               ! increment count of faces that this domain has claimed in the current set
               numberFacesInDomain(domainToAssignFacesToIdx) = numberFacesInDomain(domainToAssignFacesToIdx) + 1
@@ -5165,7 +5275,13 @@ CONTAINS
 
     ! fill local numbering arrays
 
-    ! create list to hold ghost faces (BoundaryAndGhostfaceIdx)
+    !!Here is where I need to create a domainsOfFaceList!!!!!!!!____________________________________________________________
+    !!!!!!!
+    !!!!!
+    !!!!
+
+
+    ! create list to hold ghost faces
     NULLIFY(ghostFacesList)
     CALL LIST_CREATE_START(ghostFacesList,err,error,*999)
     CALL LIST_DATA_DIMENSION_SET(ghostFacesList,1,err,error,*999)
@@ -5173,7 +5289,7 @@ CONTAINS
     CALL LIST_INITIAL_SIZE_SET(ghostFacesList,CEILING(elementsMapping%NUMBER_OF_LOCAL*0.2),err,error,*999)
     CALL LIST_CREATE_FINISH(ghostFacesList,err,error,*999)
 
-    ! create list to hold boundary faces (boundaryAndGhostFaceIdx)
+    ! create list to hold boundary faces
     NULLIFY(boundaryFacesList)
     CALL LIST_CREATE_START(boundaryFacesList,err,error,*999)
     CALL LIST_DATA_DIMENSION_SET(boundaryFacesList,1,err,error,*999)
@@ -5181,21 +5297,37 @@ CONTAINS
     CALL LIST_INITIAL_SIZE_SET(boundaryFacesList,CEILING(elementsMapping%NUMBER_OF_LOCAL*0.2),err,error,*999)
     CALL LIST_CREATE_FINISH(boundaryFacesList,err,error,*999)
 
-    ! count number of boundary and ghost faces
-    DO boundaryAndGhostFaceIdx=1,numberBoundaryAndGhostFaces
-      domainNo = boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx)
+    ! count number of boundary and ghost faces from boundary and boundary plane faces
+    DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
+      domainNo = boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx)
 
       ! if face is a boundary faces and stays on own domain
       IF (domainNo == myComputationalNodeNumber) THEN
-        CALL LIST_ITEM_ADD(boundaryFacesList,boundaryAndGhostFaceIdx,err,error,*999)
+        CALL LIST_ITEM_ADD(boundaryFacesList,boundaryAndBoundaryPlaneFaceIdx,err,error,*999)
       ELSE
-        CALL LIST_ITEM_ADD(ghostFacesList,boundaryAndGhostFaceIdx,err,error,*999)
+        CALL LIST_ITEM_ADD(ghostFacesList,boundaryAndBoundaryPlaneFaceIdx,err,error,*999)
       ENDIF
     ENDDO
 
+    ! ! count number of ghost faces from ExternalGhostFaces
+    ! DO externalGhostFaceIdx=1,numberExternalGhostFaces
+    !   domainNo = externalGhostFacesDomain(externalGhostFaceIdx)
+    !
+    !   CALL LIST_ITEM_ADD(ghostFacesList,boundaryAndBoundaryPlaneFaceIdx,err,error,*999)
+    !
+    ! ENDDO
+
     ! extract arrays of local boundary and ghost faces
-    CALL LIST_DETACH_AND_DESTROY(boundaryFacesList, facesMapping%NUMBER_OF_BOUNDARY, boundaryFaces, err,error,*999)
-    CALL LIST_DETACH_AND_DESTROY(ghostFacesList, numberGhostFaces, ghostFaces, err,error,*999)
+    CALL LIST_DETACH_AND_DESTROY(boundaryFacesList, facesMapping%NUMBER_OF_BOUNDARY, integerArray, err,error,*999)
+    ALLOCATE(boundaryFaces(facesMapping%NUMBER_OF_BOUNDARY))
+    boundaryFaces=integerArray(1:facesMapping%NUMBER_OF_BOUNDARY)
+    DEALLOCATE(integerArray)
+
+    CALL LIST_DETACH_AND_DESTROY(ghostFacesList, numberGhostFaces, integerArray, err,error,*999)
+    ALLOCATE(ghostFaces(numberGhostFaces))
+    ghostFaces=integerArray(1:numberGhostFaces)
+    DEALLOCATE(integerArray)
+
 
     ! create list of ghost faces with their home domain
     NULLIFY(ghostFacesDomainsList)
@@ -5231,11 +5363,11 @@ CONTAINS
     ! add own faces that are ghost faces on other domains to send buffer for the domains that they will be sent to.
 
     ! loop over boundary (and boundary plane) faces
-    DO boundaryAndGhostFaceIdx=1, numberBoundaryAndGhostFaces
-      faceGlobalNo=boundaryAndGhostFaces(boundaryAndGhostFaceIdx)
+    DO boundaryAndBoundaryPlaneFaceIdx=1, numberBoundaryAndBoundaryPlaneFaces
+      faceGlobalNo=boundaryAndBoundaryPlaneFaces(boundaryAndBoundaryPlaneFaceIdx)
 
       ! get the domain that owns the face
-      domainNo = boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx)
+      domainNo = boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx)
 
       ! only add to send buffer if it is owned by own domain
       IF (domainNo == myComputationalNodeNumber) THEN
@@ -5246,10 +5378,10 @@ CONTAINS
           domainNo2 = elementsMapping%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
 
           !If domainNo2 has faceGlobalNo as a ghost face we assign it to sendbufferList of domainNo2 which has index domainIdx
-          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,numberDomains, &
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,numberDomains, &
             & err,error,*999)
           DO I=1,numberDomains
-            CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,I, &
+            CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,I, &
               & domainNo3,err,error,*999)
 
             IF (domainNo2 == domainNo3) THEN
@@ -5340,7 +5472,13 @@ CONTAINS
     !CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
 
     CALL LIST_SORT(ghostFacesDomainsList,err,error,*999)
-    CALL LIST_DETACH_AND_DESTROY(ghostFacesDomainsList,facesMapping%NUMBER_OF_GHOST,ghostFacesDomains,err,error,*999)
+    CALL LIST_DETACH_AND_DESTROY(ghostFacesDomainsList,facesMapping%NUMBER_OF_GHOST,integerArray2D,err,error,*999)
+    ALLOCATE(ghostFacesDomains(2,facesMapping%NUMBER_OF_GHOST))
+    ghostFacesDomains(1,1:facesMapping%NUMBER_OF_GHOST)=integerArray2D(1,1:facesMapping%NUMBER_OF_GHOST)
+    ghostFacesDomains(2,1:facesMapping%NUMBER_OF_GHOST)=integerArray2D(2,1:facesMapping%NUMBER_OF_GHOST)
+
+    DEALLOCATE(integerArray2D)
+
 
     ! store number of local and total number of local faces
     facesMapping%NUMBER_OF_LOCAL = facesMapping%NUMBER_OF_INTERNAL + facesMapping%NUMBER_OF_BOUNDARY
@@ -5379,7 +5517,7 @@ CONTAINS
       CALL LIST_CREATE_START(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
       CALL LIST_DATA_DIMENSION_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
       CALL LIST_DATA_TYPE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
-      CALL LIST_INITIAL_SIZE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,numberBoundaryAndGhostFaces,&
+      CALL LIST_INITIAL_SIZE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,numberBoundaryAndBoundaryPlaneFaces,&
         & err,error,*999)
       CALL LIST_CREATE_FINISH(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
 
@@ -5388,7 +5526,7 @@ CONTAINS
       CALL LIST_CREATE_START(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
       CALL LIST_DATA_DIMENSION_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
       CALL LIST_DATA_TYPE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
-      CALL LIST_INITIAL_SIZE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,numberBoundaryAndGhostFaces,&
+      CALL LIST_INITIAL_SIZE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,numberBoundaryAndBoundaryPlaneFaces,&
         & err,error,*999)
       CALL LIST_CREATE_FINISH(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
     ENDDO
@@ -5406,8 +5544,8 @@ CONTAINS
 
       ! get next internal or boundary face, ascending with global face number, if there are no more internal or boundary faces, set to -1
       IF (boundaryFacesIdx <= facesMapping%NUMBER_OF_BOUNDARY) THEN
-        boundaryAndGhostFaceIdx = boundaryFaces(boundaryFacesIdx)
-        boundaryFaceGlobalNo = boundaryAndGhostFaces(boundaryAndGhostFaceIdx)
+        boundaryAndBoundaryPlaneFaceIdx = boundaryFaces(boundaryFacesIdx)
+        boundaryFaceGlobalNo = boundaryAndBoundaryPlaneFaces(boundaryAndBoundaryPlaneFaceIdx)
       ELSE
         boundaryFaceGlobalNo = -1
       ENDIF
@@ -5437,10 +5575,10 @@ CONTAINS
         ! update LOCAL_GHOST_SEND_INDICES
         adjacentDomainIdx = 1
         ! loop over the domains where this face is present
-        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR, numberDomains, err,error,*999)
+        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, numberDomains, err,error,*999)
         DO I=1,numberDomains
           ! get domain no
-          CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndGhostFaceIdx)%PTR,I,domainNo,err,error,*999)
+          CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,I,domainNo,err,error,*999)
           IF (domainNo /= myComputationalNodeNumber) THEN
 
             ! go to entry in ADJACENT_DOMAINS array for domainNo, at index adjacentDomainIdx
@@ -5457,7 +5595,7 @@ CONTAINS
           ENDIF
         ENDDO
 
-        domainNo = boundaryAndGhostFacesDomain(boundaryAndGhostFaceIdx)
+        domainNo = boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx)
 
       ENDIF
       localFaceNo = localFaceNo + 1
@@ -5621,13 +5759,13 @@ CONTAINS
 
 
     ! deallocate arrays
-    DEALLOCATE(boundaryAndGhostFaces)
+    DEALLOCATE(boundaryAndBoundaryPlaneFaces)
     DEALLOCATE(adjacentDomains)
     DEALLOCATE(sendRequestHandle)
     DEALLOCATE(receiveRequestHandle)
     DEALLOCATE(numberNonBoundaryPlaneAndLocalFacesOnRank)
     DEALLOCATE(localAndAdjacentDomains)
-    DEALLOCATE(boundaryAndGhostFacesDomain)
+    DEALLOCATE(boundaryAndBoundaryPlaneFacesDomain)
     DEALLOCATE(numberFacesInDomain)
     DEALLOCATE(ghostFaces)
     DEALLOCATE(internalFaces)
@@ -5639,6 +5777,9 @@ CONTAINS
     DEALLOCATE(numberToSendToDomain)
     DEALLOCATE(domainsOfFaceList)
     DEALLOCATE(faceOnBoundaryPlane)
+    DEALLOCATE(sharedFacesList)
+    DEALLOCATE(newLocalGhostSendIndices)
+    DEALLOCATE(newLocalGhostReceiveIndices)
 
     EXITS("DomainMappings_FacesCalculate")
     RETURN
@@ -5647,7 +5788,27 @@ CONTAINS
   !FIXTHIS Not sure if i need to deallocate facesMapping%ADJACENT_DOMAINS here
    !IF(ALLOCATED(facesMapping%ADJACENT_DOMAINS)) DEALLOCATE(facesMapping%ADJACENT_DOMAINS)
   998 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalFacesFinalise(domain,dummyErr,dummyError,*999)
-
+      IF(ALLOCATED(boundaryAndBoundaryPlaneFaces)) DEALLOCATE(boundaryAndBoundaryPlaneFaces)
+      IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
+      IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
+      IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
+      IF(ALLOCATED(numberNonBoundaryPlaneAndLocalFacesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalFacesOnRank)
+      IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
+      IF(ALLOCATED(boundaryAndBoundaryPlaneFacesDomain)) DEALLOCATE(boundaryAndBoundaryPlaneFacesDomain)
+      IF(ALLOCATED(numberFacesInDomain)) DEALLOCATE(numberFacesInDomain)
+      IF(ALLOCATED(ghostFaces)) DEALLOCATE(ghostFaces)
+      IF(ALLOCATED(internalFaces)) DEALLOCATE(internalFaces)
+      IF(ALLOCATED(boundaryFaces)) DEALLOCATE(boundaryFaces)
+      IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+      IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+      IF(ALLOCATED(ghostFacesDomains)) DEALLOCATE(ghostFacesDomains)
+      IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
+      IF(ALLOCATED(numberToSendToDomain)) DEALLOCATE(numberToSendToDomain)
+      IF(ALLOCATED(domainsOfFaceList)) DEALLOCATE(domainsOfFaceList)
+      IF(ALLOCATED(faceOnBoundaryPlane)) DEALLOCATE(faceOnBoundaryPlane)
+      IF(ALLOCATED(sharedFacesList)) DEALLOCATE(sharedFacesList)
+      IF(ALLOCATED(newLocalGhostSendIndices)) DEALLOCATE(newLocalGhostSendIndices)
+      IF(ALLOCATED(newLocalGhostReceiveIndices)) DEALLOCATE(newLocalGhostReceiveIndices)
   999 ERRORSEXITS("DomainMappings_FacesCalculate",err,error)
     RETURN 1
   END SUBROUTINE DomainMappings_FacesCalculate
