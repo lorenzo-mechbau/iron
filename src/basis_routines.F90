@@ -50,6 +50,7 @@ MODULE BasisRoutines
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE KINDS
+  !USE PRINT_TYPES_ROUTINES
   USE STRINGS
   USE TYPES
 
@@ -106,7 +107,7 @@ MODULE BasisRoutines
   INTEGER(INTG), PARAMETER :: BASIS_FOURIER_INTERPOLATION=7 !<Fourier interpolation \see BASIS_ROUTINES_InterpolationTypes,BASIS_ROUTINES
   INTEGER(INTG), PARAMETER :: BASIS_RADIAL_INTERPOLATION=8 !<Radial interpolation \see BASIS_ROUTINES_InterpolationTypes,BASIS_ROUTINES
   !>@}
-  
+
   !> \addtogroup BASIS_ROUTINES_InterpolationOrder BASIS_ROUTINES::InterpolationOrder
   !> \brief Interpolation order for a Xi direction
   !> \see BASIS_ROUTINES

@@ -412,6 +412,7 @@ MODULE EquationsSetConstants
   INTEGER(INTG), PARAMETER :: EQUATIONS_SET_CAUCHY_STRESS_TENSOR=5 !<Cauchy stress tensor \see EquationsSetConstants_TensorTypes,EquationsSetConstants
   INTEGER(INTG), PARAMETER :: EQUATIONS_SET_FIRST_PK_STRESS_TENSOR=6 !<First Piola Kirchhoff stress tensor \see EquationsSetConstants_TensorEvaluateTypes,EquationsSetConstants
   INTEGER(INTG), PARAMETER :: EQUATIONS_SET_SECOND_PK_STRESS_TENSOR=7 !<Second Piola Kirchhoff stress tensor \see EquationsSetConstants_TensorEvaluateTypes,EquationsSetConstants
+
   !>@}
   INTEGER(INTG), PARAMETER :: EQUATIONS_SET_NUMBER_OF_TENSOR_TYPES=7
 

@@ -221,6 +221,7 @@ class LibrarySource(object):
         self.public_subroutines = list(filter(
                 lambda r:
                 not (r.name.startswith('cmfe_GeneratedMesh_SurfaceGet') or
+                r.name.startswith('cmfe_ReadMeshFiles') or
                 r.name.endswith('TypesCopy')),
                 self.public_subroutines))
 

@@ -77,6 +77,9 @@ MODULE OpenCMISS_Iron
   USE DistributedMatrixVector
   USE EquationsRoutines
   USE EquationsSetConstants
+
+  USE CUSTOM_PROFILING
+
   USE EQUATIONS_SET_ROUTINES
   USE EquationsSetAccessRoutines
   USE FIELD_ROUTINES
@@ -105,8 +108,13 @@ MODULE OpenCMISS_Iron
   USE ISO_VARYING_STRING
   USE Kinds
   USE MESH_ROUTINES
+
   USE MeshAccessRoutines
+
+  USE MPI
+
   USE NODE_ROUTINES
+  !USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
   USE PROBLEM_ROUTINES
   USE ProblemAccessRoutines
@@ -311,13 +319,11 @@ MODULE OpenCMISS_Iron
 
   !>Contains information about a solver.
   TYPE cmfe_SolverType
-    PRIVATE
     TYPE(SOLVER_TYPE), POINTER :: solver
   END TYPE cmfe_SolverType
 
   !>Contains information about the solver equations for a solver.
   TYPE cmfe_SolverEquationsType
-    PRIVATE
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
   END TYPE cmfe_SolverEquationsType
 
@@ -344,6 +350,10 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Fields_CreateInterface
     MODULE PROCEDURE cmfe_Fields_CreateRegion
   END INTERFACE cmfe_Fields_Create
+
+  PUBLIC cmfe_CustomTimingGet, cmfe_CustomTimingReset
+
+  PUBLIC cmfe_CustomSolverInfoGet, cmfe_CustomSolverInfoReset
 
   !PUBLIC cmfe_Finalise,cmfe_Initialise
   PUBLIC cmfe_Finalise,cmfe_Initialise
@@ -419,6 +429,19 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverType,cmfe_Solver_Finalise,cmfe_Solver_Initialise
 
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
+
+  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
+    & cmfe_PrintSolverEquationsM, &
+    & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
+    & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
+    & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled, cmfe_CustomProfilingReset
+  PUBLIC cmfe_PrintMesh, cmfe_PrintFields, cmfe_PrintDistributedMatrix, cmfe_PrintRegion, cmfe_PrintMeshelementstype, &
+    & cmfe_PrintInterfacepointsconnectivitytype, cmfe_PrintQuadrature, cmfe_PrintSolverEquations, cmfe_PrintNodes, &
+    & cmfe_PrintDataPoints, cmfe_PrintSolver, cmfe_PrintField, cmfe_PrintCoordinateSystem, cmfe_PrintDataProjection, &
+    & cmfe_PrintProblem, cmfe_PrintGeneratedMesh, cmfe_PrintEquations, cmfe_PrintEquationsSet, cmfe_PrintDistributedVector, &
+    & cmfe_PrintInterfaceEquations, cmfe_PrintControlLoop, cmfe_PrintCellml, cmfe_PrintBoundaryConditions, cmfe_PrintBasis, &
+    & cmfe_PrintMeshnodestype, cmfe_PrintInterfaceCondition, cmfe_PrintInterfaceMeshConnectivity, cmfe_PrintInterface, &
+    & cmfe_PrintCellmlEquations, cmfe_PrintDecomposition, cmfe_PrintMeshEmbedding, cmfe_PrintHistory
 
 !!==================================================================================================================================
 !!
@@ -808,6 +831,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_BASIS_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_SIMPLEX_TYPE,CMFE_BASIS_SERENDIPITY_TYPE,CMFE_BASIS_AUXILLIARY_TYPE, &
     & CMFE_BASIS_B_SPLINE_TP_TYPE,CMFE_BASIS_FOURIER_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_EXTENDED_LAGRANGE_TP_TYPE
+
+  PUBLIC cmfe_DomainTopologyNodeCheckExists
 
   PUBLIC CMFE_BASIS_LINEAR_LAGRANGE_INTERPOLATION,CMFE_BASIS_QUADRATIC_LAGRANGE_INTERPOLATION, &
     & CMFE_BASIS_CUBIC_LAGRANGE_INTERPOLATION, &
@@ -1531,7 +1556,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_CONTROL_LOOP_NODE
 
-  PUBLIC CMFE_CONTROL_LOOP_NO_OUTPUT,CMFE_CONTROL_LOOP_PROGRESS_OUTPUT,CMFE_CONTROL_LOOP_TIMING_OUTPUT
+  PUBLIC CMFE_CONTROL_LOOP_NO_OUTPUT,CMFE_CONTROL_LOOP_PROGRESS_OUTPUT,CMFE_CONTROL_LOOP_TIMING_OUTPUT,CMFE_CONTROL_LOOP_FILE_OUTPUT
 
   PUBLIC cmfe_ControlLoop_CurrentTimesGet
 
@@ -2288,6 +2313,7 @@ MODULE OpenCMISS_Iron
   !> \brief The equations time dependence types
   !> \see OpenCMISS::Iron::Equations,OpenCMISS
   !>@{
+
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_STATIC = EQUATIONS_STATIC !<The equations are static and have no time dependence. \see OpenCMISS_EquationsTimeDependenceTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_QUASISTATIC = EQUATIONS_QUASISTATIC !<The equations are quasi-static. \see OpenCMISS_EquationsTimeDependenceTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_FIRST_ORDER_DYNAMIC = EQUATIONS_FIRST_ORDER_DYNAMIC !<The equations are first order dynamic. \see OpenCMISS_EquationsTimeDependenceTypes,OpenCMISS
@@ -2368,8 +2394,6 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_EQUATIONS_SPARSE_MATRICES,CMFE_EQUATIONS_FULL_MATRICES
 
-  PUBLIC CMFE_EQUATIONS_JACOBIAN_FINITE_DIFFERENCE_CALCULATED, CMFE_EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED
-
   PUBLIC CMFE_EQUATIONS_UNLUMPED_MATRICES,CMFE_EQUATIONS_LUMPED_MATRICES
 
   PUBLIC CMFE_EQUATIONS_LINEAR,CMFE_EQUATIONS_NONLINEAR,CMFE_EQUATIONS_NONLINEAR_BCS
@@ -2389,8 +2413,6 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_Equations_SparsityTypeGet,cmfe_Equations_SparsityTypeSet
 
   PUBLIC cmfe_Equations_TimeDependenceTypeGet
-
-  PUBLIC cmfe_Equations_JacobianMatricesTypesSet
 
   PUBLIC cmfe_Equations_NumberOfLinearMatricesGet
 
@@ -2804,6 +2826,7 @@ MODULE OpenCMISS_Iron
     & EQUATIONS_SET_FITTING_STRAIN_ENERGY_SMOOTHING !<Sobolev smoothing on the strain energy of the dependent field \see OpenCMISS_EquationsSetFittingSmoothingTypes,OpenCMISS
   !>@}
 
+
   !>@}
   !> \addtogroup OpenCMISS_EquationsSetSolutionMethods OpenCMISS::Iron::EquationsSet::SolutionMethods
   !> \brief The solution method parameters
@@ -2834,6 +2857,7 @@ MODULE OpenCMISS_Iron
   !>@}
 
   !> \addtogroup OpenCMISS_EquationsSetDynamicMatrixTypes OpenCMISS::Iron::EquationsSet::DynamicMatrixTypes
+
   !> \brief Type of matrix in a dynamic equations set
   !>@{
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_MATRIX_STIFFNESS=EQUATIONS_MATRIX_STIFFNESS !<A stiffness matrix (multiplies displacement values)
@@ -3068,8 +3092,7 @@ MODULE OpenCMISS_Iron
     & CMFE_EQUATIONS_SET_PLATE_SUBTYPE, &
     & CMFE_EQUATIONS_SET_SHELL_SUBTYPE, &
     & CMFE_EQUATIONS_SET_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE,CMFE_EQUATIONS_SET_NEARLY_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE, &
-    & CMFE_EQUATIONS_SET_MOONEY_RIVLIN_SUBTYPE, &
-    & CMFE_EQUATIONS_SET_REFERENCE_STATE_MOONEY_RIVLIN_SUBTYPE, CMFE_EQUATIONS_SET_ISOTROPIC_EXPONENTIAL_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_MOONEY_RIVLIN_SUBTYPE,CMFE_EQUATIONS_SET_ISOTROPIC_EXPONENTIAL_SUBTYPE, &
     & CMFE_EQUATIONS_SET_ACTIVECONTRACTION_SUBTYPE,CMFE_EQUATIONS_SET_MOONEY_RIVLIN_ACTIVECONTRACTION_SUBTYPE, &
     & CMFE_EQUATIONS_SET_COMPRESSIBLE_ACTIVECONTRACTION_SUBTYPE,CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_ACTIVE_SUBTYPE, &
     & CMFE_EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE, &
@@ -3505,6 +3528,7 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_EquationsSet_TensorInterpolateXiNumber
     MODULE PROCEDURE cmfe_EquationsSet_TensorInterpolateXiObj
   END INTERFACE cmfe_EquationsSet_TensorInterpolateXi
+
 
   !>Returns the equations set current times
   INTERFACE cmfe_EquationsSet_TimesGet
@@ -4368,7 +4392,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Field_GeometricFieldGet,cmfe_Field_GeometricFieldSet
 
-  PUBLIC cmfe_Field_GeometricParametersElementLineLengthGet, cmfe_Field_GeometricParametersElementVolumeGet
+  PUBLIC cmfe_Field_GeometricParametersElementLineLengthGet
 
   PUBLIC cmfe_Field_LabelGet,cmfe_Field_LabelSet
 
@@ -4452,8 +4476,10 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Fields_NodesExportCVSObj
     MODULE PROCEDURE cmfe_Fields_NodesExportVSVSObj
   END INTERFACE cmfe_Fields_NodesExport
+  
+  PUBLIC cmfe_Fields_ElementsExport,cmfe_Fields_NodesExport!,cmfe_Fields_FieldsImport
 
-  PUBLIC cmfe_Fields_ElementsExport,cmfe_Fields_NodesExport
+  PUBLIC cmfe_ReadMeshInfo,cmfe_ReadMeshFiles,cmfe_ReadMeshFilesCubit
 
 !!==================================================================================================================================
 !!
@@ -4608,6 +4634,10 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_GeneratedMesh_SurfaceGetObj1
   END INTERFACE
 
+  !>Returns starting and stopping index of nodes belonging to a surface of given patch ID
+  INTERFACE cmfe_ImportedMesh_SurfaceGet
+    MODULE PROCEDURE cmfe_ImportedMesh_SurfaceGetNumber0
+  END INTERFACE
 
   !>Creates an embedding of one mesh in another
   INTERFACE cmfe_MeshEmbedding_Create
@@ -4682,7 +4712,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_GeneratedMesh_GeometricParametersCalculate
 
-  PUBLIC cmfe_GeneratedMesh_SurfaceGet
+  PUBLIC cmfe_GeneratedMesh_SurfaceGet,cmfe_ImportedMesh_SurfaceGet
 
 
 !!==================================================================================================================================
@@ -6130,6 +6160,7 @@ MODULE OpenCMISS_Iron
   PUBLIC CMFE_PROBLEM_FINITE_ELASTICITY_WITH_ACTIVE_SUBTYPE,CMFE_PROBLEM_FINITE_ELASTICITY_WITH_CELLML_SUBTYPE, &
     & CMFE_PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE
 
+
 !!==================================================================================================================================
 !!
 !! PROBLEM_ROUTINES
@@ -6316,6 +6347,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_Problem_SolversDestroy
 
   PUBLIC cmfe_Problem_SpecificationGet,cmfe_Problem_SpecificationSizeGet
+  
+  PUBLIC cmfe_CellML_IntermediateMaxNumberSet
 
 !!==================================================================================================================================
 !!
@@ -6645,8 +6678,10 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_RUNGE_KUTTA = SOLVER_DAE_RUNGE_KUTTA !<Runge-Kutta differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_ADAMS_MOULTON = SOLVER_DAE_ADAMS_MOULTON !<Adams-Moulton differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_BDF = SOLVER_DAE_BDF !<General BDF differential-algebraic equation solver. \see
+  INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_GL = SOLVER_DAE_GL !<General Linear (GL) differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_RUSH_LARSON = SOLVER_DAE_RUSH_LARSON !<Rush-Larson differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_EXTERNAL = SOLVER_DAE_EXTERNAL !<External (e.g., CellML generated) differential-algebraic equation solver. \see
+
   !>@}
   !> \addtogroup OpenCMISS_EulerDAESolverTypes OpenCMISS::Iron::Solver::EulerDAESolverTypes
   !> \brief The Euler solver types for a differential-algebriac equation solver.
@@ -7394,7 +7429,7 @@ MODULE OpenCMISS_Iron
   PUBLIC CMFE_SOLVER_DAE_DIFFERENTIAL_ONLY,CMFE_SOLVER_DAE_INDEX_1,CMFE_SOLVER_DAE_INDEX_2,CMFE_SOLVER_DAE_INDEX_3
 
   PUBLIC CMFE_SOLVER_DAE_EULER,CMFE_SOLVER_DAE_CRANK_NICOLSON,CMFE_SOLVER_DAE_RUNGE_KUTTA,CMFE_SOLVER_DAE_ADAMS_MOULTON, &
-    & CMFE_SOLVER_DAE_BDF, &
+    & CMFE_SOLVER_DAE_BDF, CMFE_SOLVER_DAE_GL, &
     & CMFE_SOLVER_DAE_RUSH_LARSON,CMFE_SOLVER_DAE_EXTERNAL
 
   PUBLIC CMFE_SOLVER_DAE_EULER_FORWARD,CMFE_SOLVER_DAE_EULER_BACKWARD,CMFE_SOLVER_DAE_EULER_IMPROVED
@@ -7421,7 +7456,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Solver_DAESolverTypeGet,cmfe_Solver_DAESolverTypeSet
 
-  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet
+  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet,cmfe_Solver_DAEbdfSetTolerance
 
   PUBLIC cmfe_Solver_DynamicDegreeGet,cmfe_Solver_DynamicDegreeSet
 
@@ -7576,7 +7611,9 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquations_VectorGet
 
   PUBLIC cmfe_BioelectricsFiniteElasticity_UpdateGeometricField
-
+  
+  PUBLIC cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
+  
 !!==================================================================================================================================
 !!
 !! FieldML routines
@@ -7721,6 +7758,305 @@ MODULE OpenCMISS_Iron
 
 CONTAINS
 
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+  END SUBROUTINE cmfe_PrintElementsMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+  END SUBROUTINE cmfe_PrintNodesMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
+  
+  END SUBROUTINE 
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, &
+    & CustomTimingFileOutputUser, CustomTimingFileOutputSystem, Err)
+
+    REAL(DP), INTENT(OUT) :: CustomTimingOdeSolver
+    REAL(DP), INTENT(OUT) :: CustomTimingParabolicSolver
+    REAL(DP), INTENT(OUT) :: CustomTimingFESolver
+    REAL(DP), INTENT(OUT) :: CustomTimingFileOutputUser
+    REAL(DP), INTENT(OUT) :: CustomTimingFileOutputSystem
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CustomTimingOdeSolver = TIMING_ODE_SOLVER
+    CustomTimingParabolicSolver = TIMING_PARABOLIC_SOLVER
+    CustomTimingFESolver = TIMING_FE_SOLVER
+    CustomTimingFileOutputUser = TIMING_FILE_OUTPUT_USER + TIMING_FILE_OUTPUT2
+    CustomTimingFileOutputSystem = TIMING_FILE_OUTPUT_SYSTEM + TIMING_FILE_OUTPUT2
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomTimingGet
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomTimingReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    TIMING_ODE_SOLVER = 0_DP
+    TIMING_PARABOLIC_SOLVER = 0_DP
+    TIMING_FE_SOLVER = 0_DP
+    TIMING_FILE_OUTPUT2 = 0_DP
+    TIMING_FILE_OUTPUT_USER = 0_DP
+    TIMING_FILE_OUTPUT_SYSTEM = 0_DP
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomTimingReset
+  !
+  !================================================================================================================================
+  !
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomSolverInfoGet( &
+    & CustomSolverConvergenceReasonParabolic, &
+    & CustomSolverConvergenceReasonNewton, &
+    & CustomSolverNumberIterationsParabolic, &
+    & CustomSolverNumberIterationsParabolicMin, &
+    & CustomSolverNumberIterationsParabolicMax, &
+    & CustomSolverNumberIterationsNewton, &
+    & CustomSolverNumberIterationsNewtonMin, &
+    & CustomSolverNumberIterationsNewtonMax, Err)
+
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverConvergenceReasonParabolic
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverConvergenceReasonNewton
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolic
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolicMin
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolicMax
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewton
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewtonMin
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewtonMax
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+
+    CustomSolverConvergenceReasonParabolic = SOLVER_CONVERGENCE_REASON_PARABOLIC
+    CustomSolverConvergenceReasonNewton =    SOLVER_CONVERGENCE_REASON_NEWTON
+    CustomSolverNumberIterationsParabolic =  SOLVER_NUMBER_ITERATIONS_PARABOLIC
+    CustomSolverNumberIterationsParabolicMin = SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN
+    CustomSolverNumberIterationsParabolicMax = SOLVER_NUMBER_ITERATIONS_PARABOLIC_MAX
+    CustomSolverNumberIterationsNewton =     SOLVER_NUMBER_ITERATIONS_NEWTON
+    CustomSolverNumberIterationsNewtonMin =  SOLVER_NUMBER_ITERATIONS_NEWTON_MIN
+    CustomSolverNumberIterationsNewtonMax =  SOLVER_NUMBER_ITERATIONS_NEWTON_MAX
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomSolverInfoGet
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomSolverInfoReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    SOLVER_CONVERGENCE_REASON_PARABOLIC = 0
+    SOLVER_CONVERGENCE_REASON_NEWTON = 0
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC = 0
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN = HUGE(SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN)
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC_MAX = 0
+    SOLVER_NUMBER_ITERATIONS_NEWTON = 0
+    SOLVER_NUMBER_ITERATIONS_NEWTON_MIN = HUGE(SOLVER_NUMBER_ITERATIONS_NEWTON_MIN)
+    SOLVER_NUMBER_ITERATIONS_NEWTON_MAX = 0
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomSolverInfoReset
+  
+   
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingStart(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingStart(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStart
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingStop(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingStop(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStop
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingMemory(Identifier, NumberOfElements, TotalSize, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(IN) :: NumberOfElements  !< number of elements to record
+    INTEGER(INTG), INTENT(IN) :: TotalSize  !< MemoryConsumption to record
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingMemory(Identifier, NumberOfElements, TotalSize)
+  END SUBROUTINE cmfe_CustomProfilingMemory
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetInfo(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    CHARACTER(LEN=200000) :: cmfe_CustomProfilingGetInfo
+
+    cmfe_CustomProfilingGetInfo = CustomProfilingGetInfo()
+  END FUNCTION cmfe_CustomProfilingGetInfo
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetDuration(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    REAL(DP) :: cmfe_CustomProfilingGetDuration
+
+    cmfe_CustomProfilingGetDuration = CustomProfilingGetDuration(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetDuration
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetMemory(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(LINTG) :: cmfe_CustomProfilingGetMemory
+
+    cmfe_CustomProfilingGetMemory = CustomProfilingGetMemory(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetMemory
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetSizePerElement(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetSizePerElement
+
+    cmfe_CustomProfilingGetSizePerElement = CustomProfilingGetSizePerElement(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetSizePerElement
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetNumberObjects(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetNumberObjects
+
+    cmfe_CustomProfilingGetNumberObjects = CustomProfilingGetNumberObjects(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetNumberObjects
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingGetEnabled(CustomProfilingEnabled, TauProfilingEnabled, Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    LOGICAL, INTENT(OUT) :: CustomProfilingEnabled !< If custom profiling is compiled in
+    LOGICAL, INTENT(OUT) :: TauProfilingEnabled !< If TAU profiling is compiled in
+
+#ifdef TAUPROF
+    TauProfilingEnabled = .TRUE.
+#else
+    TauProfilingEnabled = .FALSE.
+#endif
+
+#ifdef USE_CUSTOM_PROFILING
+    CustomProfilingEnabled = .TRUE.
+#else
+    CustomProfilingEnabled = .FALSE.
+#endif
+  END SUBROUTINE cmfe_CustomProfilingGetEnabled
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    
+    CALL CustomProfilingReset()
+  END SUBROUTINE cmfe_CustomProfilingReset
+  
   !
   !================================================================================================================================
   !
@@ -13004,7 +13340,7 @@ CONTAINS
 
   !>Constrain multiple nodal equations dependent field DOFs to be a single solver DOF in the solver equations
   SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber(regionUserNumber,problemUserNumber,controlLoopIdentifier, &
-    & solverIndex,fieldUserNumber,fieldVariableType,versionNumber,derivativeNumber,component,nodes,coefficient,err)
+    & solverIndex,fieldUserNumber,fieldVariableType,versionNumber,derivativeNumber,component,nodes,err)
     !DLLEXPORT(cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber)
 
     !Argument variables
@@ -13018,7 +13354,6 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The derivative number.
     INTEGER(INTG), INTENT(IN) :: component !<The field component number of the DOFs to be constrained.
     INTEGER(INTG), INTENT(IN) :: nodes(:) !<The user numbers of the nodes to be constrained to be equal.
-    REAL(DP), INTENT(IN) :: coefficient !<The coefficient of constraint, applied to all but the first node.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
@@ -13057,7 +13392,7 @@ CONTAINS
 
   !>Constrain multiple nodal equations dependent field DOFs to be a single solver DOF in the solver equations
   SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj( &
-      & boundaryConditions,field,fieldVariableType,versionNumber,derivativeNumber,component,nodes,coefficient,err)
+      & boundaryConditions,field,fieldVariableType,versionNumber,derivativeNumber,component,nodes,err)
     !DLLEXPORT(cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj)
 
     !Argument variables
@@ -13068,13 +13403,12 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The derivative number.
     INTEGER(INTG), INTENT(IN) :: component !<The field component number of the DOFs to be constrained.
     INTEGER(INTG), INTENT(IN) :: nodes(:) !<The user numbers of the nodes to be constrained to be equal.
-    REAL(DP), INTENT(IN) :: coefficient !<The coefficient of constraint, applied to all but the first node.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
     ENTERS("cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj",err,error,*999)
 
     CALL BoundaryConditions_ConstrainNodeDofsEqual(boundaryConditions%boundaryConditions,field%field, &
-      & fieldVariableType,versionNumber,derivativeNumber,component,nodes,coefficient,err,error,*999)
+      & fieldVariableType,versionNumber,derivativeNumber,component,nodes,err,error,*999)
 
     EXITS("cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj")
     RETURN
@@ -14057,7 +14391,7 @@ CONTAINS
     CALL CELLML_CREATE_FINISH(cellml,err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
 #else
@@ -14094,7 +14428,7 @@ CONTAINS
     CALL CELLML_CREATE_FINISH(cellML%cellML,err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
 #else
@@ -14132,7 +14466,7 @@ CONTAINS
 #ifdef WITH_CELLML
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     NULLIFY(region)
@@ -14174,7 +14508,7 @@ CONTAINS
 #ifdef WITH_CELLML
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     CALL CELLML_CREATE_START(cellMLUserNumber,region%region,cellML%cellML,err,error,*999)
@@ -14293,7 +14627,7 @@ CONTAINS
     CALL CELLML_FIELD_MAPS_CREATE_FINISH(cellml,err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
 #else
@@ -14577,7 +14911,34 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  ! sets the MAXIMUM_NUMBER_OF_INTERMEDIATE of a CellML object :: only for debugging issues
+  SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet(CellML,number,err)
+    !DLLEXPORT(cmfe_CellML_ModelImportObjVS)
 
+    !Argument variables
+    TYPE(cmfe_CellMLType), INTENT(INOUT) :: CellML ! The CellML environment to be operated on
+    INTEGER(INTG), INTENT(IN) :: number ! the number that MAXIMUM_NUMBER_OF_INTERMEDIATES shall be set to.
+    INTEGER(INTG), INTENT(OUT) :: err ! The error code.  
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("cmfe_CellML_IntermediateMaxNumberSet",err,error,*999)
+    
+    CALL CELLML_INTERMEDIATE_MAX_NUMBER_SET(CellML%CELLML,number,err,error,*999)
+    
+    EXITS("cmfe_CellML_IntermediateMaxNumberSet")
+    RETURN
+999 ERRORSEXITS("cmfe_CellML_IntermediateMaxNumberSet",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+    
+  END SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet
+
+  !
+  !================================================================================================================================
+  !  
+  
   !>Finishes the creation of CellML models field for a CellML environment identified by a user number.
   SUBROUTINE cmfe_CellML_ModelsFieldCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldCreateFinishNumber)
@@ -25103,7 +25464,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: numberOfMatrices !<On return, the number of Jacobian matrices
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
 
-    ENTERS("cmfe_Equations_NumberOfJacobianMatricesGet",err,error,*999)
+    ENTERS("cmfe_Equations_NumberOfLinearMatricesGet",err,error,*999)
 
     CALL Equations_NumberOfJacobianMatricesGet(equations%equations,numberOfMatrices,err,error,*999)
 
@@ -25169,7 +25530,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Setting Jacobian matrix evaluation type
   SUBROUTINE cmfe_Equations_JacobianMatricesTypesSet(equations,jacobianTypes,err)
     !DLLEXPORT(cmfe_Equations_JacobianMatricesTypesSet)
@@ -25203,7 +25563,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Finish the creation of derived variables for an equations set identified by a user number.
   SUBROUTINE cmfe_EquationsSet_DerivedCreateFinishNumber(regionUserNumber,equationsSetUserNumber,err)
     !DLLEXPORT(cmfe_EquationsSet_DerivedCreateFinishNumber)
@@ -27998,27 +28357,28 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: derivedTensorType !<The type of derived tensor to interpolate. \see OpenCMISS_EquationsSetDerivedTensorTypes
     INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number of the field to interpolate.
     REAL(DP), INTENT(IN) :: xi(:) !<The element xi to interpolate the field at.
-    REAL(DP), INTENT(OUT) :: values(:,:) !<The interpolated tensor values.
+    REAL(DP), INTENT(OUT) :: values(6) !<The interpolated strain tensor values.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
     TYPE(REGION_TYPE), POINTER :: region
 
-    ENTERS("cmfe_EquationsSet_TensorInterpolateXiNumber",err,error,*999)
+    ENTERS("cmfe_EquationsSet_StrainInterpolateXiNumber",err,error,*999)
 
     NULLIFY(equationsSet)
     NULLIFY(region)
+
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_EquationsSetGet(region,equationsSetUserNumber,equationsSet,err,error,*999)
     CALL EquationsSet_TensorInterpolateXi(equationsSet,derivedTensorType,userElementNumber,xi,values,err,error,*999)
 
-    EXITS("cmfe_EquationsSet_TensorInterpolateXiNumber")
+    EXITS("cmfe_EquationsSet_StrainInterpolateXiNumber")
     RETURN
-999 ERRORSEXITS("cmfe_EquationsSet_TensorInterpolateXiNumber",err,error)
+999 ERRORSEXITS("cmfe_EquationsSet_StrainInterpolateXiNumber",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_EquationsSet_TensorInterpolateXiNumber
+  END SUBROUTINE cmfe_EquationsSet_StrainInterpolateXiNumber
 
   !
   !================================================================================================================================
@@ -28036,18 +28396,18 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: values(:,:) !<The interpolated tensor values.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
-    ENTERS("cmfe_EquationsSet_TensorInterpolateXiObj",err,error,*999)
+    ENTERS("cmfe_EquationsSet_StrainInterpolateXiObj",err,error,*999)
 
     CALL EquationsSet_TensorInterpolateXi(equationsSet%equationsSet,derivedTensorType,userElementNumber,xi, &
       & values,err,error,*999)
 
-    EXITS("cmfe_EquationsSet_TensorInterpolateXiObj")
+    EXITS("cmfe_EquationsSet_StrainInterpolateXiObj")
     RETURN
-999 ERRORSEXITS("cmfe_EquationsSet_TensorInterpolateXiObj",err,error)
+999 ERRORSEXITS("cmfe_EquationsSet_StrainInterpolateXiObj",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_EquationsSet_TensorInterpolateXiObj
+  END SUBROUTINE cmfe_EquationsSet_StrainInterpolateXiObj
 
   !
   !================================================================================================================================
@@ -29250,6 +29610,8 @@ CONTAINS
     CALL TAU_STATIC_PHASE_STOP('field Create')
 #endif
 
+! here Lorenzo comments!!
+
     EXITS("cmfe_Field_CreateFinishObj")
     RETURN
 999 ERRORSEXITS("cmfe_Field_CreateFinishObj",err,error)
@@ -29807,54 +30169,6 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Field_GeometricParametersElementLineLengthGetNumber
-  !
-  !================================================================================================================================
-  !
-
-  !>Gets the volume for a given element number by a user number.
-  SUBROUTINE cmfe_Field_GeometricParametersElementVolumeGetNumber(regionUserNumber,geometricFieldUserNumber,elementNumber, &
-    & elementVolume,err)
-    !DLLEXPORT(cmfe_Field_GeometricParametersElementVolumeGetNumber)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field to obtain the volume from
-    INTEGER(INTG), INTENT(IN) :: geometricFieldUserNumber !<The geometric field user number to obtain the volume from
-    INTEGER(INTG),  INTENT(IN) :: elementNumber !<The element to get the volume for
-    REAL(DP), INTENT(OUT) :: elementVolume !<The volume of the chosen element number
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-    TYPE(FIELD_TYPE), POINTER :: geometricField
-    TYPE(REGION_TYPE), POINTER :: region
-    TYPE(VARYING_STRING) :: localError
-
-    ENTERS("cmfe_Field_GeometricParametersElementVolumeGetNumber",err,error,*999)
-
-    NULLIFY(region)
-    NULLIFY(geometricField)
-    CALL REGION_USER_NUMBER_FIND(regionUserNumber,region,err,error,*999)
-    IF(ASSOCIATED(region)) THEN
-      CALL FIELD_USER_NUMBER_FIND(geometricFieldUserNumber,region,geometricField,err,error,*999)
-      IF(ASSOCIATED(geometricField)) THEN
-        CALL Field_GeometricParametersElementVolumeGet(geometricField,elementNumber,elementVolume, &
-          & err,error,*999)
-      ELSE
-        localError="A field with an user number of "//TRIM(NumberToVString(geometricFieldUserNumber,"*",err,error))// &
-          & " does not exist on region number "//TRIM(NumberToVString(regionUserNumber,"*",err,error))//"."
-        CALL FlagError(localError,err,error,*999)
-      END IF
-    ELSE
-      localError="A region with an user number of "//TRIM(NumberToVString(regionUserNumber,"*",err,error))//" does not exist."
-      CALL FlagError(localError,err,error,*999)
-    END IF
-
-    EXITS("cmfe_Field_GeometricParametersElementVolumeGetNumber")
-    RETURN
-999 ERRORS("cmfe_Field_GeometricParametersElementVolumeGetNumber",err,error)
-    EXITS("cmfe_Field_GeometricParametersElementVolumeGetNumber")
-    CALL cmfe_HandleError(err,error)
-    RETURN
-
-  END SUBROUTINE cmfe_Field_GeometricParametersElementVolumeGetNumber
 
   !
   !================================================================================================================================
@@ -29885,37 +30199,6 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Field_GeometricParametersElementLineLengthGetObj
-
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Gets the volume for a given element number by an object.
-  SUBROUTINE cmfe_Field_GeometricParametersElementVolumeGetObj(geometricField,elementNumber,elementVolume,err)
-    !DLLEXPORT(cmfe_Field_GeometricParametersElementVolumeGetObj)
-
-    !Argument variables
-    TYPE(cmfe_FieldType), INTENT(IN) :: geometricField !<The geometric field to obtain the volume from
-    INTEGER(INTG),  INTENT(IN) :: elementNumber !<The element to get the volume for
-    REAL(DP), INTENT(OUT) :: elementVolume !<The volume of the chosen element 
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-
-    ENTERS("cmfe_Field_GeometricParametersElementVolumeGetObj",err,error,*999)
-
-    CALL Field_GeometricParametersElementVolumeGet(geometricField%field,elementNumber,elementVolume, &
-      & err,error,*999)
-
-    EXITS("cmfe_Field_GeometricParametersElementVolumeGetObj")
-    RETURN
-999 ERRORS("cmfe_Field_GeometricParametersElementVolumeGetObj",err,error)
-    EXITS("cmfe_Field_GeometricParametersElementVolumeGetObj")
-    CALL cmfe_HandleError(err,error)
-    RETURN
-
-  END SUBROUTINE cmfe_Field_GeometricParametersElementVolumeGetObj
-
 
   !
   !================================================================================================================================
@@ -37159,7 +37442,7 @@ CONTAINS
     !Argument variables
     TYPE(cmfe_FieldsType), INTENT(INOUT) :: fields !<The fields to export the nodes for.
     TYPE(VARYING_STRING), INTENT(IN) :: fileName !<The file name to export the nodes to
-    TYPE(VARYING_STRING), INTENT(IN):: method !<The export method to use.
+    TYPE(VARYING_STRING), INTENT(IN):: method !<The import method to use.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
@@ -37174,6 +37457,42 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Fields_NodesExportVSVSObj
+  !
+  !================================================================================================================================
+  !
+! 
+!   !>Import information for fields set identified by an object. \todo number method
+!   SUBROUTINE cmfe_Fields_FieldsImport(FILENAME,METHOD,REGION,MESH,MESH_USER_NUMBER,DECOMPOSITION,DECOMPOSITION_USER_NUMBER, &
+!     & DECOMPOSITION_METHOD,FIELD_VALUES_SET_TYPE,FIELD_SCALING_TYPE,err)
+!     !DLLEXPORT(cmfe_Fields_FieldsImportVSVSObj)
+! 
+!     !Argument variables
+!     TYPE(VARYING_STRING), INTENT(IN) :: FILENAME !<The file name to import the fields to
+!     TYPE(VARYING_STRING), INTENT(IN) :: METHOD !<The file name to import the fields to
+!     TYPE(REGION_TYPE), POINTER :: REGION !<region
+!     TYPE(MESH_TYPE), POINTER :: MESH !<mesh type
+!     INTEGER(INTG), INTENT(IN) :: MESH_USER_NUMBER !<user number for mesh
+!     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !< decomposition
+!     INTEGER(INTG), INTENT(IN) :: DECOMPOSITION_USER_NUMBER !<user number for decomposition
+!     INTEGER(INTG), INTENT(IN) :: DECOMPOSITION_METHOD !<decomposition method
+!     INTEGER(INTG), INTENT(IN) :: FIELD_VALUES_SET_TYPE
+!     INTEGER(INTG), INTENT(IN) :: FIELD_SCALING_TYPE
+!     !TYPE(BASIS_FUNCTIONS_TYPE), POINTER :: BASES !< bases function
+!     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+!     !Local variables
+! 
+!     ENTERS("cmfe_Fields_FieldsImport",err,error,*999)
+! 
+!     CALL FIELD_IO_FIELDS_IMPORT(fileName, METHOD, REGION, MESH, MESH_USER_NUMBER, DECOMPOSITION, DECOMPOSITION_USER_NUMBER, &
+!       & DECOMPOSITION_METHOD, FIELD_VALUES_SET_TYPE, FIELD_SCALING_TYPE, ERR, ERROR, *999)
+! 
+!     EXITS("cmfe_Fields_FieldsImport")
+!     RETURN
+! 999 ERRORSEXITS("cmfe_Fields_FieldsImport",err,error)
+!     CALL cmfe_HandleError(err,error)
+!     RETURN
+! 
+!   END SUBROUTINE cmfe_Fields_FieldsImport
 
 !!==================================================================================================================================
 !!
@@ -47600,7 +47919,15 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('problem Solve')
 #endif
 
-    CALL Problem_Solve(problem%problem,err,error,*999)
+#ifdef USE_CUSTOM_PROFILING
+    CALL CustomProfilingStart('level 0: problem solve')
+#endif
+
+    CALL PROBLEM_SOLVE(problem%problem,err,error,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+    CALL CustomProfilingStop('level 0: problem solve')
+#endif
 
 #ifdef TAUPROF
     CALL TAU_STATIC_PHASE_STOP('problem Solve')
@@ -49590,7 +49917,77 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  !>Sets the number of time sets for the forward Euler differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEEulerForwardSetNSteps(solver,number_timesteps,err)
 
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
+    INTEGER(INTG), INTENT(IN) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEEulerForwardSetNSteps",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_EULER_FORWARD_SET_NSTEPS(solver%solver%DAE_SOLVER,number_timesteps,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEEulerForwardSetNSteps")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEEulerForwardSetNSteps",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+  END SUBROUTINE cmfe_Solver_DAEEulerForwardSetNSteps
+
+  !
+  !================================================================================================================================
+  !
+  
+  !>Sets the number of time sets for the improved Euler differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEEulerImprovedSetNSteps(solver,number_timesteps,err)
+
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
+    INTEGER(INTG), INTENT(IN) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEEulerImprovedSetNSteps",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS(solver%solver%DAE_SOLVER,number_timesteps,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEEulerImprovedSetNSteps")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEEulerImprovedSetNSteps",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+  END SUBROUTINE cmfe_Solver_DAEEulerImprovedSetNSteps
+
+  !
+  !================================================================================================================================
+  !
+  
   !>Sets/changes the solve type for an Euler differential-algebraic equation solver identified by an user number.
   SUBROUTINE cmfe_Solver_DAEEulerSolverTypeSetNumber1(problemUserNumber,controlLoopIdentifiers,solverIndex,DAEEulerSolverType,err)
     !DLLEXPORT(cmfe_Solver_DAEEulerSolverTypeSetNumber1)
@@ -50025,6 +50422,44 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Solver_DAETimeStepSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Changes the absolute and relative error tolerances for the BDF differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEbdfSetTolerance(solver,abs_tol,rel_tol,err)
+    !DLLEXPORT(cmfe_Solver_DAESolverTypeSetNumber1)
+
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the DAE error tolerance for.
+    REAL(DP), INTENT(IN) :: abs_tol !<The absolute error tolerance to be set.
+    REAL(DP), INTENT(IN) :: rel_tol !<The relative error tolerance to be set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEbdfSetTolerance",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_BDF_SET_TOLERANCE(solver%solver%DAE_SOLVER,abs_tol,rel_tol,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEbdfSetTolerance")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEbdfSetTolerance",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Solver_DAEbdfSetTolerance
 
   !
   !================================================================================================================================
@@ -60009,5 +60444,2108 @@ CONTAINS
   !================================================================================================================================
   !
 
+  SUBROUTINE cmfe_OutputInterpolationParameters(Problem, DependentFieldM, SolverParabolic, Err)
+    TYPE(cmfe_ProblemType), INTENT(IN) :: Problem
+    TYPE(cmfe_FieldType), INTENT(IN) :: DependentFieldM
+    TYPE(cmfe_SolverType), INTENT(IN) :: SolverParabolic
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    !Local variables
+    TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
+    TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
+    INTEGER(INTG) :: element_idx, ne, component_idx, equations_set_idx
+    TYPE(FIELD_INTERPOLATION_PARAMETERS_TYPE), POINTER :: INTERPOLATION_PARAMETERS
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
+    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
+    INTEGER(INTG) :: ComputationalNodeNumber
+    
+    ENTERS("cmfe_OutputInterpolationParameters", err, error, *999 )
 
+    !NULLIFY(INTERPOLATION_PARAMETERS)
+    !ALLOCATE(INTERPOLATION_PARAMETERS)
+    
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    
+    SOLVER=>SolverParabolic%Solver
+    
+    !CALL cmfe_PrintProblem(Problem, 1, 5, Err)
+    !CALL cmfe_PrintField(DependentFieldM, 1, 5, Err)
+    IF(ASSOCIATED(SOLVER)) THEN
+      IF(SOLVER%SOLVER_FINISHED) THEN
+        SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+        IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+          SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+        ENDIF
+      ENDIF
+    ENDIF
+          
+    PRINT*, "Output interpolation parameters (opencmiss_iron.f90:61815), process ", ComputationalNodeNumber
+          
+    DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+      EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+      PRINT*, "equation_set ",equations_set_idx,"of",SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+      
+  !    
+  !    IF(ASSOCIATED(EQUATIONS_SET)) THEN
+  !      DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
+      DEPENDENT_FIELD=>DependentFieldM%Field
+      
+      EQUATIONS=>EQUATIONS_SET%EQUATIONS
+
+     IF(ASSOCIATED(DEPENDENT_FIELD)) THEN
+        
+        ELEMENTS_MAPPING=>DEPENDENT_FIELD%DECOMPOSITION%DOMAIN( &
+          & DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
+          & MAPPINGS%ELEMENTS
+          
+        PRINT*, "------- internal elements ------------------------"
+        PRINT*, "      index  local elno   interpolation_parameters"
+        
+        DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+        
+          ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+          
+          ! get interpolation parameters of element
+          ! version which is used with real preallocated variable names:
+          !CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+          !  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+
+          INTERPOLATION_PARAMETERS=> &
+            & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+          
+          ! direct version
+          CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+          
+          DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+            PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+          ENDDO
+        ENDDO
+        
+        PRINT*, "------- boundary elements ------------------------"
+        PRINT*, "      index  local elno   interpolation_parameters"
+        DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%BOUNDARY_FINISH
+        
+          ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+          
+          ! get interpolation parameters of element
+          ! version which is used with real preallocated variable names:
+          !CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+          !  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+
+          INTERPOLATION_PARAMETERS=> &
+            & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+          
+          ! direct version
+          CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+          
+          DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+            PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+          ENDDO
+        ENDDO
+      ENDIF
+    ENDDO
+    
+    EXITS("cmfe_OutputInterpolationParameters")
+    RETURN
+999 ERRORSEXITS("cmfe_OutputInterpolationParameters",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_OutputInterpolationParameters
+  
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_getFieldSize(Field, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: Field
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: NumberOfBytes, cmfe_getFieldSize
+    INTEGER(INTG) :: idx
+    
+    NumberOfBytes = SIZEOF(Field%Field)
+    DO idx=1,SIZE(Field%Field%Variables)
+      NumberOfBytes = NumberOfBytes + SIZEOF(Field%Field%VARIABLES(idx))
+    ENDDO
+    DO idx=1,SIZE(Field%Field%Variable_Type_Map)
+      NumberOfBytes = NumberOfBytes + SIZEOF(Field%Field%Variable_Type_Map(idx))
+    ENDDO
+    cmfe_getFieldSize = NumberOfBytes
+  
+  END FUNCTION cmfe_getFieldSize
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField, ElementGlobalNumber, ElementLocalNumber, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: GeometricField  !< the geometric field of the elements
+    INTEGER(INTG), INTENT(IN) :: ElementGlobalNumber !< the global element number of the element for which the local number is seeked
+    INTEGER(INTG), INTENT(OUT) :: ElementLocalNumber !< the local number of the element with the global number (or 0 if the element is not on the local domain)
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    ENTERS("cmfe_GetLocalElementNumber", err, error, *999)
+
+    CALL BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField%Field, ElementGlobalNumber, ElementLocalNumber, Err, &
+     & Error, *999)
+    
+    EXITS("cmfe_GetLocalElementNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_GetLocalElementNumber",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
+    
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_DomainTopologyNodeCheckExists(Field, VariableType, NodeUserNumber, ComponentNumber, UserNodeExist, Err)
+
+    TYPE(cmfe_FieldType), INTENT(IN)    :: Field !<The field to set the boundary condition for.
+    INTEGER(INTG), INTENT(IN)           :: NodeUserNumber !<The user number of the node to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN)           :: ComponentNumber !<The component number of the field to set the boundary condition for.
+    INTEGER(INTG), INTENT(IN)           :: VariableType !<The variable type of the field to set the boundary condition for. \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(OUT)          :: Err
+    LOGICAL      , INTENT(OUT)          :: UserNodeExist !< result, whether or not the user node ID exists for the given field
+    ! LOCAL VARIABLES
+    LOGICAL                             :: GhostNode !< redundant parameter, only used for being able to make subroutine call
+    INTEGER(INTG)                       :: DomainLocalNodeNumber !< redundant parameter, only used for being able to make subroutine call
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY !< redundant parameter, only used for being able to make subroutine call
+    TYPE(VARYING_STRING)                :: Error
+    INTEGER(INTG)                       :: NumberOfComponents
+    INTEGER(INTG), ALLOCATABLE          :: VariableTypes(:) !< variable to contain all variable types for a given field
+    LOGICAL                             :: VariableTypeFound
+
+    ENTERS("cmfe_DomainTopologyNodeCheckExists", Err, error, *999)
+
+    ! check if variable type is set for given field
+    ALLOCATE(VariableTypes(Field%Field%NUMBER_OF_VARIABLES),STAT=Err)
+    IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+    CALL cmfe_Field_VariableTypesGet(Field, VariableTypes, Err)
+    VariableTypeFound=ANY(VariableTypes==VariableType)
+    IF(.NOT.VariableTypeFound) CALL cmfe_HandleError(Err, error)
+    ! check if field has given component
+    CALL cmfe_Field_NumberOfComponentsGet(Field, VariableType, NumberOfComponents, Err)
+    IF(NumberOfComponents<ComponentNumber) CALL cmfe_HandleError(Err, error)
+    ! check if domain topology has given user node ID
+    DOMAIN_TOPOLOGY=>FIELD%FIELD%VARIABLE_TYPE_MAP(variableType)%PTR%COMPONENTS(componentNumber)%DOMAIN%TOPOLOGY
+    IF(.NOT.ASSOCIATED(DOMAIN_TOPOLOGY)) CALL cmfe_HandleError(err,error)
+    ! NOTE: we are misusing this function call so we need to handle the return error code
+    CALL DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(DOMAIN_TOPOLOGY, nodeUserNumber, UserNodeExist, &
+      & DomainLocalNodeNumber, GhostNode, Err, Error, *999)
+
+    DEALLOCATE(VariableTypes)
+    EXITS("cmfe_DomainTopologyNodeCheckExists")
+
+    RETURN
+999 err = 0
+    ERRORSEXITS("cmfe_DomainTopologyNodeCheckExists",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+ 
+  END SUBROUTINE cmfe_DomainTopologyNodeCheckExists
+  
+  !
+  !================================================================================================================================
+  !
+  ! This routine reads input mesh files in CHeart X/T/B format and stores mesh info to make sure the user is able to allocate variables
+  ! Note: this routine makes use of the Fortran 2008 feature to obtain a file unit that is free
+  ! Note: assumes that the mesh contains only one mesh type
+  SUBROUTINE cmfe_ReadMeshInfo(Filename, NumberOfDimensions, NumberOfNodes, NumberOfElements, &
+    & NumberOfNodesPerElement, NumberOfBoundaryPatches, NumberOfBoundaryPatchComponents, Method, Err)
+    ! IN / OUT variables
+    CHARACTER(LEN=*),   INTENT(IN)                  :: Filename                         !< The file name to import the mesh data from
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfDimensions               !< The number of components of the mesh coordinates
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfNodes                    !< The number of nodes in the mesh
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfElements                 !< The number of elements in the mesh
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfNodesPerElement          !< The number of nodes per element in the mesh
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfBoundaryPatches          !< The number of boundary patches for the mesh
+    INTEGER(INTG),      INTENT(OUT)                 :: NumberOfBoundaryPatchComponents  !< The number of boundary patch components for the mesh
+    CHARACTER(LEN=*),   INTENT(IN)                  :: Method                           !< The import method to use, e.g, CHeart, Cmgui, etc.
+    INTEGER(INTG),      INTENT(OUT)                 :: Err                              !< The error code.
+    ! Local variables
+    TYPE(VARYING_STRING)                            :: VFileName,VMethod
+    INTEGER(INTG)                                   :: FilenameLength,MethodLength
+    INTEGER(INTG)                                   :: NodeFileUnit,ElementFileUnit,BoundaryFileUnit
+    INTEGER(INTG)                                   :: NodeHeader(2),ElementHeader(2),BoundaryHeader
+    INTEGER(INTG)                                   :: NumberOfNodesT,NumberOfNodesB
+    INTEGER(INTG)                                   :: FirstLineOfElementFile(27)
+    CHARACTER(LEN=256)                              :: Line
+    INTEGER(INTG)                                   :: CharacterIdx,CurrentIdx,PreviousIdx,FirstIdx,IntValue
+
+    ENTERS("cmfe_ReadMeshInfo", Err, Error, *999)
+
+    ! Initialize variables
+    NumberOfDimensions      = 0_INTG
+    NodeHeader              = 0_INTG
+    ElementHeader           = 0_INTG
+    BoundaryHeader          = 0_INTG
+    NumberOfNodes           = 0_INTG
+    NumberOfElements        = 0_INTG
+    NumberOfBoundaryPatches = 0_INTG
+    NumberOfNodesPerElement = 0_INTG
+    NumberOfNodesT          = 0_INTG
+
+    ! Get file name and method name
+    FilenameLength  = LEN_TRIM(Filename)
+    VFilename       = Filename(1:FilenameLength)
+    MethodLength    = LEN_TRIM(Method)
+    VMethod         = Method(1:MethodLength)
+
+    ! Reading the X/T/B files from CHeart file format
+    IF(VMethod=="CHeart") THEN
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".X", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".T", ACTION="read")
+      OPEN(NEWUNIT=BoundaryFileUnit, FILE=CHAR(VFilename)//".B", ACTION="read")
+      
+      ! Get some mesh information
+      READ(NodeFileUnit, *)     NodeHeader
+      READ(ElementFileUnit, *)  ElementHeader
+      READ(BoundaryFileUnit, *) BoundaryHeader
+      NumberOfNodes             = NodeHeader(1)
+      NumberOfDimensions        = NodeHeader(2)
+      NumberOfElements          = ElementHeader(1)
+      NumberOfNodesT            = ElementHeader(2)
+      NumberOfBoundaryPatches   = BoundaryHeader
+
+      ! Do some sanity checks before reading mesh data
+      IF(.NOT.(NumberOfNodes==NumberOfNodesT))  CALL FlagError("X and T files have different number of nodes.", Err, Error, *999)
+      IF(NumberOfNodes<0_INTG)                  CALL FlagError("Invalid number of nodes.", Err, Error, *999)
+      IF(NumberOfDimensions<0_INTG)             CALL FlagError("Invalid number of dimensions.", Err, Error, *999)
+      IF(NumberOfElements<0_INTG)               CALL FlagError("Invalid number of elements.", Err, Error, *999)
+      IF(NumberOfBoundaryPatches<0_INTG)        CALL FlagError("Invalid number of boundary patches.", Err, Error, *999)
+
+      ! To get the number of nodes per element, we have to do a little trick:
+      ! We read the first non-header line of the element file and read each integer value
+      READ(ElementFileUnit,'(A)') Line
+      PreviousIdx   = 1
+      FirstIdx      = 1
+      DO CharacterIdx=1,LEN(Line)
+        CurrentIdx = INDEX('0123456789', Line(CharacterIdx:CharacterIdx))
+        IF((CurrentIdx==0_INTG).AND.(PreviousIdx>0_INTG)) THEN
+          READ(Line(FirstIdx:CharacterIdx-1), *) IntValue
+          NumberOfNodesPerElement                           = NumberOfNodesPerElement + 1_INTG
+          FirstLineOfElementFile(NumberOfNodesPerElement)   = IntValue
+        ELSE IF((CurrentIdx>0_INTG).AND.(PreviousIdx==0_INTG)) THEN
+          FirstIdx = CharacterIdx
+        END IF
+        PreviousIdx = CurrentIdx
+      END DO
+
+      ! Figure out how many components the boundary file has
+      SELECT CASE(NumberOfDimensions)
+      CASE(2)
+        SELECT CASE(NumberOfNodesPerElement)
+        CASE(3)
+          ! Linear triangle
+          NumberOfBoundaryPatchComponents = 4_INTG
+        CASE(4)
+          ! Linear quadrilateral
+          NumberOfBoundaryPatchComponents = 4_INTG
+        CASE(6)
+          ! Quadratic triangle
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE(9)
+          ! Quadratic quadrilateral
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE DEFAULT
+          CALL FlagError("Unknown 2D mesh type for method: "//TRIM(Method), Err, Error, *999)
+        END SELECT
+      CASE(3)
+        SELECT CASE(NumberOfNodesPerElement)
+        CASE(4)
+          ! Linear tetrahedron
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE(8)
+          ! Linear hexahedron
+          NumberOfBoundaryPatchComponents = 6_INTG
+        CASE(10)
+          ! Quadratic tetrahedron
+          NumberOfBoundaryPatchComponents = 8_INTG
+        CASE(27)
+          ! Quadratic hexahedron
+          NumberOfBoundaryPatchComponents = 11_INTG
+        CASE DEFAULT
+          CALL FlagError("Unknown 3D mesh type for method: "//TRIM(Method), Err, Error, *999)
+        END SELECT
+      CASE DEFAULT
+        CALL FlagError("1D mesh import not supported for method: "//TRIM(Method), Err, Error, *999)
+      END SELECT
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(BoundaryFileUnit)
+    ELSE
+      CALL FlagError("Invalid mesh import type. Valid types are: CHeart", Err, Error, *999)
+    END IF
+
+    EXITS("cmfe_ReadMeshInfo")
+
+    RETURN
+999 ERRORSEXITS("cmfe_ReadMeshInfo", Err, Error)
+    CALL cmfe_HandleError(Err, Error)
+    RETURN
+
+  END SUBROUTINE cmfe_ReadMeshInfo
+  
+  !
+  !================================================================================================================================
+  !
+  ! This routine reads input mesh files in CHeart X/T/B format and stores them in arrays
+  ! Note: this routine makes use of the Fortran 2008 feature to obtain a file unit that is free
+  ! Note: Need to call cmfe_ReadMeshInfo beforehand, where sanity checks have been done
+  SUBROUTINE cmfe_ReadMeshFiles(Filename, Nodes, Elements, BoundaryPatches, Method, Err)
+    ! IN / OUT variables
+    CHARACTER(LEN=*),   INTENT(IN)  :: Filename             !< The file name to import the mesh data from
+    REAL(DP),           INTENT(OUT) :: Nodes(:,:)           !< The coordinates of the mesh nodes
+    INTEGER(INTG),      INTENT(OUT) :: Elements(:,:)        !< The node IDs for each element
+    INTEGER(INTG),      INTENT(OUT) :: BoundaryPatches(:)   !< The boundary patch labels for all boundary nodes
+    CHARACTER(LEN=*),   INTENT(IN)  :: Method               !<The export method to use, e.g, CHeart, Cmgui, etc.
+    INTEGER(INTG),      INTENT(OUT) :: Err                  !<The error code.
+    ! Local variables
+    TYPE(VARYING_STRING)            :: VFileName,VMethod
+    INTEGER(INTG)                   :: FilenameLength,MethodLength
+    INTEGER(INTG)                   :: NodeFileUnit,ElementFileUnit,BoundaryFileUnit
+    INTEGER(INTG)                   :: NumberOfNodes,NumberOfDimensions
+    INTEGER(INTG)                   :: NumberOfElements,NumberOfNodesPerElement
+    INTEGER(INTG)                   :: NumberOfBoundaryPatches,NumberOfBoundaryPatchComponents
+    INTEGER(INTG)                   :: IntValue,CurrentIdx,ComponentIdx,PatchIdx,CurrentPatchID,Offset,Idx
+    INTEGER(INTG), ALLOCATABLE      :: Permutation(:),IntValuesT(:),IntValuesB(:),BoundaryPatchesTemp(:,:)
+    INTEGER(INTG)                   :: NumberOfPatchIDs
+    INTEGER(INTG)                   :: PatchIDs(25),NumberOfNodesPerPatchID(25),CurrentFirstPatchIdx(25)
+
+    ENTERS("cmfe_ReadMeshFiles", Err, Error, *999)
+
+    ! Initialize variables
+    PatchIDs                = -1_INTG ! default, not present
+    NumberOfNodesPerPatchID =  0_INTG
+    NumberOfPatchIDs        =  0_INTG
+
+    ! Get file name and method name
+    FilenameLength  = LEN_TRIM(Filename)
+    VFilename       = Filename(1:FilenameLength)
+    MethodLength    = LEN_TRIM(Method)
+    VMethod         = Method(1:MethodLength)
+
+    ! Reading the X/T/B files from CHeart file format
+    IF(VMethod=="CHeart") THEN
+
+      ! Get mesh info
+      NumberOfNodes                   = SIZE(Nodes,1)
+      NumberOfDimensions              = SIZE(Nodes,2)
+      NumberOfElements                = SIZE(Elements,1)
+      NumberOfNodesPerElement         = SIZE(Elements,2)
+
+      ! Figure out which node IDs we have to swap
+      ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      ALLOCATE(IntValuesT(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      SELECT CASE(NumberOfDimensions)
+      CASE(2)
+        SELECT CASE(NumberOfNodesPerElement)
+        CASE(3)
+          ! Linear triangle
+          Permutation       = 0
+          DO CurrentIdx=1,NumberOfNodesPerElement
+            Permutation(CurrentIdx) = CurrentIdx
+          END DO
+          NumberOfBoundaryPatchComponents = 4_INTG
+        CASE(4)
+          ! Linear quadrilateral
+          Permutation       = 0
+          DO CurrentIdx=1,NumberOfNodesPerElement
+            Permutation(CurrentIdx) = CurrentIdx
+          END DO
+          NumberOfBoundaryPatchComponents = 4_INTG
+        CASE(6)
+          ! Quadratic triangle
+          Permutation       = 0
+          Permutation(1)    = 1
+          Permutation(2)    = 2
+          Permutation(3)    = 3
+          Permutation(4)    = 4
+          Permutation(5)    = 6
+          Permutation(6)    = 5
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE(9)
+          ! Quadratic quadrilateral
+          Permutation       = 0
+          Permutation(1)    = 1
+          Permutation(2)    = 5
+          Permutation(3)    = 2
+          Permutation(4)    = 6
+          Permutation(5)    = 7
+          Permutation(6)    = 8
+          Permutation(7)    = 3
+          Permutation(8)    = 9
+          Permutation(9)    = 4
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE DEFAULT
+          CALL FlagError("Unknown 2D mesh type for method: "//TRIM(Method), Err, Error, *999)
+        END SELECT
+      CASE(3)
+        SELECT CASE(NumberOfNodesPerElement)
+        CASE(4)
+          ! Linear tetrahedron
+          Permutation       = 0
+          DO CurrentIdx=1,NumberOfNodesPerElement
+            Permutation(CurrentIdx) = CurrentIdx
+          END DO
+          NumberOfBoundaryPatchComponents = 5_INTG
+        CASE(8)
+          ! Linear hexahedron
+          Permutation       = 0
+          DO CurrentIdx=1,NumberOfNodesPerElement
+            Permutation(CurrentIdx) = CurrentIdx
+          END DO
+          NumberOfBoundaryPatchComponents = 6_INTG
+        CASE(10)
+          ! Quadratic tetrahedron
+          Permutation       =  0
+          Permutation(1)    =  1
+          Permutation(2)    =  5
+          Permutation(3)    =  2
+          Permutation(4)    =  6
+          Permutation(5)    =  7
+          Permutation(6)    =  3
+          Permutation(7)    =  8
+          Permutation(8)    =  9
+          Permutation(9)    = 10
+          Permutation(10)   =  4
+          NumberOfBoundaryPatchComponents = 8_INTG
+        CASE(27)
+          ! Quadratic hexahedron
+          Permutation       =  0
+          Permutation(1)    =  1
+          Permutation(2)    =  9
+          Permutation(3)    =  2
+          Permutation(4)    = 10
+          Permutation(5)    = 11
+          Permutation(6)    = 12
+          Permutation(7)    =  3
+          Permutation(8)    = 13
+          Permutation(9)    =  4
+          Permutation(10)   = 14
+          Permutation(11)   = 15
+          Permutation(12)   = 16
+          Permutation(13)   = 17
+          Permutation(14)   = 18
+          Permutation(15)   = 19
+          Permutation(16)   = 20
+          Permutation(17)   = 21
+          Permutation(18)   = 22
+          Permutation(19)   =  5
+          Permutation(20)   = 23
+          Permutation(21)   =  6
+          Permutation(22)   = 24
+          Permutation(23)   = 25
+          Permutation(24)   = 26
+          Permutation(25)   =  7
+          Permutation(26)   = 27
+          Permutation(27)   =  8
+          NumberOfBoundaryPatchComponents = 11_INTG
+        CASE DEFAULT
+          CALL FlagError("Unknown 3D mesh type for method: "//TRIM(Method), Err, Error, *999)
+        END SELECT
+      CASE DEFAULT
+        CALL FlagError("1D mesh import not supported for method: "//TRIM(Method), Err, Error, *999)
+      END SELECT
+      ALLOCATE(IntValuesB(NumberOfBoundaryPatchComponents),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".X", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".T", ACTION="read")
+      OPEN(NEWUNIT=BoundaryFileUnit, FILE=CHAR(VFilename)//".B", ACTION="read")
+
+      ! Skip header line and read all other lines in the element file
+      READ(ElementFileUnit,*) IntValue
+      DO CurrentIdx=1,NumberOfElements
+        READ(ElementFileUnit,*) IntValuesT(:)
+        DO Idx=1,NumberOfNodesPerElement
+          Elements(CurrentIdx,Idx)  = IntValuesT(Permutation(Idx))
+        END DO
+      END DO
+
+      ! Skip header line and read all other lines in the node file
+      READ(NodeFileUnit,*) IntValue
+      DO CurrentIdx=1,NumberOfNodes
+        READ(NodeFileUnit,*) Nodes(CurrentIdx,:)
+      END DO
+
+      ! Skip header line and read all other lines in the boundary file
+      READ(BoundaryFileUnit,*) NumberOfBoundaryPatches
+      ALLOCATE(BoundaryPatchesTemp(NumberOfBoundaryPatches,NumberOfBoundaryPatchComponents),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      ! First of all, let's read all the boundary patches in a temporary variable and count the number of unique boundary patch IDs
+      DO CurrentIdx=1,NumberOfBoundaryPatches
+        READ(BoundaryFileUnit,*) BoundaryPatchesTemp(CurrentIdx,:)
+        DO PatchIdx=1,SIZE(PatchIDs,1)
+          ! Check whether it is an existing patch ID or if we found a new one
+          IF(PatchIDs(PatchIdx)==BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)) THEN
+            NumberOfNodesPerPatchID(PatchIdx)   = NumberOfNodesPerPatchID(PatchIdx) + NumberOfBoundaryPatchComponents - 2_INTG
+            EXIT
+          ELSE IF(PatchIDs(PatchIdx)==-1_INTG) THEN
+            NumberOfPatchIDs                    = NumberOfPatchIDs + 1_INTG
+            PatchIDs(PatchIdx)                  = BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)
+            NumberOfNodesPerPatchID(PatchIdx)   = NumberOfNodesPerPatchID(PatchIdx) + NumberOfBoundaryPatchComponents - 2_INTG
+            EXIT
+          ELSE
+            ! Do nothing
+          END IF
+        END DO
+      END DO
+      ! Set the number of patch IDs
+      BoundaryPatches(1)    = NumberOfPatchIDs
+      CurrentFirstPatchIdx  = 1_INTG+2*NumberOfPatchIDs+1_INTG
+      DO CurrentIdx=1,NumberOfPatchIDs
+        ! Get number of nodes for each patch ID
+        BoundaryPatches(1+CurrentIdx)                   = NumberOfNodesPerPatchID(CurrentIdx)
+        ! Get the current patch ID
+        BoundaryPatches(1+NumberOfPatchIDs+CurrentIdx)  = PatchIDs(CurrentIdx)
+        ! Define starting indices for boundary patches
+        IF(CurrentIdx>1) CurrentFirstPatchIdx(CurrentIdx) = CurrentFirstPatchIdx(CurrentIdx-1_INTG) + BoundaryPatches(CurrentIdx)
+      END DO
+      DO CurrentIdx=1,NumberOfBoundaryPatches
+        ! Get the current patch ID to match
+        CurrentPatchID=BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)
+        DO PatchIdx=1,NumberOfPatchIDs
+          IF(CurrentPatchID==PatchIDs(PatchIdx)) THEN
+            Offset=CurrentFirstPatchIdx(PatchIdx)
+            EXIT
+          END IF
+        END DO
+        DO ComponentIdx=2,NumberOfBoundaryPatchComponents-1
+          BoundaryPatches(Offset+ComponentIdx-2)    = BoundaryPatchesTemp(CurrentIdx,ComponentIdx)
+        END DO
+       CurrentFirstPatchIdx(PatchIdx)=CurrentFirstPatchIdx(PatchIdx)+NumberOfBoundaryPatchComponents-2_INTG
+      END DO
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(BoundaryFileUnit)
+    ELSE
+      CALL FlagError("Invalid mesh import type. Valid types are: CHeart", Err, Error, *999)
+    END IF
+
+    ! Deallocate temporary variables
+    IF(ALLOCATED(Permutation))          DEALLOCATE(Permutation)
+    IF(ALLOCATED(IntValuesT))           DEALLOCATE(IntValuesT)
+    IF(ALLOCATED(IntValuesB))           DEALLOCATE(IntValuesB)
+    IF(ALLOCATED(BoundaryPatchesTemp))  DEALLOCATE(BoundaryPatchesTemp)
+
+    EXITS("cmfe_ReadMeshFiles")
+
+    RETURN
+999 ERRORSEXITS("cmfe_ReadMeshFiles", Err, Error)
+    CALL cmfe_HandleError(Err, Error)
+    RETURN
+
+  END SUBROUTINE cmfe_ReadMeshFiles
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_ReadMeshFilesCubit(Filename, Nodes, Elements, Nodesets, InterpolationType, Method, Err)
+    ! IN / OUT variables
+    CHARACTER(LEN=*),            INTENT(IN)     :: Filename             !< The file name to import the mesh data from
+    INTEGER(INTG),  ALLOCATABLE, INTENT(OUT)    :: Elements(:,:)
+    REAL(DP)     ,  ALLOCATABLE, INTENT(OUT)    :: Nodes(:,:)
+    INTEGER(INTG),  ALLOCATABLE, INTENT(OUT)    :: Nodesets(:)
+    INTEGER(INTG),               INTENT(OUT)    :: InterpolationType
+    CHARACTER(LEN=*),            INTENT(IN)     :: Method               !<The export method to use, e.g., CHeart, OpenCMISS
+    INTEGER(INTG),               INTENT(OUT)    :: Err                  !<The error code.
+    ! Local variables
+    TYPE(VARYING_STRING)        :: VFileName,VMethod
+    TYPE(VARYING_STRING)        :: VElementType
+    CHARACTER(LEN=256)          :: ElementType
+    INTEGER(INTG)               :: FilenameLength,MethodLength,ElementTypeLength
+    INTEGER(INTG)               :: NodeFileUnit,ElementFileUnit,NodesetFileUnit
+    INTEGER(INTG)               :: NumberOfNodes,NumberOfNodesT
+    INTEGER(INTG)               :: NumberOfElements
+    INTEGER(INTG)               :: NumberOfDimensions
+    INTEGER(INTG)               :: NumberOfNodesPerElement
+    INTEGER(INTG)               :: NumberOfNodesets
+    INTEGER(INTG), ALLOCATABLE  :: LengthOfNodesets(:)
+    INTEGER(INTG), ALLOCATABLE  :: Permutation(:),IntValuesT(:)
+    INTEGER(INTG)               :: i, j, k, CurrentIdx
+
+    ENTERS("cmfe_ReadMeshFilesCubit", Err, Error, *999)
+
+    ! Initialize variables
+    NumberOfDimensions      = 0_INTG
+    NumberOfNodes           = 0_INTG
+    NumberOfNodesT          = 0_INTG
+    NumberOfElements        = 0_INTG
+    NumberOfNodesPerElement = 0_INTG
+    NumberOfNodesets        = 0_INTG
+
+    ! Get file name and method name
+    FilenameLength  = LEN_TRIM(Filename)
+    VFilename       = Filename(1:FilenameLength)
+    MethodLength    = LEN_TRIM(Method)
+    VMethod         = Method(1:MethodLength)
+
+    ! Reading the X/T/S files from CHeart file format
+    IF(VMethod=="CHeart") THEN
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".X", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".T", ACTION="read")
+      OPEN(NEWUNIT=NodesetFileUnit,  FILE=CHAR(VFilename)//".S", ACTION="read")
+
+      ! Reading the headers with mesh data
+      READ(NodeFileUnit, *)     NumberOfNodes, NumberOfDimensions
+      READ(ElementFileUnit, *)  NumberOfElements, NumberOfNodesT
+      READ(NodesetFileUnit, *)  ElementType
+
+      ! Get element name
+      ElementTypeLength  = LEN_TRIM(ElementType)
+      VElementType       = ElementType(1:ElementTypeLength)
+
+      ! Do some sanity checks before reading mesh data
+      IF(.NOT.(NumberOfNodes==NumberOfNodesT))  CALL FlagError("X and T files have different number of nodes.", Err, Error, *999)
+      IF(NumberOfNodes<0_INTG)                  CALL FlagError("Invalid number of nodes.", Err, Error, *999)
+      IF(NumberOfDimensions<0_INTG)             CALL FlagError("Invalid number of dimensions.", Err, Error, *999)
+      IF(NumberOfElements<0_INTG)               CALL FlagError("Invalid number of elements.", Err, Error, *999)
+      IF(.NOT.(VElementType=="TRI3"    .OR. &
+               VElementType=="TRI6"    .OR. &
+               VElementType=="QUAD4"   .OR. &
+               VElementType=="QUAD9"   .OR. &
+               VElementType=="TETRA4"  .OR. &
+               VElementType=="TETRA10" .OR. &
+               VElementType=="HEX8"    .OR. &
+               VElementType=="HEX27"))          CALL FlagError("Invalid element type.", Err, Error, *999)
+
+      ! Reading the nodes 
+      ALLOCATE(Nodes(NumberOfNodes,NumberOfDimensions),STAT=Err)
+      DO i = 1, NumberOfNodes
+        READ (NodeFileUnit,*) Nodes(i,:)
+      END DO 
+
+      ! Specifing number of nodes per element, interpolation type (linear/quadratic) and the permutation vector based on element type
+      IF (VElementType=="TRI3") THEN
+        NumberOfNodesPerElement = 3
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="TRI6") THEN
+        NumberOfNodesPerElement = 6
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        Permutation(1)    = 1
+        Permutation(2)    = 2
+        Permutation(3)    = 3
+        Permutation(4)    = 4
+        Permutation(5)    = 6
+        Permutation(6)    = 5
+      ELSE IF (VElementType=="QUAD4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="QUAD9") THEN
+        NumberOfNodesPerElement = 9
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        Permutation(1)    = 1
+        Permutation(2)    = 5
+        Permutation(3)    = 2
+        Permutation(4)    = 6
+        Permutation(5)    = 7
+        Permutation(6)    = 8
+        Permutation(7)    = 3
+        Permutation(8)    = 9
+        Permutation(9)    = 4
+      ELSE IF (VElementType=="TETRA4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="TETRA10") THEN
+        NumberOfNodesPerElement = 10
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       =  0
+        Permutation(1)    =  1
+        Permutation(2)    =  5
+        Permutation(3)    =  2
+        Permutation(4)    =  6
+        Permutation(5)    =  7
+        Permutation(6)    =  3
+        Permutation(7)    =  8
+        Permutation(8)    =  9
+        Permutation(9)    = 10
+        Permutation(10)   =  4
+      ELSE IF (VElementType=="HEX8") THEN
+        NumberOfNodesPerElement = 8
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="HEX27") THEN
+        NumberOfNodesPerElement = 27 
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       =  0
+        Permutation(1)    =  1
+        Permutation(2)    =  9
+        Permutation(3)    =  2
+        Permutation(4)    = 10
+        Permutation(5)    = 11
+        Permutation(6)    = 12
+        Permutation(7)    =  3
+        Permutation(8)    = 13
+        Permutation(9)    =  4
+        Permutation(10)   = 14
+        Permutation(11)   = 15
+        Permutation(12)   = 16
+        Permutation(13)   = 17
+        Permutation(14)   = 18
+        Permutation(15)   = 19
+        Permutation(16)   = 20
+        Permutation(17)   = 21
+        Permutation(18)   = 22
+        Permutation(19)   =  5
+        Permutation(20)   = 23
+        Permutation(21)   =  6
+        Permutation(22)   = 24
+        Permutation(23)   = 25
+        Permutation(24)   = 26
+        Permutation(25)   =  7
+        Permutation(26)   = 27
+        Permutation(27)   =  8
+      END IF      
+
+      ALLOCATE(Elements(NumberOfElements,NumberOfNodesPerElement))
+      ALLOCATE(IntValuesT(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+
+      DO i = 1, NumberOfElements
+        READ (ElementFileUnit,*)  IntValuesT(:)
+        DO j=1,NumberOfNodesPerElement
+          Elements(i,j)  = IntValuesT(Permutation(j))
+        END DO
+      END DO
+
+      ! Reading the nodesets
+      READ(NodesetFileUnit, *)  NumberOfNodesets
+      IF (NumberOfNodesets > 0) THEN
+        ALLOCATE(LengthOfNodesets(NumberOfNodesets))
+        READ (NodesetFileUnit,*) LengthOfNodesets(:)
+        ALLOCATE(Nodesets(1+2*NumberOfNodesets+SUM(LengthOfNodesets)))
+
+        Nodesets(1)                    = NumberOfNodesets
+        Nodesets(2:1+NumberOfNodesets) = LengthOfNodesets(:)
+        DO i = 1, NumberOfNodesets
+          Nodesets(1+NumberOfNodesets+i) = i
+        END DO
+        READ (NodesetFileUnit,*)  Nodesets(2+2*NumberOfNodesets:)
+      END IF
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(NodesetFileUnit)
+
+    ! Reading the NODE/ELEM/NSET files from OpenCMISS file format
+    ELSE IF(VMethod=="OpenCMISS") THEN
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".NODE", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".ELEM", ACTION="read")
+      OPEN(NEWUNIT=NodesetFileUnit,  FILE=CHAR(VFilename)//".NSET", ACTION="read")
+
+      ! Reading the headers with mesh data
+      READ(NodeFileUnit, *)     NumberOfNodes, NumberOfDimensions
+      READ(ElementFileUnit, *)  NumberOfElements, NumberOfNodesT
+      READ(NodesetFileUnit, *)  ElementType
+
+      ! Get element name
+      ElementTypeLength  = LEN_TRIM(ElementType)
+      VElementType       = ElementType(1:ElementTypeLength)
+
+      ! Do some sanity checks before reading mesh data
+      IF(.NOT.(NumberOfNodes==NumberOfNodesT))  CALL FlagError("X and T files have different number of nodes.", Err, Error, *999)
+      IF(NumberOfNodes<0_INTG)                  CALL FlagError("Invalid number of nodes.", Err, Error, *999)
+      IF(NumberOfDimensions<0_INTG)             CALL FlagError("Invalid number of dimensions.", Err, Error, *999)
+      IF(NumberOfElements<0_INTG)               CALL FlagError("Invalid number of elements.", Err, Error, *999)
+      IF(.NOT.(VElementType=="TRI3"    .OR. &
+               VElementType=="TRI6"    .OR. &
+               VElementType=="QUAD4"   .OR. &
+               VElementType=="QUAD9"   .OR. &
+               VElementType=="TETRA4"  .OR. &
+               VElementType=="TETRA10" .OR. &
+               VElementType=="HEX8"    .OR. &
+               VElementType=="HEX27"))          CALL FlagError("Invalid element type.", Err, Error, *999)
+
+      ! Reading the nodes 
+      ALLOCATE(Nodes(NumberOfNodes,NumberOfDimensions),STAT=Err)
+      DO i = 1, NumberOfNodes
+        READ (NodeFileUnit,*) Nodes(i,:)
+      END DO 
+
+      ! Specifing number of nodes per element and interpolation type (linear/quadratic) based on element type
+      IF (VElementType=="TRI3") THEN
+        NumberOfNodesPerElement = 3
+        InterpolationType = 1
+      ELSE IF (VElementType=="TRI6") THEN
+        NumberOfNodesPerElement = 6
+        InterpolationType = 2
+      ELSE IF (VElementType=="QUAD4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+      ELSE IF (VElementType=="QUAD9") THEN
+        NumberOfNodesPerElement = 9
+        InterpolationType = 2
+      ELSE IF (VElementType=="TETRA4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+      ELSE IF (VElementType=="TETRA10") THEN
+        NumberOfNodesPerElement = 10
+        InterpolationType = 2
+      ELSE IF (VElementType=="HEX8") THEN
+        NumberOfNodesPerElement = 8
+        InterpolationType = 1
+      ELSE IF (VElementType=="HEX27") THEN
+        NumberOfNodesPerElement = 27 
+        InterpolationType = 2 
+      END IF      
+
+      ALLOCATE(Elements(NumberOfElements,NumberOfNodesPerElement))
+      DO i = 1, NumberOfElements
+        READ (ElementFileUnit,*)  Elements(i,:)
+      END DO
+
+      ! Reading the nodesets
+      READ(NodesetFileUnit, *)  NumberOfNodesets
+      IF (NumberOfNodesets > 0) THEN
+        ALLOCATE(LengthOfNodesets(NumberOfNodesets))
+        READ (NodesetFileUnit,*) LengthOfNodesets(:)
+        ALLOCATE(Nodesets(1+2*NumberOfNodesets+SUM(LengthOfNodesets)))
+
+        Nodesets(1)                    = NumberOfNodesets
+        Nodesets(2:1+NumberOfNodesets) = LengthOfNodesets(:)
+        DO i = 1, NumberOfNodesets
+          Nodesets(1+NumberOfNodesets+i) = i
+        END DO
+        READ (NodesetFileUnit,*)  Nodesets(2+2*NumberOfNodesets:)
+      END IF
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(NodesetFileUnit)
+
+    ELSE
+      CALL FlagError("Invalid mesh import type. Valid types are: CHeart, OpenCMISS", Err, Error, *999)
+    END IF   
+
+    IF(ALLOCATED(Permutation))       DEALLOCATE(Permutation)
+    IF(ALLOCATED(IntValuesT))        DEALLOCATE(IntValuesT)
+    IF(ALLOCATED(LengthOfNodesets))  DEALLOCATE(LengthOfNodesets)
+
+    EXITS("cmfe_ReadMeshFilesCubit")
+
+    RETURN
+999 ERRORSEXITS("cmfe_ReadMeshFilesCubit", Err, Error)
+    CALL cmfe_HandleError(Err, Error)
+    RETURN
+
+  END SUBROUTINE cmfe_ReadMeshFilesCubit
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns starting and stopping index of nodes belonging to a surface of given patch ID
+  SUBROUTINE cmfe_ImportedMesh_SurfaceGetNumber0(BoundaryPatches,PatchID,StartIdx,StopIdx,Err)
+
+    !Argument variables
+    INTEGER(INTG),      INTENT(IN)  :: BoundaryPatches(:)   !< The boundary patch labels for all boundary nodes
+    INTEGER(INTG),      INTENT(IN)  :: PatchID              !< The desired boundary patch label
+    INTEGER(INTG),      INTENT(OUT) :: StartIdx             !< On return, first index for corresponding PatchID
+    INTEGER(INTG),      INTENT(OUT) :: StopIdx              !< On return, last index for corresponding PatchID
+    INTEGER(INTG),      INTENT(OUT) :: Err                  !< The error code.
+    !Local variables
+    LOGICAL                         :: BoundaryFound
+    INTEGER(INTG)                   :: NodeIdx,NumberOfPatchIDs
+
+    ENTERS("cmfe_ImportedMesh_SurfaceGetNumber0",err,error,*999)
+
+    BoundaryFound=.FALSE.
+    NumberOfPatchIDs=BoundaryPatches(1)
+    ! Check for minimum length of BoundaryPatches variables
+    IF(SIZE(BoundaryPatches)<1+3*NumberOfPatchIDs) CALL FlagError("BoundaryPatches variable has incompatible size.",Err,Error,*999)
+    ! Set index to first non-header index
+    StartIdx=2+NumberOfPatchIDs*2
+    StopIdx=1+NumberOfPatchIDs*2
+    ! Set StartIdx and StopIdx for given PatchID
+    DO NodeIdx=2,NumberOfPatchIDs+1
+      StopIdx=StopIdx+BoundaryPatches(NodeIdx)
+      IF(BoundaryPatches(NodeIdx+NumberOfPatchIDs)==PatchID) THEN
+        BoundaryFound=.TRUE.
+        EXIT
+      ELSE
+        StartIdx=StartIdx+BoundaryPatches(NodeIdx)
+      END IF
+    END DO
+    IF(.NOT.BoundaryFound) CALL FlagError("Could not find boundary patch ID.",Err,Error,*999)
+
+    EXITS("cmfe_ImportedMesh_SurfaceGetNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_ImportedMesh_SurfaceGetNumber0",Err,Error)
+    CALL cmfe_HandleError(Err,Error)
+    RETURN
+  END SUBROUTINE cmfe_ImportedMesh_SurfaceGetNumber0
+
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Mesh"
+          CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintFields(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Fields"
+          CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintFields
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedMatrix(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedMatrixType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DistributedMatrix"
+          CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDistributedMatrix
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintRegion(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_RegionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Region"
+          CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintRegion
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshelementstype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshElementsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Meshelementstype"
+          CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshelementstype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfacePointsConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Interfacepointsconnectivitytype"
+          CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintQuadrature(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_QuadratureType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Quadrature"
+          CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintQuadrature
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolverEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": SolverEquations"
+          CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintSolverEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintNodes(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_NodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Nodes"
+          CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintNodes
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataPoints(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataPointsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DataPoints"
+          CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDataPoints
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolver(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Solver"
+          CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintSolver
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintField(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Field"
+          CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintField
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCoordinateSystem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CoordinateSystemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": CoordinateSystem"
+          CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCoordinateSystem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataProjection(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataProjectionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DataProjection"
+          CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDataProjection
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintProblem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ProblemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Problem"
+          CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintProblem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintGeneratedMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_GeneratedMeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": GeneratedMesh"
+          CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintGeneratedMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Equations"
+          CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquationsSet(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsSetType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": EquationsSet"
+          CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintEquationsSet
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedVector(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedVectorType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": DistributedVector"
+          CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDistributedVector
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceEquations"
+          CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintControlLoop(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ControlLoopType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": ControlLoop"
+          CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintControlLoop
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellml(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Cellml"
+          CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCellml
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBoundaryConditions(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": BoundaryConditions"
+          CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintBoundaryConditions
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBasis(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BasisType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Basis"
+          CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintBasis
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshnodestype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshNodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Meshnodestype"
+          CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshnodestype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceCondition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceConditionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceCondition"
+          CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceCondition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceMeshConnectivity(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceMeshConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": InterfaceMeshConnectivity"
+          CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterfaceMeshConnectivity
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterface(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Interface"
+          CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintInterface
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellmlEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": CellmlEquations"
+          CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintCellmlEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDecomposition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": Decomposition"
+          CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintDecomposition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshEmbedding(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshEmbeddingType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": MeshEmbedding"
+          CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintMeshEmbedding
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintHistory(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_HistoryType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, MyComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(MyComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    IF (NumberOfComputationalNodes == 1) THEN   ! serial execution
+      CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
+    ELSE       
+      ! Loop over computational nodes
+      DO I = 0,NumberOfComputationalNodes-1
+        CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+        IF (MyComputationalNodeNumber == I) THEN
+          PRINT *, ""
+          IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
+          WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberOfComputationalNodes,": History"
+          CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
+          CALL FLUSH()   ! flush stdout
+        ENDIF
+      ENDDO
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    ENDIF
+  END SUBROUTINE cmfe_PrintHistory
+  
 END MODULE OpenCMISS_Iron

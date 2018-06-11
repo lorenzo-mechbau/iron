@@ -2987,7 +2987,7 @@ CONTAINS
   !
 
   !>Output data post solve
-  SUBROUTINE STOKES_POST_SOLVE_OUTPUT_DATA(CONTROL_LOOP,SOLVER,err,error,*)
+  SUBROUTINE STOKES_POST_SOLVE_OUTPUT_DATA(CONTROL_LOOP,SOLVER,ERR,ERROR,*)
 
     !Argument variables
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP !<A pointer to the control loop to solve.
@@ -2998,21 +2998,26 @@ CONTAINS
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
-    TYPE(FIELDS_TYPE), POINTER :: Fields
-    TYPE(VARYING_STRING) :: localError,METHOD,FILENAME
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     REAL(DP) :: CURRENT_TIME,TIME_INCREMENT
     INTEGER(INTG) :: EQUATIONS_SET_IDX,CURRENT_LOOP_ITERATION,OUTPUT_ITERATION_NUMBER,NUMBER_OF_DIMENSIONS
+
     LOGICAL :: EXPORT_FIELD
+    TYPE(VARYING_STRING) :: METHOD!,FILE
+    CHARACTER(14) :: FILE
     CHARACTER(14) :: OUTPUT_FILE
 
-    ENTERS("STOKES_POST_SOLVE_OUTPUT_DATA",err,error,*999)
+
+    ENTERS("STOKES_POST_SOLVE_OUTPUT_DATA",ERR,ERROR,*999)
 
     NULLIFY(SOLVER_EQUATIONS)
     NULLIFY(SOLVER_MAPPING)
     NULLIFY(EQUATIONS_SET)
 
     IF(ASSOCIATED(CONTROL_LOOP)) THEN
+!       write(*,*)'CURRENT_TIME = ',CURRENT_TIME
+!       write(*,*)'TIME_INCREMENT = ',TIME_INCREMENT
       IF(ASSOCIATED(SOLVER)) THEN
         IF(ASSOCIATED(CONTROL_LOOP%PROBLEM)) THEN
           IF(.NOT.ALLOCATED(control_loop%problem%specification)) THEN
@@ -3020,7 +3025,6 @@ CONTAINS
           ELSE IF(SIZE(control_loop%problem%specification,1)<3) THEN
             CALL FlagError("Problem specification must have three entries for a Stokes problem.",err,error,*999)
           END IF
-          CALL SYSTEM('mkdir -p ./output')
           SELECT CASE(CONTROL_LOOP%PROBLEM%SPECIFICATION(3))
           CASE(PROBLEM_STATIC_STOKES_SUBTYPE,PROBLEM_LAPLACE_STOKES_SUBTYPE)
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
@@ -3090,28 +3094,86 @@ CONTAINS
                           CALL AnalyticAnalysis_Output(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,OUTPUT_FILE,err,error,*999)
                         ENDIF
                       ENDIF
+                    ENDDO
+                  ENDIF 
+                ENDIF
+            CASE(PROBLEM_TRANSIENT_STOKES_SUBTYPE,PROBLEM_ALE_STOKES_SUBTYPE,PROBLEM_PGM_STOKES_SUBTYPE)
+              CALL CONTROL_LOOP_CURRENT_TIMES_GET(CONTROL_LOOP,CURRENT_TIME,TIME_INCREMENT,ERR,ERROR,*999)
+              SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+                  !Make sure the equations sets are up to date
+                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                    CURRENT_LOOP_ITERATION=CONTROL_LOOP%TIME_LOOP%ITERATION_NUMBER
+                    OUTPUT_ITERATION_NUMBER=CONTROL_LOOP%TIME_LOOP%OUTPUT_NUMBER
+                    IF(OUTPUT_ITERATION_NUMBER/=0) THEN
+                      IF(CONTROL_LOOP%TIME_LOOP%CURRENT_TIME<=CONTROL_LOOP%TIME_LOOP%STOP_TIME) THEN
+                        IF(CURRENT_LOOP_ITERATION<10) THEN
+                          WRITE(OUTPUT_FILE,'("TIME_STEP_000",I0)') CURRENT_LOOP_ITERATION
+                        ELSE IF(CURRENT_LOOP_ITERATION<100) THEN
+                          WRITE(OUTPUT_FILE,'("TIME_STEP_00",I0)') CURRENT_LOOP_ITERATION
+                        ELSE IF(CURRENT_LOOP_ITERATION<1000) THEN
+                          WRITE(OUTPUT_FILE,'("TIME_STEP_0",I0)') CURRENT_LOOP_ITERATION
+                        ELSE IF(CURRENT_LOOP_ITERATION<10000) THEN
+                          WRITE(OUTPUT_FILE,'("TIME_STEP_",I0)') CURRENT_LOOP_ITERATION
+                        END IF
+                        FILE=OUTPUT_FILE
+  !          FILE="TRANSIENT_OUTPUT"
+                        METHOD="FORTRAN"
+                        EXPORT_FIELD=.TRUE.
+                        IF(EXPORT_FIELD) THEN          
+                          IF(MOD(CURRENT_LOOP_ITERATION,OUTPUT_ITERATION_NUMBER)==0)  THEN   
+                            CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"...",ERR,ERROR,*999)
+                            CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Now export fields... ",ERR,ERROR,*999)
+                            CALL FLUID_MECHANICS_IO_WRITE_CMGUI(EQUATIONS_SET%REGION,EQUATIONS_SET%GLOBAL_NUMBER,FILE, &
+                              & ERR,ERROR,*999)
+                            CALL FIELD_NUMBER_OF_COMPONENTS_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
+                              & NUMBER_OF_DIMENSIONS,ERR,ERROR,*999)
+!\todo: Introduce subroutine for the user to set the ENCAS output option
+                            EXPORT_FIELD=.FALSE.
+                            IF(NUMBER_OF_DIMENSIONS==3) THEN
+                              IF(EXPORT_FIELD) THEN  
+                                CALL FLUID_MECHANICS_IO_WRITE_ENCAS(EQUATIONS_SET%REGION,EQUATIONS_SET%GLOBAL_NUMBER,FILE, &
+                                  & ERR,ERROR,*999)
+                              ENDIF
+                              CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,OUTPUT_FILE,ERR,ERROR,*999)
+                              CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"...",ERR,ERROR,*999)
+                            ENDIF
+                          ENDIF
+                        ENDIF 
+                        IF(ASSOCIATED(EQUATIONS_SET%ANALYTIC)) THEN
+                          IF(EQUATIONS_SET%ANALYTIC%ANALYTIC_FUNCTION_TYPE==EQUATIONS_SET_NAVIER_STOKES_EQUATION_TWO_DIM_4.OR. &
+                            & EQUATIONS_SET%ANALYTIC%ANALYTIC_FUNCTION_TYPE==EQUATIONS_SET_NAVIER_STOKES_EQUATION_TWO_DIM_5.OR. &
+                            & EQUATIONS_SET%ANALYTIC%ANALYTIC_FUNCTION_TYPE==EQUATIONS_SET_NAVIER_STOKES_EQUATION_THREE_DIM_4.OR. &
+                            & EQUATIONS_SET%ANALYTIC%ANALYTIC_FUNCTION_TYPE==EQUATIONS_SET_NAVIER_STOKES_EQUATION_THREE_DIM_5.OR. &
+                            & EQUATIONS_SET%ANALYTIC%ANALYTIC_FUNCTION_TYPE==EQUATIONS_SET_NAVIER_STOKES_EQUATION_THREE_DIM_1) THEN
+                            CALL AnalyticAnalysis_Output(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FILE,ERR,ERROR,*999)
+                          ENDIF
+                        ENDIF
+                      ENDIF 
                     ENDIF
-                  ENDIF
-                ENDDO
+                  ENDDO
+                ENDIF
               ENDIF
-            ENDIF
-          CASE DEFAULT
-            localError="Problem subtype "//TRIM(NumberToVString(CONTROL_LOOP%PROBLEM%SPECIFICATION(3),"*",err,error))// &
-              & " is not valid for a Stokes equation fluid type of a fluid mechanics problem class."
-            CALL FlagError(localError,err,error,*999)
+            CASE DEFAULT
+              LOCAL_ERROR="Problem subtype "//TRIM(NUMBER_TO_VSTRING(CONTROL_LOOP%PROBLEM%SPECIFICATION(3),"*",ERR,ERROR))// &
+                & " is not valid for a Stokes equation fluid type of a fluid mechanics problem class."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
         ELSE
-          CALL FlagError("Problem is not associated.",err,error,*999)
+          CALL FlagError("Problem is not associated.",ERR,ERROR,*999)
         ENDIF
       ELSE
-        CALL FlagError("Solver is not associated.",err,error,*999)
+        CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FlagError("Control loop is not associated.",err,error,*999)
+      CALL FlagError("Control loop is not associated.",ERR,ERROR,*999)
     ENDIF
     EXITS("STOKES_POST_SOLVE_OUTPUT_DATA")
     RETURN
-999 ERRORSEXITS("STOKES_POST_SOLVE_OUTPUT_DATA",err,error)
+999 ERRORSEXITS("STOKES_POST_SOLVE_OUTPUT_DATA",ERR,ERROR)
     RETURN 1
   END SUBROUTINE STOKES_POST_SOLVE_OUTPUT_DATA
 

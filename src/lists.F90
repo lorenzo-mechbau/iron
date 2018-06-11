@@ -230,7 +230,11 @@ MODULE LISTS
     MODULE PROCEDURE LIST_REMOVE_DUPLICATES
   END INTERFACE List_RemoveDuplicates
   
-  !>Searches a list for a given value and returns the position in the list if the value exists \see Lists.
+  INTERFACE List_RemoveDuplicatesWithoutSorting
+    MODULE PROCEDURE LIST_REMOVE_DUPLICATES_WITHOUT_SORTING
+  END INTERFACE List_RemoveDuplicatesWithoutSorting
+  
+  !>Searches a list for a given value and returns the position in the list if the value exists \see LISTS.
   INTERFACE List_Search
     MODULE PROCEDURE LIST_SEARCH_INTG_ARRAY
     MODULE PROCEDURE LIST_SEARCH_SP_ARRAY
@@ -358,6 +362,8 @@ MODULE LISTS
   PUBLIC LIST_DETACH_AND_DESTROY
 
   PUBLIC List_Destroy,List_DetachAndDestroy
+  
+  PUBLIC LIST_EQUAL
 
   PUBLIC LIST_ITEM_ADD
 
@@ -2647,6 +2653,94 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  FUNCTION LIST_EQUAL(LIST,LIST2,ERR,ERROR)
+
+    !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The pointer to the list
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST2 !<The pointer to the 2nd list to compare to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Function Variable
+    LOGICAL :: LIST_EQUAL  !< if the lists are equal
+    !Local Variables
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    INTEGER(INTG) :: I, J
+
+    ENTERS("LIST_EQUAL",ERR,ERROR,*999)
+    LIST_EQUAL = .FALSE.
+    
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(ASSOCIATED(LIST2)) THEN
+          IF(LIST2%LIST_FINISHED) THEN
+            IF(LIST%DATA_TYPE/=LIST2%DATA_TYPE) RETURN
+            IF(LIST%DATA_DIMENSION/=LIST2%DATA_DIMENSION) RETURN
+            IF(LIST%NUMBER_IN_LIST/=LIST2%NUMBER_IN_LIST) RETURN
+            
+            IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_INTG(I) /= LIST2%LIST_INTG(I)) RETURN
+                ENDDO
+              ELSE 
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_INTG2(J,I) /= LIST2%LIST_INTG2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_SP(I) /= LIST2%LIST_SP(I)) RETURN
+                ENDDO
+              ELSE 
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_SP2(J,I) /= LIST2%LIST_SP2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_DP(I) /= LIST2%LIST_DP(I)) RETURN
+                ENDDO
+              ELSE 
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_DP2(J,I) /= LIST2%LIST_DP2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSE
+              CALL FlagError("List type is invalid.",ERR,ERROR,*999)
+            ENDIF
+            LIST_EQUAL = .TRUE.
+        
+          ELSE
+            CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("List2 is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("List has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    EXITS("LIST_EQUAL")
+    RETURN
+999 ERRORSEXITS("LIST_EQUAL",ERR,ERROR)
+    RETURN 
+  END FUNCTION LIST_EQUAL
+  
+  !
+  !================================================================================================================================
+  !
 
   !>Removes duplicate entries from a list. A side effect of this is that the list is sorted.
   SUBROUTINE LIST_REMOVE_DUPLICATES(LIST,ERR,ERROR,*)
@@ -2853,6 +2947,174 @@ CONTAINS
 999 ERRORSEXITS("LIST_REMOVE_DUPLICATES",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_REMOVE_DUPLICATES
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Removes duplicate entries from a list and preserve the order of the elements. This algorithm is implemented naively in O(n^2) complexity, but in-place.
+  SUBROUTINE LIST_REMOVE_DUPLICATES_WITHOUT_SORTING(LIST,ERR,ERROR,*)
+
+    !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The pointer to the list
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: i,j,k,NUMBER_REMOVED
+    LOGICAL :: VALUE_OCCURED, SAME_VALUE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("LIST_REMOVE_DUPLICATES_WITHOUT_SORTING",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(LIST%NUMBER_IN_LIST>0) THEN
+          IF(LIST%DATA_DIMENSION==1) THEN
+            SELECT CASE(LIST%DATA_TYPE)
+            CASE(LIST_INTG_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_INTG(k) == LIST%LIST_INTG(j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_INTG(i) = LIST%LIST_INTG(j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE(LIST_SP_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_SP(k) == LIST%LIST_SP(j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_SP(i) = LIST%LIST_SP(j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE(LIST_DP_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_DP(k) == LIST%LIST_DP(j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_DP(i) = LIST%LIST_DP(j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE DEFAULT
+              LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            END SELECT
+          ELSE
+            SELECT CASE(LIST%DATA_TYPE)
+            CASE(LIST_INTG_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_INTG2(LIST%KEY_DIMENSION,k) == LIST%LIST_INTG2(LIST%KEY_DIMENSION,j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_INTG2(LIST%KEY_DIMENSION,i) = LIST%LIST_INTG2(LIST%KEY_DIMENSION,j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE(LIST_SP_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_SP2(LIST%KEY_DIMENSION,k) == LIST%LIST_SP2(LIST%KEY_DIMENSION,j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_SP2(LIST%KEY_DIMENSION,i) = LIST%LIST_SP2(LIST%KEY_DIMENSION,j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE(LIST_DP_TYPE)
+              i=1   ! i is the write pointer (in scope of new list)
+              j=1   ! j is the read pointer (in scope of old list)
+              DO WHILE(j<=LIST%NUMBER_IN_LIST)
+                ! check if value already occured in new list
+                VALUE_OCCURED=.FALSE.
+                DO k=1,i-1
+                  IF (LIST%LIST_DP2(LIST%KEY_DIMENSION,k) == LIST%LIST_DP2(LIST%KEY_DIMENSION,j)) THEN
+                    VALUE_OCCURED=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO
+                
+                IF (.NOT.VALUE_OCCURED) THEN
+                  LIST%LIST_DP2(LIST%KEY_DIMENSION,i) = LIST%LIST_DP2(LIST%KEY_DIMENSION,j)
+                  i=i+1
+                ENDIF
+                j=j+1
+              ENDDO
+              LIST%NUMBER_IN_LIST=(i-1)
+            CASE DEFAULT
+              LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            END SELECT
+          ENDIF
+        ENDIF
+      ELSE
+        CALL FlagError("List has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+  
+    EXITS("LIST_REMOVE_DUPLICATES_WITHOUT_SORTING")
+    RETURN
+999 ERRORSEXITS("LIST_REMOVE_DUPLICATES_WITHOUT_SORTING",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE LIST_REMOVE_DUPLICATES_WITHOUT_SORTING
 
   !
   !================================================================================================================================

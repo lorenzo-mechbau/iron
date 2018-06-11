@@ -65,6 +65,9 @@
 !#### Index: nu
 !###  Description:
 !###    Index for a partial derivative.
+!#### Index: ny
+!###  Description:
+!###    Index for a degree of freedom
 
 !> This module contains all type definitions in order to avoid cyclic module references.
 MODULE Types
@@ -462,7 +465,7 @@ MODULE Types
   TYPE MeshNodeDerivativeType
     INTEGER(INTG) :: numberOfVersions !The number of global versions at the node for the mesh.
     INTEGER(INTG), ALLOCATABLE :: userVersionNumbers(:) !userVersionNumbers(versionIdx). The user version numbers for the versionIdx'th version for the node.
-    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node.
+    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node. (dofIndex(nv) is the global dof number, where nv is the version index)
     INTEGER(INTG) :: globalDerivativeIndex !The global derivative index of the nk'th global derivative for the node.
     INTEGER(INTG) :: partialDerivativeIndex !The partial derivative index (nu) of the nk'th global derivative for the node. Old CMISS name NUNK(nk,nj,np).
   END TYPE MeshNodeDerivativeType
@@ -529,6 +532,24 @@ MODULE Types
     TYPE(MeshComponentTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
   END TYPE MeshComponentTopologyPtrType
 
+  ! new type
+  !>Contains information on the local topology of a mesh.
+  TYPE MeshComponentLocalTopologyType
+    TYPE(MESH_TYPE), POINTER :: mesh !<Pointer to the parent mesh.
+    INTEGER(INTG) :: meshComponentNumber !<The mesh component number for this mesh topology.
+    TYPE(MeshNodesType), POINTER :: nodes !<Pointer to the local nodes within the mesh topology.
+    TYPE(MeshElementsType), POINTER :: elements !<Pointer to the local elements within the mesh topology.
+    TYPE(MeshDofsType), POINTER :: dofs !<Pointer to the local dofs within the mesh topology.
+    TYPE(MeshDataPointsType), POINTER :: dataPoints !<Pointer to the local data points within the mesh topology
+  END TYPE MeshComponentLocalTopologyType
+
+  ! new type
+  !>A buffer type to allow for an array of pointers to a MeshComponentLocalTopologyType.
+  TYPE MeshComponentLocalTopologyPtrType
+    TYPE(MeshComponentLocalTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
+  END TYPE MeshComponentLocalTopologyPtrType
+
+
   !>Embedded mesh types
   TYPE EMBEDDING_XI_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODES !<Number of nodes embedded in this element
@@ -565,9 +586,25 @@ MODULE Types
     INTEGER(INTG) :: NUMBER_OF_EMBEDDED_MESHES !<The number of meshes that are embedded in this mesh.
     TYPE(MESH_PTR_TYPE), POINTER :: EMBEDDED_MESHES(:) !<EMBEDDED_MESHES(mesh_idx). A pointer to the mesh_idx'th mesh that is embedded in this mesh.
     INTEGER(INTG) :: NUMBER_OF_ELEMENTS
-    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
+    
+    ! try to remove global information contained in TOPOLOGY later! 
+    ! currently in use: 
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
+    !
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+    !
+    !  DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
+    !    DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+    !      ny = MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+    
+    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
+    
+    ! new variable (?)
+    TYPE(MeshComponentLocalTopologyPtrType), POINTER :: LOCAL_TOPOLOGY(:) !<LOCAL_TOPOLOGY(mesh_component_idx). A pointer to the local topology mesh_component_idx'th mesh component.
   END TYPE MESH_TYPE
 
   !>A buffer type to allow for an array of pointers to a MESH_TYPE.
@@ -939,8 +976,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: DOMAIN_NUMBER !<The number of the domain that is adjacent to a domain in a mapping.
     INTEGER(INTG) :: NUMBER_OF_SEND_GHOSTS !<The number of ghost locals in the current domain that are to be sent to this domain.
     INTEGER(INTG) :: NUMBER_OF_RECEIVE_GHOSTS !<The number of ghost locals in the current domain that are to be received from this domain.
-    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts in the current domain that are to be sent to this domain.
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts (actually boundary nodes/elements/dofs) in the current domain that are to be sent to this domain.
     INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_RECEIVE_INDICES(:) !<LOCAL_GHOST_RECEIVE_INDICES(i). The local numbers of the ghosts in the current domain that are to be received from this domain.
+    INTEGER(INTG) :: NUMBER_OF_FURTHER_LINKED_GHOSTS !<The number of further linked ghost numbers that are needed such that all ghost nodes know all their shared domains (???), this is only needed for element mappings
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_FURTHER_INDICES(:) !<LOCAL_GHOST_FURTHER_INDICES(i) local number of a linked element, this is only needed for element mappings
   END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   
   !>Contains the local information for a global mapping number for a domain mapping.
@@ -951,6 +990,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG), ALLOCATABLE :: LOCAL_TYPE(:) !<LOCAL_TYPE(domain_idx). The type of local for the domain_idx'th domain for which the global number is mapped to a local number. The types depend on whether the mapped local number in the domain_idx'th domain is an internal, boundary or ghost local number. \see DOMAIN_MAPPINGS_DomainType
   END TYPE DOMAIN_GLOBAL_MAPPING_TYPE
 
+!-----------------------------------------------------------------------------------------------------------------------------------------------------
   !>Contains information on the domain mappings (i.e., local and global numberings).
   TYPE DOMAIN_MAPPING_TYPE
     INTEGER(INTG) :: NUMBER_OF_LOCAL !<The number of local numbers in the domain excluding ghost numbers
@@ -970,19 +1010,27 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: GHOST_FINISH !<The finish postition in the DOMAIN_LIST for the list of ghost numbers
     INTEGER(INTG), ALLOCATABLE :: DOMAIN_LIST(:) !<DOMAIN_LIST(i). The list of local numbers grouped so that the internal numbers are from INTERNAL_START to INTERNAL_FINISH, the boundary numbers are from BOUNDARY_START to BOUNDARY_FINISH and the ghost numbers are from GHOST_START to GHOST_FINISH
     INTEGER(INTG), ALLOCATABLE :: LOCAL_TO_GLOBAL_MAP(:) !<LOCAL_TO_GLOBAL_MAP(i). The global number for the i'th local number for the mapping.
+    ! to be removed
     TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), ALLOCATABLE :: GLOBAL_TO_LOCAL_MAP(:) !<GLOBAL_TO_LOCAL_MAP(i). The local information for the i'th global number for the mapping.
+    !-> move to decomposition (?)
     INTEGER(INTG) :: NUMBER_OF_ADJACENT_DOMAINS !<The number of domains that are adjacent to this domain in the mapping.
-    INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_PTR(:) !<ADJACENT_DOMAINS_PTR(domain_no). The pointer to the list of adjacent domains for domain_no. ADJACENT_DOMAINS_PTR(domain_no) gives the starting position in ADJACENT_DOMAINS_LIST for the first adjacent domain number for domain number domain_no. ADJACENT_DOMAINS_PTR(domain_no+1) gives the last+1 position in ADJACENT_DOMAINS_LIST for the last adjacent domain number for domain number domain_no. NOTE: the index for ADJACENT_DOMAINS_PTR varies from 0 to the number of domains.
+    ! to be removed (these two arrays were needed only for computation of send tag number)
+    INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_PTR(:) !<ADJACENT_DOMAINS_PTR(domain_no). The pointer to the list of adjacent domains for domain_no. ADJACENT_DOMAINS_PTR(domain_no) gives the starting position in ADJACENT_DOMAINS_LIST for the first adjacent domain number for domain number domain_no. ADJACENT_DOMAINS_PTR(domain_no+1) gives the last+1 position in ADJACENT_DOMAINS_LIST for the last adjacent domain number for domain number domain_no. NOTE: the index for ADJACENT_DOMAINS_PTR varies from 0 to the number of domains. 
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_LIST(:) !<ADJACENT_DOMAINS_LIST(i). The list of adjacent domains for each domain. The start and end positions for the list for domain number domain_no are given by ADJACENT_DOMAIN_PTR(domain_no) and ADJACENT_DOMAIN_PTR(domain_no+1)-1 respectively.
-    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: ADJACENT_DOMAINS(:) !<ADJACENT_DOMAINS(adjacent_domain_idx). The adjacent domain information for the adjacent_domain_idx'th adjacent domain to this domain. 
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: ADJACENT_DOMAINS(:) !<ADJACENT_DOMAINS(adjacent_domain_idx). The adjacent domain information for the adjacent_domain_idx'th adjacent domain to this domain.     
+
+    
   END TYPE DOMAIN_MAPPING_TYPE
 
   !>Contains information on the domain decomposition mappings.
   TYPE DOMAIN_MAPPINGS_TYPE
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN !<A pointer to the domain decomposition.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS !<Pointer to the element mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES !<Pointer to the node mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS !<Pointer to the dof mappings for the domain decomposition.
+    
+    ! to be removed, because elements mapping is now in decomposition
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS !<Pointer to the element mappings for the domain decomposition.
+    
   END TYPE DOMAIN_MAPPINGS_TYPE
   
   !>A pointer to the domain decomposition for this domain.
@@ -992,9 +1040,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: MESH_COMPONENT_NUMBER !<The mesh component number of the mesh which this domain was decomposed from.
     TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region that this domain is in. This is "inherited" from the mesh region. 
     INTEGER(INTG) :: NUMBER_OF_DIMENSIONS !<The number of dimensions for this domain. This is "inherited" from the mesh.
-    INTEGER(INTG), ALLOCATABLE :: NODE_DOMAIN(:) !<NODE_DOMAIN(np). The domain number that the np'th global node is in for the domain decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+    
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: MAPPINGS !<Pointer to the mappings for the domain  e.g., global to local and local to global maps
-    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<Pointer to the topology for the domain.
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<Pointer to the topology for the domain. (completely local information)
+    
+    ! to be removed
+    INTEGER(INTG), ALLOCATABLE :: NODE_DOMAIN(:) !<NODE_DOMAIN(np). The domain number that the np'th global node is in for the domain decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+    
   END TYPE DOMAIN_TYPE
 
   !>A buffer type to allow for an array of pointers to a DOMAIN_TYPE.
@@ -1127,10 +1179,26 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_EDGES_CUT !<For automatically calculated decompositions, the number of edges of the mesh dual graph that were cut for the composition. It provides an indication of the optimally of the automatic decomposition.
     INTEGER(INTG) :: numberOfElements !<The number of elements in the decomposition
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOMAIN(:) !<ELEMENT_DOMAIN(ne). The domain number that the ne'th global element is in for the decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
-    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: topology !<A pointer to the topology for this decomposition.
-    TYPE(DOMAIN_PTR_TYPE), POINTER :: domain(:) !<DOMAIN(mesh_component_idx). A pointer to the domain for mesh component for the domain associated with the computational node. \todo Change this to allocatable???
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the topology for this decomposition.
+    TYPE(DOMAIN_PTR_TYPE), POINTER :: DOMAIN(:) !<DOMAIN(mesh_component_idx). A pointer to the domain for mesh component for the domain associated with the computational node. \todo Change this to allocatable???
     LOGICAL :: CALCULATE_FACES !<Boolean flag to determine whether faces should be calculated
     LOGICAL :: CALCULATE_LINES !<Boolean flag to determine whether lines should be calculated
+    
+    ! new variables
+    TYPE(LIST_TYPE), POINTER :: GlobalElementDomain  !< A list of pairs (global element number, domain number) that can be set manually if DECOMPOSITION_USER_DEFINED_TYPE. It will be filled by Parmetis for DECOMPOSITION_CALCULATED_TYPE. It is a temporary variable und will be deallocated once ELEMENTS_MAPPING is set.
+    
+    ! (local element no, list of global node numbers)
+    
+    ! move FURTHER_GHOSTS_here (no, not so easily possible)
+    
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING !<Pointer to the element mappings for the domain decomposition.
+    
+    ! temporary, remove
+    !INTEGER(INTG), ALLOCATABLE :: NUMBER_ELEMENTS_DOMAIN(:)  !< NUMBER_ELEMENTS_DOMAIN(n) The number of local elements that the n'th computational node owns.
+    !INTEGER(INTG), ALLOCATABLE :: GLOBAL_ELEMENT_NUMBER(:) !<GLOBAL_ELEMENT_NUMBER(ne) global element number of the local element ne, like DOMAIN%LOCAL_TO_GLOBAL_MAP, replaces ELEMENT_DOMAIN
+    !INTEGER(INTG) :: NUMBER_LOCAL_ELEMENTS !< number of local elements
+    
+    
   END TYPE DECOMPOSITION_TYPE
 
   !>A buffer type to allow for an array of pointers to a DECOMPOSITION_TYPE.
@@ -1246,8 +1314,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_GAUSS_POINT_DOFS !<The number of Gauss point based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_DATA_POINT_DOFS !<The number of data point based degrees-of-freedom in the field dofs.
     INTEGER(INTG), ALLOCATABLE :: CONSTANT_DOF2PARAM_MAP(:) !<CONSTANT_DOF2PARAM_MAP(nyy). The mapping from constant field dofs to field parameters for the nyy'th constant field dof. The DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
-    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOF2PARAM_MAP(:,:) !<ELEMENT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from element based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
-    INTEGER(INTG), ALLOCATABLE :: NODE_DOF2PARAM_MAP(:,:) !<NODE_DOF2PARAM_MAP(i=1..4,nyy). The mapping from node based field dofs to field parameters for the nyy'th constant field dof. When i=1 the DOF2PARAM_MAP gives the version number (version_idx) of the field parameter. When i=2 the DOF2PARAM_MAP gives the derivative number (derivative_idx) of the field parameter. When i=3 the DOF2PARAM_MAP gives the node number (node_idx) of the field parameter. When i=4 the DOF2PARAM_MAP gives the component number (component_idx) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
+    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOF2PARAM_MAP(:,:) !<ELEMENT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from element based field dofs to field parameters for the nyy'th element field dof. When i=1 the DOF2PARAM_MAP gives the local element number (ne) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
+    INTEGER(INTG), ALLOCATABLE :: NODE_DOF2PARAM_MAP(:,:) !<NODE_DOF2PARAM_MAP(i=1..4,nyy). The mapping from node based field dofs to field parameters for the nyy'th node field dof. When i=1 the DOF2PARAM_MAP gives the version number (version_idx) of the field parameter. When i=2 the DOF2PARAM_MAP gives the derivative number (derivative_idx) of the field parameter. When i=3 the DOF2PARAM_MAP gives the local node number (node_idx) of the field parameter. When i=4 the DOF2PARAM_MAP gives the component number (component_idx) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.
     INTEGER(INTG), ALLOCATABLE :: GRID_POINT_DOF2PARAM_MAP(:,:) !<GRID_POINT_DOF2PARAM_MAP(i=1..2,nyy). The mapping from grid point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the grid point number (nq) of the field parameter. When i=2 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
     INTEGER(INTG), ALLOCATABLE :: GAUSS_POINT_DOF2PARAM_MAP(:,:) !<GAUSS_POINT_DOF2PARAM_MAP(i=1..3,nyy). The mapping from Gauss point based field dofs to field parameters for the nyy'th grid point field dof. When i=1 the DOF2PARAM_MAP gives the Gauss point number (ng) of the field parameter. When i=2 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=3 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
     INTEGER(INTG), ALLOCATABLE :: DATA_POINT_DOF2PARAM_MAP(:,:)!<DATA_POINT_DOF2PARAM_MAP(i=1..3,nyy). The mapping from data point based field dofs to field parameters for the nyy'th data point field dof. When i=1 the DOF2PARAM_MAP gives the data point number (np) of the field parameter. When i=2 the DOF2PARAM_MAP gives the element number (ne) of the field parameter. When i=3 the DOF2PARAM_MAP gives the component number (nh) of the field parameter. The nyy value for a particular field dof (ny) is given by the DOF_TYPE component of this type.  
@@ -1268,13 +1336,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !>A type to hold the mapping from field nodes to field dof numbers for a particular field variable component.
   TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODE_PARAMETERS !<The number of node based field parameters for this field variable component.
-    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter to a dof
+    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter (local node number) to a dof (local dof number)
   END TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field elements to field dof numbers for a particular field variable component.
   TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_PARAMETERS !<The number of element based field parameters for this field variable component.
-    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element based parameter for this field variable component. \todo Allow for multiple element parameters per element.
+    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element (local element no.) based parameter for this field variable component. \todo Allow for multiple element parameters per element.
   END TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field grid points to field dof numbers for a particular field variable component.
@@ -1667,6 +1735,25 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(EquationsMatricesSourceType), POINTER :: sourceVector !<A pointer to the source vector information for the vector equations matrices
   END TYPE EquationsMatricesVectorType
 
+  ! Adding a general type cf. Benjamin!
+  !>Contains information on the vector equations matrices and vectors
+  TYPE EquationsMatricesType
+   TYPE(EquationsType), POINTER :: EQUATIONS !<A pointer back to the equations
+    LOGICAL :: EQUATIONS_MATRICES_FINISHED !<Is .TRUE. if the equations matrices have finished being created, .FALSE. if not.
+    TYPE(EquationsMappingType), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping for the equations matrices.
+    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for the equations matrices
+    INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of local rows (excluding ghost rows) in the distributed equations matrices and vectors
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_ROWS !<The number of local rows (including ghost rows) in the distributed equations matrices and vectors
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the distributed equations matrices and vectors
+    !Equations matrices components
+    TYPE(EquationsMatricesDynamicType), POINTER :: DYNAMIC_MATRICES !<A pointer to the dynamic matrices information for the equations matrices
+    TYPE(EquationsMatricesLinearType), POINTER :: LINEAR_MATRICES !<A pointer to the linear matrices information for the equations matrices
+    TYPE(EquationsMatricesNonlinearType), POINTER :: NONLINEAR_MATRICES !<A pointer to the nonlinear matrices and vectors information for the equations matrices
+    TYPE(EquationsMatricesRHSType), POINTER :: RHS_VECTOR !<A pointer to the RHS vector information for the equations matrices
+    TYPE(EquationsMatricesSourceType), POINTER :: SOURCE_VECTOR !<A pointer to the source vector information for the equations matrices
+  END TYPE EquationsMatricesType
+
+
   !
   !================================================================================================================================
   !
@@ -1916,6 +2003,32 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(EquationsMappingVectorCreateValuesCacheType), POINTER :: createValuesCache !<The create values cache for the vector equations mapping
   END TYPE EquationsMappingVectorType
   
+  ! Adding general type EquationsMappingType for both scalar and vector (cf. Benjamin)!!!
+  !>Contains information on the equations mapping i.e., how field variable DOFS are mapped to the rows and columns of a number
+  !>of equations matrices.
+  TYPE EquationsMappingType
+    TYPE(EquationsType), POINTER :: EQUATIONS !<A pointer to the equations for this equations mapping
+    LOGICAL :: EQUATIONS_MAPPING_FINISHED !<Is .TRUE. if the equations mapping has finished being created, .FALSE. if not.
+    !TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES !<A pointer to the equations matrices associated with this equations mapping.
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices !<A pointer to the equations vector matrices associated with this vector equations mapping.
+    TYPE(EquationsMatricesScalarType), POINTER :: scalarMatrices !<A pointer to the equations scalar matrices associated with this scalar equations mapping.
+    !Row mappings
+    INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of local rows (excluding ghost rows) in the equations matrices
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_ROWS !<The number of local rows (including ghost rows) in the equations matrices
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the equations matrices
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ROW_DOFS_MAPPING !<The domain mapping for the equations rows
+    !Equations mapping components
+    TYPE(EquationsMappingDynamicType), POINTER :: DYNAMIC_MAPPING !<A pointer to the equations mapping for dynamic matrices
+    TYPE(EquationsMappingLinearType), POINTER :: LINEAR_MAPPING !<A pointer to the equations mapping for the linear matrices
+    TYPE(EquationsMappingNonlinearType), POINTER :: NONLINEAR_MAPPING !<A pointer to the equations mapping for the nonlinear matrices and vectors
+    TYPE(EquationsMappingRHSType), POINTER :: RHS_MAPPING !<A pointer to the equations mapping for the RHS vector
+    TYPE(EquationsMappingSourceType), POINTER :: SOURCE_MAPPING !<A pointer to the equations mapping for the source vector
+    !Create values cache
+    !TYPE(EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: CREATE_VALUES_CACHE !<The create values cache for the equations mapping
+    TYPE(EquationsMappingVectorCreateValuesCacheType), POINTER :: createVectorValuesCache !<The create values cache for the vector equations mapping 
+    TYPE(EquationsMappingScalarCreateValuesCacheType), POINTER :: createScalarValuesCache !<The create values cache for the scalar equations mapping
+ END TYPE EquationsMappingType
+
   !
   !================================================================================================================================
   !
@@ -2765,6 +2878,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE FORWARD_EULER_DAE_SOLVER_TYPE
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the forward Euler differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: TIME_STEPS_NUMBER !<The number of time steps to use. '-1' if not set - then the method will fit the given step size to the total amount of simulated time.
   END TYPE FORWARD_EULER_DAE_SOLVER_TYPE
 
   !>Contains information for an backward Euler differential-algebraic equation solver
@@ -2777,6 +2891,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE IMPROVED_EULER_DAE_SOLVER_TYPE
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the improved Euler differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: TIME_STEPS_NUMBER !<The number of time steps to use. '-1' if not set - then the method will fit the given step size to the total amount of simulated time.
   END TYPE IMPROVED_EULER_DAE_SOLVER_TYPE
   
   !>Contains information for an Euler differential-algebraic equation solver
@@ -2787,6 +2902,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(BACKWARD_EULER_DAE_SOLVER_TYPE), POINTER :: BACKWARD_EULER_SOLVER !<A pointer to the backward Euler solver information
     TYPE(IMPROVED_EULER_DAE_SOLVER_TYPE), POINTER :: IMPROVED_EULER_SOLVER !<A pointer to the improved Euler solver information
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the Euler differential equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: Iterator ! to be removed if anyone sees this
   END TYPE EULER_DAE_SOLVER_TYPE
 
   !>Contains information for a Crank-Nicholson differential-algebraic equation solver
@@ -2811,7 +2927,18 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE BDF_DAE_SOLVER_TYPE
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the BDF differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    REAL(DP) :: RELATIVE_TOLERANCE !<The relative tolerance, the user expects to get from the SUNDIALS library
+    REAL(DP) :: ABSOLUTE_TOLERANCE !<The absolute tolerance, the user expects to get from the SUNDIALS library
+    INTEGER(INTG) :: ITERATOR! to be removed if this falsly ends up somewhere not at Aarons
   END TYPE BDF_DAE_SOLVER_TYPE
+
+  !>Contains information for a GL differential-algebraic equation solver
+  TYPE GL_DAE_SOLVER_TYPE
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic solver
+    INTEGER(INTG) :: solverLibrary !<The library type for the GL differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    !REAL(DP) :: RELATIVE_TOLERANCE !The relative tolerance, the user expects to get
+    !REAL(DP) :: ABSOLUTE_TOLERANCE !The absolute tolerance, the user expects to get
+  END TYPE GL_DAE_SOLVER_TYPE
   
   !>Contains information for a Rush-Larson differential-algebraic equation solver
   TYPE RUSH_LARSON_DAE_SOLVER_TYPE
@@ -2837,6 +2964,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(RUNGE_KUTTA_DAE_SOLVER_TYPE), POINTER :: RUNGE_KUTTA_SOLVER !<A pointer to information for a Runge-Kutta solver
     TYPE(ADAMS_MOULTON_DAE_SOLVER_TYPE), POINTER :: ADAMS_MOULTON_SOLVER !<A pointer to information for an Adams-Moulton solver
     TYPE(BDF_DAE_SOLVER_TYPE), POINTER :: BDF_SOLVER !<A pointer to information for a BDF solver
+    TYPE(GL_DAE_SOLVER_TYPE), POINTER :: GL_SOLVER !<A pointer to information for a GL solver
     TYPE(RUSH_LARSON_DAE_SOLVER_TYPE), POINTER :: RUSH_LARSON_SOLVER !<A pointer to information for a Rush-Larson solver
     TYPE(EXTERNAL_DAE_SOLVER_TYPE), POINTER :: EXTERNAL_SOLVER !<A pointer to information for an external solver
   END TYPE DAE_SOLVER_TYPE

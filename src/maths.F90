@@ -49,6 +49,7 @@ MODULE Maths
   USE Kinds
   USE ISO_VARYING_STRING
   USE Strings
+  USE MPI
 
 #include "macros.h"  
   

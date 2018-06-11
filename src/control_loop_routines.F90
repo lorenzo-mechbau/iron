@@ -79,8 +79,12 @@ MODULE CONTROL_LOOP_ROUTINES
   !> \brief The linearity type of control loop field variables
   !> \see ControlLoop
   !>@{
+
   INTEGER(INTG), PARAMETER :: CONTROL_LOOP_FIELD_VARIABLE_LINEAR=1 !<The control loop field variable is linear \see ControlLoop_FieldVariableLinearityTypes,ControlLoop
   INTEGER(INTG), PARAMETER :: CONTROL_LOOP_FIELD_VARIABLE_NONLINEAR=2 !<The control loop field variable is nonlinear \see ControlLoop_FieldVariableLinearityTypes,ControlLoop
+
+  INTEGER(INTG), PARAMETER :: CONTROL_LOOP_FILE_OUTPUT=-1 !<only file output
+
   !>@}
 
   !> \addtogroup ControlLoop_FieldVariableTimeDependenceTypes OpenCMISS::Iron::ControlLoop::FieldVariableTimeDependenceTypes
@@ -191,7 +195,7 @@ MODULE CONTROL_LOOP_ROUTINES
     MODULE PROCEDURE CONTROL_LOOP_TIME_OUTPUT_SET
   END INTERFACE ControlLoop_TimeOutputSet
 
-  PUBLIC CONTROL_LOOP_NO_OUTPUT,CONTROL_LOOP_PROGRESS_OUTPUT,CONTROL_LOOP_TIMING_OUTPUT
+  PUBLIC CONTROL_LOOP_NO_OUTPUT,CONTROL_LOOP_PROGRESS_OUTPUT,CONTROL_LOOP_TIMING_OUTPUT,CONTROL_LOOP_FILE_OUTPUT
   
   PUBLIC CONTROL_LOOP_CREATE_FINISH,CONTROL_LOOP_CREATE_START
 
@@ -1667,6 +1671,7 @@ CONTAINS
       ELSE        
         SELECT CASE(OUTPUT_TYPE)
         CASE(CONTROL_LOOP_NO_OUTPUT)
+
           CONTROL_LOOP%outputType=CONTROL_LOOP_NO_OUTPUT
         CASE(CONTROL_LOOP_PROGRESS_OUTPUT)
           CONTROL_LOOP%outputType=CONTROL_LOOP_PROGRESS_OUTPUT

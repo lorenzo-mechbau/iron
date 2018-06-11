@@ -193,6 +193,7 @@ CONTAINS
             CALL DIFFUSION_EQUATION_CONTROL_LOOP_POST_LOOP(CONTROL_LOOP,err,error,*999)
           CASE(PROBLEM_REACTION_DIFFUSION_EQUATION_TYPE)
             CALL REACTION_DIFFUSION_CONTROL_LOOP_POST_LOOP(CONTROL_LOOP,err,error,*999)
+
           CASE DEFAULT
             localError="The second problem specification of "// &
               & TRIM(NumberToVString(PROBLEM%specification(2),"*",err,error))// &

@@ -78,6 +78,8 @@ MODULE BIODOMAIN_EQUATION_ROUTINES
   IMPLICIT NONE
 
   PRIVATE
+  
+  REAL(DP), PUBLIC :: TIMING_FILE_OUTPUT2 = 0_DP
 
   !Module parameters
 
@@ -130,6 +132,7 @@ CONTAINS
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: FILENAME,LOCAL_ERROR,METHOD
     INTEGER(INTG) :: OUTPUT_ITERATION_NUMBER,CURRENT_LOOP_ITERATION
+    REAL(SP) :: TIME1(1), TIME2(1)
 
     ENTERS("BIODOMAIN_CONTROL_LOOP_POST_LOOP",err,error,*999)
 
@@ -141,6 +144,8 @@ CONTAINS
         CASE(PROBLEM_CONTROL_FIXED_LOOP_TYPE)
           !do nothing
         CASE(PROBLEM_CONTROL_TIME_LOOP_TYPE)
+          CALL CPU_TIMER(USER_CPU, TIME1, ERR,ERROR,*999)
+        
           !Export the dependent field for this time step
           TIME_LOOP=>CONTROL_LOOP%TIME_LOOP
           IF(ASSOCIATED(TIME_LOOP)) THEN
@@ -211,6 +216,16 @@ CONTAINS
           ELSE
             CALL FlagError("Time loop is not associated.",err,error,*999)
           ENDIF
+          
+          CALL CPU_TIMER(USER_CPU, TIME2, ERR,ERROR,*999)
+          TIMING_FILE_OUTPUT2 = TIMING_FILE_OUTPUT2 + (TIME2(1) - TIME1(1))
+          
+          ! output to console
+          !PRINT *, "duration file output: user: ", TIME1(1), " to ", TIME2(1), " = ", (TIME2(1)-TIME1(1))
+          !CALL CPU_TIMER(SYSTEM_CPU, TIME2, ERR,ERROR,*999)
+          !PRINT *, "                      system: ", TIME1(1), " to ", TIME2(1), (TIME2(1)-TIME1(1)),&
+          ! & ", new total duration: ",TIMING_FILE_OUTPUT2
+          
         CASE(PROBLEM_CONTROL_WHILE_LOOP_TYPE)
           !do nothing
         CASE(PROBLEM_CONTROL_LOAD_INCREMENT_LOOP_TYPE)
@@ -1627,6 +1642,8 @@ CONTAINS
     TYPE(PROBLEM_TYPE), POINTER :: PROBLEM
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
+    TYPE(SOLVER_TYPE), POINTER :: ACTUAL_SOLVER
 
     ENTERS("BIODOMAIN_PRE_SOLVE",err,error,*999)
 
@@ -1714,9 +1731,9 @@ CONTAINS
               END SELECT
             CASE(PROBLEM_BIOELECTRIC_FINITE_ELASTICITY_TYPE)
               SELECT CASE(PROBLEM%SPECIFICATION(3))
-              CASE(PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE,PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
-                & PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE,EQUATIONS_SET_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE, &
-                & PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+              CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+                & PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
+                & PROBLEM_GUDUNOV_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
                 SELECT CASE(SOLVER%GLOBAL_NUMBER)
                 CASE(1)
                   CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT,err,error,*999)
@@ -1727,6 +1744,58 @@ CONTAINS
                     & " is invalid for a bioelectrics finite elasticity problem."
                   CALL FlagError(LOCAL_ERROR,err,error,*999)
                 END SELECT
+                
+              CASE(PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+                & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
+                & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+                SELECT CASE(SOLVER%GLOBAL_NUMBER)
+                CASE(1)
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE, solver%global_number=1,CURRENT_TIME=",CURRENT_TIME,"TIME_INCREMENT=",TIME_INCREMENT
+                  !PRINT *, "SOLVER_DAE_TIMES_SET: ",CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT/2.0_DP
+                  CALL SOLVER_DAE_TIMES_SET(SOLVER,CURRENT_TIME,CURRENT_TIME+TIME_INCREMENT/2.0_DP,ERR,ERROR,*999)
+                CASE(2)
+                  !Do nothing
+                CASE(3)
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE, solver%global_number=3,CURRENT_TIME=",CURRENT_TIME,"TIME_INCREMENT=",TIME_INCREMENT
+                  !IF(SOLVER%SOLVE_TYPE==SOLVER_DAE_TYPE) THEN
+                  !  PRINT *, "is DAE solver"
+                  !  DAE_SOLVER=>SOLVER%DAE_SOLVER
+                  !  IF(ASSOCIATED(DAE_SOLVER)) THEN
+                  !    PRINT *, "START_TIME=",DAE_SOLVER%START_TIME,", END_TIME=",DAE_SOLVER%END_TIME
+                  !  ENDIF
+                  !ENDIF
+                  
+                  ! For Strang Splitting 2 DAE solvers are created, but only one CELLML_EQUATIONS instance
+                  ! Because the solver call gets only the CELLML_EQUATIONS 
+                  ! (CALL PROBLEM_CELLML_EQUATIONS_SOLVE(SOLVER%CELLML_EQUATIONS) in problem_routines.f90
+                  ! the there associated solver is used which is always the first solver. Therefore we need to
+                  ! use the first solver here
+                  IF(ASSOCIATED(SOLVER%SOLVERS)) THEN
+                  !  PRINT *, "number of solvers: ", SOLVER%SOLVERS%NUMBER_OF_SOLVERS
+                    IF (SOLVER%SOLVERS%NUMBER_OF_SOLVERS == 3) THEN
+                      ACTUAL_SOLVER=>SOLVER%SOLVERS%SOLVERS(1)%PTR    ! use firstr solver as second DAE solver in Strang splitting
+                    ENDIF
+                  ENDIF
+                  
+                  !PRINT *, "BIODOMAIN_PRE_SOLVE: SOLVER_DAE_TIMES_SET: ",CURRENT_TIME+TIME_INCREMENT/2.0_DP,&
+                  ! & CURRENT_TIME+TIME_INCREMENT
+                  CALL SOLVER_DAE_TIMES_SET(ACTUAL_SOLVER,CURRENT_TIME+TIME_INCREMENT/2.0_DP,CURRENT_TIME+TIME_INCREMENT, &
+                    & ERR,ERROR,*999)
+                    
+                  !IF(ACTUAL_SOLVER%SOLVE_TYPE==SOLVER_DAE_TYPE) THEN
+                  !  DAE_SOLVER=>ACTUAL_SOLVER%DAE_SOLVER
+                  !  IF(ASSOCIATED(DAE_SOLVER)) THEN
+                  !    PRINT *, "BIODOMAIN_PRE_SOLVE: DAE solver, START_TIME=",DAE_SOLVER%START_TIME,&
+                      !& ", END_TIME=",DAE_SOLVER%END_TIME
+                  !  ENDIF
+                  !ENDIF
+                    
+                CASE DEFAULT
+                  LOCAL_ERROR="The solver global number of "//TRIM(NUMBER_TO_VSTRING(SOLVER%GLOBAL_NUMBER,"*",ERR,ERROR))// &
+                    & " is invalid for a bioelectrics finite elasticity problem."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                END SELECT
+                
               CASE DEFAULT
                 LOCAL_ERROR="The problem subtype of "//TRIM(NUMBER_TO_VSTRING(PROBLEM%SPECIFICATION(3),"*",err,error))// &
                   & " is invalid for a monodomain problem type."
@@ -2293,8 +2362,30 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE,GEOMETRIC_VARIABLE
     TYPE(QUADRATURE_SCHEME_TYPE), POINTER :: QUADRATURE_SCHEME
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: DEBUGGING = .FALSE.
+    
+    INTEGER(INTG) :: component_idx
+    TYPE(FIELD_INTERPOLATION_PARAMETERS_TYPE), POINTER :: INTERPOLATION_PARAMETERS
     
     ENTERS("BIODOMAIN_EQUATION_FINITE_ELEMENT_CALCULATE",err,error,*999)
+
+#if 0
+    DEBUGGING = .FALSE.
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 0) DEBUGGING = .TRUE.
+#endif
+        
+    IF (DEBUGGING) THEN
+      PRINT*, "================================================================================="
+      PRINT*, "BIODOMAIN_EQUATION_FINITE_ELEMENT_CALCULATE, ELEMENT_NUMBER=", ELEMENT_NUMBER
+      
+      
+      !PRINT*, "Equations%Interpolation: "
+      
+      !PRINT*, "   GEOMETRIC_INTERP_PARAMETERS: "
+      !CALL Print_FIELD_INTERPOLATION_PARAMETERS_PTR(&
+        !& EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE), 5, 5)
+      
+    ENDIF
 
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       EQUATIONS=>EQUATIONS_SET%EQUATIONS
@@ -2306,6 +2397,11 @@ CONTAINS
         MATERIALS_FIELD=>equations%interpolation%materialsField
         FIBRE_FIELD=>equations%interpolation%fibreField
         USE_FIBRES=ASSOCIATED(FIBRE_FIELD)
+
+        ! Benjamin's leftover
+        ! EQUATIONS_MAPPING=>EQUATIONS%EQUATIONS_MAPPING
+        ! EQUATIONS_MATRICES=>EQUATIONS%EQUATIONS_MATRICES
+
         vectorMapping=>vectorEquations%vectorMapping
         vectorMatrices=>vectorEquations%vectorMatrices
         DEPENDENT_BASIS=>DEPENDENT_FIELD%DECOMPOSITION%DOMAIN(DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%ptr% &
@@ -2321,7 +2417,7 @@ CONTAINS
         CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ELEMENT_NUMBER,equations%interpolation% &
           & materialsInterpParameters(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
         IF(USE_FIBRES) CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ELEMENT_NUMBER,equations% &
-          & interpolation%fibreInterpParameters(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
+          & interpolation%fibreInterpParameters(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)        
         
         IF(.NOT.ALLOCATED(EQUATIONS_SET%SPECIFICATION)) THEN
           CALL FlagError("Equations set specification is not allocated.",err,error,*999)
@@ -2338,22 +2434,29 @@ CONTAINS
           dynamicMapping=>vectorMapping%dynamicMapping
           FIELD_VARIABLE=>dynamicMapping%equationsMatrixToVarMaps(1)%variable
           FIELD_VAR_TYPE=FIELD_VARIABLE%VARIABLE_TYPE
+          
+         ! IF (DEBUGGING) THEN
+         !   PRINT*, "update k=",STIFFNESS_MATRIX%UPDATE_MATRIX,"D=",DAMPING_MATRIX%UPDATE_MATRIX,"f=",RHS_VECTOR%UPDATE_VECTOR
+         ! ENDIF
 
           IF(stiffnessMatrix%updateMatrix.OR.dampingMatrix%updateMatrix.OR.rhsVector%updateVector) THEN
             !Loop over gauss points
             DO ng=1,QUADRATURE_SCHEME%NUMBER_OF_GAUSS
+
               CALL FIELD_INTERPOLATE_GAUSS(FIRST_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,ng,equations%interpolation% &
                 & geometricInterpPoint(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
               CALL FIELD_INTERPOLATED_POINT_METRICS_CALCULATE(GEOMETRIC_BASIS%NUMBER_OF_XI,equations%interpolation% &
                 & geometricInterpPointMetrics(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
               CALL FIELD_INTERPOLATE_GAUSS(NO_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,ng,equations%interpolation% &
                 & materialsInterpPoint(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
+
               IF(USE_FIBRES) THEN
                 CALL FIELD_INTERPOLATE_GAUSS(FIRST_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,ng,equations%interpolation% &
                   & fibreInterpPoint(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
                 CALL FIELD_INTERPOLATED_POINT_METRICS_CALCULATE(FIBRE_BASIS%NUMBER_OF_XI,equations%interpolation% &
                   & fibreInterpPointMetrics(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
               ENDIF
+              
               !Calculate RWG.
               RWG=equations%interpolation%geometricInterpPointMetrics(FIELD_U_VARIABLE_TYPE)%ptr%JACOBIAN* &
                 & QUADRATURE_SCHEME%GAUSS_WEIGHTS(ng)
