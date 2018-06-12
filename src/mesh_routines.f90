@@ -4587,9 +4587,9 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), newLocalGhostSendIndices, newLocalGhostReceiveIndices, domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
-    LOGICAL :: onOtherDomain,adacentDomainEntryFound
+    LOGICAL :: onOtherDomain,adacentDomainEntryFound, found
     TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: newAdjacentDomain
-    TYPE(VARYING_STRING) :: dummyError
+    TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_FacesCalculate",err,error,*999)
 
@@ -4769,7 +4769,7 @@ CONTAINS
     ALLOCATE(internalFaces(facesMapping%NUMBER_OF_INTERNAL))
     internalFaces=integerArray(1:facesMapping%NUMBER_OF_INTERNAL)
 
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
 
 
@@ -4832,7 +4832,7 @@ CONTAINS
     ALLOCATE(boundaryAndBoundaryPlaneFaces(numberBoundaryAndBoundaryPlaneFaces))
     boundaryAndBoundaryPlaneFaces = integerArray(1:numberBoundaryAndBoundaryPlaneFaces)
 
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     ! count number of faces that are boundary or ghost and are shared with other domains
     CALL LIST_DETACH_AND_DESTROY(boundaryAndGhostFacesList,numberBoundaryAndGhostFaces,integerArray,&
@@ -4840,7 +4840,7 @@ CONTAINS
     ALLOCATE(boundaryAndGhostFaces(numberBoundaryAndGhostFaces))
     boundaryAndGhostFaces = integerArray(1:numberBoundaryAndGhostFaces)
 
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     !Allocate the array who's index will be 1 if that index of boundaryAndBoundaryPlaneFaces is on the boundary plane
     ALLOCATE(faceOnBoundaryPlane(numberBoundaryAndBoundaryPlaneFaces))
@@ -5011,18 +5011,18 @@ CONTAINS
     CALL LIST_DETACH_AND_DESTROY(adjacentDomainsList,numberAdjacentDomains,integerArray,err,error,*999)
     ALLOCATE(adjacentDomains(numberAdjacentDomains))
     adjacentDomains = integerArray(1:numberAdjacentDomains)
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     CALL LIST_DETACH_AND_DESTROY(extraAdjacentDomainsList,numberExtraAdjacentDomains,integerArray,err,error,*999)
     ALLOCATE(extraAdjacentDomains(numberExtraAdjacentDomains))
     extraAdjacentDomains = integerArray(1:numberExtraAdjacentDomains)
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     CALL LIST_DETACH_AND_DESTROY(localAndAdjacentDomainsList,numberLocalAndAdjacentDomains,integerArray,&
       & err,error,*999)
     ALLOCATE(localAndAdjacentDomains(numberLocalAndAdjacentDomains))
     localAndAdjacentDomains = integerArray(1:numberLocalAndAdjacentDomains)
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     ! create list for each adjacent domain with shared faces at the boundary
     ALLOCATE(sharedFacesList(numberAdjacentDomains),STAT=err)
@@ -5321,12 +5321,12 @@ CONTAINS
     CALL LIST_DETACH_AND_DESTROY(boundaryFacesList, facesMapping%NUMBER_OF_BOUNDARY, integerArray, err,error,*999)
     ALLOCATE(boundaryFaces(facesMapping%NUMBER_OF_BOUNDARY))
     boundaryFaces=integerArray(1:facesMapping%NUMBER_OF_BOUNDARY)
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     CALL LIST_DETACH_AND_DESTROY(ghostFacesList, numberGhostFaces, integerArray, err,error,*999)
     ALLOCATE(ghostFaces(numberGhostFaces))
     ghostFaces=integerArray(1:numberGhostFaces)
-    DEALLOCATE(integerArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
 
     ! create list of ghost faces with their home domain
@@ -5418,7 +5418,7 @@ CONTAINS
       CALL LIST_DETACH_AND_DESTROY(sendBufferList(domainIdx)%PTR,numberToSendToDomain(domainIdx),&
         & integerArray,err,error,*999)
       sendBuffer(1:numberToSendToDomain(domainIdx),domainIdx) = integerArray(1:numberToSendToDomain(domainIdx))
-      DEALLOCATE(integerArray)
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
 
       ! number of faces to be send to domain
@@ -5459,7 +5459,7 @@ CONTAINS
         ENDDO
 
 
-        DEALLOCATE(receiveBuffer)
+        IF(ALLOCATED(receiveBuffer)) DEALLOCATE(receiveBuffer)
 
       ENDIF
     ENDDO
@@ -5477,7 +5477,7 @@ CONTAINS
     ghostFacesDomains(1,1:facesMapping%NUMBER_OF_GHOST)=integerArray2D(1,1:facesMapping%NUMBER_OF_GHOST)
     ghostFacesDomains(2,1:facesMapping%NUMBER_OF_GHOST)=integerArray2D(2,1:facesMapping%NUMBER_OF_GHOST)
 
-    DEALLOCATE(integerArray2D)
+    IF(ALLOCATED(integerArray2D)) DEALLOCATE(integerArray2D)
 
 
     ! store number of local and total number of local faces
@@ -5573,7 +5573,7 @@ CONTAINS
 
 
         ! update LOCAL_GHOST_SEND_INDICES
-        adjacentDomainIdx = 1
+
         ! loop over the domains where this face is present
         CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, numberDomains, err,error,*999)
         DO I=1,numberDomains
@@ -5581,17 +5581,24 @@ CONTAINS
           CALL LIST_ITEM_GET(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,I,domainNo,err,error,*999)
           IF (domainNo /= myComputationalNodeNumber) THEN
 
+
+            found=.FALSE.
             ! go to entry in ADJACENT_DOMAINS array for domainNo, at index adjacentDomainIdx
-            DO
+            DO adjacentDomainIdx =1,numberAdjacentDomains
               IF (adjacentDomains(adjacentDomainIdx) == domainNo) THEN
+                found=.TRUE.
 
 
-                CALL LIST_ITEM_ADD(localGhostSendIndices(adjacentDomainIdx)%PTR,localFaceNo,err,error,*999)
                 EXIT
               ENDIF
-              adjacentDomainIdx = adjacentDomainIdx+1
             ENDDO
+            IF(.NOT.found) THEN
+              localError="Domain number "//TRIM(NumberToVString(domainNo,"*",err,error))// &
+              & " was not found in the list of adjacent domains."
+              CALL FlagError(localError,err,error,*999)
+            ENDIF
 
+            CALL LIST_ITEM_ADD(localGhostSendIndices(adjacentDomainIdx)%PTR,localFaceNo,err,error,*999)
           ENDIF
         ENDDO
 
@@ -5722,14 +5729,14 @@ CONTAINS
         & facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS,integerArray,err,error,*999)
       facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = &
         & integerArray(1:facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
-      DEALLOCATE(integerArray)
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
       ! create localGhostReceiveIndices for the adjacent domain
       CALL LIST_DETACH_AND_DESTROY(localGhostReceiveIndices(adjacentDomainIdx)%PTR, &
         & facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS,integerArray,err,error,*999)
       facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES = &
         & integerArray(1:facesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
-      DEALLOCATE(integerArray)
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
     ENDDO
 
@@ -5759,27 +5766,27 @@ CONTAINS
 
 
     ! deallocate arrays
-    DEALLOCATE(boundaryAndBoundaryPlaneFaces)
-    DEALLOCATE(adjacentDomains)
-    DEALLOCATE(sendRequestHandle)
-    DEALLOCATE(receiveRequestHandle)
-    DEALLOCATE(numberNonBoundaryPlaneAndLocalFacesOnRank)
-    DEALLOCATE(localAndAdjacentDomains)
-    DEALLOCATE(boundaryAndBoundaryPlaneFacesDomain)
-    DEALLOCATE(numberFacesInDomain)
-    DEALLOCATE(ghostFaces)
-    DEALLOCATE(internalFaces)
-    DEALLOCATE(boundaryFaces)
-    DEALLOCATE(sendRequestHandle0)
-    DEALLOCATE(sendRequestHandle1)
-    DEALLOCATE(ghostFacesDomains)
-    DEALLOCATE(sendBuffer)
-    DEALLOCATE(numberToSendToDomain)
-    DEALLOCATE(domainsOfFaceList)
-    DEALLOCATE(faceOnBoundaryPlane)
-    DEALLOCATE(sharedFacesList)
-    DEALLOCATE(newLocalGhostSendIndices)
-    DEALLOCATE(newLocalGhostReceiveIndices)
+    IF(ALLOCATED(boundaryAndBoundaryPlaneFaces)) DEALLOCATE(boundaryAndBoundaryPlaneFaces)
+    IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
+    IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
+    IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
+    IF(ALLOCATED(numberNonBoundaryPlaneAndLocalFacesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalFacesOnRank)
+    IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
+    IF(ALLOCATED(boundaryAndBoundaryPlaneFacesDomain)) DEALLOCATE(boundaryAndBoundaryPlaneFacesDomain)
+    IF(ALLOCATED(numberFacesInDomain)) DEALLOCATE(numberFacesInDomain)
+    IF(ALLOCATED(ghostFaces)) DEALLOCATE(ghostFaces)
+    IF(ALLOCATED(internalFaces)) DEALLOCATE(internalFaces)
+    IF(ALLOCATED(boundaryFaces)) DEALLOCATE(boundaryFaces)
+    IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(ghostFacesDomains)) DEALLOCATE(ghostFacesDomains)
+    IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
+    IF(ALLOCATED(numberToSendToDomain)) DEALLOCATE(numberToSendToDomain)
+    IF(ALLOCATED(domainsOfFaceList)) DEALLOCATE(domainsOfFaceList)
+    IF(ALLOCATED(faceOnBoundaryPlane)) DEALLOCATE(faceOnBoundaryPlane)
+    IF(ALLOCATED(sharedFacesList)) DEALLOCATE(sharedFacesList)
+    IF(ALLOCATED(newLocalGhostSendIndices)) DEALLOCATE(newLocalGhostSendIndices)
+    IF(ALLOCATED(newLocalGhostReceiveIndices)) DEALLOCATE(newLocalGhostReceiveIndices)
 
     EXITS("DomainMappings_FacesCalculate")
     RETURN
