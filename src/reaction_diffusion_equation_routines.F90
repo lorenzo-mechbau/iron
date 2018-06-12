@@ -1574,8 +1574,10 @@ CONTAINS
                           IF (CURRENT_LOOP_ITERATION==0) THEN
                              IF (equations_set_idx==1) exportExelem = .True.
                           ENDIF
-                          CALL REACTION_DIFFUSION_IO_WRITE_CMGUI(EQUATIONS_SET%REGION,EQUATIONS_SET%GLOBAL_NUMBER,FILE, &
-                            & exportExelem,err,error,*999)
+                          ! CALL REACTION_DIFFUSION_IO_WRITE_CMGUI(EQUATIONS_SET%REGION,EQUATIONS_SET%GLOBAL_NUMBER,FILE, &
+                          !  & exportExelem,err,error,*999)
+                          ! Commented out since leading to error (cannot solve):
+                          ! Error: Type mismatch in argument ‘err’ at (1); passed LOGICAL(4) to INTEGER(4)
                         ENDIF
                       ENDIF 
                     ENDIF
