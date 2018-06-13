@@ -5282,7 +5282,7 @@ CONTAINS
     CALL LIST_CREATE_START(ghostFacesDomainsList,err,error,*999)
     CALL LIST_DATA_DIMENSION_SET(ghostFacesDomainsList,2,err,error,*999)
     CALL LIST_DATA_TYPE_SET(ghostFacesDomainsList,LIST_INTG_TYPE,err,error,*999)
-    CALL LIST_INITIAL_SIZE_SET(ghostFacesDomainsList,numberBoundaryAndBoundaryPlaneFaces,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(ghostFacesDomainsList,MAX(1,numberBoundaryAndBoundaryPlaneFaces),err,error,*999)
     CALL LIST_CREATE_FINISH(ghostFacesDomainsList,err,error,*999)
 
     ! Now exchange the boundary faces that the current domain owns to domains with these faces as ghost faces
@@ -5483,7 +5483,7 @@ CONTAINS
       CALL LIST_CREATE_START(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
       CALL LIST_DATA_DIMENSION_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
       CALL LIST_DATA_TYPE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
-      CALL LIST_INITIAL_SIZE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,numberBoundaryAndBoundaryPlaneFaces,&
+      CALL LIST_INITIAL_SIZE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,MAX(1,numberBoundaryAndBoundaryPlaneFaces),&
         & err,error,*999)
       CALL LIST_CREATE_FINISH(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
 
@@ -5492,7 +5492,7 @@ CONTAINS
       CALL LIST_CREATE_START(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
       CALL LIST_DATA_DIMENSION_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
       CALL LIST_DATA_TYPE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
-      CALL LIST_INITIAL_SIZE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,numberBoundaryAndBoundaryPlaneFaces,&
+      CALL LIST_INITIAL_SIZE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,MAX(1,numberBoundaryAndBoundaryPlaneFaces),&
         & err,error,*999)
       CALL LIST_CREATE_FINISH(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
     ENDDO
