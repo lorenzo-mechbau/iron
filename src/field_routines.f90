@@ -10053,7 +10053,7 @@ CONTAINS
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(FIELD_VARIABLE_COMPONENT_TYPE), POINTER :: FIELD_COMPONENT
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(VARYING_STRING) :: LOCAL_ERROR, localError
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(LIST_TYPE), POINTER :: BoundaryDofLocalNosList
     LOGICAL :: CurrentNodeIsInternal, AdjacentDomainFound, NodeIsOnCurrentAdjacentDomain, CurrentElementIsInternal, &
@@ -10186,7 +10186,7 @@ CONTAINS
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
             END SELECT
 
-            ! These were formally allocated for every component.
+            ! FIXTHIS These were formally allocated for every component.
             ! !todo/ These should only be called if that interpolation type is present
             ! ! allocate param_to_dof_map for nodes
             ! ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
@@ -11911,12 +11911,11 @@ CONTAINS
 
                 ! set dof indices at ghost faces from FaceDofSpecification
                 ! loop over ghost faces
-                DO FaceLocalNo = FirstGhostFaceLocalNo,LastGhostFaceLocalNo
-
+                DO LocalFaceIdx = FACES_MAPPING%GHOST_START,FACES_MAPPING%GHOST_FINISH
+                  faceLocalNo=FACES_MAPPING%DOMAIN_LIST(LocalFaceIdx)
                   ! find adjacent domain where current face resides
-                  AdjacentDomainIdx = 1
                   AdjacentDomainFound = .FALSE.
-                  DO WHILE(.NOT. AdjacentDomainFound)
+                  DO AdjacentDomainIdx = 1, FACES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
 
                     ! check if face is in current adjacent domain
                     ! loop over receive ghost local numbers
@@ -11927,10 +11926,17 @@ CONTAINS
                         AdjacentDomainFound = .TRUE.
                         EXIT
                       ENDIF
-
                     ENDDO
-                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                    !exit if adjacent domain was found so adjacentDomainIdx is correct
+                    IF(AdjacentDomainFound) EXIT
                   ENDDO  ! DO WHILE
+
+                  IF (.NOT. AdjacentDomainFound) THEN
+                    localError="face local number "//TRIM(NumberToVString(FaceLocalNo,"*",err,error))// &
+                    & " was not found an the local ghost recieve indices of adjacent domains. For rank number" &
+                    & //TRIM(NumberToVString(myComputationalNodeNumber,"*",err,error))
+                    CALL FlagError(localError,err,error,*999)
+                  ENDIF
 
                   ! get dof information for current ghost face
                   StartDofGlobalNo = FaceDofSpecification(0,FaceLocalNo)
