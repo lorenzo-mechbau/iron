@@ -12160,11 +12160,37 @@ CONTAINS
             & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
 
+
+
+
+          !todo FIXTHIS
+          !The following ADJACENT_DOMAINS_PTR and ADJACENT_DOMAINS_LIST assignment will have to be done in a local way when everything is moved to local not global.
+
+          !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
+          !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+          FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR=ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR
+
+          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST(ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+          FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST=ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST
+
+
+
           ! deallocate used arrays
           IF(ALLOCATED(NumberBreaksNode)) DEALLOCATE(NumberBreaksNode)
           IF(ALLOCATED(NumberBreaksDoubleNode)) DEALLOCATE(NumberBreaksDoubleNode)
           IF(ALLOCATED(RowOffsetNode)) DEALLOCATE(RowOffsetNode)
           IF(ALLOCATED(RowOffsetZeroBasedNode)) DEALLOCATE(RowOffsetZeroBasedNode)
+          IF(ALLOCATED(NumberBreaksFace)) DEALLOCATE(NumberBreaksFace)
+          IF(ALLOCATED(NumberBreaksDoubleFace)) DEALLOCATE(NumberBreaksDoubleFace)
+          IF(ALLOCATED(RowOffsetFace)) DEALLOCATE(RowOffsetFace)
+          IF(ALLOCATED(RowOffsetZeroBasedFace)) DEALLOCATE(RowOffsetZeroBasedFace)
+          IF(ALLOCATED(FirstDofGlobalNo)) DEALLOCATE(FirstDofGlobalNo)
+          IF(ALLOCATED(Element1GlobalNo)) DEALLOCATE(Element1GlobalNo)
+          IF(ALLOCATED(FirstDofLocalNo)) DEALLOCATE(FirstDofLocalNo)
+          IF(ALLOCATED(FirstElementDofIdx)) DEALLOCATE(FirstElementDofIdx)
 
         ENDDO  ! variable_idx
 
@@ -12798,7 +12824,7 @@ CONTAINS
                     IF(ALLOCATED(ghostDataParamCount)) DEALLOCATE(ghostDataParamCount)
                     start_idx=1 !the start idx for the elements
                     stop_idx=elementsMapping%NUMBER_OF_LOCAL !the end idx for local elements
-                    !Adjust the local and ghost offsets
+                    !Adjust the local and ghost offsetsFIELD_VARIABLE_DOFS_MAPPING
                     IF(component_idx>1) THEN
                       VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                         & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
@@ -13268,7 +13294,6 @@ CONTAINS
               & NUMBER_OF_DOFS,ERR,ERROR,*999)
             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Total number of local DOFs = ",FIELD%VARIABLES(variable_idx)% &
               & TOTAL_NUMBER_OF_DOFS,ERR,ERROR,*999)
-              & TOTAL_NUMBER_OF_DOFS,ERR,ERROR,*999)FIELD_VARIABLE_DOFS_MAPPING
             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of global DOFs = ",FIELD%VARIABLES(variable_idx)% &
               & NUMBER_OF_GLOBAL_DOFS,ERR,ERROR,*999)
             CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    DOF to parameter map:",ERR,ERROR,*999)
@@ -13425,6 +13450,8 @@ CONTAINS
     ENDIF
 
     IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)
+    IF(ALLOCATED(VARIABLE_GHOST_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS)
+
     EXITS("FIELD_MAPPINGS_CALCULATE")
     RETURN
 999 IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)

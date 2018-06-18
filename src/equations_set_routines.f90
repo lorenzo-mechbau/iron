@@ -963,6 +963,7 @@ CONTAINS
         CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
         CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
+          !Here make an assemble FV subroutine
           CALL EquationsSet_AssembleStaticLinearFEM(equationsSet,err,error,*999)!change this to FV
         CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
