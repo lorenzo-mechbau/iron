@@ -4560,7 +4560,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: myComputationalNodeNumber,numberComputationalNodes,componentIdx,numberBoundaryAndBoundaryPlaneFaces, &
       & faceGlobalNo, faceCount, elementGlobalNo, elementLocalNo, startNic, xicIdx, elementIdx, xicIdx2, &
-      & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementLocalNo, I, J, &
+      & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementLocalNo, I, J, adjacentElementGlobalNo2, &
       & arrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
       & numberNonBoundaryPlaneAndLocalFaces(2), numberLocalFaces, numberAdjacentDomains, MPI_IERROR, numberSharedFaces,  &
       & numberFacesWithThatSetOfDomains, sharedFaceIdx2, boundaryAndBoundaryPlaneFaceIdx2, domainToAssignFacesToIdx, sharedFaceIdx,&
@@ -4570,7 +4570,7 @@ CONTAINS
       & boundaryFacesIdx, localFaceNo, domainListInternalIdx, domainListBoundaryIdx, internalFaceGlobalNo, boundaryFaceGlobalNo, &
       & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, &
       & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, &
-      & extraAdjacentDomain, numberExtraAdjacentDomains
+      & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, globalNodeNo, surroundingElemIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndBoundaryPlaneFaces(:), sendRequestHandle(:), &
       & numberNonBoundaryPlaneAndLocalFacesOnRank(:,:), receiveRequestHandle(:), boundaryAndBoundaryPlaneFacesDomain(:), &
@@ -4901,6 +4901,22 @@ CONTAINS
 
               faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx)=1
               numberBoundaryPlaneFaces=numberBoundaryPlaneFaces+1
+
+              !now check if any of the adjacent elements to this adjacent element is on another domain.
+              !If it is add it to the domainsOfFaceList for this faces index, the rest of domainsOfFaceList gets assigned in the following section
+              DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES !Fix this, atm iterating through nodes then surrounding elems of those nodes is the only way to find surrounding elems (including diagonal elems)
+                globalNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%GLOBAL_ELEMENT_NODES(nodeIdx)
+                DO surroundingElemIdx = 1,topology%NODES%NODES(globalNodeNo)%numberOfSurroundingElements
+                  adjacentElementGlobalNo2 = topology%NODES%NODES(globalNodeNo)%surroundingElements(surroundingElemIdx)
+
+                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2) !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+
+                  IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
+
+                    CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo2,err,error,*999)
+                  ENDIF
+                ENDDO !surroundingElemIdx
+              ENDDO !nodeIdx
             ENDIF
           ENDDO  ! adjacentDomainIdx
         ENDIF
@@ -4942,12 +4958,17 @@ CONTAINS
               ! now it was found that faceGlobalNo is also on domain domainNo, add to list
               CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
             ENDIF
-          ENDDO  ! adjacentDomainIdx
+          ENDDO  ! adjacentDomainIdxDomainMappings_FacesCalculate
         ENDIF
+
+
       ENDDO  ! adjacentElementIdx
     ENDDO  ! boundaryAndBoundaryPlaneFaceIdx
 
     IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+
+
+
 
     !AdjacentDomainsList holds the domains that share a boundary plane (If the domain only shares a boundary plane node, but not a face it is not in adjacentDomainsList )
     NULLIFY(adjacentDomainsList)
@@ -5643,6 +5664,20 @@ CONTAINS
       & NUMBER_OF_DOMAIN_GHOST(0:numberComputationalNodes-1), &
       & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,err,error,*999)
+
+
+    !The following ADJACENT_DOMAINS_PTR and ADJACENT_DOMAINS_LIST assignment will have to be done in a local way when everything is moved to local not global.
+
+    !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
+    !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
+    ALLOCATE(facesMapping%ADJACENT_DOMAINS_PTR(0:facesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+    facesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+
+    ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+    facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+
 
 
     ! deallocate arrays
