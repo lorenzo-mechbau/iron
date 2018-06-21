@@ -118,8 +118,8 @@ CONTAINS
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       IF(.NOT.ALLOCATED(EQUATIONS_SET%SPECIFICATION)) THEN
         CALL FlagError("Equations set specification is not allocated.",err,error,*999)
-      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)/=3) THEN
-        CALL FlagError("Equations set specification must have three entries for a Navier-Stokes type equations set.", &
+      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)<3) THEN
+        CALL FlagError("Equations set specification must have atleast three entries for a Navier-Stokes type equations set.", &
           & err,error,*999)
       END IF
       SELECT CASE(EQUATIONS_SET%SPECIFICATION(3))
@@ -193,7 +193,7 @@ CONTAINS
     ENTERS("NavierStokes_EquationsSetSpecificationSet",err,error,*999)
 
     IF(ASSOCIATED(equationsSet)) THEN
-      IF(SIZE(specification,1)/=3) THEN
+      IF(SIZE(specification,1)<3) THEN
         CALL FlagError("Equations set specification must have three entries for a Navier-Stokes type equations set.", &
           & err,error,*999)
       ENDIF
@@ -223,13 +223,40 @@ CONTAINS
         CALL FlagError(localError,err,error,*999)
       END SELECT
       !Set full specification
-      IF(ALLOCATED(equationsSet%specification)) THEN
-        CALL FlagError("Equations set specification is already allocated.",err,error,*999)
-      ELSE
-        ALLOCATE(equationsSet%specification(3),stat=err)
-        IF(err/=0) CALL FlagError("Could not allocate equations set specification.",err,error,*999)
-      ENDIF
-      equationsSet%specification(1:3)=[EQUATIONS_SET_FLUID_MECHANICS_CLASS,EQUATIONS_SET_NAVIER_STOKES_EQUATION_TYPE,subtype]
+      SELECT CASE(SIZE(specification))
+      CASE(3)
+        IF(ALLOCATED(equationsSet%specification)) THEN
+          CALL FlagError("Equations set specification is already allocated.",err,error,*999)
+        ELSE
+          ALLOCATE(equationsSet%specification(3),stat=err)
+          IF(err/=0) CALL FlagError("Could not allocate equations set specification.",err,error,*999)
+        ENDIF
+          equationsSet%specification(1:3)=[EQUATIONS_SET_FLUID_MECHANICS_CLASS,EQUATIONS_SET_NAVIER_STOKES_EQUATION_TYPE,subtype]
+      CASE(4)
+        SELECT CASE(specification(4))
+        CASE(EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE, &
+          & EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE, &
+          & EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE)
+          !ok
+        CASE DEFAULT
+          localError="The fourth equations set specification of "//TRIM(NumberToVstring(specification(4),"*",err,error))// &
+            & " is not valid for a Navier-Stokes fluid mechanics equations set."
+          CALL FlagError(localError,err,error,*999)
+        END SELECT
+
+        IF(ALLOCATED(equationsSet%specification)) THEN
+          CALL FlagError("Equations set specification is already allocated.",err,error,*999)
+        ELSE
+          ALLOCATE(equationsSet%specification(4),stat=err)
+          IF(err/=0) CALL FlagError("Could not allocate equations set specification.",err,error,*999)
+        ENDIF
+          equationsSet%specification(1:4)=[EQUATIONS_SET_FLUID_MECHANICS_CLASS,EQUATIONS_SET_NAVIER_STOKES_EQUATION_TYPE,subtype, &
+            & specification(4)]
+      CASE DEFAULT
+        localError="Specification size is "//TRIM(NumberToVstring(SIZE(specification),"*",err,error))// &
+          & ", navier stokes type should have 3 equation set specifications for finite element or 4 for finite volume"
+        CALL FlagError(localError,err,error,*999)
+      END SELECT
     ELSE
       CALL FlagError("Equations set is not associated.",err,error,*999)
     ENDIF
@@ -284,8 +311,8 @@ CONTAINS
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       IF(.NOT.ALLOCATED(EQUATIONS_SET%SPECIFICATION)) THEN
         CALL FlagError("Equations set specification is not allocated.",err,error,*999)
-      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)/=3) THEN
-        CALL FlagError("Equations set specification must have three entries for a Navier-Stokes type equations set.", &
+      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)<3) THEN
+        CALL FlagError("Equations set specification must have atleast three entries for a Navier-Stokes type equations set.", &
           & err,error,*999)
       END IF
       SELECT CASE(EQUATIONS_SET%SPECIFICATION(3))
@@ -685,29 +712,48 @@ CONTAINS
                   CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
                 CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
 
-                  DEPENDENT_FIELD_NUMBER_OF_VARIABLES=3
+                  DEPENDENT_FIELD_NUMBER_OF_VARIABLES=6
                   CALL FIELD_NUMBER_OF_VARIABLES_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
                     & DEPENDENT_FIELD_NUMBER_OF_VARIABLES,err,error,*999)
                   CALL FIELD_VARIABLE_TYPES_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,[FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_V_VARIABLE_TYPE,FIELD_W_VARIABLE_TYPE],err,error,*999)
+                    & FIELD_DELUDELN_VARIABLE_TYPE,FIELD_V_VARIABLE_TYPE,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & FIELD_W_VARIABLE_TYPE, FIELD_DELWDELN_VARIABLE_TYPE],err,error,*999)
 
                   CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                    & "U",err,error,*999)
+                    & "Velocity",err,error,*999)
+                  CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELUDELN_VARIABLE_TYPE, &
+                    & "Velocity RHS",err,error,*999)
                   CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_V_VARIABLE_TYPE, &
-                    & "P",err,error,*999)
+                    & "Mass Flow Rate",err,error,*999)
+                  CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & "Mass Flow RHS",err,error,*999)
                   CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_W_VARIABLE_TYPE, &
-                    & "M_dot",err,error,*999)
+                    & "Pressure",err,error,*999)
+                  CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELWDELN_VARIABLE_TYPE, &
+                    & "Pressure RHS",err,error,*999)
                   CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & FIELD_VECTOR_DIMENSION_TYPE,err,error,*999)
+                  CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELUDELN_VARIABLE_TYPE, &
                     & FIELD_VECTOR_DIMENSION_TYPE,err,error,*999)
                   CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_V_VARIABLE_TYPE, &
                     & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
+                  CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
                   CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_W_VARIABLE_TYPE, &
+                    & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
+                  CALL FIELD_DIMENSION_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELWDELN_VARIABLE_TYPE, &
                     & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
                   CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
                     & FIELD_DP_TYPE,err,error,*999)
+                  CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELUDELN_VARIABLE_TYPE, &
+                    & FIELD_DP_TYPE,err,error,*999)
                   CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_V_VARIABLE_TYPE, &
                     & FIELD_DP_TYPE,err,error,*999)
+                  CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & FIELD_DP_TYPE,err,error,*999)
                   CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_W_VARIABLE_TYPE, &
+                    & FIELD_DP_TYPE,err,error,*999)
+                  CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,FIELD_DELWDELN_VARIABLE_TYPE, &
                     & FIELD_DP_TYPE,err,error,*999)
                   CALL FIELD_NUMBER_OF_COMPONENTS_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
                     & NUMBER_OF_DIMENSIONS,err,error,*999)
@@ -717,12 +763,18 @@ CONTAINS
                   !set number of velocity components as number of dimensions
                   CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
                     & FIELD_U_VARIABLE_TYPE,DEPENDENT_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_DELUDELN_VARIABLE_TYPE,DEPENDENT_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
                   !set number of components for pressure as 1
                   CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
                     & FIELD_V_VARIABLE_TYPE,1,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_DELVDELN_VARIABLE_TYPE,1,err,error,*999)
                   !set number of components for mass flow rate as 1
                   CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
                     & FIELD_W_VARIABLE_TYPE,1,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_DELWDELN_VARIABLE_TYPE,1,err,error,*999)
 
                   !Default to the geometric interpolation setup
                   CALL FIELD_COMPONENT_MESH_COMPONENT_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
@@ -730,13 +782,24 @@ CONTAINS
                   DO componentIdx=1,DEPENDENT_FIELD_NUMBER_OF_COMPONENTS
                     CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
                       & FIELD_U_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                    CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                      & FIELD_DELUDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   END DO !componentIdx
-
+                  CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_V_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                  CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_DELVDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                  CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_W_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                  CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
+                    & FIELD_DELWDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   !do nothing for interpolation
 
                   !Default geometric field scaling
                   CALL FIELD_SCALING_TYPE_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
                   CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
+
+
 
                 !Other solutions not defined yet,
                 CASE(EQUATIONS_SET_BEM_SOLUTION_METHOD)
@@ -816,29 +879,50 @@ CONTAINS
 
                   DEPENDENT_FIELD_NUMBER_OF_VARIABLES=3
                   CALL FIELD_NUMBER_OF_VARIABLES_CHECK(EQUATIONS_SET_SETUP%FIELD,DEPENDENT_FIELD_NUMBER_OF_VARIABLES,err,error,*999)
-                  CALL FIELD_VARIABLE_TYPES_CHECK(EQUATIONS_SET_SETUP%FIELD,[FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_V_VARIABLE_TYPE,FIELD_W_VARIABLE_TYPE],err,error,*999)
+                  CALL FIELD_VARIABLE_TYPES_CHECK(EQUATIONS_SET_SETUP%FIELD,[FIELD_U_VARIABLE_TYPE,FIELD_DELUDELN_VARIABLE_TYPE, &
+                    & FIELD_V_VARIABLE_TYPE,FIELD_DELVDELN_VARIABLE_TYPE,FIELD_W_VARIABLE_TYPE, &
+                    & FIELD_DELWDELN_VARIABLE_TYPE],err,error,*999)
                   CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_DP_TYPE,err,error,*999)
+                  CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELUDELN_VARIABLE_TYPE,FIELD_DP_TYPE,err,error,*999)
                   CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE,FIELD_DP_TYPE, &
+                    & err,error,*999)
+                  CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELVDELN_VARIABLE_TYPE,FIELD_DP_TYPE, &
                     & err,error,*999)
                   CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_W_VARIABLE_TYPE,FIELD_DP_TYPE, &
                     & err,error,*999)
+                  CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELWDELN_VARIABLE_TYPE,FIELD_DP_TYPE, &
+                    & err,error,*999)
+
                   CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VECTOR_DIMENSION_TYPE, &
+                    & err,error,*999)
+                  CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELUDELN_VARIABLE_TYPE,FIELD_VECTOR_DIMENSION_TYPE, &
                     & err,error,*999)
                   CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE, &
                     & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
+                  CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
                   CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_W_VARIABLE_TYPE, &
                     & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
+                  CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELWDELN_VARIABLE_TYPE, &
+                    & FIELD_SCALAR_DIMENSION_TYPE,err,error,*999)
+
                   CALL FIELD_NUMBER_OF_COMPONENTS_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
                     & NUMBER_OF_DIMENSIONS,err,error,*999)
                   !calculate number of components for velocity variable with one component for each dimension
                   DEPENDENT_FIELD_NUMBER_OF_COMPONENTS=NUMBER_OF_DIMENSIONS
                   CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE, &
                     & DEPENDENT_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELUDELN_VARIABLE_TYPE, &
+                    & DEPENDENT_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
                   CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE, &
+                    & 1,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELVDELN_VARIABLE_TYPE, &
                     & 1,err,error,*999)
                   CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_W_VARIABLE_TYPE, &
                     & 1,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DELWDELN_VARIABLE_TYPE, &
+                    & 1,err,error,*999)
+
 
 
                   !do nothing for interpolation
@@ -2466,46 +2550,62 @@ CONTAINS
               CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
               !Finish the creation of the equations
               !!!!!!!!!!!!!!!!!!!!! TEMPORARY
-                CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
-                CALL Equations_CreateFinish(equations,err,error,*999)
-                NULLIFY(vectorEquations)
-                CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
-                !Create the equations mapping.
-                CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_U_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
-                CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
-                CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_U_VARIABLE_TYPE], &
-                  & err,error,*999)
-                CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELUDELN_VARIABLE_TYPE, &
-                  & err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
-                CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
-                !Create the equations matrices
-                CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
-                ! Use the analytic Jacobian calculation
-                CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
-                  & err,error,*999)!Unsure what to do with this line
-                !Will have to change the following for optimum Finite Volume matrix storage
-                SELECT CASE(equations%sparsityType)
-                CASE(EQUATIONS_MATRICES_FULL_MATRICES)
-                  CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                SELECT CASE(EQUATIONS_SET%SPECIFICATION(4))
+                CASE(EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE)
+                  CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
+                  CALL Equations_CreateFinish(equations,err,error,*999)
+                  NULLIFY(vectorEquations)
+                  CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+                  !Create the equations mapping.
+                  CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_U_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                  CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
+                  CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_U_VARIABLE_TYPE], &
                     & err,error,*999)
-                  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
-                    & err,error,*999)
-                CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                  CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                    & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
-                  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
-                    & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                  CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                    & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
-                  CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
-                    & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELUDELN_VARIABLE_TYPE, &
+                    & err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                  CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
+                  !Create the equations matrices
+                  CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
+                  ! Use the analytic Jacobian calculation
+                  CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                    & err,error,*999)!Unsure what to do with this line
+                  !Will have to change the following for optimum Finite Volume matrix storage
+                  SELECT CASE(equations%sparsityType)
+                  CASE(EQUATIONS_MATRICES_FULL_MATRICES)
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                      & err,error,*999)
+                    CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                      & err,error,*999)
+                  CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                      & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                    CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                      & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                      & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                    CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                      & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  CASE DEFAULT
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                    CALL FlagError(localError,err,error,*999)
+                  END SELECT
+                  CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
+                  !!!!!!!!!!!!!!!!!!!!! TEMPORARY FINISHED
+
+
+                CASE(EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE)
+                  localError="MASSFLOW FV variable type is not yet implemented"
+                  CALL FlagError(localError,err,error,*999)
+                CASE(EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE)
+                  localError="PRESSURE FV variable type is not yet implemented"
+                  CALL FlagError(localError,err,error,*999)
                 CASE DEFAULT
-                  localError="The equations matrices sparsity type of "// &
-                    & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                  localError="The equation set specification  "//TRIM(NumberToVString(EQUATIONS_SET%SPECIFICATION(4),"*", &
+                    &err,error))// " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%SETUP_TYPE,"*",err,error))// &
+                    & " is invalid for a Navier-stokes FV equation."
                   CALL FlagError(localError,err,error,*999)
                 END SELECT
-                CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
-                !!!!!!!!!!!!!!!!!!!!! TEMPORARY FINISHED
               CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
               CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -5271,8 +5371,8 @@ CONTAINS
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       IF(.NOT.ALLOCATED(EQUATIONS_SET%SPECIFICATION)) THEN
         CALL FlagError("Equations set specification is not allocated.",err,error,*999)
-      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)/=3) THEN
-        CALL FlagError("Equations set specification must have three entries for a Navier-Stokes type equations set.", &
+      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)<3) THEN
+        CALL FlagError("Equations set specification must have atleast three entries for a Navier-Stokes type equations set.", &
           & err,error,*999)
       END IF
       EQUATIONS=>EQUATIONS_SET%EQUATIONS
@@ -6181,8 +6281,8 @@ CONTAINS
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       IF(.NOT.ALLOCATED(EQUATIONS_SET%SPECIFICATION)) THEN
         CALL FlagError("Equations set specification is not allocated.",err,error,*999)
-      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)/=3) THEN
-        CALL FlagError("Equations set specification must have three entries for a Navier-Stokes type equations set.", &
+      ELSE IF(SIZE(EQUATIONS_SET%SPECIFICATION,1)<3) THEN
+        CALL FlagError("Equations set specification must have atleast three entries for a Navier-Stokes type equations set.", &
           & err,error,*999)
       END IF
       NULLIFY(EQUATIONS)

@@ -43,13 +43,13 @@
 
 !> This module contains all field access method routines.
 MODULE FieldAccessRoutines
-  
+
   USE BaseRoutines
   USE Kinds
   USE Strings
   USE Types
 
-#include "macros.h"  
+#include "macros.h"
 
   IMPLICIT NONE
 
@@ -62,7 +62,7 @@ MODULE FieldAccessRoutines
   !> \see FIELD_ROUTINES,OPENCMISS_FieldVariableTypes
   !> \todo sort out variable access routines so that you are always accessing by variable type rather than variable number.
   !>@{
-  INTEGER(INTG), PARAMETER :: FIELD_NUMBER_OF_VARIABLE_TYPES=49 !<Number of different field variable types possible \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES 
+  INTEGER(INTG), PARAMETER :: FIELD_NUMBER_OF_VARIABLE_TYPES=49 !<Number of different field variable types possible \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_NUMBER_OF_VARIABLE_SUBTYPES=4 !<The number of variants of a particular variable - currently 4. U, delUdelN, delUdelT,del2UdelT2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_U_VARIABLE_TYPE=1 !<Standard variable type i.e., u \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_DELUDELN_VARIABLE_TYPE=2 !<Normal derivative variable type i.e., du/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
@@ -73,48 +73,49 @@ MODULE FieldAccessRoutines
   INTEGER(INTG), PARAMETER :: FIELD_DELVDELT_VARIABLE_TYPE=7 !<First time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_DEL2VDELT2_VARIABLE_TYPE=8 !<Second time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_W_VARIABLE_TYPE=9 !<Third standard variable type i.e., w \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U1_VARIABLE_TYPE=10 !<Third standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU1DELN_VARIABLE_TYPE=11 !<Third normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU1DELT_VARIABLE_TYPE=12 !<Third time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U1DELT2_VARIABLE_TYPE=13 !<Third time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U2_VARIABLE_TYPE=14 !<Fourth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU2DELN_VARIABLE_TYPE=15 !<Fourth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU2DELT_VARIABLE_TYPE=16 !<Fourth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U2DELT2_VARIABLE_TYPE=17 !<Fourth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U3_VARIABLE_TYPE=18 !<Fifth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU3DELN_VARIABLE_TYPE=19 !<Fifth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU3DELT_VARIABLE_TYPE=20 !<Fifth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U3DELT2_VARIABLE_TYPE=21 !<Fifth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U4_VARIABLE_TYPE=22 !<Sixth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU4DELN_VARIABLE_TYPE=23 !<Sixth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU4DELT_VARIABLE_TYPE=24 !<Sixth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U4DELT2_VARIABLE_TYPE=25 !<Sixth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U5_VARIABLE_TYPE=26 !<Seventh standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU5DELN_VARIABLE_TYPE=27 !<Seventh normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU5DELT_VARIABLE_TYPE=28 !<Seventh time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U5DELT2_VARIABLE_TYPE=29 !<Seventh time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U6_VARIABLE_TYPE=30 !<Eighth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU6DELN_VARIABLE_TYPE=31 !<Eighth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU6DELT_VARIABLE_TYPE=32 !<Eighth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U6DELT2_VARIABLE_TYPE=33 !<Eighth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U7_VARIABLE_TYPE=34 !<Ninth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU7DELN_VARIABLE_TYPE=35 !<Ninth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU7DELT_VARIABLE_TYPE=36 !<Ninth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U7DELT2_VARIABLE_TYPE=37 !<Ninth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U8_VARIABLE_TYPE=38 !<Tenth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU8DELN_VARIABLE_TYPE=39 !<Tenth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU8DELT_VARIABLE_TYPE=40 !<Tenth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U8DELT2_VARIABLE_TYPE=41 !<Tenth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U9_VARIABLE_TYPE=42 !<Eleventh standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU9DELN_VARIABLE_TYPE=43 !<Eleventh normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU9DELT_VARIABLE_TYPE=44 !<Eleventh time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U9DELT2_VARIABLE_TYPE=45 !<Eleventh time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_U10_VARIABLE_TYPE=46 !<Twelfth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU10DELN_VARIABLE_TYPE=47 !<Twelfth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DELU10DELT_VARIABLE_TYPE=48 !<Twelfth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DEL2U10DELT2_VARIABLE_TYPE=49 !<Twelfth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELWDELN_VARIABLE_TYPE=10 !<Third standard variable type i.e., w \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U1_VARIABLE_TYPE=11 !<Third standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU1DELN_VARIABLE_TYPE=12 !<Third normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU1DELT_VARIABLE_TYPE=13 !<Third time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U1DELT2_VARIABLE_TYPE=14 !<Third time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U2_VARIABLE_TYPE=15 !<Fourth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU2DELN_VARIABLE_TYPE=16 !<Fourth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU2DELT_VARIABLE_TYPE=17 !<Fourth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U2DELT2_VARIABLE_TYPE=18 !<Fourth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U3_VARIABLE_TYPE=19 !<Fifth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU3DELN_VARIABLE_TYPE=20 !<Fifth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU3DELT_VARIABLE_TYPE=21 !<Fifth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U3DELT2_VARIABLE_TYPE=22 !<Fifth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U4_VARIABLE_TYPE=23 !<Sixth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU4DELN_VARIABLE_TYPE=24 !<Sixth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU4DELT_VARIABLE_TYPE=25 !<Sixth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U4DELT2_VARIABLE_TYPE=26 !<Sixth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U5_VARIABLE_TYPE=27 !<Seventh standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU5DELN_VARIABLE_TYPE=28 !<Seventh normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU5DELT_VARIABLE_TYPE=29 !<Seventh time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U5DELT2_VARIABLE_TYPE=30 !<Seventh time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U6_VARIABLE_TYPE=31 !<Eighth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU6DELN_VARIABLE_TYPE=32 !<Eighth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU6DELT_VARIABLE_TYPE=33 !<Eighth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U6DELT2_VARIABLE_TYPE=34 !<Eighth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U7_VARIABLE_TYPE=35 !<Ninth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU7DELN_VARIABLE_TYPE=36 !<Ninth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU7DELT_VARIABLE_TYPE=37 !<Ninth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U7DELT2_VARIABLE_TYPE=38 !<Ninth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U8_VARIABLE_TYPE=39 !<Tenth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU8DELN_VARIABLE_TYPE=40 !<Tenth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU8DELT_VARIABLE_TYPE=41 !<Tenth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U8DELT2_VARIABLE_TYPE=42 !<Tenth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U9_VARIABLE_TYPE=43 !<Eleventh standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU9DELN_VARIABLE_TYPE=44 !<Eleventh normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU9DELT_VARIABLE_TYPE=45 !<Eleventh time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U9DELT2_VARIABLE_TYPE=46 !<Eleventh time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_U10_VARIABLE_TYPE=47 !<Twelfth standard variable type i.e., v \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU10DELN_VARIABLE_TYPE=48 !<Twelfth normal derivative variable type i.e., dv/dn \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DELU10DELT_VARIABLE_TYPE=49 !<Twelfth time derivative variable type i.e., du/dt \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DEL2U10DELT2_VARIABLE_TYPE=50 !<Twelfth time derivative variable type i.e., d^2u/dt^2 \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
   !>@}
-  
+
   !> \addtogroup FIELD_ROUTINES_ParameterSetTypes FIELD_ROUTINES::ParameterSetTypes
   !> \brief Field parameter set type parameters \todo make program defined constants negative?
   !> \see FIELD_ROUTINES,OPENCMISS_FieldParameterSetTypes
@@ -152,7 +153,7 @@ MODULE FieldAccessRoutines
   INTEGER(INTG), PARAMETER :: FIELD_INPUT_VEL3_SET_TYPE=28 !<The parameter set corresponding to a input field (PPE)\see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_INPUT_LABEL_SET_TYPE=29 !<The parameter set corresponding to a input field (PPE)\see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_PRESSURE_VALUES_SET_TYPE=30 !<The parameter set corresponding to the surface pressure values (at time T+DT). \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_PREVIOUS_PRESSURE_SET_TYPE=31 !<The parameter set corresponding to the previous surface pressure values (at previous increment step). \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES 
+  INTEGER(INTG), PARAMETER :: FIELD_PREVIOUS_PRESSURE_SET_TYPE=31 !<The parameter set corresponding to the previous surface pressure values (at previous increment step). \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_RELATIVE_VELOCITY_SET_TYPE=32 !<The parameter set corresponding to the relative velocity values for ALE \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_NEGATIVE_MESH_VELOCITY_SET_TYPE=33 !<The parameter set corresponding to the NEGATIVE mesh velocity values for ALE \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE=34 !<The parameter set corresponding to the previous iteration field values (at iteration n) \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
@@ -167,21 +168,21 @@ MODULE FieldAccessRoutines
   !Module variables
 
   !Interfaces
-  
-  INTERFACE FIELD_COORDINATE_SYSTEM_GET    
+
+  INTERFACE FIELD_COORDINATE_SYSTEM_GET
     MODULE PROCEDURE Field_CoordinateSystemGet
   END INTERFACE FIELD_COORDINATE_SYSTEM_GET
-  
+
   INTERFACE FIELD_REGION_GET
     MODULE PROCEDURE Field_RegionGet
   END INTERFACE FIELD_REGION_GET
-  
+
   !>Finds and returns a field identified by a user number. If no field  with that number exists field is left nullified.
   INTERFACE Field_UserNumberFind
     MODULE PROCEDURE Field_UserNumberFindInterface
     MODULE PROCEDURE Field_UserNumberFindRegion
   END INTERFACE Field_UserNumberFind
-  
+
   !>Finds and returns a field identified by a user number. If no field  with that number exists field is left nullified.
   INTERFACE FIELD_USER_NUMBER_FIND
     MODULE PROCEDURE Field_UserNumberFindInterface
@@ -217,8 +218,8 @@ MODULE FieldAccessRoutines
     & FIELD_INTEGRATED_NEUMANN_SET_TYPE,FIELD_UPWIND_VALUES_SET_TYPE,FIELD_PREVIOUS_UPWIND_VALUES_SET_TYPE
 
   PUBLIC Field_ComponentInterpolationGet
- 
-  PUBLIC Field_CoordinateSystemGet  
+
+  PUBLIC Field_CoordinateSystemGet
 
   PUBLIC FIELD_COORDINATE_SYSTEM_GET
 
@@ -227,7 +228,7 @@ MODULE FieldAccessRoutines
   PUBLIC Field_DecompositionGet
 
   PUBLIC Field_RegionGet
-  
+
   PUBLIC FIELD_REGION_GET
 
   PUBLIC Field_UserNumberFind
@@ -274,13 +275,13 @@ CONTAINS
     ENDIF
     NULLIFY(fieldVariable)
     CALL Field_VariableGet(field,variableType,fieldVariable,err,error,*999)
-    CALL FieldVariable_ComponentInterpolationGet(fieldVariable,componentNumber,interpolationType,err,error,*999)   
+    CALL FieldVariable_ComponentInterpolationGet(fieldVariable,componentNumber,interpolationType,err,error,*999)
 
     EXITS("Field_ComponentInterpolationGet")
     RETURN
 999 ERRORSEXITS("Field_ComponentInterpolationGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_ComponentInterpolationGet
 
   !
@@ -338,7 +339,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("Field_CoordinateSystemGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_CoordinateSystemGet
 
   !
@@ -355,7 +356,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: localError
- 
+
     ENTERS("Field_DataProjectionGet",err,error,*998)
 
     !Check input arguments
@@ -367,14 +368,14 @@ CONTAINS
       localError="Data projection  is not associated for field "//TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//"."
       CALL FlagError(localError,err,error,*999)
     ENDIF
-    
+
     EXITS("Field_DataProjectionGet")
     RETURN
 999 NULLIFY(dataProjection)
 998 ERRORSEXITS("Field_DataProjectionGet",err,error)
     RETURN 1
-    
-    
+
+
   END SUBROUTINE Field_DataProjectionGet
 
   !
@@ -391,7 +392,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: localError
- 
+
     ENTERS("Field_DecompositionGet",err,error,*999)
 
     !Check input arguments
@@ -406,12 +407,12 @@ CONTAINS
         & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//"."
       CALL FlagError(localError,err,error,*999)
     ENDIF
-    
+
     EXITS("Field_DecompositionGet")
     RETURN
 999 ERRORSEXITS("Field_DecompositionGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_DecompositionGet
 
   !
@@ -435,15 +436,15 @@ CONTAINS
     !Check input arguments
     IF(.NOT.ASSOCIATED(field)) CALL FlagError("Field is not associated.",err,error,*999)
     IF(ASSOCIATED(region)) CALL FlagError("Region is already associated.",err,error,*999)
-        
+
     NULLIFY(region)
     NULLIFY(interface)
     region=>field%region
-    IF(.NOT.ASSOCIATED(region)) THEN          
+    IF(.NOT.ASSOCIATED(region)) THEN
       INTERFACE=>field%INTERFACE
       IF(ASSOCIATED(INTERFACE)) THEN
         IF(ASSOCIATED(interface%PARENT_REGION)) THEN
-          region=>interface%PARENT_REGION     
+          region=>interface%PARENT_REGION
         ELSE
           localError="The parent region is not associated for field number "// &
             & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//" of interface number "// &
@@ -456,12 +457,12 @@ CONTAINS
         CALL FlagError(localError,err,error,*999)
       ENDIF
     ENDIF
-    
+
     EXITS("Field_RegionGet")
     RETURN
 999 ERRORSEXITS("Field_RegionGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_RegionGet
 
   !
@@ -486,7 +487,7 @@ CONTAINS
     !Check input arguments
     IF(.NOT.ASSOCIATED(fields)) CALL FlagError("Fields is not associated.",err,error,*999)
     IF(ASSOCIATED(field)) CALL FlagError("Field is already associated.",err,error,*999)
-   
+
     !Get the field from the user number
     NULLIFY(field)
     IF(ASSOCIATED(fields%fields)) THEN
@@ -503,12 +504,12 @@ CONTAINS
         ENDIF
       ENDDO !fieldIdx
     ENDIF
-      
+
     EXITS("Field_UserNumberFindGeneric")
     RETURN
 999 ERRORSEXITS("Field_UserNumberFindGeneric",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_UserNumberFindGeneric
 
   !
@@ -532,12 +533,12 @@ CONTAINS
     IF(.NOT.ASSOCIATED(interface)) CALL FlagError("Interface is not associated.",err,error,*999)
 
     CALL Field_UserNumberFindGeneric(userNumber,interface%fields,field,err,error,*999)
-  
+
     EXITS("Field_UserNumberFindInterface")
     RETURN
 999 ERRORSEXITS("Field_UserNumberFindInterface",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_UserNumberFindInterface
 
   !
@@ -561,12 +562,12 @@ CONTAINS
     IF(.NOT.ASSOCIATED(region)) CALL FlagError("Region is not associated.",err,error,*999)
 
     CALL Field_UserNumberFindGeneric(userNumber,region%fields,field,err,error,*999)
-  
+
     EXITS("Field_UserNumberFindRegion")
     RETURN
 999 ERRORSEXITS("Field_UserNumberFindRegion",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_UserNumberFindRegion
 
   !
@@ -613,7 +614,7 @@ CONTAINS
 999 NULLIFY(fieldVariable)
 998 ERRORSEXITS("Field_VariableGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Field_VariableGet
 
   !
@@ -625,8 +626,8 @@ CONTAINS
 
     !Argument variables
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable !<A pointer to the field variable to get the interpolation type for
-    INTEGER(INTG), INTENT(IN) :: componentIdx !<The component index of the field variable to get the interpolation type for. 
-    INTEGER(INTG), INTENT(OUT) :: interpolationType  !<On exit, the interpolation type for field variable component. 
+    INTEGER(INTG), INTENT(IN) :: componentIdx !<The component index of the field variable to get the interpolation type for.
+    INTEGER(INTG), INTENT(OUT) :: interpolationType  !<On exit, the interpolation type for field variable component.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -652,14 +653,14 @@ CONTAINS
     ENDIF
     IF(.NOT.ALLOCATED(fieldVariable%components)) &
       & CALL FlagError("Field variable components has not been allocated.",err,error,*999)
-    
+
     interpolationType=fieldVariable%components(componentIdx)%INTERPOLATION_TYPE
 
     EXITS("FieldVariable_ComponentInterpolationGet")
     RETURN
 999 ERRORSEXITS("FieldVariable_ComponentInterpolationGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE FieldVariable_ComponentInterpolationGet
 
   !
@@ -671,7 +672,7 @@ CONTAINS
 
     !Argument variables
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable !<A pointer to the field variable to get the domain for
-    INTEGER(INTG), INTENT(IN) :: componentIdx !<The component index of the field variable to get the domain for. If 0 then the component used to decompose the domain is used. 
+    INTEGER(INTG), INTENT(IN) :: componentIdx !<The component index of the field variable to get the domain for. If 0 then the component used to decompose the domain is used.
     TYPE(DOMAIN_TYPE), POINTER :: domain  !<On exit, a pointer to domain for the field variable component. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -719,7 +720,7 @@ CONTAINS
 999 NULLIFY(domain)
 998 ERRORSEXITS("FieldVariable_DomainGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE FieldVariable_DomainGet
 
   !
@@ -740,7 +741,7 @@ CONTAINS
 
     IF(ASSOCIATED(field)) CALL FlagError("Field is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Field is not associated.",err,error,*999)
-    
+
     field=>fieldVariable%field
     IF(.NOT.ASSOCIATED(field)) CALL FlagError("The field variable field is not associated.",err,error,*999)
 
@@ -749,7 +750,7 @@ CONTAINS
 999 NULLIFY(field)
 998 ERRORSEXITS("FieldVariable_FieldGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE FieldVariable_FieldGet
 
   !
@@ -797,7 +798,7 @@ CONTAINS
 999 NULLIFY(parameterSet)
 998 ERRORSEXITS("FieldVariable_ParameterSetGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE FieldVariable_ParameterSetGet
 
   !
