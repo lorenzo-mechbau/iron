@@ -786,13 +786,13 @@ CONTAINS
                       & FIELD_DELUDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   END DO !componentIdx
                   CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
-                    & FIELD_V_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                    & FIELD_V_VARIABLE_TYPE,1,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
-                    & FIELD_DELVDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                    & FIELD_DELVDELN_VARIABLE_TYPE,1,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
-                    & FIELD_W_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                    & FIELD_W_VARIABLE_TYPE,1,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   CALL FIELD_COMPONENT_MESH_COMPONENT_SET(EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD, &
-                    & FIELD_DELWDELN_VARIABLE_TYPE,componentIdx,GEOMETRIC_MESH_COMPONENT,err,error,*999)
+                    & FIELD_DELWDELN_VARIABLE_TYPE,1,GEOMETRIC_MESH_COMPONENT,err,error,*999)
                   !do nothing for interpolation
 
                   !Default geometric field scaling
@@ -877,7 +877,7 @@ CONTAINS
                   CALL FIELD_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_GENERAL_TYPE,err,error,*999)
                   CALL FIELD_DEPENDENT_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_DEPENDENT_TYPE,err,error,*999)
 
-                  DEPENDENT_FIELD_NUMBER_OF_VARIABLES=3
+                  DEPENDENT_FIELD_NUMBER_OF_VARIABLES=6
                   CALL FIELD_NUMBER_OF_VARIABLES_CHECK(EQUATIONS_SET_SETUP%FIELD,DEPENDENT_FIELD_NUMBER_OF_VARIABLES,err,error,*999)
                   CALL FIELD_VARIABLE_TYPES_CHECK(EQUATIONS_SET_SETUP%FIELD,[FIELD_U_VARIABLE_TYPE,FIELD_DELUDELN_VARIABLE_TYPE, &
                     & FIELD_V_VARIABLE_TYPE,FIELD_DELVDELN_VARIABLE_TYPE,FIELD_W_VARIABLE_TYPE, &
@@ -2139,7 +2139,8 @@ CONTAINS
                     & err,error,*999)
                   CALL FIELD_NUMBER_OF_COMPONENTS_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
                     & NUMBER_OF_DIMENSIONS,err,error,*999)
-                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,1,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & MATERIAL_FIELD_NUMBER_OF_COMPONENTS1,err,error,*999)
                 END IF
               ELSE
                 CALL FlagError("Equations set materials is not associated.",err,error,*999)
@@ -2453,7 +2454,12 @@ CONTAINS
               IF(ASSOCIATED(EQUATIONS_MATERIALS)) THEN
                 IF(EQUATIONS_MATERIALS%MATERIALS_FINISHED) THEN
                   CALL Equations_CreateStart(EQUATIONS_SET,equations,err,error,*999)
-                  CALL Equations_LinearityTypeSet(equations,EQUATIONS_NONLINEAR,err,error,*999)
+                  IF(EQUATIONS_SET%SOLUTION_METHOD == EQUATIONS_SET_FV_SOLUTION_METHOD) THEN
+                    !For Finite volume the nonlinear equations are solved by iteratively solving three linear equation sets, therefore, the linearity type for each is linear.
+                    CALL Equations_LinearityTypeSet(equations,EQUATIONS_LINEAR,err,error,*999)
+                  ELSE
+                    CALL Equations_LinearityTypeSet(equations,EQUATIONS_NONLINEAR,err,error,*999)
+                  ENDIF
                   CALL Equations_TimeDependenceTypeSet(equations,EQUATIONS_STATIC,err,error,*999)
                 ELSE
                   CALL FlagError("Equations set materials has not been finished.",err,error,*999)
@@ -2548,9 +2554,9 @@ CONTAINS
               CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
               CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-              !Finish the creation of the equations
-              !!!!!!!!!!!!!!!!!!!!! TEMPORARY
+
                 SELECT CASE(EQUATIONS_SET%SPECIFICATION(4))
+                !FIXTHIS, put this select case only around the FIELD_U_VARIABLE and FIELD_DELUDELN_VARIABLE if they continue to be the only difference between eqations
                 CASE(EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE)
                   CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
                   CALL Equations_CreateFinish(equations,err,error,*999)
@@ -2562,44 +2568,138 @@ CONTAINS
                   CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_U_VARIABLE_TYPE], &
                     & err,error,*999)
                   CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELUDELN_VARIABLE_TYPE, &
-                    & err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                    & err,error,*999)!
                   CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
                   !Create the equations matrices
                   CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
                   ! Use the analytic Jacobian calculation
-                  CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
-                    & err,error,*999)!Unsure what to do with this line
+                  !CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                  !  & err,error,*999)!FIXTHIS Unsure what to do with this line
                   !Will have to change the following for optimum Finite Volume matrix storage
                   SELECT CASE(equations%sparsityType)
                   CASE(EQUATIONS_MATRICES_FULL_MATRICES)
                     CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
                       & err,error,*999)
-                    CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
-                      & err,error,*999)
+                  !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                  !    & err,error,*999)
                   CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                      & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
-                    CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
-                      & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                      & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
-                    CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
-                      & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                    !Sparse matrices are not yet implemented for finite volume
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
+                    CALL FlagError(localError,err,error,*999)
+                  !   !FIXTHIS needs to be changed for FV
+                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                  !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                  !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  !FIXTHIS Need to make cases to optomise storage for specific FV matrices
                   CASE DEFAULT
                     localError="The equations matrices sparsity type of "// &
                       & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
                     CALL FlagError(localError,err,error,*999)
                   END SELECT
                   CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
-                  !!!!!!!!!!!!!!!!!!!!! TEMPORARY FINISHED
 
 
                 CASE(EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE)
-                  localError="MASSFLOW FV variable type is not yet implemented"
-                  CALL FlagError(localError,err,error,*999)
+
+                  CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
+                  CALL Equations_CreateFinish(equations,err,error,*999)
+                  NULLIFY(vectorEquations)
+                  CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+                  !Create the equations mapping.
+                  CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_V_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                  CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
+                  CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_V_VARIABLE_TYPE], &
+                    & err,error,*999)
+                  CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELVDELN_VARIABLE_TYPE, &
+                    & err,error,*999)!
+                  CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
+                  !Create the equations matrices
+                  CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
+                  ! Use the analytic Jacobian calculation
+                  !CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                  !  & err,error,*999)!FIXTHIS Unsure what to do with this line
+                  !Will have to change the following for optimum Finite Volume matrix storage
+                  SELECT CASE(equations%sparsityType)
+                  CASE(EQUATIONS_MATRICES_FULL_MATRICES)
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                      & err,error,*999)
+                  !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                  !    & err,error,*999)
+                  CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
+                    !Sparse matrices are not yet implemented for finite volume
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
+                    CALL FlagError(localError,err,error,*999)
+                  !   !FIXTHIS needs to be changed for FV
+                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                  !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                  !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  !FIXTHIS Need to make cases to optomise storage for specific FV matrices
+                  CASE DEFAULT
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                    CALL FlagError(localError,err,error,*999)
+                  END SELECT
+                  CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
                 CASE(EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE)
-                  localError="PRESSURE FV variable type is not yet implemented"
-                  CALL FlagError(localError,err,error,*999)
+
+                  CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
+                  CALL Equations_CreateFinish(equations,err,error,*999)
+                  NULLIFY(vectorEquations)
+                  CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+                  !Create the equations mapping.
+                  CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_W_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                  CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
+                  CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_W_VARIABLE_TYPE], &
+                    & err,error,*999)
+                  CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELWDELN_VARIABLE_TYPE, &
+                    & err,error,*999)!
+                  CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
+                  !Create the equations matrices
+                  CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
+                  ! Use the analytic Jacobian calculation
+                  !CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                  !  & err,error,*999)!FIXTHIS Unsure what to do with this line
+                  !Will have to change the following for optimum Finite Volume matrix storage
+                  SELECT CASE(equations%sparsityType)
+                  CASE(EQUATIONS_MATRICES_FULL_MATRICES)
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                      & err,error,*999)
+                  !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                  !    & err,error,*999)
+                  CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
+                    !Sparse matrices are not yet implemented for finite volume
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
+                    CALL FlagError(localError,err,error,*999)
+                  !   !FIXTHIS needs to be changed for FV
+                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                  !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                  !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                  !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  !FIXTHIS Need to make cases to optomise storage for specific FV matrices
+                  CASE DEFAULT
+                    localError="The equations matrices sparsity type of "// &
+                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                    CALL FlagError(localError,err,error,*999)
+                  END SELECT
+                  CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
+
                 CASE DEFAULT
                   localError="The equation set specification  "//TRIM(NumberToVString(EQUATIONS_SET%SPECIFICATION(4),"*", &
                     &err,error))// " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%SETUP_TYPE,"*",err,error))// &
@@ -3278,7 +3378,7 @@ CONTAINS
     ENTERS("NavierStokes_ProblemSpecificationSet",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN
-      IF(SIZE(problemSpecification,1)==3) THEN
+      IF(SIZE(problemSpecification,1)>=3) THEN
         problemSubtype=problemSpecification(3)
         SELECT CASE(problemSubtype)
         CASE(PROBLEM_STATIC_NAVIER_STOKES_SUBTYPE, &
@@ -3305,15 +3405,28 @@ CONTAINS
             & " is not valid for a Navier-Stokes fluid mechanics problem."
           CALL FlagError(localError,err,error,*999)
         END SELECT
-        IF(ALLOCATED(problem%specification)) THEN
-          CALL FlagError("Problem specification is already allocated.",err,error,*999)
+        IF(SIZE(problemSpecification,1)==4) THEN
+          IF(ALLOCATED(problem%specification)) THEN
+            CALL FlagError("Problem specification is already allocated.",err,error,*999)
+          ELSE
+            ALLOCATE(problem%specification(4),stat=err)
+            IF(err/=0) CALL FlagError("Could not allocate problem specification.",err,error,*999)
+          END IF
+          problem%specification(1:4)=[PROBLEM_FLUID_MECHANICS_CLASS,PROBLEM_NAVIER_STOKES_EQUATION_TYPE,problemSubtype, &
+            & problemSpecification(4)]
+        ELSEIF(SIZE(problemSpecification,1)==3) THEN
+          IF(ALLOCATED(problem%specification)) THEN
+            CALL FlagError("Problem specification is already allocated.",err,error,*999)
+          ELSE
+            ALLOCATE(problem%specification(3),stat=err)
+            IF(err/=0) CALL FlagError("Could not allocate problem specification.",err,error,*999)
+          END IF
+          problem%specification(1:3)=[PROBLEM_FLUID_MECHANICS_CLASS,PROBLEM_NAVIER_STOKES_EQUATION_TYPE,problemSubtype]
         ELSE
-          ALLOCATE(problem%specification(3),stat=err)
-          IF(err/=0) CALL FlagError("Could not allocate problem specification.",err,error,*999)
-        END IF
-        problem%specification(1:3)=[PROBLEM_FLUID_MECHANICS_CLASS,PROBLEM_NAVIER_STOKES_EQUATION_TYPE,problemSubtype]
+          CALL FlagError("Navier-Stokes problem specification must have three or four entries.",err,error,*999)
+        ENDIF
       ELSE
-        CALL FlagError("Navier-Stokes problem specification must have three entries.",err,error,*999)
+        CALL FlagError("Navier-Stokes problem specification must have at least three entries.",err,error,*999)
       END IF
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
@@ -3390,6 +3503,35 @@ CONTAINS
           CASE(PROBLEM_SETUP_START_ACTION)
             !Set up a simple control loop
             CALL CONTROL_LOOP_CREATE_START(PROBLEM,CONTROL_LOOP,err,error,*999)
+            IF(PROBLEM%SPECIFICATION(4)==PROBLEM_FV_METHOD) THEN
+              CALL CONTROL_LOOP_TYPE_SET(CONTROL_LOOP,PROBLEM_CONTROL_WHILE_LOOP_TYPE,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_MAXIMUM_ITERATIONS_SET(CONTROL_LOOP,1000,ERR,ERROR,*999)
+              CALL ControlLoop_AbsoluteToleranceSet(CONTROL_LOOP,1.0E-6_DP,err,error,*999)
+              CALL ControlLoop_RelativeToleranceSet(CONTROL_LOOP,1.0E-6_DP,err,error,*999)
+              CALL CONTROL_LOOP_LABEL_SET(CONTROL_LOOP,"SIMPLE algorithm while loop",ERR,ERROR,*999)
+              CALL CONTROL_LOOP_NUMBER_OF_SUB_LOOPS_SET(CONTROL_LOOP,3,ERR,ERROR,*999)
+
+              ! The iterative mommentum equation solution for velocity
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_WHILE_LOOP_TYPE,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"Velocity matrix equation loop",ERR,ERROR,*999)
+
+              NULLIFY(simpleLoop)
+              ! The simple loop for the face mass flow rates using the rhie chow interpolation
+              !FIXTHIS in the future this could be done with a post solve
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_SIMPLE_TYPE,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"mass flow rate interpolation",ERR,ERROR,*999)
+
+              ! The iterative continuity equation update for the pressure correction
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_SIMPLE_TYPE,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"Pressure correction loop",ERR,ERROR,*999)
+              !These loops will be followed by a post solve to update the velocity, pressure and massflow rate from the pressure correction value
+
+            ENDIF
           CASE(PROBLEM_SETUP_FINISH_ACTION)
             !Finish the control loops
             CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
@@ -3407,19 +3549,77 @@ CONTAINS
           CALL CONTROL_LOOP_GET(CONTROL_LOOP_ROOT,CONTROL_LOOP_NODE,CONTROL_LOOP,err,error,*999)
           SELECT CASE(PROBLEM_SETUP%ACTION_TYPE)
           CASE(PROBLEM_SETUP_START_ACTION)
-            !Start the solvers creation
-            CALL SOLVERS_CREATE_START(CONTROL_LOOP,SOLVERS,err,error,*999)
-            CALL SOLVERS_NUMBER_SET(SOLVERS,1,err,error,*999)
-            !Set the solver to be a nonlinear solver
-            CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
-            CALL SOLVER_TYPE_SET(SOLVER,SOLVER_NONLINEAR_TYPE,err,error,*999)
-            !Set solver defaults
-            CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
+            IF(PROBLEM%SPECIFICATION(4)/=PROBLEM_FV_METHOD) THEN
+              !Start the solvers creation
+              CALL SOLVERS_CREATE_START(CONTROL_LOOP,SOLVERS,err,error,*999)
+              CALL SOLVERS_NUMBER_SET(SOLVERS,1,err,error,*999)
+              !Set the solver to be a nonlinear solver
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
+              CALL SOLVER_TYPE_SET(SOLVER,SOLVER_NONLINEAR_TYPE,err,error,*999)
+              !Set solver defaults
+              CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
+            ELSE
+
+              NULLIFY(simpleLoop)
+              !get solvers for control loop, here the control loop is the while loop
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,simpleLoop,ERR,ERROR,*999)
+              !FIXTHIS CONTROL_LOOP does not have a solvers created for it
+              CALL SOLVERS_CREATE_START(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_NUMBER_SET(SOLVERS,1,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_TYPE_SET(SOLVER,SOLVER_LINEAR_TYPE,ERR,ERROR,*999)
+              CALL SOLVER_LABEL_SET(SOLVER,"Momentum equation linear solver",ERR,ERROR,*999)
+              CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
+
+              NULLIFY(simpleLoop)
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              !setup solver for mass flow rate interploation (This could be a post solver to the first solver eventually)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
+              CALL SOLVERS_CREATE_START(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_NUMBER_SET(SOLVERS,1,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_TYPE_SET(SOLVER,SOLVER_LINEAR_TYPE,ERR,ERROR,*999)
+              CALL SOLVER_LABEL_SET(SOLVER,"Mass flow rate interploation",ERR,ERROR,*999)
+              CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
+
+              NULLIFY(simpleLoop)
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              !setup solver for pressure correction equation
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL SOLVERS_CREATE_START(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_NUMBER_SET(SOLVERS,1,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_TYPE_SET(SOLVER,SOLVER_LINEAR_TYPE,ERR,ERROR,*999)
+              CALL SOLVER_LABEL_SET(SOLVER,"Pressure correction solver",ERR,ERROR,*999)
+              CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
+
+            ENDIF
           CASE(PROBLEM_SETUP_FINISH_ACTION)
-            !Get the solvers
-            CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
-            !Finish the solvers creation
-            CALL SOLVERS_CREATE_FINISH(SOLVERS,err,error,*999)
+            IF(PROBLEM%SPECIFICATION(4)/=PROBLEM_FV_METHOD) THEN
+              !Get the solvers
+              CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
+              !Finish the solvers creation
+              CALL SOLVERS_CREATE_FINISH(SOLVERS,err,error,*999)
+            ELSE
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_CREATE_FINISH(SOLVERS,ERR,ERROR,*999)
+
+              NULLIFY(simpleLoop)
+              NULLIFY(SOLVERS)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_CREATE_FINISH(SOLVERS,ERR,ERROR,*999)
+
+              NULLIFY(simpleLoop)
+              NULLIFY(SOLVERS)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_CREATE_FINISH(SOLVERS,ERR,ERROR,*999)
+            ENDIF
           CASE DEFAULT
             localError="The action type of "//TRIM(NumberToVString(PROBLEM_SETUP%ACTION_TYPE,"*",err,error))// &
               & " for a setup type of "//TRIM(NumberToVString(PROBLEM_SETUP%SETUP_TYPE,"*",err,error))// &
@@ -3432,24 +3632,100 @@ CONTAINS
             !Get the control loop
             CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
             CALL CONTROL_LOOP_GET(CONTROL_LOOP_ROOT,CONTROL_LOOP_NODE,CONTROL_LOOP,err,error,*999)
-            !Get the solver
-            CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
-            CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
-            !Create the solver equations
-            CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,err,error,*999)
-            CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_NONLINEAR,err,error,*999)
-            CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,err,error,*999)
-            CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,err,error,*999)
+            IF(PROBLEM%SPECIFICATION(4)/=PROBLEM_FV_METHOD) THEN
+              !Get the solver
+              CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
+              !Create the solver equations
+              CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,err,error,*999)
+              CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_NONLINEAR,err,error,*999)
+              CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,err,error,*999)
+              CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,err,error,*999)
+            ELSE
+              !Get the momentum/velocity solver equation
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              !Create the solver equations
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_LINEAR,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,&
+                & ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,ERR,ERROR,*999)
+
+              !Get the mass flow rate interpolation solver equation
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              NULLIFY(SOLVER_EQUATIONS)
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              !Create the solver equations
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_LINEAR,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,&
+                & ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,ERR,ERROR,*999)
+
+              !Get the pressure correction solver equation
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              NULLIFY(SOLVER_EQUATIONS)
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              !Create the solver equations
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_LINEAR,ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,&
+                & ERR,ERROR,*999)
+              CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,ERR,ERROR,*999)
+            ENDIF
           CASE(PROBLEM_SETUP_FINISH_ACTION)
             !Get the control loop
             CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
             CALL CONTROL_LOOP_GET(CONTROL_LOOP_ROOT,CONTROL_LOOP_NODE,CONTROL_LOOP,err,error,*999)
-            !Get the solver equations
-            CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
-            CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
-            CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
-            !Finish the solver equations creation
-            CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
+            IF(PROBLEM%SPECIFICATION(4)/=PROBLEM_FV_METHOD) THEN
+              !Get the solver equations
+              CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP,SOLVERS,err,error,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,err,error,*999)
+              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
+              !Finish the solver equations creation
+              CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
+            ELSE
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
+              !Finish the solver equations creation
+              CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
+
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              NULLIFY(SOLVER_EQUATIONS)
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
+              !Finish the solver equations creation
+              CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
+
+              NULLIFY(SOLVERS)
+              NULLIFY(SOLVER)
+              NULLIFY(SOLVER_EQUATIONS)
+              NULLIFY(simpleLoop)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
+              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
+              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
+              !Finish the solver equations creation
+              CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
+            ENDIF
           CASE DEFAULT
             localError="The action type of "//TRIM(NumberToVString(PROBLEM_SETUP%ACTION_TYPE,"*",err,error))// &
               & " for a setup type of "//TRIM(NumberToVString(PROBLEM_SETUP%SETUP_TYPE,"*",err,error))// &
@@ -3696,7 +3972,7 @@ CONTAINS
               CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_SIMPLE_TYPE,ERR,ERROR,*999)
               CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"0D CellML solver Loop",ERR,ERROR,*999)
               NULLIFY(iterativeWhileLoop3)
-              ! The Characteristics branch solver/ Navier-Stokes coupling loop
+              ! The CharacteristicssimpleLoop branch solver/ Navier-Stokes coupling loop
               CALL CONTROL_LOOP_SUB_LOOP_GET(iterativeWhileLoop2,2,iterativeWhileLoop3,ERR,ERROR,*999)
               CALL CONTROL_LOOP_TYPE_SET(iterativeWhileLoop3,PROBLEM_CONTROL_WHILE_LOOP_TYPE,ERR,ERROR,*999)
               CALL CONTROL_LOOP_MAXIMUM_ITERATIONS_SET(iterativeWhileLoop3,1000,ERR,ERROR,*999)
@@ -4289,7 +4565,7 @@ CONTAINS
               CALL SOLVER_DYNAMIC_DEGREE_SET(SOLVER,SOLVER_DYNAMIC_FIRST_DEGREE,err,error,*999)
               CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_CMISS_LIBRARY,err,error,*999)
               ! Simple loop 1 contains the Advection solver
-              ! (this subloop holds 1 solver)
+              ! (this subloop holds 1 solver)simpleLoop
               NULLIFY(simpleLoop)
               NULLIFY(solvers)
               CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,err,error,*999)

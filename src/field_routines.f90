@@ -118,6 +118,7 @@ MODULE FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_BASED_INTERPOLATION=5 !<Grid point based interpolation. Parameters are different at each grid point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_BASED_INTERPOLATION=6 !<Gauss point based interpolation. Parameters are different at each Gauss point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_BASED_INTERPOLATION=7 !<data point based interpolation. Parameters are different at each data point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION=8 !<Element and external boundary face based interpolation. Parameters are different in each element with seperate values for boundary faces \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   !>@}
 
 !> \addtogroup FIELD_ROUTINES_DofTypes FIELD_ROUTINES::DofTypes
@@ -1071,7 +1072,7 @@ MODULE FIELD_ROUTINES
 
   PUBLIC FIELD_CONSTANT_INTERPOLATION,FIELD_ELEMENT_BASED_INTERPOLATION,FIELD_NODE_BASED_INTERPOLATION, &
     & FIELD_GRID_POINT_BASED_INTERPOLATION,FIELD_GAUSS_POINT_BASED_INTERPOLATION,FIELD_DATA_POINT_BASED_INTERPOLATION, &
-    & FIELD_FACE_BASED_INTERPOLATION
+    & FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION
 
   PUBLIC FIELD_CONSTANT_DOF_TYPE,FIELD_ELEMENT_DOF_TYPE,FIELD_NODE_DOF_TYPE,FIELD_GRID_POINT_DOF_TYPE,FIELD_GAUSS_POINT_DOF_TYPE, &
     & FIELD_DATA_POINT_DOF_TYPE
@@ -1351,6 +1352,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 IF(FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%INTERPOLATION_TYPE/=FIELD_NODE_BASED_INTERPOLATION) THEN
                   LOCAL_ERROR="Invalid interpolation type. The interpolation type for component number "// &
@@ -1471,6 +1476,8 @@ CONTAINS
                   CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_FACE_BASED_INTERPOLATION)
+                    FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
+                  CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
@@ -1607,6 +1614,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by constant for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1722,6 +1733,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 localError="Can not get the dof by user data point for component number "// &
@@ -1880,6 +1895,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by user element for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1996,6 +2015,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -2626,7 +2649,9 @@ CONTAINS
 !                          & " which has constant interpolation."
 !                        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       CASE(FIELD_ELEMENT_BASED_INTERPOLATION,FIELD_NODE_BASED_INTERPOLATION,FIELD_GRID_POINT_BASED_INTERPOLATION, &
-                        & FIELD_GAUSS_POINT_BASED_INTERPOLATION, FIELD_CONSTANT_INTERPOLATION,FIELD_DATA_POINT_BASED_INTERPOLATION)
+                        & FIELD_GAUSS_POINT_BASED_INTERPOLATION, FIELD_CONSTANT_INTERPOLATION, &
+                        & FIELD_DATA_POINT_BASED_INTERPOLATION, FIELD_FACE_BASED_INTERPOLATION, &
+                        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                         IF(MESH_COMPONENT_NUMBER>0.AND.MESH_COMPONENT_NUMBER<=MESH%NUMBER_OF_COMPONENTS) THEN
                           FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER(COMPONENT_NUMBER,VARIABLE_TYPE)=MESH_COMPONENT_NUMBER
                         ELSE
@@ -2804,6 +2829,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -3031,6 +3060,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -3194,11 +3227,13 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: elementIdx,derivative_idx,version_idx,field_dof,node_idx,partial_deriv_idx,gauss_point_idx,MAX_NGP, &
-      & dataPointIdx,localDataPointNumber
+      & dataPointIdx,localDataPointNumber, faceIdx
     REAL(DP), POINTER :: FIELD_PARAMETERS(:)
     TYPE(DOMAIN_TYPE), POINTER :: COMPONENT_DOMAIN
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: DOMAIN_ELEMENTS
+    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: FACE_MAPPING
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(DecompositionDataPointsType), POINTER :: decompositionData
     TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: FIELD_PARAMETER_SET
@@ -3253,8 +3288,30 @@ CONTAINS
                         CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
                       ENDIF
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
+                      IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
+                        DOMAIN_MAPPINGS=>COMPONENT_DOMAIN%MAPPINGS
+                        IF(ASSOCIATED(DOMAIN_MAPPINGS)) THEN
+                          FACE_MAPPING=>DOMAIN_MAPPINGS%FACES
+                          IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                            DO faceIdx=1,FACE_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                              !Here we assume that for face the derivative number and the version number for faces is 1. We have kept the face param_to_dof_map the same as nodes incase we want face derivatives in the future
+                              field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                & FACE_PARAM2DOF_MAP%FACES(faceIdx)%DERIVATIVES(1)%VERSIONS(1)
+                              FIELD_PARAMETERS(field_dof)=VALUE
+                            ENDDO !faceIdx
+                          ELSE
+                            CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!FIXTHIS
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -3509,6 +3566,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -4248,6 +4309,9 @@ CONTAINS
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=0
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=1
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=-1
@@ -5889,6 +5953,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -5938,6 +6006,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -5996,6 +6068,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -6136,6 +6212,10 @@ CONTAINS
                                             !!!!!
                                             CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                             !!!!!
+                                          CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                               & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6167,6 +6247,10 @@ CONTAINS
                                           CASE(FIELD_FACE_BASED_INTERPOLATION)
                                             !!!!!
                                             CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
+                                          CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                             !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
@@ -6244,6 +6328,8 @@ CONTAINS
                                     CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                      !Do nothing
+                                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                                       PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -6423,6 +6509,10 @@ CONTAINS
                                               !!!!!
                                               CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                               !!!!!
+                                            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                                 & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6454,6 +6544,10 @@ CONTAINS
                                             CASE(FIELD_FACE_BASED_INTERPOLATION)
                                               !!!!!
                                               CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
+                                            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                               !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
@@ -6531,6 +6625,8 @@ CONTAINS
                                       CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_FACE_BASED_INTERPOLATION)
+                                        !Do nothing
+                                      CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_NODE_BASED_INTERPOLATION)
                                         PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -6691,6 +6787,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
 !                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
 !                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -6744,6 +6844,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -6810,6 +6914,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -6937,6 +7045,10 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_XI(INTERPOLATION_PARAMETERS% &
                   & BASES(component_idx)%PTR,NO_PART_DERIV,XI,INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx),ERR,ERROR)
@@ -6986,6 +7098,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -7045,6 +7161,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -7290,6 +7410,10 @@ CONTAINS
                                   CASE(FIELD_FACE_BASED_INTERPOLATION)
                                     !!!!!
                                     CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                    !!!!!
+                                  CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                    !!!!!
+                                    CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                     !!!!!
                                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                                     DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -8240,6 +8364,10 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   ELEMENTS_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -8547,6 +8675,10 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -8759,6 +8891,10 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -8918,6 +9054,10 @@ CONTAINS
             CASE(FIELD_FACE_BASED_INTERPOLATION)
               !!!!!
               CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -9609,6 +9749,10 @@ CONTAINS
               !!!!!
               CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9739,6 +9883,10 @@ CONTAINS
             CASE(FIELD_FACE_BASED_INTERPOLATION)
               !!!!!
               CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -10035,7 +10183,7 @@ CONTAINS
       & PreviousFaceGlobalNo, FaceLocalNo, FaceGlobalNo, LocalInternalFaceIdx, FaceReceiveIdx, MaxNumberDerivativesAtGhostFace, &
       & FaceStartGlobalNo, FaceStopGlobalNo, LocalFaceIdx, FaceOnCurrentComputationalNodeGlobalNo, GhostFaceNo, &
       & MaximumNumberFacesSend, MaximumNumberFacesReceive, FaceSendIdx, FirstGhostFaceLocalNo, LastGhostFaceLocalNo, &
-      & MaximumNumberFacesCommunicate
+      & MaximumNumberFacesCommunicate, NUMBER_OF_ELEMENT_AND_EXT_FACE_DOFS
 
     INTEGER(INTG), ALLOCATABLE :: VARIABLE_LOCAL_DOFS_OFFSETS(:),VARIABLE_GHOST_DOFS_OFFSETS(:), &
         & localDataParamCount(:),ghostDataParamCount(:), NumberBreaksNode(:), RowOffsetNode(:), DofTable(:), IntegerArray(:), &
@@ -10115,6 +10263,9 @@ CONTAINS
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_BASED_INTERPOLATION"
 
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION"
+
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_NODE_BASED_INTERPOLATION"
               END SELECT
@@ -10157,6 +10308,24 @@ CONTAINS
               ! allocate param_to_dof_map for faces
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
                 & STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              NUMBER_OF_ELEMENT_AND_EXT_FACE_DOFS = NUMBER_OF_ELEMENT_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL+ &
+                & FACES_MAPPING%NUMBER_OF_INTERNAL_EXTERNAL + FACES_MAPPING%NUMBER_OF_BOUNDARY_EXTERNAL + &
+                & FACES_MAPPING%NUMBER_OF_GHOST_EXTERNAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_LOCAL+ &
+                & FACES_MAPPING%NUMBER_OF_INTERNAL_EXTERNAL + FACES_MAPPING%NUMBER_OF_BOUNDARY_EXTERNAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL+ &
+                &FACES_MAPPING%NUMBER_OF_INTERNAL_EXTERNAL + FACES_MAPPING%NUMBER_OF_BOUNDARY_EXTERNAL + &
+                & FACES_MAPPING%NUMBER_OF_GHOST_EXTERNAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL+ &
+                & FACES_MAPPING%NUMBER_OF_GLOBAL_EXTERNAL
+
+              ! allocate param_to_dof_map for elements
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL+ &
+                & FACES_MAPPING%NUMBER_OF_INTERNAL_EXTERNAL + FACES_MAPPING%NUMBER_OF_BOUNDARY_EXTERNAL + &
+                & FACES_MAPPING%NUMBER_OF_GHOST_EXTERNAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
 
             CASE(FIELD_NODE_BASED_INTERPOLATION)
@@ -11091,6 +11260,10 @@ CONTAINS
 
               IF(ALLOCATED(DofTable)) DEALLOCATE(DofTable)
 
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              !!!!!FIXTHIS
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
 
               Element1LocalNo = 1
@@ -12026,7 +12199,10 @@ CONTAINS
                 IF(ALLOCATED(ReceiveBuffer3)) DEALLOCATE(ReceiveBuffer3)
                 IF(ALLOCATED(NumberDerivativesAtGhostFace)) DEALLOCATE(NumberDerivativesAtGhostFace)
 
-
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!FIXTHIS
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
 
                 ! loop over ghost elements
@@ -12240,6 +12416,10 @@ CONTAINS
               NUMBER_OF_LOCAL_VARIABLE_DOFS=NUMBER_OF_LOCAL_VARIABLE_DOFS+domainMappings%FACES%NUMBER_OF_LOCAL
               TOTAL_NUMBER_OF_VARIABLE_DOFS=TOTAL_NUMBER_OF_VARIABLE_DOFS+domainMappings%FACES%TOTAL_NUMBER_OF_LOCAL
               NUMBER_OF_GLOBAL_VARIABLE_DOFS=NUMBER_OF_GLOBAL_VARIABLE_DOFS+domainMappings%FACES%NUMBER_OF_GLOBAL
+            CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              !!!!!FIXTHIS
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               DOMAIN=>FIELD_COMPONENT%DOMAIN
               DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
@@ -12521,6 +12701,10 @@ CONTAINS
                 CASE(FIELD_FACE_BASED_INTERPOLATION)
                   !!!!!
                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   DOMAIN=>FIELD_COMPONENT%DOMAIN
@@ -13045,6 +13229,10 @@ CONTAINS
               CASE(FIELD_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
@@ -16243,6 +16431,11 @@ CONTAINS
                                   !!!!!
                                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                   !!!!!
+                                CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                  !!!!!
+                                  CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here", &
+                                    & ERR,ERROR,*999)
+                                  !!!!!
                                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                                   FROM_DOMAIN_TOPOLOGY=>FROM_DOMAIN%TOPOLOGY
                                   IF(ASSOCIATED(FROM_DOMAIN_TOPOLOGY)) THEN
@@ -16577,6 +16770,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16713,6 +16910,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
@@ -16851,6 +17052,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -16987,6 +17192,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
@@ -17523,6 +17732,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -17681,6 +17894,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
@@ -17842,6 +18059,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -18001,6 +18222,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -18138,6 +18363,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -18307,6 +18536,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -18475,6 +18708,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -18642,6 +18879,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -18816,6 +19057,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -18958,6 +19203,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
@@ -19102,6 +19351,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19245,6 +19498,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19384,6 +19641,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -19583,6 +19844,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -19780,6 +20045,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -19979,6 +20248,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -20174,6 +20447,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -20348,6 +20625,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -20524,6 +20805,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -20698,6 +20983,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -21861,6 +22150,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -21997,6 +22290,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
@@ -22136,6 +22433,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -22272,6 +22573,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
@@ -22410,6 +22715,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
@@ -22566,6 +22875,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -22721,6 +23034,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",err,error,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -22875,6 +23192,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
@@ -23048,6 +23369,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -23202,6 +23527,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -23354,6 +23683,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -23505,6 +23838,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
@@ -23977,6 +24314,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -24168,6 +24509,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -24361,6 +24706,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -24552,6 +24901,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -24747,6 +25100,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -24940,6 +25297,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
@@ -25135,6 +25496,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -25328,6 +25693,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
@@ -25546,6 +25915,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -25707,6 +26080,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -25870,6 +26247,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -26032,6 +26413,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -26169,6 +26554,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
@@ -26330,6 +26719,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
@@ -26498,6 +26891,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by data point for component number "// &
@@ -26773,6 +27170,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -26911,6 +27312,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -27047,6 +27452,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
@@ -27185,6 +27594,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -27321,6 +27734,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
@@ -27478,6 +27895,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -27634,6 +28055,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -27789,6 +28214,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
@@ -27949,6 +28378,10 @@ CONTAINS
       !!!!!
       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -28052,6 +28485,10 @@ CONTAINS
     CASE(FIELD_FACE_BASED_INTERPOLATION)
       !!!!!
       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
@@ -28157,6 +28594,10 @@ CONTAINS
       !!!!!
       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -28260,6 +28701,10 @@ CONTAINS
     CASE(FIELD_FACE_BASED_INTERPOLATION)
       !!!!!
       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
@@ -28806,6 +29251,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -28965,6 +29414,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -29122,6 +29575,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -29281,6 +29738,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -29422,6 +29883,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -29567,6 +30032,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -29709,6 +30178,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -29850,6 +30323,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -30060,6 +30537,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -30257,6 +30738,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -30456,6 +30941,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -30654,6 +31143,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -30849,6 +31342,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -31023,6 +31520,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -31199,6 +31700,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -31373,6 +31878,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -31552,6 +32061,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -31721,6 +32234,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -31892,6 +32409,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -32062,6 +32583,10 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -32228,6 +32753,10 @@ CONTAINS
                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &

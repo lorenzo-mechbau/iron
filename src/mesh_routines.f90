@@ -4568,8 +4568,8 @@ CONTAINS
       & numberSharedFacesOnRank, numberInCurrentSetToClaim, ghostFaceIdx, ghostFaceGlobalNo, ghostDomain, &
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfFacesToReceive, internalFacesIdx, &
       & boundaryFacesIdx, localFaceNo, domainListInternalIdx, domainListBoundaryIdx, internalFaceGlobalNo, boundaryFaceGlobalNo, &
-      & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, &
-      & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, &
+      & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, faceIdx, totalNumberOfExternal, &
+      & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, numberOfinternalAndBoundary, &
       & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, globalNodeNo, surroundingElemIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndBoundaryPlaneFaces(:), sendRequestHandle(:), &
@@ -4584,7 +4584,7 @@ CONTAINS
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: facesMapping
     TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndBoundaryPlaneFacesList, adjacentDomainsList, localAndAdjacentDomainsList, &
-      & boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList
+      & boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList, externalFacesList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
@@ -4716,7 +4716,20 @@ CONTAINS
       ENDDO
     ENDDO
 
+    DO faceGlobalNo = 1,topology%faces%numberOfFaces
 
+      IF(topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements==1) THEN
+        !The face is an external face
+        topology%faces%faces(faceGlobalNo)%externalFace=.TRUE.
+      ELSEIF(topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements==2) THEN
+        topology%faces%faces(faceGlobalNo)%externalFace=.FALSE.
+      ELSE
+        localError="A Face can only have 1 or 2 surrounding elements, not "//TRIM(NumberToVString( &
+          & topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements,"*",err,error))
+        CALL FlagError(localError,err,error,*999)
+      ENDIF
+
+    ENDDO
 !<<.............. Topology equations should be in their own subroutine eventually
 
     !allocate temporary array for the global numbers of the boundary elements
@@ -5677,6 +5690,73 @@ CONTAINS
     ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
     IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
     facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+
+
+    !Assign the faces that are external faces to facesMapping%EXTERNAL_LOCALS
+
+    ! create list of external faces
+    NULLIFY(externalFacesList)
+    CALL LIST_CREATE_START(externalFacesList,err,error,*999)
+    CALL LIST_DATA_DIMENSION_SET(externalFacesList,1,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(externalFacesList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(externalFacesList,facesMapping%NUMBER_OF_LOCAL/2,err,error,*999)
+    CALL LIST_CREATE_FINISH(externalFacesList,err,error,*999)
+
+    DO faceIdx=facesMapping%INTERNAL_START, facesMapping%INTERNAL_FINISH
+      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
+      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
+
+      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
+        !The face is an external face
+        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
+      ELSE
+        !Do nothing
+      ENDIF
+    ENDDO
+
+    CALL LIST_NUMBER_OF_ITEMS_GET(externalFacesList,facesMapping%NUMBER_OF_INTERNAL_EXTERNAL, err,error,*999)
+
+    DO faceIdx=facesMapping%BOUNDARY_START, facesMapping%BOUNDARY_FINISH
+      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
+      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
+
+      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
+        !The face is an external face
+        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
+      ELSE
+        !Do nothing
+      ENDIF
+    ENDDO
+
+    CALL LIST_NUMBER_OF_ITEMS_GET(externalFacesList,numberOfinternalAndBoundary, err,error,*999)
+    facesMapping%NUMBER_OF_BOUNDARY_EXTERNAL=numberOfinternalAndBoundary-facesMapping%NUMBER_OF_INTERNAL_EXTERNAL
+
+    DO faceIdx=facesMapping%GHOST_START, facesMapping%GHOST_FINISH
+      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
+      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
+
+      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
+        !The face is an external face
+        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
+      ELSE
+        !Do nothing
+      ENDIF
+    ENDDO
+
+
+    ! extract arrays of external faces
+    CALL LIST_DETACH_AND_DESTROY(externalFacesList, totalNumberOfExternal, integerArray, err,error,*999)
+    ALLOCATE(facesMapping%EXTERNAL_LOCALS(totalNumberOfExternal))
+    facesMapping%EXTERNAL_LOCALS=integerArray(1:totalNumberOfExternal)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+    facesMapping%NUMBER_OF_GHOST_EXTERNAL=totalNumberOfExternal-facesMapping%NUMBER_OF_INTERNAL_EXTERNAL- &
+      & facesMapping%NUMBER_OF_BOUNDARY_EXTERNAL
+
+    !Communicate the numberOfinternalAndBoundary of each domain to get the global number of external faces.
+    ! allreduce number of external faces
+    CALL MPI_ALLREDUCE(numberOfinternalAndBoundary,facesMapping%NUMBER_OF_GLOBAL_EXTERNAL,1,MPI_INTEGER,MPI_SUM, &
+      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
 
 
 

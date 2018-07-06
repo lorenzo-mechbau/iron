@@ -489,7 +489,7 @@ MODULE Types
     !TYPE(MeshFaceDerivativeType), ALLOCATABLE :: derivatives(:) !<derivatives(derivativeIdx). Contains information on the derivativeIdx'th derivative of the face.
     INTEGER(INTG) :: numberOfSurroundingElements !<The number of elements surrounding the face in the mesh. Old CMISS name NENP(np,0,0:nr).
     INTEGER(INTG), POINTER :: surroundingElements(:) !<surroudingElements(localElementIdx). The global element number of the localElementIdx'th element that is surrounding the face.
-    !LOGICAL :: boundaryFace !<Is .TRUE. if the mesh face is on the boundary of the mesh, .FALSE. if not.
+    LOGICAL :: externalFace !<Is .TRUE. if the mesh face is on the boundary of the mesh, .FALSE. if not.
   END TYPE MeshFaceType
 
   !>Contains the information for the nodes of a mesh.
@@ -999,6 +999,11 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_PTR(:) !<ADJACENT_DOMAINS_PTR(domain_no). The pointer to the list of adjacent domains for domain_no. ADJACENT_DOMAINS_PTR(domain_no) gives the starting position in ADJACENT_DOMAINS_LIST for the first adjacent domain number for domain number domain_no. ADJACENT_DOMAINS_PTR(domain_no+1) gives the last+1 position in ADJACENT_DOMAINS_LIST for the last adjacent domain number for domain number domain_no. NOTE: the index for ADJACENT_DOMAINS_PTR varies from 0 to the number of domains.
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_LIST(:) !<ADJACENT_DOMAINS_LIST(i). The list of adjacent domains for each domain. The start and end positions for the list for domain number domain_no are given by ADJACENT_DOMAIN_PTR(domain_no) and ADJACENT_DOMAIN_PTR(domain_no+1)-1 respectively.
     TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: ADJACENT_DOMAINS(:) !<ADJACENT_DOMAINS(adjacent_domain_idx). The adjacent domain information for the adjacent_domain_idx'th adjacent domain to this domain.
+    INTEGER(INTG) :: NUMBER_OF_INTERNAL_EXTERNAL !<The number of external mesh boundaries that are internal to this domain.
+    INTEGER(INTG) :: NUMBER_OF_BOUNDARY_EXTERNAL !<The number of external mesh boundaries that are boundaries of this domain.
+    INTEGER(INTG) :: NUMBER_OF_GHOST_EXTERNAL !<The number of external mesh boundaries that are ghosts of this domain.
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_EXTERNAL !<The number of gobal external boundaries for this mapping.
+    INTEGER(INTG), ALLOCATABLE :: EXTERNAL_LOCALS(:) !<EXTERNAL_FACES(extFaceIdx) The list of local numbers of the external boundary faces of the mesh.
   END TYPE DOMAIN_MAPPING_TYPE
 
   !>Contains information on the domain decomposition mappings.

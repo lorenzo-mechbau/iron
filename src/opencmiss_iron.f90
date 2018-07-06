@@ -3648,8 +3648,8 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION = FIELD_GRID_POINT_BASED_INTERPOLATION !<Grid point based interpolation. Parameters are different at each grid point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION = FIELD_GAUSS_POINT_BASED_INTERPOLATION !<Gauss point based interpolation. Parameters are different at each Gauss point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION = FIELD_DATA_POINT_BASED_INTERPOLATION !<Data point based interpolation. Parameters are different at each data point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION = FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION !<Element and external boundary face based interpolation. Parameters are different in each element and there are different parameters at the boundary faces of the mesh \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   !>@}
-  
   !> \addtogroup OpenCMISS_FieldVariableTypes OpenCMISS::Iron::Field::VariableTypes
   !> \brief Field variable type parameters.
   !> \see OpenCMISS::Iron::Field,OpenCMISS
@@ -4317,7 +4317,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_FIELD_CONSTANT_INTERPOLATION,CMFE_FIELD_ELEMENT_BASED_INTERPOLATION,CMFE_FIELD_NODE_BASED_INTERPOLATION, &
     & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, CMFE_FIELD_FACE_BASED_INTERPOLATION, &
-    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION
+    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION
 
   PUBLIC CMFE_FIELD_NUMBER_OF_VARIABLE_SUBTYPES
 
@@ -6024,6 +6024,14 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FE_CONTACT_REPROJECT_SUBTYPE=PROBLEM_FE_CONTACT_REPROJECT_SUBTYPE !<finear elasticity problem subject to contact constraint, reproject at Newton iterations \see OpenCMISS_ProblemSubtypes,OpenCMISS
 
   !>@}
+  !> \addtogroup OpenCMISS_ProblemMethod OpenCMISS::Iron::Problem::Method
+  !> \brief Problem Method.
+  !> \see OpenCMISS::Iron::Problem,OpenCMISS
+  !>@{
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_NO_METHOD = PROBLEM_NO_METHOD !<No problem method \see OpenCMISS_ProblemMethod,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FV_METHOD = PROBLEM_FV_METHOD !<Finite Volume problem method \see OpenCMISS_ProblemMethod,OpenCMISS
+
+  !>@}
   !> \addtogroup OpenCMISS_ProblemControlLoopTypes OpenCMISS::Iron::Problem::ControlLoopTypes
   !> \brief Problem control loop type parameters
   !> \see OpenCMISS::Iron::Problem,OpenCMISS
@@ -6138,6 +6146,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_PROBLEM_MONODOMAIN_GUDUNOV_SPLIT_SUBTYPE,CMFE_PROBLEM_MONODOMAIN_STRANG_SPLIT_SUBTYPE, &
     & CMFE_PROBLEM_BIDOMAIN_GUDUNOV_SPLIT_SUBTYPE,CMFE_PROBLEM_BIDOMAIN_STRANG_SPLIT_SUBTYPE
+
+  PUBLIC CMFE_PROBLEM_NO_METHOD, CMFE_PROBLEM_FV_METHOD
 
   PUBLIC CMFE_PROBLEM_MONODOMAIN_BUENOOROVIO_SUBTYPE, CMFE_PROBLEM_MONODOMAIN_TENTUSSCHER06_SUBTYPE
 
