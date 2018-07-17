@@ -44,18 +44,20 @@
 !>This module handles all routines pertaining to finite elasticity coupled with navier stokes for fsi problems
 
 
-MODULE FSI_ROUTINES
+MODULE FSIRoutines
 
-  USE BASE_ROUTINES
-  USE BASIS_ROUTINES
+  USE BaseRoutines
+  USE BasisRoutines
   USE CONSTANTS
   USE CONTROL_LOOP_ROUTINES
-  USE EQUATIONS_ROUTINES
-  USE EQUATIONS_MAPPING_ROUTINES
-  USE EQUATIONS_MATRICES_ROUTINES
-  USE EQUATIONS_SET_CONSTANTS
+  USE ControlLoopAccessRoutines
+  USE EquationsRoutines
+  USE EquationsMappingRoutines
+  USE EquationsMatricesRoutines
+  USE EquationsSetConstants
   USE FIELD_IO_ROUTINES
   USE FIELD_ROUTINES
+  USE FieldAccessRoutines
   USE FINITE_ELASTICITY_ROUTINES
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
@@ -803,4 +805,4 @@ CONTAINS
   !================================================================================================================================
   !
 
-END MODULE FSI_ROUTINES
+END MODULE FSIRoutines

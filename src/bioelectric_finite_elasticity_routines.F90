@@ -51,6 +51,7 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   USE BasisAccessRoutines
   USE BIOELECTRIC_ROUTINES
   USE BIODOMAIN_EQUATION_ROUTINES
+  USE COMP_ENVIRONMENT
   USE Constants
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines
@@ -2756,7 +2757,8 @@ CONTAINS
     ENTERS("BioelectricFiniteElasticity_UpdateGeometricField",ERR,ERROR,*999)
 
     ! this needs to be called
-    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    !CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    ComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(err,error)
     !CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
 #if 0
     CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
@@ -2819,10 +2821,11 @@ CONTAINS
             CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
 !              & PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
 !              & PROBLEM_GUDUNOV_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE, &
-              & PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE, &
-              & PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
-              & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
-              & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+              & PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE)!, &
+!              & PROBLEM_STRANG_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
+!              & PROBLEM_STRANG_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
+!              & PROBLEM_STRANG_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+! Cases commented out above do not belong to problem_constatnts (any more!!!)
               
               ! this case
               CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
@@ -2938,7 +2941,7 @@ CONTAINS
                 & FIELD_VALUES_SET_TYPE,DofIdx,InitialNodeMDistance,ERR,ERROR,*999)
                         
               ! get physical length of fibre
-              RegionWidth = FIELD_VAR_IND_FE%REGION%GENERATED_MESHES%GENERATED_MESHES(1)%PTR%&
+              RegionWidth = FIELD_VAR_IND_FE%REGION%generatedMeshes%generatedMeshes(1)%PTR%&
                 & REGULAR_MESH%MAXIMUM_EXTENT(1)
               !FibrePhysicalLength = RegionWidth / NumberInSeriesFibres
               FibrePhysicalLength = RegionWidth
@@ -3044,11 +3047,11 @@ CONTAINS
           
                 ! --------------------- determine 1D and 3D position of current node ------------------
                 ! get the finite elasticity dependent field interpolation parameters of this element
-                INTERPOLATION_PARAMETERS=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_PARAMETERS &
+                INTERPOLATION_PARAMETERS=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%dependentInterpParameters &
                   & (FIELD_U_VARIABLE_TYPE)%PTR
                 CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementLocalNumber, &
                   & INTERPOLATION_PARAMETERS, ERR,ERROR,*999)
-                INTERPOLATED_POINT=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR
+                INTERPOLATED_POINT=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%dependentInterpPoint(FIELD_U_VARIABLE_TYPE)%PTR
 
                 ! find the interpolated position of the bioelectric grid node from the finite elasticity FE dependent field
                 ! XI goes from 0 to 1 per FE element
