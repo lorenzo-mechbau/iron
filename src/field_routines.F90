@@ -9892,7 +9892,7 @@ CONTAINS
       & NUMBER_OF_CONSTANT_DOFS,NUMBER_OF_ELEMENT_DOFS,NUMBER_OF_NODE_DOFS,NUMBER_OF_GRID_POINT_DOFS,NUMBER_OF_GAUSS_POINT_DOFS, &
       & NUMBER_OF_LOCAL_VARIABLE_DOFS,TOTAL_NUMBER_OF_VARIABLE_DOFS,NUMBER_OF_DOMAINS,variable_global_ny, &
       & variable_local_ny,domain_idx,domain_no,constant_nyy,element_ny,element_nyy,node_ny,node_nyy,grid_point_nyy, &
-      & Gauss_point_nyy,version_idx,derivative_idx,ny,NUMBER_OF_COMPUTATIONAL_NODES, &
+      & Gauss_point_nyy,version_idx,derivative_idx,ny,NumberComputationalNodes, &
       & myComputationalNodeNumber,domain_type_stop,start_idx,stop_idx,element_idx,node_idx,NUMBER_OF_LOCAL, NGP, MAX_NGP, &
       & gp,MPI_IERROR,NUMBER_OF_GLOBAL_DOFS,gauss_point_idx,NUMBER_OF_DATA_POINT_DOFS,data_point_nyy,dataPointIdx,elementIdx, &
       & localDataNumber,globalElementNumber
@@ -9910,7 +9910,7 @@ CONTAINS
     ENTERS("FIELD_MAPPINGS_CALCULATE",ERR,ERROR,*999)
     
     IF(ASSOCIATED(FIELD)) THEN
-      NUMBER_OF_COMPUTATIONAL_NODES=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+      NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
@@ -10028,7 +10028,7 @@ CONTAINS
       IF(ERR/=0) CALL FlagError("Could not allocate variable ghost dofs offsets.",ERR,ERROR,*999)
       !We want to ensure that the ghost DOFs are at the end so loop over the DOFs in two passes. The first pass will process
       !the local DOFs for each variable component and the second pass will process the ghost DOFs for each variable component.
-      IF(NUMBER_OF_COMPUTATIONAL_NODES==1) THEN
+      IF(NumberComputationalNodes==1) THEN
         domain_type_stop=1 !Local only
       ELSE
         domain_type_stop=2 !Local+Ghosts
@@ -10074,7 +10074,7 @@ CONTAINS
                     variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                     CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                       & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                    NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                    NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                     ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
                       & STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &
@@ -10608,7 +10608,7 @@ CONTAINS
                   variable_global_ny=1+VARIABLE_GLOBAL_DOFS_OFFSET
                   CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                     & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
-                  NUMBER_OF_DOMAINS=NUMBER_OF_COMPUTATIONAL_NODES !Constant is in all domains
+                  NUMBER_OF_DOMAINS=NumberComputationalNodes !Constant is in all domains
                   ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
                     & STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate field variable dofs global to local map local number.", &

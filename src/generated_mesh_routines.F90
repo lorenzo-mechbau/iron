@@ -52,6 +52,7 @@ MODULE GENERATED_MESH_ROUTINES
   USE FIELD_ROUTINES
   USE FieldAccessRoutines
   USE GeneratedMeshAccessRoutines
+  USE GLOBAL_TO_LOCAL_MAP_REPLACEMENT_ROUTINES 
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE KINDS
@@ -3657,7 +3658,10 @@ CONTAINS
                          !Default to version 1 of each node derivative
                          CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                               & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                         local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                         ! old:
+                         !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                         ! new:
+                         local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR)
                          IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                             CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                          ENDIF !derivatives
@@ -3680,7 +3684,9 @@ CONTAINS
                             DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                                CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                     & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                               local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                               ! local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                               ! new:
+                               local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR)
                                IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                   CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                                ENDIF !derivatives
@@ -3703,7 +3709,9 @@ CONTAINS
                          DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                             CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                  & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                            local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            ! new:
+                            local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR)
                             IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                             ENDIF !derivatives
@@ -3734,7 +3742,10 @@ CONTAINS
                                DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                                   CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                        & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                                  local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+
+                                  !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                                  local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR)
+
                                   IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                      CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                                   ENDIF !derivatives
@@ -3761,7 +3772,8 @@ CONTAINS
                          DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                             CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                  & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                            local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR) 
                             IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                             ENDIF !derivatives
@@ -3784,7 +3796,8 @@ CONTAINS
                                DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                                   CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                        & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                                  local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                                  !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                                  local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR) 
                                   IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                      CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                                   ENDIF !derivatives
@@ -3814,7 +3827,8 @@ CONTAINS
                       DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                          CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                               & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                         local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                         !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                         local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR) 
                          IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                             CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                          ENDIF !derivatives
@@ -3837,7 +3851,8 @@ CONTAINS
                             DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                                CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                     & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                               local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                               !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                               local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR) 
                                IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                   CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                                ENDIF !derivatives
@@ -3860,7 +3875,8 @@ CONTAINS
                          DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                             CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                  & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                            local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                            local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR) 
                             IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                             ENDIF !derivatives
@@ -3891,7 +3907,8 @@ CONTAINS
                                DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
                                   CALL FIELD_PARAMETER_SET_UPDATE_NODE(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,npg, &
                                        & component_idx,RECT_COORDS(component_idx),ERR,ERROR,*999)
-                                  local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                                  !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(npg)%local_number(1)
+                                  local_node=GET_GLOBAL_MAPPING_LOCAL_NUMBER(DOMAIN%MAPPINGS%NODES,npg,1,ERR,ERROR)
                                   IF(DOMAIN_NODES%NODES(local_node)%NUMBER_OF_DERIVATIVES>1) THEN
                                      CALL FlagError("Not generalized to hermittean elements.",ERR,ERROR,*999)
                                   ENDIF !derivatives

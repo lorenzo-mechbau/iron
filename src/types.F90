@@ -529,6 +529,23 @@ MODULE Types
     TYPE(MeshComponentTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
   END TYPE MeshComponentTopologyPtrType
 
+  ! new type
+  !>Contains information on the local topology of a mesh.
+  TYPE MeshComponentLocalTopologyType
+    TYPE(MESH_TYPE), POINTER :: mesh !<Pointer to the parent mesh.
+    INTEGER(INTG) :: meshComponentNumber !<The mesh component number for this mesh topology.
+    TYPE(MeshNodesType), POINTER :: nodes !<Pointer to the local nodes within the mesh topology.
+    TYPE(MeshElementsType), POINTER :: elements !<Pointer to the local elements within the mesh topology.
+    TYPE(MeshDofsType), POINTER :: dofs !<Pointer to the local dofs within the mesh topology.
+    TYPE(MeshDataPointsType), POINTER :: dataPoints !<Pointer to the local data points within the mesh topology
+  END TYPE MeshComponentLocalTopologyType
+
+  ! new type
+  !>A buffer type to allow for an array of pointers to a MeshComponentLocalTopologyType.
+  TYPE MeshComponentLocalTopologyPtrType
+    TYPE(MeshComponentLocalTopologyType), POINTER :: ptr !<The pointer to the mesh topology.
+  END TYPE MeshComponentLocalTopologyPtrType
+
   !>Embedded mesh types
   TYPE EMBEDDING_XI_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODES !<Number of nodes embedded in this element
@@ -568,6 +585,8 @@ MODULE Types
     TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
+   ! new variable
+   TYPE(MeshComponentLocalTopologyPtrType), POINTER :: LOCAL_TOPOLOGY(:) !<LOCAL_TOPOLOGY(mesh_component_idx). A pointer to the local topology mesh_component_idx'th mesh component. 
   END TYPE MESH_TYPE
 
   !>A buffer type to allow for an array of pointers to a MESH_TYPE.
@@ -941,6 +960,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_RECEIVE_GHOSTS !<The number of ghost locals in the current domain that are to be received from this domain.
     INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_SEND_INDICES(:) !<LOCAL_GHOST_SEND_INDICES(i). The local numbers of the ghosts in the current domain that are to be sent to this domain.
     INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_RECEIVE_INDICES(:) !<LOCAL_GHOST_RECEIVE_INDICES(i). The local numbers of the ghosts in the current domain that are to be received from this domain.
+    INTEGER(INTG) :: NUMBER_OF_FURTHER_LINKED_GHOSTS !<The number of further linked ghost numbers that are needed such that all ghost nodes know all their shared domains
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_GHOST_FURTHER_INDICES(:) !<LOCAL_GHOST_FURTHER_INDICES(i) local number of a linked element 
   END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   
   !>Contains the local information for a global mapping number for a domain mapping.
@@ -970,19 +991,27 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: GHOST_FINISH !<The finish postition in the DOMAIN_LIST for the list of ghost numbers
     INTEGER(INTG), ALLOCATABLE :: DOMAIN_LIST(:) !<DOMAIN_LIST(i). The list of local numbers grouped so that the internal numbers are from INTERNAL_START to INTERNAL_FINISH, the boundary numbers are from BOUNDARY_START to BOUNDARY_FINISH and the ghost numbers are from GHOST_START to GHOST_FINISH
     INTEGER(INTG), ALLOCATABLE :: LOCAL_TO_GLOBAL_MAP(:) !<LOCAL_TO_GLOBAL_MAP(i). The global number for the i'th local number for the mapping.
-    TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), ALLOCATABLE :: GLOBAL_TO_LOCAL_MAP(:) !<GLOBAL_TO_LOCAL_MAP(i). The local information for the i'th global number for the mapping.
+    !TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), ALLOCATABLE :: GLOBAL_TO_LOCAL_MAP(:) !<GLOBAL_TO_LOCAL_MAP(i). The local information for the i'th global number for the mapping.
+
+    !-> move to decomposition (?) 
+    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: ADJACENT_DOMAINS(:) !<ADJACENT_DOMAINS(adjacent_domain_idx). The adjacent domain information for the adjacent_domain_idx'th adjacent domain to this domain. 
     INTEGER(INTG) :: NUMBER_OF_ADJACENT_DOMAINS !<The number of domains that are adjacent to this domain in the mapping.
+    ! to be removed (these two arrays were needed only for computation of send tag number) 
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_PTR(:) !<ADJACENT_DOMAINS_PTR(domain_no). The pointer to the list of adjacent domains for domain_no. ADJACENT_DOMAINS_PTR(domain_no) gives the starting position in ADJACENT_DOMAINS_LIST for the first adjacent domain number for domain number domain_no. ADJACENT_DOMAINS_PTR(domain_no+1) gives the last+1 position in ADJACENT_DOMAINS_LIST for the last adjacent domain number for domain number domain_no. NOTE: the index for ADJACENT_DOMAINS_PTR varies from 0 to the number of domains.
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_DOMAINS_LIST(:) !<ADJACENT_DOMAINS_LIST(i). The list of adjacent domains for each domain. The start and end positions for the list for domain number domain_no are given by ADJACENT_DOMAIN_PTR(domain_no) and ADJACENT_DOMAIN_PTR(domain_no+1)-1 respectively.
-    TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), ALLOCATABLE :: ADJACENT_DOMAINS(:) !<ADJACENT_DOMAINS(adjacent_domain_idx). The adjacent domain information for the adjacent_domain_idx'th adjacent domain to this domain. 
+
+
+    ! to be removed
+    TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), ALLOCATABLE :: GLOBAL_TO_LOCAL_MAP(:) !<GLOBAL_TO_LOCAL_MAP(i). The local information for the i'th global number for the mapping. 
   END TYPE DOMAIN_MAPPING_TYPE
 
   !>Contains information on the domain decomposition mappings.
   TYPE DOMAIN_MAPPINGS_TYPE
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN !<A pointer to the domain decomposition.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS !<Pointer to the element mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES !<Pointer to the node mappings for the domain decomposition.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS !<Pointer to the dof mappings for the domain decomposition.
+    ! to be removed, because elements mapping is now in decomposition 
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS !<Pointer to the element mappings for the domain decomposition.
   END TYPE DOMAIN_MAPPINGS_TYPE
   
   !>A pointer to the domain decomposition for this domain.
@@ -994,7 +1023,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_DIMENSIONS !<The number of dimensions for this domain. This is "inherited" from the mesh.
     INTEGER(INTG), ALLOCATABLE :: NODE_DOMAIN(:) !<NODE_DOMAIN(np). The domain number that the np'th global node is in for the domain decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: MAPPINGS !<Pointer to the mappings for the domain  e.g., global to local and local to global maps
-    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<Pointer to the topology for the domain.
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<Pointer to the topology for the domain. (completely local information)
   END TYPE DOMAIN_TYPE
 
   !>A buffer type to allow for an array of pointers to a DOMAIN_TYPE.
@@ -1126,11 +1155,26 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_DOMAINS !<The number of domains that this decomposition contains.
     INTEGER(INTG) :: NUMBER_OF_EDGES_CUT !<For automatically calculated decompositions, the number of edges of the mesh dual graph that were cut for the composition. It provides an indication of the optimally of the automatic decomposition.
     INTEGER(INTG) :: numberOfElements !<The number of elements in the decomposition
-    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOMAIN(:) !<ELEMENT_DOMAIN(ne). The domain number that the ne'th global element is in for the decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+   !INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOMAIN(:) !<ELEMENT_DOMAIN(ne). The domain number that the ne'th global element is in for the decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: topology !<A pointer to the topology for this decomposition.
     TYPE(DOMAIN_PTR_TYPE), POINTER :: domain(:) !<DOMAIN(mesh_component_idx). A pointer to the domain for mesh component for the domain associated with the computational node. \todo Change this to allocatable???
     LOGICAL :: CALCULATE_FACES !<Boolean flag to determine whether faces should be calculated
     LOGICAL :: CALCULATE_LINES !<Boolean flag to determine whether lines should be calculated
+
+    ! variables to be removed
+    INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOMAIN(:) !<ELEMENT_DOMAIN(ne). The domain number that the ne'th global element is in for the decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+    
+    ! new variables
+    TYPE(LIST_TYPE), POINTER :: GlobalElementDomain  !< A list of pairs (global element number, domain number) that can be set manually if DECOMPOSITION_USER_DEFINED_TYPE. It will be filled by Parmetis for DECOMPOSITION_CALCULATED_TYPE. It is a temporary variable und will be deallocated once ELEMENTS_MAPPING is set.
+
+    ! (local element no, list of global node numbers) 
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING !<Pointer to the element mappings for the domain decomposition.
+    
+    ! temporary, remove
+    !INTEGER(INTG), ALLOCATABLE :: NUMBER_ELEMENTS_DOMAIN(:)  !< NUMBER_ELEMENTS_DOMAIN(n) The number of local elements that the n'th computational node owns.
+    !INTEGER(INTG), ALLOCATABLE :: GLOBAL_ELEMENT_NUMBER(:) !<GLOBAL_ELEMENT_NUMBER(ne) global element number of the local element ne, like DOMAIN%LOCAL_TO_GLOBAL_MAP, replaces ELEMENT_DOMAIN
+    !INTEGER(INTG) :: NUMBER_LOCAL_ELEMENTS !< number of local elements 
+
   END TYPE DECOMPOSITION_TYPE
 
   !>A buffer type to allow for an array of pointers to a DECOMPOSITION_TYPE.

@@ -129,7 +129,8 @@ MODULE DistributedMatrixVector
 
   !Module variables
 
-  INTEGER(INTG), SAVE :: distributedDataId=100000000
+  INTEGER(INTG), SAVE :: distributedDataId=100000000 ! beware of MPI maximum tag number which is only guaranteed to be >32767!
+ 
 
   !Interfaces
 
@@ -917,12 +918,12 @@ CONTAINS
     NULLIFY(domainMapping)
     domainMapping=>cmissMatrix%distributedMatrix%rowDomainMapping
     IF(.NOT.ASSOCIATED(domainMapping)) CALL FlagError("Distributed matrix row domain mapping is not associated.",err,error,*998)
-    IF(domainMapping%NUMBER_OF_DOMAINS==1) THEN
-      distributedDataId=distributedDataId+1
-    ELSE
-      distributedDataId=distributedDataId+ &
-        & domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
-    END IF
+!    IF(domainMapping%NUMBER_OF_DOMAINS==1) THEN
+    distributedDataId=distributedDataId+1
+!    ELSE
+!      distributedDataId=distributedDataId+ &
+!        & domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
+!    END IF
     CALL Matrix_CreateFinish(cmissMatrix%matrix,err,error,*999)
    
     EXITS("DistributedMatrix_CMISSCreateFinish")
@@ -5803,6 +5804,7 @@ CONTAINS
     CALL DistributedVector_RowMappingGet(distributedVector,domainMapping,err,error,*999)
     
     cmissVector%dataSize=cmissVector%n    
+    ! allocate memory for data 
     SELECT CASE(distributedVector%dataType)
     CASE(MATRIX_VECTOR_INTG_TYPE)
       ALLOCATE(cmissVector%dataIntg(cmissVector%dataSize),STAT=err)
@@ -5825,37 +5827,60 @@ CONTAINS
         & TRIM(NumberToVString(distributedVector%dataType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*999)
     END SELECT
+    ! get base tag number from global counter and increase counter 
     cmissVector%baseTagNumber=distributedDataId
-    IF(domainMapping%NUMBER_OF_DOMAINS==1) THEN
-      distributedDataId=distributedDataId+1
-    ELSE
-      distributedDataId=distributedDataId+domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
-    END IF
+    !IF(domainMapping%NUMBER_OF_DOMAINS==1) THEN
+    distributedDataId=distributedDataId+1
+    !ELSE
+    !  distributedDataId=distributedDataId+domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
+    !END IF
+
+    ! if there are adjacent domains 
     IF(domainMapping%NUMBER_OF_ADJACENT_DOMAINS>0) THEN
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
       IF(err/=0) GOTO 999
       IF(distributedVector%ghostingType==DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) THEN
+       ! fill transfers information for each of the adjacent domains 
         ALLOCATE(cmissVector%transfers(domainMapping%NUMBER_OF_ADJACENT_DOMAINS),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate CMISS distributed vector transfer buffers.",err,error,*999)
+
+  #ifdef USE_CUSTOM_PROFILING
+               CALL CustomProfilingMemory("distributed vector cmiss, ghosts", &
+                 & DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, INT(SIZEOF(CMISS_VECTOR%TRANSFERS)))
+  #endif
+
+        ! loop over adjacent domains 
         DO domainIdx=1,domainMapping%NUMBER_OF_ADJACENT_DOMAINS
+
+          ! initialize data structure 
           CALL DistributedVector_CMISSTransferInitialise(cmissVector,domainIdx,err,error,*999)
+
+          ! set buffer sizes and data type 
           cmissVector%transfers(domainIdx)%sendBufferSize=domainMapping%ADJACENT_DOMAINS(domainIdx)%NUMBER_OF_SEND_GHOSTS
           cmissVector%transfers(domainIdx)%receiveBufferSize=domainMapping%ADJACENT_DOMAINS(domainIdx)%NUMBER_OF_RECEIVE_GHOSTS
           cmissVector%transfers(domainIdx)%dataType=distributedVector%dataType
-          cmissVector%transfers(domainIdx)%sendTagNumber=cmissVector%baseTagNumber+ &
-            & domainMapping%ADJACENT_DOMAINS_PTR(myComputationalNodeNumber)+domainIdx-1
+         ! choose send tag number such that communication is unique
+         ! message envelope (sender, dest, tag, comm), thus tag only needs to distinguish between different matrix/vector objects 
+!          cmissVector%transfers(domainIdx)%sendTagNumber=cmissVector%baseTagNumber+ &
+!            & domainMapping%ADJACENT_DOMAINS_PTR(myComputationalNodeNumber)+domainIdx-1
+          cmissVector%transfers(domainIdx)%sendTagNumber=cmissVector%baseTagNumber
+
+          ! get adjacent domain 
           domainNumber=domainMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER
-          found=.FALSE.
-          DO domainIdx2=domainMapping%ADJACENT_DOMAINS_PTR(domainNumber),domainMapping%ADJACENT_DOMAINS_PTR(domainNumber+1)-1
-            IF(domainMapping%ADJACENT_DOMAINS_LIST(domainIdx2)==myComputationalNodeNumber) THEN
-              found=.TRUE.
-              EXIT
-            ENDIF
-          ENDDO !domainIdx2
-          IF(.NOT.found) CALL FlagError("Could not find domain to set the receive tag number.",err,error,*999)
-            domainIdx2=domainIdx2-domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+1
-            cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber+ &
-              & domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
+
+          cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber
+         
+!          found=.FALSE.
+!          DO domainIdx2=domainMapping%ADJACENT_DOMAINS_PTR(domainNumber),domainMapping%ADJACENT_DOMAINS_PTR(domainNumber+1)-1
+!            IF(domainMapping%ADJACENT_DOMAINS_LIST(domainIdx2)==myComputationalNodeNumber) THEN
+!              found=.TRUE.
+!              EXIT
+!            ENDIF
+!          ENDDO !domainIdx2
+!          IF(.NOT.found) CALL FlagError("Could not find domain to set the receive tag number.",err,error,*999)
+!            domainIdx2=domainIdx2-domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+1
+!            cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber+ &
+!              & domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
           SELECT CASE(distributedVector%dataType)
           CASE(DISTRIBUTED_MATRIX_VECTOR_INTG_TYPE)
             ALLOCATE(cmissVector%transfers(domainIdx)%sendBufferIntg(cmissVector%transfers(domainIdx)%sendBufferSize),STAT=err)
