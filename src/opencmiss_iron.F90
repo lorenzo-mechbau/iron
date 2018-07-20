@@ -37161,7 +37161,7 @@ CONTAINS
     !Argument variables
     TYPE(cmfe_FieldsType), INTENT(INOUT) :: fields !<The fields to export the nodes for.
     TYPE(VARYING_STRING), INTENT(IN) :: fileName !<The file name to export the nodes to
-    TYPE(VARYING_STRING), INTENT(IN):: method !<The export method to use.
+    TYPE(VARYING_STRING), INTENT(IN):: method !<The import method to use.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
@@ -37176,6 +37176,43 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Fields_NodesExportVSVSObj
+
+  !
+  !================================================================================================================================
+  !
+! 
+!   !>Import information for fields set identified by an object. \todo number method
+!   SUBROUTINE cmfe_Fields_FieldsImport(FILENAME,METHOD,REGION,MESH,MESH_USER_NUMBER,DECOMPOSITION,DECOMPOSITION_USER_NUMBER, &
+!     & DECOMPOSITION_METHOD,FIELD_VALUES_SET_TYPE,FIELD_SCALING_TYPE,err)
+!     !DLLEXPORT(cmfe_Fields_FieldsImportVSVSObj)
+! 
+!     !Argument variables
+!     TYPE(VARYING_STRING), INTENT(IN) :: FILENAME !<The file name to import the fields to
+!     TYPE(VARYING_STRING), INTENT(IN) :: METHOD !<The file name to import the fields to
+!     TYPE(REGION_TYPE), POINTER :: REGION !<region
+!     TYPE(MESH_TYPE), POINTER :: MESH !<mesh type
+!     INTEGER(INTG), INTENT(IN) :: MESH_USER_NUMBER !<user number for mesh
+!     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !< decomposition
+!     INTEGER(INTG), INTENT(IN) :: DECOMPOSITION_USER_NUMBER !<user number for decomposition
+!     INTEGER(INTG), INTENT(IN) :: DECOMPOSITION_METHOD !<decomposition method
+!     INTEGER(INTG), INTENT(IN) :: FIELD_VALUES_SET_TYPE
+!     INTEGER(INTG), INTENT(IN) :: FIELD_SCALING_TYPE
+!     !TYPE(BASIS_FUNCTIONS_TYPE), POINTER :: BASES !< bases function
+!     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+!     !Local variables
+! 
+!     ENTERS("cmfe_Fields_FieldsImport",err,error,*999)
+! 
+!     CALL FIELD_IO_FIELDS_IMPORT(fileName, METHOD, REGION, MESH, MESH_USER_NUMBER, DECOMPOSITION, DECOMPOSITION_USER_NUMBER, &
+!       & DECOMPOSITION_METHOD, FIELD_VALUES_SET_TYPE, FIELD_SCALING_TYPE, ERR, ERROR, *999)
+! 
+!     EXITS("cmfe_Fields_FieldsImport")
+!     RETURN
+! 999 ERRORSEXITS("cmfe_Fields_FieldsImport",err,error)
+!     CALL cmfe_HandleError(err,error)
+!     RETURN
+! 
+!   END SUBROUTINE cmfe_Fields_FieldsImport
 
 !!==================================================================================================================================
 !!

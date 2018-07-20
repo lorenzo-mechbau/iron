@@ -462,7 +462,7 @@ MODULE Types
   TYPE MeshNodeDerivativeType
     INTEGER(INTG) :: numberOfVersions !The number of global versions at the node for the mesh.
     INTEGER(INTG), ALLOCATABLE :: userVersionNumbers(:) !userVersionNumbers(versionIdx). The user version numbers for the versionIdx'th version for the node.
-    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node.
+    INTEGER(INTG), ALLOCATABLE :: dofIndex(:) !The global dof version index (nv) in the domain of the nk'th global derivative for the node. (dofIndex(nv) is the global dof number, where nv is the version index)
     INTEGER(INTG) :: globalDerivativeIndex !The global derivative index of the nk'th global derivative for the node.
     INTEGER(INTG) :: partialDerivativeIndex !The partial derivative index (nu) of the nk'th global derivative for the node. Old CMISS name NUNK(nk,nj,np).
   END TYPE MeshNodeDerivativeType
@@ -582,10 +582,23 @@ MODULE Types
     INTEGER(INTG) :: NUMBER_OF_EMBEDDED_MESHES !<The number of meshes that are embedded in this mesh.
     TYPE(MESH_PTR_TYPE), POINTER :: EMBEDDED_MESHES(:) !<EMBEDDED_MESHES(mesh_idx). A pointer to the mesh_idx'th mesh that is embedded in this mesh.
     INTEGER(INTG) :: NUMBER_OF_ELEMENTS
-    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
-   ! new variable
+    ! try to remove global information contained in TOPOLOGY later! 
+    ! currently in use: 
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
+    !   TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
+    !
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+    !   TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+    !
+    !  DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
+    !    DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+    !      ny = MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+    
+    TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
+    
+    ! new variable (?)
    TYPE(MeshComponentLocalTopologyPtrType), POINTER :: LOCAL_TOPOLOGY(:) !<LOCAL_TOPOLOGY(mesh_component_idx). A pointer to the local topology mesh_component_idx'th mesh component. 
   END TYPE MESH_TYPE
 
@@ -1312,13 +1325,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !>A type to hold the mapping from field nodes to field dof numbers for a particular field variable component.
   TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_NODE_PARAMETERS !<The number of node based field parameters for this field variable component.
-    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter to a dof
+    TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), ALLOCATABLE :: NODES(:)  ! The mapping from field node parameter  (local node number) to a dof (local dof number)
   END TYPE FIELD_NODE_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field elements to field dof numbers for a particular field variable component.
   TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_PARAMETERS !<The number of element based field parameters for this field variable component.
-    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element based parameter for this field variable component. \todo Allow for multiple element parameters per element.
+    INTEGER(INTG), ALLOCATABLE :: ELEMENTS(:) !<ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx). The field variable dof number of the element_idx'th element (local element no.) based parameter for this field variable component. \todo Allow for multiple element parameters per element.
   END TYPE FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE
 
   !>A type to hold the mapping from field grid points to field dof numbers for a particular field variable component.
