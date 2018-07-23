@@ -48,6 +48,7 @@ MODULE DistributedMatrixVector
   USE CmissMPI
   USE CmissPetsc
   USE ComputationEnvironment
+  USE Custom_Profiling
   USE DistributedMatrixVectorAccessRoutines
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
@@ -5844,10 +5845,10 @@ CONTAINS
         ALLOCATE(cmissVector%transfers(domainMapping%NUMBER_OF_ADJACENT_DOMAINS),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate CMISS distributed vector transfer buffers.",err,error,*999)
 
-  #ifdef USE_CUSTOM_PROFILING
-               CALL CustomProfilingMemory("distributed vector cmiss, ghosts", &
-                 & DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, INT(SIZEOF(CMISS_VECTOR%TRANSFERS)))
-  #endif
+#ifdef USE_CUSTOM_PROFILING
+         CALL CustomProfilingMemory("distributed vector cmiss, ghosts", &
+           & DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, INT(SIZEOF(CMISS_VECTOR%TRANSFERS)))
+#endif
 
         ! loop over adjacent domains 
         DO domainIdx=1,domainMapping%NUMBER_OF_ADJACENT_DOMAINS

@@ -42,6 +42,7 @@ set(IRON_Fortran_SRC
     control_loop_access_routines.F90
     coordinate_routines.F90
     coordinate_access_routines.F90
+    custom_profiling.F90
     Darcy_equations_routines.F90
     Darcy_pressure_equations_routines.F90
     data_point_routines.F90
@@ -79,7 +80,7 @@ set(IRON_Fortran_SRC
     fsi_routines.F90
     generated_mesh_routines.F90
     generated_mesh_access_routines.F90
-    global_to_local_map_replacement_routines.f90
+    global_to_local_map_replacement_routines.F90
     Hamilton_Jacobi_equations_routines.F90
     Helmholtz_equations_routines.F90
     #Helmholtz_TEMPLATE_equations_routines.F90

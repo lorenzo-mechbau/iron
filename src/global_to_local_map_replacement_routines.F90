@@ -44,8 +44,8 @@
 !> This module handles all domain mappings routines.
 MODULE GLOBAL_TO_LOCAL_MAP_REPLACEMENT_ROUTINES
 
-  USE BASE_ROUTINES
-  USE COMP_ENVIRONMENT
+  USE BaseRoutines
+  USE ComputationEnvironment
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE KINDS
@@ -85,8 +85,8 @@ CONTAINS
     
     ENTERS("GET_GLOBAL_MAPPING",ERR,ERROR,*999)
     
-    ComputationalNodeNumber = COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-    NumberOfComputationalNodes = COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+    ComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    NumberOfComputationalNodes = ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
     
     
     ! - check if global number is already in INCOMPLETE_GLOBAL_TO_LOCAL_MAP, if yes, done

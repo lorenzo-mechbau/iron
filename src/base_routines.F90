@@ -1520,36 +1520,36 @@ CONTAINS
     IF(diagFileOpen.AND.outputStreamID==DIAGNOSTIC_OUTPUT_TYPE) THEN
       DO i=1,numberRecords
         IF(endLine(i)<=MAX_OUTPUT_WIDTH) THEN
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:END_LINE(i)) 
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:endLine(i)) 
         ELSE IF(endLine(i)>MAX_OUTPUT_WIDTH.AND.endLine(i)<=MAXSTRLEN) THEN
 
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(MAX_OUTPUT_WIDTH1:END_LINE(i)) 
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:endLine(i)) 
         ELSE
 
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(MAX_OUTPUT_WIDTH1:MAXSTRLEN) 
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(DIAGNOSTICS_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN) 
         ENDIF
       ENDDO !i
     ELSE IF(timingFileOpen.AND.outputStreamID==TIMING_OUTPUT_TYPE) THEN
       DO i=1,numberRecords
         IF(endLine(i)<=MAX_OUTPUT_WIDTH) THEN
-          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:END_LINE(i)) 
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:endLine(i)) 
         ELSE IF(endLine(i)>MAX_OUTPUT_WIDTH.AND.endLine(i)<=MAXSTRLEN) THEN
 
-          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(MAX_OUTPUT_WIDTH1:END_LINE(i)) 
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:endLine(i)) 
         ELSE
 
-          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
-          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(MAX_OUTPUT_WIDTH1:MAXSTRLEN) 
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+          WRITE(TIMING_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN) 
         ENDIF
       ENDDO !i
     ELSE
       IF(outputStreamID<=9) THEN !not file output
         DO i=1,numberRecords
           IF(endLine(i)<=MAX_OUTPUT_WIDTH) THEN
-          WRITE(ID,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",outputString(i)(1:END_LINE(i)) 
+            WRITE(*,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:endLine(i)) 
           ELSE IF(endLine(i)>MAX_OUTPUT_WIDTH.AND.endLine(i)<=MAXSTRLEN) THEN
             WRITE(*,'(A)') outputString(i)(1:MAX_OUTPUT_WIDTH)
             WRITE(*,'(A)') outputString(i)(MAX_OUTPUT_WIDTH+1:endLine(i))
@@ -1569,15 +1569,15 @@ CONTAINS
       IF(echoOutput) THEN
         DO i=1,numberRecords
           IF(endLine(i)<=MAX_OUTPUT_WIDTH) THEN
-            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:END_LINE(i)) 
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:endLine(i)) 
           ELSE IF(endLine(i)>MAX_OUTPUT_WIDTH.AND.endLine(i)<=MAXSTRLEN) THEN
 
-            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH1:END_LINE(i)) 
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:endLine(i)) 
           ELSE
 
-            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(1:MAX_OUTPUT_WIDTH)
-            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') MY_COMPUTATIONAL_NODE_NUMBER,": ",OP_STRING(i)(MAX_OUTPUT_WIDTH1:MAXSTRLEN) 
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(1:MAX_OUTPUT_WIDTH)
+            WRITE(ECHO_FILE_UNIT,'(I0,A,A)') myComputationalNodeNumber,": ",outputString(i)(MAX_OUTPUT_WIDTH+1:MAXSTRLEN) 
           ENDIF
         ENDDO !i
       ENDIF

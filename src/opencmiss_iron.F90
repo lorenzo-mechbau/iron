@@ -70,6 +70,7 @@ MODULE OpenCMISS_Iron
   USE ControlLoopAccessRoutines
   USE COORDINATE_ROUTINES
   USE CoordinateSystemAccessRoutines
+  USE Custom_Profiling
   USE DataPointRoutines
   USE DataPointAccessRoutines
   USE DataProjectionRoutines
@@ -60579,9 +60580,9 @@ SUBROUTINE cmfe_CustomProfilingStart(Identifier, Err)
           END IF
         END DO
         DO ComponentIdx=2,NumberOfBoundaryPatchComponents-1
-          BoundaryPatches(OffsetComponentIdx-2)    = BoundaryPatchesTemp(CurrentIdx,ComponentIdx)
+          BoundaryPatches(Offset+ComponentIdx-2)    = BoundaryPatchesTemp(CurrentIdx,ComponentIdx)
         END DO
-       CurrentFirstPatchIdx(PatchIdx)=CurrentFirstPatchIdx(PatchIdx)NumberOfBoundaryPatchComponents-2_INTG
+       CurrentFirstPatchIdx(PatchIdx)=CurrentFirstPatchIdx(PatchIdx)+NumberOfBoundaryPatchComponents-2_INTG
       END DO
       ! Close files
       CLOSE(NodeFileUnit)

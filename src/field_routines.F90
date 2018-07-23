@@ -4441,6 +4441,77 @@ CONTAINS
   !================================================================================================================================
   !
 
+  SUBROUTINE FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING(FIELD_VARIABLE_DOFS_MAPPING,Str,ERR,ERROR,*)
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, INTENT(IN) :: FIELD_VARIABLE_DOFS_MAPPING  
+    CHARACTER(LEN=*) :: Str
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+  
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: M_DOFS_MAPPING
+    TYPE(FIELD_VARIABLE_COMPONENT_TYPE), POINTER :: FIELD_COMPONENT
+    
+    INTEGER(INTG) :: domain_idx
+    INTEGER(INTG) :: local_number, local_type, domain_no
+    INTEGER(INTG) :: DofLocalNumber, DofGlobalNumber, StorageIdx
+  
+    ENTERS("FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING",ERR,ERROR,*999)
+    
+    !FIELD_COMPONENT=>FIELD%VARIABLES(4)%COMPONENTS(1)
+    !DOFS_MAPPING=>FIELD_COMPONENT%DOMAIN%MAPPINGS%DOFS
+    M_DOFS_MAPPING=>FIELD_VARIABLE_DOFS_MAPPING
+                    
+    ! output all values
+    PRINT *, "process ",ComputationalEnvironment_NodeNumberGet(ERR,ERROR), " FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING " // TRIM(Str)
+    
+    IF (.FALSE.) THEN
+      PRINT *, "    process, dof global,    process,  dof local,       type"
+      DO DofGlobalNumber = 1,SIZE(M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP)
+        
+        DO domain_idx = 1,M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%NUMBER_OF_DOMAINS
+          IF (domain_idx == 1) PRINT *, ""
+          local_number = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_NUMBER(domain_idx)
+          domain_no = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%DOMAIN_NUMBER(domain_idx)
+          local_type = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_TYPE(domain_idx)
+          IF (local_type == 3) THEN
+            PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type, "ghost"
+          ELSE
+            PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type
+          ENDIF
+        ENDDO
+        
+      ENDDO
+    
+      PRINT *, "  The same table, but only local dofs:"
+    ENDIF
+    PRINT *, "    process, dof global,    process,  dof local,       type"
+    DO DofGlobalNumber = 1,SIZE(M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP)
+      
+      IF (M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%NUMBER_OF_DOMAINS >= 1) THEN
+        domain_idx = 1
+        local_number = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_NUMBER(domain_idx)
+        domain_no = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%DOMAIN_NUMBER(domain_idx)
+        local_type = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_TYPE(domain_idx)
+        IF (domain_no /= 0) CYCLE
+        IF (local_type == 3) THEN
+          PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type, "ghost"
+        ELSE
+          PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type
+        ENDIF
+      ENDIF
+      
+    ENDDO
+      
+      
+    EXITS("FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING")
+    RETURN
+999 ERRORSEXITS("FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING
+
+  !
+  !================================================================================================================================
+  !
+
   !>Finishes the creation of a field. \see OpenCMISS::Iron::cmfe_FieldCreateFinish
   SUBROUTINE FIELD_CREATE_FINISH(FIELD,ERR,ERROR,*)
 
@@ -9937,12 +10008,12 @@ CONTAINS
 
     CALL_COUNTER = CALL_COUNTER + 1
     DEBUGGING = .FALSE.
-    IF (CALL_COUNTER == 10 .AND. COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 0) DEBUGGING = .FALSE.
+    IF (CALL_COUNTER == 10 .AND. ComputationalEnvironment_NodeNumberGet(ERR,ERROR) == 0) DEBUGGING = .FALSE.
 
     IF(ASSOCIATED(FIELD0)) THEN
-      NumberComputationalNodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+      NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
-      MyComputationalNodeNumber=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+      MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
       
       IF (MyComputationalNodeNumber == 0) THEN
@@ -9991,7 +10062,8 @@ CONTAINS
             
             PRINT *, ""
             PRINT *, "============= component ", component_idx," elements mapping ==========="
-            CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
+            ! CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
+            PRINT *, "----------- Print module should be included!!! -----------"
           ENDDO
         ENDDO
       ENDIF
@@ -10255,7 +10327,7 @@ CONTAINS
               ! merge information from every rank
               NumberBreaks(MyComputationalNodeNumber) = LocalNumberBreaks
               CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
-                & NumberBreaks,1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                & NumberBreaks,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
               CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 
               IF (DIAGNOSTICS2) THEN
@@ -10357,7 +10429,7 @@ CONTAINS
                   
               ! merge information from every rank
               CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
-                & DofTable,NumberBreaksDouble,RowOffsetZeroBased,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                & DofTable,NumberBreaksDouble,RowOffsetZeroBased,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
               CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
                         
               IF (DIAGNOSTICS2) THEN
@@ -10799,7 +10871,7 @@ CONTAINS
                 
                 ! reduce over all processes
                 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberNodesCommunicate,1,MPI_INT,MPI_MAX, &
-                  & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 
                 IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": MaximumNumberNodesSend=",MaximumNumberNodesSend, &
@@ -10839,13 +10911,13 @@ CONTAINS
                   ! post receive calls
                   CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
                     & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! post send calls
                   CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
                     & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                   
                 ENDDO   ! AdjacentDomainIdx
@@ -10899,7 +10971,7 @@ CONTAINS
                 
                 ! reduce over all processes
                 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxNumberDerivativesAtGhostNode,1,MPI_INT,MPI_MAX, &
-                  & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 
                 ! transfer information that reproduces all global ghost numbers at ghost nodes to the domains where it is a boundary node, each
@@ -10971,14 +11043,14 @@ CONTAINS
                   CALL MPI_IRECV(ReceiveBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
                     & (MaxNumberDerivativesAtGhostNode+1), &
                     & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! post send calls
                   CALL MPI_ISEND(SendBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
                     & (MaxNumberDerivativesAtGhostNode+1), &
                     & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                       
                 ENDDO  ! AdjacentDomainIdx
@@ -11241,7 +11313,7 @@ CONTAINS
                 
           CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
             & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
-            & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 
           ! allocate number_of_domain_ghost
@@ -11253,7 +11325,7 @@ CONTAINS
                 
           CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
             & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
-            & 1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                  
           ! deallocate used arrays
@@ -11271,9 +11343,11 @@ CONTAINS
           PRINT *, "============= new implementation ==========="
           PRINT *, "----------- field domain mapping -----------"
           variable_idx = 1
-          CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
+          ! CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
+          PRINT *, "----------- Print module should be included!!! -----------"
           PRINT *, "----------- field dof to param map -----------"
-          CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
+          ! CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
+          PRINT *, "----------- Print module should be included!!! -----------"
         ENDIF
         
         CALL SLEEP(2)
@@ -12671,9 +12745,11 @@ CONTAINS
           PRINT *, "============= old implementation ==========="
           PRINT *, "----------- field domain mapping -----------"
           variable_idx = 1
-          CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
+          ! CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
+          PRINT *, "----------- Print module should be included!!! -----------"
           PRINT *, "----------- field dof to param map -----------"
-          CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
+          ! CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
+          PRINT *, "----------- Print module should be included!!! -----------"
         ENDIF
         
         CALL SLEEP(2)
