@@ -10000,8 +10000,8 @@ CONTAINS
     
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
-    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
-    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! new code
+    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
+    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code
     
     LOGICAL :: DIAGNOSTICS2 = .FALSE.
     
@@ -10512,7 +10512,7 @@ CONTAINS
                     NodeGlobalNo = NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(NodeLocalNo)
                           
                     IF (DIAGNOSTICS2) WRITE(*,'(5(I0,A))',ADVANCE='no') MyComputationalNodeNumber, ": on this rank, node global ", &
-                      & NodeGlobalNo,", local ",NodeLocalNo,", (node idx",LocalInternalNodeIdx,&
+                      & NodeGlobalNo,", local ",NodeLocalNo,", (node idx ",LocalInternalNodeIdx,&
                       & ", local ",NODES_MAPPING%DOMAIN_LIST(LocalInternalNodeIdx),"),  is internal: "
                           
                     ! check if current node is internal or boundary
