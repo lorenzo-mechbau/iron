@@ -117,6 +117,8 @@ set(IRON_Fortran_SRC
     opencmiss_iron.F90
     Poiseuille_equations_routines.F90
     Poisson_equations_routines.F90
+    print_types_routines_selection.F90
+    # print_types_routines.F90
     problem_constants.F90
     problem_routines.F90
     problem_access_routines.F90

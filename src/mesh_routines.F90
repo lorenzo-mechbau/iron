@@ -62,6 +62,7 @@ MODULE MESH_ROUTINES
   USE MPI
 #endif
   USE NODE_ROUTINES
+  USE PRINT_TYPES_ROUTINES_SELECTION
   USE RegionAccessRoutines
   USE Strings
   USE Trees
@@ -6477,8 +6478,7 @@ CONTAINS
                 PRINT *, "------------------------------------------"
                 WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                   & ": DOMAIN%MAPPINGS%NODES (new implementation)"
-                ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-                PRINT *, "----------- Print module should be included!!! -----------"
+                CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
               ELSE       
                 ! Loop over computational nodes
                 DO I = 0,NumberComputationalNodes-1
@@ -6488,8 +6488,7 @@ CONTAINS
                     IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                     WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                       & ": DOMAIN%MAPPINGS%NODES (new implementation)"
-                    ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-                    PRINT *, "----------- Print module should be included!!! -----------"
+                    CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
                     CALL FLUSH()   ! flush stdout
                   ENDIF
                 ENDDO 
@@ -6502,7 +6501,7 @@ CONTAINS
                 PRINT *, "------------------------------------------"
                 WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                   & ": DOMAIN%MAPPINGS%DOFS (new implementation)"
-                ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
+                CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
               ELSE       
                 ! Loop over computational nodes
                 DO I = 0,NumberComputationalNodes-1
@@ -6512,8 +6511,7 @@ CONTAINS
                     IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                     WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                       & ": DOMAIN%MAPPINGS%DOFS (new implementation)"
-                    ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
-                    PRINT *, "----------- Print module should be included!!! -----------"
+                    CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
                     CALL FLUSH()   ! flush stdout
                   ENDIF
                 ENDDO
@@ -6557,8 +6555,7 @@ CONTAINS
               PRINT *, "------------------------------------------"
               WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%ELEMENTS (old implementation)" 
-              ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%ELEMENTS, MaxDepth, MaxArrayLength)
-              PRINT *, "----------- Print module should be included!!! -----------"
+              CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%ELEMENTS, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
               DO I = 0,NumberComputationalNodes-1
@@ -6568,8 +6565,7 @@ CONTAINS
                   IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                   WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%ELEMENTS (old implementation)"
-                  ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%ELEMENTS, MaxDepth, MaxArrayLength)
-                    PRINT *, "----------- Print module should be included!!! -----------"
+                  CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%ELEMENTS, MaxDepth, MaxArrayLength)
                   CALL FLUSH()   ! flush stdout
                 ENDIF
               ENDDO
@@ -6587,8 +6583,7 @@ CONTAINS
               PRINT *, "------------------------------------------"
               WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DECOMPOSITION%ELEMENTS_MAPPING (new implementation)" 
-              ! CALL Print_DOMAIN_MAPPING(DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING, MaxDepth, MaxArrayLength)
-              PRINT *, "----------- Print module should be included!!! -----------"
+              CALL Print_DOMAIN_MAPPING(DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
               DO I = 0,NumberComputationalNodes-1
@@ -6598,8 +6593,7 @@ CONTAINS
                   IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                   WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DECOMPOSITION%ELEMENTS_MAPPING (new implementation)"
-                  ! CALL Print_DOMAIN_MAPPING(DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING, MaxDepth, MaxArrayLength)
-                  PRINT *, "----------- Print module should be included!!! -----------"
+                  CALL Print_DOMAIN_MAPPING(DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING, MaxDepth, MaxArrayLength)
                   CALL FLUSH()   ! flush stdout
                 ENDIF
               ENDDO
@@ -6616,8 +6610,7 @@ CONTAINS
               PRINT *, "------------------------------------------"
               WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%NODES (old implementation)" 
-             ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-              PRINT *, "----------- Print module should be included!!! -----------"
+              CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
               DO I = 0,NumberComputationalNodes-1
@@ -6627,8 +6620,7 @@ CONTAINS
                   IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                   WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%NODES (old implementation)"
-                  ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
-                  PRINT *, "----------- Print module should be included!!! -----------"
+                  CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%NODES, MaxDepth, MaxArrayLength)
                   CALL FLUSH()   ! flush stdout
                 ENDIF
               ENDDO
@@ -6645,8 +6637,7 @@ CONTAINS
               PRINT *, "------------------------------------------"
               WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%DOFS (old implementation)"
-              ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
-              PRINT *, "----------- Print module should be included!!! -----------"
+              CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
             ELSE       
               ! Loop over computational nodes
               DO I = 0,NumberComputationalNodes-1
@@ -6656,8 +6647,7 @@ CONTAINS
                   IF (MyComputationalNodeNumber == 0) PRINT *, "------------------------------------------"
                   WRITE(*,'(A,I3,A,I3,A)') "Rank ",I," of ",NumberComputationalNodes, &
                     & ": DOMAIN%MAPPINGS%DOFS (old implementation)"
-                  ! CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
-                  PRINT *, "----------- Print module should be included!!! -----------"
+                  CALL Print_DOMAIN_MAPPING(DOMAIN%MAPPINGS%DOFS, MaxDepth, MaxArrayLength)
                   CALL FLUSH()   ! flush stdout
                 ENDIF
               ENDDO
@@ -7699,7 +7689,7 @@ CONTAINS
                     ELSE
                       ! if node is not at border between boundary and ghost elements, i.e. it is not in BoundaryAndGhostNodes
                       
-                     IF (DIAGNOSTICS1) THEN
+                      IF (DIAGNOSTICS1) THEN
 
                        ! PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
                        !   & ", node global ",NodeGlobalNo, " is not at border boundary/ghost element, ", &
@@ -7987,9 +7977,9 @@ CONTAINS
                         !PRINT *, MyComputationalNodeNumber, ":    add local number to NUMBER_OF_RECEIVE_GHOSTS of domain ",&
                         !  & GhostDomain,", AdjacentDomainIdx=",AdjacentDomainIdx 
                       ENDIF
-                      AdacentDomainEntryFound = .TRUE. 
+
                       CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
-                            
+                      AdacentDomainEntryFound = .TRUE.                             
                       EXIT
                     ENDIF
 
@@ -8655,7 +8645,7 @@ CONTAINS
                     ENDIF
                   ENDDO !no_computational_node
                   DEALLOCATE(NODE_COUNT)
-!                  END IF
+!               END IF
 
                   DEALLOCATE(GHOST_NODES_LIST)
                   DEALLOCATE(LOCAL_NODE_NUMBERS)
@@ -9036,7 +9026,6 @@ CONTAINS
                     dof_idx=dof_idx+1
                     DOMAIN_NODES%NODES(local_node)%DERIVATIVES(derivative_idx)%DOF_INDEX(version_idx)=dof_idx
                     DOMAIN_DOFS%DOF_INDEX(1,dof_idx)=version_idx ! Fortran runtime error: Index '1' of dimension 2 of array 'domain_dofs%dof_index' above upper bound of 0
-                     DOMAIN_DOFS%DOF_INDEX(2,dof_idx)=derivative_idx
                     DOMAIN_DOFS%DOF_INDEX(2,dof_idx)=derivative_idx
                     DOMAIN_DOFS%DOF_INDEX(3,dof_idx)=local_node
                   ENDDO !version_idx
@@ -9336,7 +9325,7 @@ CONTAINS
 
     IF(ASSOCIATED(TOPOLOGY)) THEN
       IF(ASSOCIATED(TOPOLOGY%ELEMENTS)) THEN
-        CALL FlagError("Domain already has topology elements associated",ERR,ERROR,*999)
+        CALL FlagError("Decomposition already has topology elements associated",ERR,ERROR,*999)
       ELSE
         ALLOCATE(TOPOLOGY%ELEMENTS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate topology elements",ERR,ERROR,*999)

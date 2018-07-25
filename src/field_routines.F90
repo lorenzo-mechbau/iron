@@ -64,6 +64,7 @@ MODULE FIELD_ROUTINES
   USE MESH_ROUTINES
   USE MeshAccessRoutines
   USE NODE_ROUTINES
+  USE PRINT_TYPES_ROUTINES_SELECTION
   USE Strings
   USE Types
 
@@ -10062,8 +10063,7 @@ CONTAINS
             
             PRINT *, ""
             PRINT *, "============= component ", component_idx," elements mapping ==========="
-            ! CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
-            PRINT *, "----------- Print module should be included!!! -----------"
+            CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
           ENDDO
         ENDDO
       ENDIF
@@ -11343,11 +11343,9 @@ CONTAINS
           PRINT *, "============= new implementation ==========="
           PRINT *, "----------- field domain mapping -----------"
           variable_idx = 1
-          ! CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
-          PRINT *, "----------- Print module should be included!!! -----------"
+          CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
           PRINT *, "----------- field dof to param map -----------"
-          ! CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
-          PRINT *, "----------- Print module should be included!!! -----------"
+          CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
         ENDIF
         
         CALL SLEEP(2)
@@ -12745,11 +12743,9 @@ CONTAINS
           PRINT *, "============= old implementation ==========="
           PRINT *, "----------- field domain mapping -----------"
           variable_idx = 1
-          ! CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
-          PRINT *, "----------- Print module should be included!!! -----------"
+          CALL Print_DOMAIN_MAPPING(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING, 3,1000)
           PRINT *, "----------- field dof to param map -----------"
-          ! CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
-          PRINT *, "----------- Print module should be included!!! -----------"
+          CALL Print_FIELD_DOF_TO_PARAM_MAP(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP, 3,1000)
         ENDIF
         
         CALL SLEEP(2)
