@@ -10064,6 +10064,9 @@ CONTAINS
             PRINT *, ""
             PRINT *, "============= component ", component_idx," elements mapping ==========="
             CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 3,1000)
+            PRINT *, "============= component ", component_idx," nodes mapping ==========="
+            CALL Print_DOMAIN_MAPPING(NODES_MAPPING, 3,1000)
+
           ENDDO
         ENDDO
       ENDIF
