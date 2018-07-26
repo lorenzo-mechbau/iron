@@ -6665,17 +6665,17 @@ CONTAINS
           
           ! compare number of dofs
           IF (DOFS_NUMBER_OF_LOCAL_NEW /= DOMAIN%MAPPINGS%DOFS%NUMBER_OF_LOCAL) THEN
-          CALL FlagWarning(" Domain dofs NUMBER_OF_LOCAL is different: "//&
+          CALL FlagWarning("Domain dofs NUMBER_OF_LOCAL is different: "//&
             & TRIM(NUMBER_TO_VSTRING(DOFS_NUMBER_OF_LOCAL_NEW,"*",ERR,ERROR))//" vs. "//&
             & TRIM(NUMBER_TO_VSTRING(DOMAIN%MAPPINGS%DOFS%NUMBER_OF_LOCAL,"*",ERR,ERROR)),ERR,ERROR,*999)
           ENDIF
           IF (DOFS_TOTAL_NUMBER_OF_LOCAL_NEW /= DOMAIN%MAPPINGS%DOFS%TOTAL_NUMBER_OF_LOCAL) THEN
-          CALL FlagWarning(" Domain dofs TOTAL_NUMBER_OF_LOCAL is different: "//&
+          CALL FlagWarning("Domain dofs TOTAL_NUMBER_OF_LOCAL is different: "//&
             & TRIM(NUMBER_TO_VSTRING(DOFS_TOTAL_NUMBER_OF_LOCAL_NEW,"*",ERR,ERROR))//" vs. "//&
             & TRIM(NUMBER_TO_VSTRING(DOMAIN%MAPPINGS%DOFS%TOTAL_NUMBER_OF_LOCAL,"*",ERR,ERROR)),ERR,ERROR,*999)
           ENDIF
           IF (DOFS_NUMBER_OF_GLOBAL_NEW /= DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL) THEN
-          CALL FlagWarning(" Domain dofs NUMBER_OF_GLOBAL is different: "//&
+          CALL FlagWarning("Domain dofs NUMBER_OF_GLOBAL is different: "//&
             & TRIM(NUMBER_TO_VSTRING(DOFS_NUMBER_OF_GLOBAL_NEW,"*",ERR,ERROR))//" vs. "//&
             & TRIM(NUMBER_TO_VSTRING(DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL,"*",ERR,ERROR)),ERR,ERROR,*999)
           ENDIF
