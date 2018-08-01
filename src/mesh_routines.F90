@@ -6720,7 +6720,8 @@ CONTAINS
     INTEGER(INTG), ALLOCATABLE :: BoundaryAndGhostNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberInteriorAndLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryAndGhostNodesDomain(:), &
       & NumberNodesInDomain(:), GhostNodes(:), InternalNodes(:), BoundaryNodes(:), IntegerArray(:), ReceiveBuffer(:), &
-      & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:)
+      & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:), &
+      & tempArray(:)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -6770,7 +6771,16 @@ CONTAINS
                 CALL LIST_DATA_TYPE_SET(InternalNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
                 CALL LIST_INITIAL_SIZE_SET(InternalNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL*2,ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(InternalNodesList,ERR,ERROR,*999)
-                
+
+                ! Finbar
+                !allocate temporary array for the global numbers of the boundary elements on this rank
+                !ALLOCATE(tempArray(elementsMapping%NUMBER_OF_BOUNDARY))
+                !tempArray=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START: &
+                !  & elementsMapping%BOUNDARY_FINISH))
+                ALLOCATE(tempArray(ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY))
+                tempArray=ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%DOMAIN_LIST(ELEMENTS_MAPPING%BOUNDARY_START: &
+                  & ELEMENTS_MAPPING%BOUNDARY_FINISH))
+
                 ! determine interior and boundary nodes
                 ! loop over interior elements
                 DO ElementIdx = ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%INTERNAL_FINISH
@@ -6781,85 +6791,135 @@ CONTAINS
                   DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
                     NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
                     
-                    ! add node to internal nodes list
-                    CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
-                  ENDDO
-                ENDDO
-                
-                ! loop over boundary and ghost elements
-                DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
-                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
-                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
-                  
-                  ! loop over nodes of element
-                  DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
-                    NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
-                      
+                    ! Start Finbar faces
+                    onOtherDomain = .FALSE.
 
-                    IF (DIAGNOSTICS2) &
-                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "//TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
-                      & ERR,ERROR,*999)
-                      !PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo 
-      
-                    OnOtherDomain = .FALSE.
-                      
-                    ! loop over adjacent elements of this node
-                    DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
-                      AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
-                      
+                    ! determine if any of this node's adjacent elements are boundary elements, 
+                    ! DO adjacentElementIdx=1,topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements
+                    ! adjacentElementGlobalNo=topology%faces%faces(faceGlobalNo)%surroundingElements(adjacentElementIdx)
+                    DO adjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+                      adjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(adjacentElementIdx)
 
                       IF (DIAGNOSTICS2) &
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global " //&
-                          & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
-                        !PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo 
-                    
-                      ! determine if adjacent element is on a different domain, that is the case if it is a ghost
-                      IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
-                        & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ERR,ERROR)) THEN
-                        
+                          & TRIM(NumberToVString(NodeGlobalNo,"*",err,error)),err,error,*999)
 
-                        IF (DIAGNOSTICS2) &
-                          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on other domain",ERR,ERROR,*999)
-                          !PRINT *, MyComputationalNodeNumber, ":     on other domain" 
-                    
-                        OnOtherDomain = .TRUE.
+                      !tempArray holds the global element numbers of the boundary elements of this rank
+                      IF (SORTED_ARRAY_CONTAINS_ELEMENT(tempArray,adjacentElementGlobalNo,err,error)) THEN
+                        onOtherDomain = .TRUE. ! Node is not internal!
                         EXIT
                       ENDIF
-                    
+
                     ENDDO
-                    
-                     !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": is node internal? ",(.NOT. OnOtherDomain) 
-                    
-                    IF (.NOT. OnOtherDomain) THEN
-                      ! add node to internal nodes list
+
+                    !If face is not a boundary face it is an internal face. (?)
+                    !If no adjacent element is a boundary element, then node is an internal node. (?)
+                    IF (.NOT. onOtherDomain) THEN
+                    ! add node to internal node list
+                      !CALL LIST_ITEM_ADD(internalFacesList, faceGlobalNo,err,error,*999)
                       CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
                     ENDIF
-                    
-                  ENDDO
-                  
-                ENDDO
+                    ! End Finbar faces
+
+                    ! add node to internal nodes list
+                    ! THIS IS WRONG: INTERNAL ELEMENT DOES NOT IMPLY (ALL) INTERNAL NODES!!!!!!!!!!!!!!
+                    ! CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
+                  END DO
+                END DO
                 
-                ! Sort list by global node number and store in local nodes storage
-                CALL LIST_REMOVE_DUPLICATES(InternalNodesList,ERR,ERROR,*999)
-                CALL LIST_DETACH_AND_DESTROY(InternalNodesList,NODES_MAPPING%NUMBER_OF_INTERNAL,&
-                  & InternalNodes,ERR,ERROR,*999)
-                
+                ! Finbar start
+                IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+
+                ! sort list by global face number store number of internal faces in faceMapping
+                !CALL LIST_REMOVE_DUPLICATES(InternalNodesList,err,error,*999)
+                !CALL LIST_DETACH_AND_DESTROY(internalFacesList,facesMapping%NUMBER_OF_INTERNAL,&
+                !  & integerArray,err,error,*999)
+                !ALLOCATE(internalFaces(facesMapping%NUMBER_OF_INTERNAL))
+                !internalFaces=integerArray(1:facesMapping%NUMBER_OF_INTERNAL)
+
+                CALL LIST_REMOVE_DUPLICATES(internalNodesList,err,error,*999)
+                CALL LIST_DETACH_AND_DESTROY(internalNodesList,NODES_MAPPING%NUMBER_OF_INTERNAL,&
+                  & integerArray,ERR,ERROR,*999)
+                ALLOCATE(internalNodes(NODES_MAPPING%NUMBER_OF_INTERNAL), STAT=err)
+                IF(err/=0) CALL FlagError("Could not allocate internal nodes array",err,error,*999)
+                internalNodes=integerArray(1:NODES_MAPPING%NUMBER_OF_INTERNAL)
+                IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                    & "number internal nodes: ",NODES_MAPPING%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
+                    & "number internal nodes: ",NODES_MAPPING%NUMBER_OF_INTERNAL,err,error,*999)
                   DO I=1,NODES_MAPPING%NUMBER_OF_INTERNAL
                     CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global no. ", &
-                      & InternalNodes(I),ERR,ERROR,*999)
+                      & internalNodes(I),err,error,*999)
                   ENDDO
-                ENDIF    
-                
-                ! create list for boundary nodes (global node numbers)
+                ENDIF
+
+                ! Finbar end
+
+                ! According to Finbar, internal nodes ARE FINISHED HERE!!!
+
+                ! create list for boundary and ghost nodes (global node numbers)
                 NULLIFY(BoundaryAndGhostNodesList)
                 CALL LIST_CREATE_START(BoundaryAndGhostNodesList,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(BoundaryAndGhostNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
                 CALL LIST_INITIAL_SIZE_SET(BoundaryAndGhostNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(BoundaryAndGhostNodesList,ERR,ERROR,*999)
-                
+
+                ! Part here below adds BOUNDARY nodes (instead of more internal).
+                ! Can be left away, all nodes on boundary elements are anyway added afterwards.  
+                ! Loop over boundary elements.
+                 IF (.FALSE.) THEN
+                  DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
+                    ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+                    ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+                  
+                    ! Loop over nodes of the boundary element.
+                    DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
+                      NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
+                      
+                      IF (DIAGNOSTICS2) &
+                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "&
+                          & //TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
+                          & ERR,ERROR,*999)
+                        !PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo 
+      
+                      OnOtherDomain = .FALSE.
+                      
+                      ! Loop over adjacent elements of this node
+                      DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
+                        AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+                      
+
+                        IF (DIAGNOSTICS2) &
+                          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global " //&
+                            & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                          !PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo 
+                     
+                        ! determine if adjacent element is on a different domain, that is the case if element is a GHOST
+                        IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
+                          & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ERR,ERROR)) THEN
+
+                          IF (DIAGNOSTICS2) &
+                            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on other domain",ERR,ERROR,*999)
+                            !PRINT *, MyComputationalNodeNumber, ":     on other domain" 
+                     
+                          OnOtherDomain = .TRUE.
+                          EXIT
+                        ENDIF
+                    
+                      ENDDO
+                    
+                     !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": is node internal? ",(.NOT. OnOtherDomain) 
+                    
+                      IF (.NOT. OnOtherDomain) THEN
+                        ! add node to BOUNDARY nodes list
+                        !CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
+                        CALL LIST_ITEM_ADD(BoundaryAndGhostNodesList, NodeGlobalNo,ERR,ERROR,*999)
+                      ENDIF
+                    ENDDO
+                  ENDDO              
+                END IF                 
+               
                 ! loop over boundary elements
                 DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
                   ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
@@ -6870,9 +6930,20 @@ CONTAINS
                     NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
             
                     ! if global node is not contained in internal nodes list
-                    IF (.NOT. SORTED_ARRAY_CONTAINS_ELEMENT(InternalNodes,NodeGlobalNo,ERR,ERROR)) THEN
+                    IF(.NOT. SORTED_ARRAY_CONTAINS_ELEMENT(InternalNodes,NodeGlobalNo,ERR,ERROR)) THEN
                       
-                      ! add node to boundary nodes list
+                      ! This check (Finbar) does not make much sense. elementIdx is numbered as in do-cycle.
+                      ! add node to boundary and ghost nodes list
+                      !IF(elementIdx<=elementsMapping%BOUNDARY_FINISH) THEN
+                      !  CALL LIST_ITEM_ADD(BoundaryAndGhostNodesList,NodeGlobalNo,ERR,ERROR,*999)
+                      !ENDIF
+                      !ELSE
+                      !  localError="global face number  "//TRIM(NumberToVString(faceGlobalNo,"*",err,error))// &
+                      !  & " is contained in internal faces when it should be a boundary face."
+                      !  CALL FlagError(localError,err,error,*999)
+                      !ENDIF
+
+                      ! add node to boundary and ghost nodes list
                       CALL LIST_ITEM_ADD(BoundaryAndGhostNodesList,NodeGlobalNo,ERR,ERROR,*999)
                     ENDIF
                   ENDDO
@@ -6884,8 +6955,10 @@ CONTAINS
                 ! count number of nodes that lie on boundary and are shared with other domains
                 CALL LIST_DETACH_AND_DESTROY(BoundaryAndGhostNodesList,NumberBoundaryAndGhostNodes,IntegerArray,&
                   & ERR,ERROR,*999)
+                ALLOCATE(BoundaryAndGhostNodes(NumberBoundaryAndGhostNodes), STAT=err)
+                IF(err/=0) CALL FlagError("Could not allocate boundary and ghost nodes array",err,error,*999)
                 BoundaryAndGhostNodes = IntegerArray(1:NumberBoundaryAndGhostNodes)
-                DEALLOCATE(IntegerArray)
+                IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
             
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
@@ -6937,9 +7010,19 @@ CONTAINS
                     IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
                       & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ArrayIndex,&
                       & ERR,ERROR)) THEN
+
+
+                      AdjacentElementLocalNo = elements_Mapping%DOMAIN_LIST(elements_Mapping%GHOST_START + arrayIndex-1)
+                      !IF (DIAGNOSTICS2) &
+                      !  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     Finbar: "// &
+                      !    & TRIM(NumberToVString(AdjacentElementLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)                     
+                      !AdjacentElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
+                      !IF (DIAGNOSTICS2) &
+                      !  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     Benjamin: "// &
+                      !    & TRIM(NumberToVString(AdjacentElementLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
                       
-                      AdjacentElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
-                      
+                      ! Output of above choices is the same, keep Finbar's version:
+                      ! numberings are referred to domain_list!
 
                       IF (DIAGNOSTICS2) &
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element local "// &
@@ -6972,7 +7055,9 @@ CONTAINS
                   ENDDO  ! AdjacentElementIdx
                 ENDDO  ! BoundaryAndGhostNodeIdx
               
-                
+! HERE!!!!!!!!!!!!!!!!!!!!!!!!!                
+
+
                 NULLIFY(AdjacentDomainsList)
                 CALL LIST_CREATE_START(AdjacentDomainsList,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(AdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
