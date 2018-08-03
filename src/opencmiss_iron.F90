@@ -576,6 +576,12 @@ MODULE OpenCMISS_Iron
 
   !Module parameters
 
+  INTEGER(INTG), PARAMETER :: CMFE_B_ORIGINAL = B_ORIGINAL
+  INTEGER(INTG), PARAMETER :: CMFE_B_MERGE    = B_MERGE
+  INTEGER(INTG), PARAMETER :: CMFE_B_FACES    = B_FACES
+  INTEGER(INTG), PARAMETER :: CMFE_BENJAMIN   = B_MERGE
+  PUBLIC CMFE_B_ORIGINAL, CMFE_B_MERGE, CMFE_B_FACES, CMFE_BENJAMIN
+
   !> \addtogroup OpenCMISS_DiagnosticAndTimingConstants OpenCMISS::Iron::DiagnosticAndTiming::Constants
   !> \brief Diagnostic and Timing constants.
   !>@{

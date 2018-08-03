@@ -55,6 +55,9 @@ MODULE BaseRoutines
   PRIVATE
 
   !Module parameters
+  INTEGER(INTG), PARAMETER :: B_ORIGINAL = 1!< Benjamin original (els/nodes/dofs ltg)
+  INTEGER(INTG), PARAMETER :: B_MERGE = 2   !< Benjamin after merge into develop
+  INTEGER(INTG), PARAMETER :: B_FACES = 3   !< Benjamin+Finbar after merge (fix nodes bug using faces strategy)
 
   INTEGER(INTG), PARAMETER :: MAX_OUTPUT_LINES=500 !<Maximum number of lines that can be output \see BaseRoutines::WriteStr
   INTEGER(INTG), PARAMETER :: MAX_OUTPUT_WIDTH=132 !<Maximum width of output line \see BaseRoutines::WriteStr
@@ -227,6 +230,8 @@ MODULE BaseRoutines
     MODULE PROCEDURE FlagWarningC
     MODULE PROCEDURE FlagWarningVS
   END INTERFACE FlagWarning
+
+  PUBLIC B_ORIGINAL, B_MERGE, B_FACES
 
   PUBLIC GENERAL_OUTPUT_TYPE,DIAGNOSTIC_OUTPUT_TYPE,TIMING_OUTPUT_TYPE,ERROR_OUTPUT_TYPE,HELP_OUTPUT_TYPE
 
