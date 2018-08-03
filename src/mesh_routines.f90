@@ -6563,7 +6563,9 @@ CONTAINS
         IF (DIAGNOSTICS3) THEN
           
           ! output elements mapping from old implementation
-          IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          ! DO NOT output elements mapping from old implementation
+          !IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          IF (.FALSE.) THEN
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
@@ -6617,7 +6619,9 @@ CONTAINS
           ENDIF  ! USE_NEW_LOCAL_IMPLEMENTATION
           
           ! output nodes mapping from old implementation
-          IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          ! DO NOT output elements mapping from old implementation
+          !IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          IF (.FALSE.) THEN
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
@@ -6644,7 +6648,9 @@ CONTAINS
           ENDIF   ! USE_OLD_GLOBAL_IMPLEMENTATION
             
           ! output dofs mapping from old implementation
-          IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          ! DO NOT output elements mapping from old implementation
+          !IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
+          IF (.FALSE.) THEN
             MaxDepth = 2
             MaxArrayLength = 100
             IF (NumberComputationalNodes == 1) THEN   ! serial execution
