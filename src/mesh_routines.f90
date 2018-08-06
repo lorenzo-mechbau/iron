@@ -2462,10 +2462,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,element_idx,surrounding_element_idx,basis_local_line_idx, &
+    INTEGER(INTG) :: component_idx,element_idx,surroundingElementLocalNo,basis_local_line_idx, &
       & surrounding_element_basis_local_line_idx,element_local_node_idx,basis_local_line_node_idx,derivative_idx,version_idx, &
       & local_line_idx,surrounding_element_local_line_idx,node_idx,local_node_idx,elem_idx,line_end_node_idx,basis_node_idx, &
-      & NODES_IN_LINE(4),NUMBER_OF_LINES,MAX_NUMBER_OF_LINES,NEW_MAX_NUMBER_OF_LINES,LINE_NUMBER,COUNT
+      & NODES_IN_LINE(4),NUMBER_OF_LINES,LINE_NUMBER,COUNT, xicIdx,elementLocalNo, &
+      & elementGlobalNo, componentIdx, startNic, faceBasisLocalNo, faceGlobalNo, faceGlobalNo2, faceIdx, faceLocalNo
     INTEGER(INTG), ALLOCATABLE :: NODES_NUMBER_OF_LINES(:)
     INTEGER(INTG), POINTER :: TEMP_LINES(:,:),NEW_TEMP_LINES(:,:)
     REAL(DP) :: APPROX_DIMENSION
@@ -2484,407 +2485,399 @@ CONTAINS
     TYPE(DOMAIN_NODE_TYPE), POINTER :: DOMAIN_NODE
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
+    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING, FACES_MAPPING
     TYPE(MESH_TYPE), POINTER :: MESH
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
 
     NULLIFY(TEMP_LINES)
     NULLIFY(NEW_TEMP_LINES)
 
     ENTERS("DECOMPOSITION_TOPOLOGY_LINES_CALCULATE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(TOPOLOGY)) THEN
-      DECOMPOSITION_LINES=>TOPOLOGY%LINES
-      IF(ASSOCIATED(DECOMPOSITION_LINES)) THEN
-        DECOMPOSITION_ELEMENTS=>TOPOLOGY%ELEMENTS
-        IF(ASSOCIATED(DECOMPOSITION_ELEMENTS)) THEN
-          DECOMPOSITION=>TOPOLOGY%DECOMPOSITION
-          IF(ASSOCIATED(DECOMPOSITION)) THEN
-            !Process the mesh component number (component number the decomposition was calculated from) first to establish line
-            !topology then process the other mesh components.
-            DOMAIN=>DECOMPOSITION%DOMAIN(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
-            IF(ASSOCIATED(DOMAIN)) THEN
-              DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-              IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
-                DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
-                IF(ASSOCIATED(DOMAIN_NODES)) THEN
-                  DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
-                  IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
-                    !Guestimate the number of lines
-                    SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
-                    CASE(1)
-                      MAX_NUMBER_OF_LINES=DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                    CASE(2)
-                      APPROX_DIMENSION=SQRT(REAL(DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS,DP))
-                      !This should give the maximum and will over estimate the number of lines for a "square mesh" by approx 33%
-                      MAX_NUMBER_OF_LINES=NINT(3.0_DP*APPROX_DIMENSION*(APPROX_DIMENSION+1),INTG)
-                    CASE(3)
-                      !This should give the maximum and will over estimate the number of lines for a "cube mesh" by approx 73%
-                      APPROX_DIMENSION=REAL(DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS,DP)**(1.0_DP/3.0_DP)
-                      MAX_NUMBER_OF_LINES=NINT(11.0_DP*APPROX_DIMENSION*APPROX_DIMENSION*(APPROX_DIMENSION+1),INTG)
-                    CASE DEFAULT
-                      CALL FlagError("Invalid number of dimensions for a topology domain.",ERR,ERROR,*999)
-                    END SELECT
-                    DOMAIN_LINES=>DOMAIN_TOPOLOGY%LINES
-                    IF(ASSOCIATED(DOMAIN_LINES)) THEN
-                      ALLOCATE(TEMP_LINES(4,MAX_NUMBER_OF_LINES),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate temporary lines array.",ERR,ERROR,*999)
-                      ALLOCATE(NODES_NUMBER_OF_LINES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate nodes number of lines array.",ERR,ERROR,*999)
-                      NODES_NUMBER_OF_LINES=0
-                      NUMBER_OF_LINES=0
-                      TEMP_LINES=0
-                      !Loop over the elements in the topology
-                      DO element_idx=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
-                        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
-                        BASIS=>DOMAIN_ELEMENT%BASIS
-                        ALLOCATE(DECOMPOSITION_ELEMENT%ELEMENT_LINES(BASIS%NUMBER_OF_LOCAL_LINES),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate element element lines.",ERR,ERROR,*999)
-                        !Loop over the local lines of the element
-                        DO basis_local_line_idx=1,BASIS%NUMBER_OF_LOCAL_LINES
-                          !Calculate the topology node numbers that make up the line
-                          NODES_IN_LINE=0
-                          DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)
-                            NODES_IN_LINE(basis_local_line_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
-                              & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,basis_local_line_idx))
-                          ENDDO !basis_local_line_node_idx
-                          !Try and find a previously created line that matches in the adjacent elements
-                          FOUND=.FALSE.
-                          node_idx=NODES_IN_LINE(1)
-                          DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
-                            surrounding_element_idx=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
-                            IF(surrounding_element_idx/=element_idx) THEN
-                              IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surrounding_element_idx)%ELEMENT_LINES)) THEN
-                                BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surrounding_element_idx)%BASIS
-                                DO surrounding_element_basis_local_line_idx=1,BASIS2%NUMBER_OF_LOCAL_LINES
-                                  local_line_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surrounding_element_idx)% &
-                                    & ELEMENT_LINES(surrounding_element_basis_local_line_idx)
-                                  IF(ALL(NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx))== &
-                                    & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx),local_line_idx))) THEN
-                                    FOUND=.TRUE.
-                                    EXIT
-                                  ENDIF
-                                ENDDO !surrounding_element_basis_local_line_idx
-                                IF(FOUND) EXIT
-                              ENDIF
-                            ENDIF
-                          ENDDO !elem_idx
-                          IF(FOUND) THEN
-                            !Line has already been created
-                            DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)=local_line_idx
-                          ELSE
-                            !Line has not been created
-                            IF(NUMBER_OF_LINES==MAX_NUMBER_OF_LINES) THEN
-                              !We are at maximum. Reallocate the LINES array to be 20% bigger and try again.
-                              NEW_MAX_NUMBER_OF_LINES=NINT(1.20_DP*REAL(MAX_NUMBER_OF_LINES,DP),INTG)
-                              ALLOCATE(NEW_TEMP_LINES(4,NEW_MAX_NUMBER_OF_LINES),STAT=ERR)
-                              IF(ERR/=0) CALL FlagError("Could not allocate new number of lines.",ERR,ERROR,*999)
-                              NEW_TEMP_LINES(:,1:NUMBER_OF_LINES)=TEMP_LINES(:,1:NUMBER_OF_LINES)
-                              NEW_TEMP_LINES(:,NUMBER_OF_LINES+1:NEW_MAX_NUMBER_OF_LINES)=0
-                              DEALLOCATE(TEMP_LINES)
-                              TEMP_LINES=>NEW_TEMP_LINES
-                              NULLIFY(NEW_TEMP_LINES)
-                              MAX_NUMBER_OF_LINES=NEW_MAX_NUMBER_OF_LINES
-                            ENDIF
-                            NUMBER_OF_LINES=NUMBER_OF_LINES+1
-                            TEMP_LINES(:,NUMBER_OF_LINES)=NODES_IN_LINE
-                            DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)=NUMBER_OF_LINES
-                            DO basis_local_line_node_idx=1,SIZE(NODES_IN_LINE,1)
-                              IF(NODES_IN_LINE(basis_local_line_node_idx)/=0) &
-                                & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))= &
-                                & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))+1
-                            ENDDO !basis_local_line_node_idx
-                          ENDIF
-                        ENDDO !basis_local_line_idx
-                      ENDDO !element_idx
-                      !Allocate the line arrays and set them from the LINES and NODE_LINES arrays
-                      DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
-                        ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_LINES(NODES_NUMBER_OF_LINES(node_idx)),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate node lines array.",ERR,ERROR,*999)
-                        DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=0
-                      ENDDO !node_idx
-                      DEALLOCATE(NODES_NUMBER_OF_LINES)
-                      ALLOCATE(DECOMPOSITION_LINES%LINES(NUMBER_OF_LINES),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate decomposition topology lines.",ERR,ERROR,*999)
-                      DECOMPOSITION_LINES%NUMBER_OF_LINES=NUMBER_OF_LINES
-                      ALLOCATE(DOMAIN_LINES%LINES(NUMBER_OF_LINES),STAT=ERR)
-                      IF(ERR/=0) CALL FlagError("Could not allocate domain topology lines.",ERR,ERROR,*999)
-                      DOMAIN_LINES%NUMBER_OF_LINES=NUMBER_OF_LINES
-                      DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
-                        CALL DECOMPOSITION_TOPOLOGY_LINE_INITIALISE(DECOMPOSITION_LINES%LINES(local_line_idx),ERR,ERROR,*999)
-                        CALL DOMAIN_TOPOLOGY_LINE_INITIALISE(DOMAIN_LINES%LINES(local_line_idx),ERR,ERROR,*999)
-                        DO basis_local_line_node_idx=1,SIZE(TEMP_LINES,1)
-                          IF(TEMP_LINES(basis_local_line_node_idx,local_line_idx)/=0) THEN
-                            node_idx=TEMP_LINES(basis_local_line_node_idx,local_line_idx)
-                            DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES+1
-                            DOMAIN_NODES%NODES(node_idx)%NODE_LINES(DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES)= &
-                              & local_line_idx
-                          ENDIF
-                        ENDDO !basis_local_line_node_idx
-                      ENDDO !local_line_idx
-                      DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
-                        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
-                        BASIS=>DOMAIN_ELEMENT%BASIS
-                        DO basis_local_line_idx=1,BASIS%NUMBER_OF_LOCAL_LINES
-                          LINE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
-                          DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(LINE_NUMBER)
-                          DOMAIN_LINE=>DOMAIN_LINES%LINES(LINE_NUMBER)
-                          DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS+1
-                          IF(.NOT.ASSOCIATED(DOMAIN_LINE%BASIS)) THEN
-                            DECOMPOSITION_LINE%NUMBER=LINE_NUMBER
-                            DOMAIN_LINE%NUMBER=LINE_NUMBER
-                            DOMAIN_LINE%ELEMENT_NUMBER=element_idx !Needs checking
-                            DECOMPOSITION_LINE%XI_DIRECTION=BASIS%localLineXiDirection(basis_local_line_idx)
-                            IF(ALLOCATED(BASIS%localLineBasis)) THEN
-                              DOMAIN_LINE%BASIS=>BASIS%localLineBasis(basis_local_line_idx)%PTR
-                            ELSE
-                              !Basis is only 1D
-                              DOMAIN_LINE%BASIS=>BASIS
-                            ENDIF
-                            ALLOCATE(DOMAIN_LINE%NODES_IN_LINE(BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate line nodes in line.",ERR,ERROR,*999)
-                            ALLOCATE(DOMAIN_LINE%DERIVATIVES_IN_LINE(2,DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
-                              & BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate line derivatives in line.",ERR,ERROR,*999)
-                            DOMAIN_LINE%NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx))= &
-                              & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx),LINE_NUMBER)
-                            DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)
-                              !Set derivative number of u (NO_GLOBAL_DERIV) for the domain line
-                              DOMAIN_LINE%DERIVATIVES_IN_LINE(1,1,basis_local_line_node_idx)=NO_GLOBAL_DERIV
-                              !Set version number of u (NO_GLOBAL_DERIV) for the domain line
-                              version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
-                                & basis_local_line_node_idx,basis_local_line_idx))
-                              DOMAIN_LINE%DERIVATIVES_IN_LINE(2,1,basis_local_line_node_idx)=version_idx
-                              IF(DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
-                                derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES( &
-                                  & BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,basis_local_line_idx), &
-                                  & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,basis_local_line_idx))
-                                DOMAIN_LINE%DERIVATIVES_IN_LINE(1,2,basis_local_line_node_idx)=derivative_idx
-                                version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
-                                  & basis_local_line_node_idx,basis_local_line_idx),BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
-                                  & basis_local_line_node_idx,basis_local_line_idx))
-                                DOMAIN_LINE%DERIVATIVES_IN_LINE(2,2,basis_local_line_node_idx)=version_idx
-                              ENDIF
-                            ENDDO !basis_local_line_node_idx
-                          ENDIF
-                        ENDDO !basis_local_line_idx
-                      ENDDO !element_idx
-                      DEALLOCATE(TEMP_LINES)
-                      !Calculate adjacent lines and the surrounding elements for each line
-                      DO local_line_idx=1,DECOMPOSITION_LINES%NUMBER_OF_LINES
-                        DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(local_line_idx)
-                        DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
-                        BASIS=>DOMAIN_LINE%BASIS
-                        IF(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS==1) THEN
-                          DECOMPOSITION_LINE%BOUNDARY_LINE=.TRUE.
-                          DOMAIN_LINE%BOUNDARY_LINE=.TRUE.
-                        ENDIF
-                        !Allocate the elements surrounding the line
-                        ALLOCATE(DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS), &
-                          & STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate line surrounding elements.",ERR,ERROR,*999)
-                        ALLOCATE(DECOMPOSITION_LINE%ELEMENT_LINES(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS), &
-                          & STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate line element lines.",ERR,ERROR,*999)
-                        DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=0
-                        DECOMPOSITION_LINE%ADJACENT_LINES=0
-                        !Loop over the nodes at each end of the line
-                        DO line_end_node_idx=0,1
-                          FOUND=.FALSE.
-                          node_idx=DOMAIN_LINE%NODES_IN_LINE(line_end_node_idx*(BASIS%NUMBER_OF_NODES-1)+1)
-                          !Loop over the elements surrounding the node.
-                          DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
-                            element_idx=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
-                            DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
-                            DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
-                            !Loop over the local lines of the element
-                            DO basis_local_line_idx=1,DOMAIN_ELEMENT%BASIS%NUMBER_OF_LOCAL_LINES
-                              surrounding_element_local_line_idx=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
-                              IF(surrounding_element_local_line_idx/=local_line_idx) THEN
-                                DECOMPOSITION_LINE2=>DECOMPOSITION_LINES%LINES(surrounding_element_local_line_idx)
-                                DOMAIN_LINE2=>DOMAIN_LINES%LINES(surrounding_element_local_line_idx)
-                                IF(DECOMPOSITION_LINE2%XI_DIRECTION==DECOMPOSITION_LINE%XI_DIRECTION) THEN
-                                  !Lines run in the same direction.
-                                  BASIS2=>DOMAIN_LINE2%BASIS
-                                  IF(line_end_node_idx==0) THEN
-                                    local_node_idx=DOMAIN_LINE2%NODES_IN_LINE(BASIS2%NUMBER_OF_NODES)
-                                  ELSE
-                                    local_node_idx=DOMAIN_LINE2%NODES_IN_LINE(1)
-                                  ENDIF
-                                  IF(local_node_idx==node_idx) THEN
-                                    !The node at the 'other' end of this line matches the node at the current end of the line.
-                                    !Check it is not a coexistant line running the other way
-                                    IF(BASIS2%INTERPOLATION_ORDER(1)==BASIS%INTERPOLATION_ORDER(1)) THEN
-                                      COUNT=0
-                                      DO basis_node_idx=1,BASIS%NUMBER_OF_NODES
-                                        IF(DOMAIN_LINE2%NODES_IN_LINE(basis_node_idx)== &
-                                          & DOMAIN_LINE%NODES_IN_LINE(BASIS2%NUMBER_OF_NODES-basis_node_idx+1)) &
-                                          & COUNT=COUNT+1
-                                      ENDDO !basis_node_idx
-                                      IF(COUNT<BASIS%NUMBER_OF_NODES) THEN
-                                        FOUND=.TRUE.
-                                        EXIT
-                                      ENDIF
-                                    ELSE
-                                      FOUND=.TRUE.
-                                      EXIT
-                                    ENDIF
-                                  ENDIF
-                                ENDIF
-                              ENDIF
-                            ENDDO !basis_local_line_idx
-                            IF(FOUND) EXIT
-                          ENDDO !element_idx
-                          IF(FOUND) DECOMPOSITION_LINE%ADJACENT_LINES(line_end_node_idx)=surrounding_element_local_line_idx
-                        ENDDO !line_end_node_idx
-                      ENDDO !local_line_idx
-                      !Set the surrounding elements
-                      DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
-                        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
-                        BASIS=>DOMAIN_ELEMENT%BASIS
-                        DO basis_local_line_idx=1,BASIS%NUMBER_OF_LOCAL_LINES
-                          LINE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
-                          DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(LINE_NUMBER)
-                          DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS+1
-                          DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS)=element_idx
-                          DECOMPOSITION_LINE%ELEMENT_LINES(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS)=basis_local_line_idx
-                        ENDDO !basis_local_line_idx
-                      ENDDO !element_idx
-                    ELSE
-                      CALL FlagError("Domain topology lines is not associated.",ERR,ERROR,*999)
+    IF(.NOT.ASSOCIATED(TOPOLOGY)) CALL FlagError("Topology is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION_LINES=>TOPOLOGY%LINES
+    IF(.NOT.ASSOCIATED(DECOMPOSITION_LINES)) CALL FlagError("decomposition lines is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION_ELEMENTS=>TOPOLOGY%ELEMENTS
+    IF(.NOT.ASSOCIATED(DECOMPOSITION_ELEMENTS)) CALL FlagError("decomposition elements is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION=>TOPOLOGY%DECOMPOSITION
+    IF(.NOT.ASSOCIATED(DECOMPOSITION)) CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
+    DOMAIN=>DECOMPOSITION%DOMAIN(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+    IF(.NOT.ASSOCIATED(DOMAIN)) CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+    DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+    IF(.NOT.ASSOCIATED(DOMAIN_TOPOLOGY)) CALL FlagError("Domain Topology is not associated.",ERR,ERROR,*999)
+    DOMAIN_MAPPINGS=>DOMAIN%MAPPINGS
+    IF(.NOT.ASSOCIATED(DOMAIN_MAPPINGS)) CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
+    ELEMENTS_MAPPING=>DOMAIN_MAPPINGS%ELEMENTS
+    IF(.NOT.ASSOCIATED(ELEMENTS_MAPPING)) CALL FlagError("Faces mapping is not associated.",ERR,ERROR,*999)
+    FACES_MAPPING=>DOMAIN_MAPPINGS%FACES
+    IF(.NOT.ASSOCIATED(FACES_MAPPING)) CALL FlagError("Faces mapping is not associated.",ERR,ERROR,*999)
+    DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
+    IF(.NOT.ASSOCIATED(DOMAIN_NODES)) CALL FlagError("domain nodes is not associated.",ERR,ERROR,*999)
+    DOMAIN_LINES=>DOMAIN_TOPOLOGY%LINES
+    IF(.NOT.ASSOCIATED(DOMAIN_LINES)) CALL FlagError("domain lines is not associated.",ERR,ERROR,*999)
+    DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+    IF(.NOT.ASSOCIATED(DOMAIN_ELEMENTS)) CALL FlagError("domain elements is not associated.",ERR,ERROR,*999)
+    componentIdx=domain%MESH_COMPONENT_NUMBER
+    MESH_TOPOLOGY=>DOMAIN%MESH%topology(componentIdx)%PTR
+    IF(.NOT.ASSOCIATED(MESH_TOPOLOGY)) CALL FlagError("mesh topology is not associated.",ERR,ERROR,*999)
+
+
+    !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+    SELECT CASE(MESH_TOPOLOGY%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    CASE(BASIS_SIMPLEX_TYPE)
+      startNic=1
+    CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+      startNic=-MESH_TOPOLOGY%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+    CASE DEFAULT
+      CALL FlagError("The basis type is not yet implemented",ERR,ERROR,*999)
+    END SELECT
+
+    ALLOCATE(TEMP_LINES(4,FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate temporary lines array.",ERR,ERROR,*999)
+    ALLOCATE(NODES_NUMBER_OF_LINES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate nodes number of lines array.",ERR,ERROR,*999)
+    NODES_NUMBER_OF_LINES=0
+    TEMP_LINES=0
+
+
+    !Loop over the elements in the topology
+    DO elementLocalNo=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+      DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(elementLocalNo)
+      DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(elementLocalNo)
+      BASIS=>DOMAIN_ELEMENT%BASIS
+      ALLOCATE(DECOMPOSITION_ELEMENT%ELEMENT_LINES(BASIS%NUMBER_OF_LOCAL_LINES),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate element lines.",ERR,ERROR,*999)
+
+      elementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
+
+      DO xicIdx = startNic,MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+        IF(xicIdx ==0) CYCLE
+
+        faceBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,1)
+        NODES_IN_LINE=0
+        DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(faceBasisLocalNo)
+          NODES_IN_LINE(basis_local_line_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
+            & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,faceBasisLocalNo))
+        ENDDO !basis_local_line_node_idx
+
+        !Try and find a previously created line that matches in the adjacent elements
+        FOUND=.FALSE.
+        node_idx=NODES_IN_LINE(1)
+        DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
+          surroundingElementLocalNo=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
+          IF(surroundingElementLocalNo/=elementLocalNo) THEN
+            IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%ELEMENT_LINES)) THEN
+              BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%BASIS
+              DO surrounding_element_basis_local_line_idx=1,BASIS2%NUMBER_OF_LOCAL_LINES
+                local_line_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)% &
+                  & ELEMENT_LINES(surrounding_element_basis_local_line_idx)
+                IF(ALL(NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(faceBasisLocalNo))== &
+                  & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(faceBasisLocalNo),local_line_idx))) THEN
+                  FOUND=.TRUE.
+                  EXIT
+                ENDIF
+              ENDDO !surrounding_element_basis_local_line_idx
+              IF(FOUND) EXIT
+            ENDIF
+          ENDIF
+        ENDDO !elem_idx
+
+        IF(FOUND) THEN
+          !Line has already been created
+          DECOMPOSITION_ELEMENT%ELEMENT_LINES(faceBasisLocalNo)=local_line_idx
+        ELSE
+
+          faceGlobalNo=MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
+
+          !Find the face local number
+          DO faceIdx = 1,FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+            faceGlobalNo2 = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(faceIdx)
+
+            IF(faceGlobalNo == faceGlobalNo2) THEN
+              faceLocalNo=faceIdx
+              EXIT
+            ENDIF
+          ENDDO !faceIdx
+          DECOMPOSITION_ELEMENT%ELEMENT_LINES(faceBasisLocalNo)=faceLocalNo
+          TEMP_LINES(:,faceLocalNo)=NODES_IN_LINE
+
+          DO basis_local_line_node_idx=1,SIZE(NODES_IN_LINE,1)
+            IF(NODES_IN_LINE(basis_local_line_node_idx)/=0) &
+              & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))= &
+              & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))+1
+          ENDDO !basis_local_line_node_idx
+
+        ENDIF
+      ENDDO !xicIdx
+    ENDDO !elementLocalNo
+
+    !Allocate the line arrays and set them from the LINES and NODE_LINES arrays
+    DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
+      ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_LINES(NODES_NUMBER_OF_LINES(node_idx)),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate node lines array.",ERR,ERROR,*999)
+      DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=0
+    ENDDO !node_idx
+    DEALLOCATE(NODES_NUMBER_OF_LINES)
+    ALLOCATE(DECOMPOSITION_LINES%LINES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate decomposition topology lines.",ERR,ERROR,*999)
+    DECOMPOSITION_LINES%NUMBER_OF_LINES=FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+    ALLOCATE(DOMAIN_LINES%LINES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate domain topology lines.",ERR,ERROR,*999)
+    DOMAIN_LINES%NUMBER_OF_LINES=FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+    DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
+      CALL DECOMPOSITION_TOPOLOGY_LINE_INITIALISE(DECOMPOSITION_LINES%LINES(local_line_idx),ERR,ERROR,*999)
+      CALL DOMAIN_TOPOLOGY_LINE_INITIALISE(DOMAIN_LINES%LINES(local_line_idx),ERR,ERROR,*999)
+      DO basis_local_line_node_idx=1,SIZE(TEMP_LINES,1)
+        IF(TEMP_LINES(basis_local_line_node_idx,local_line_idx)/=0) THEN
+          node_idx=TEMP_LINES(basis_local_line_node_idx,local_line_idx)
+          DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES+1
+          DOMAIN_NODES%NODES(node_idx)%NODE_LINES(DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES)= &
+            & local_line_idx
+        ENDIF
+      ENDDO !basis_local_line_node_idx
+    ENDDO !local_line_idx
+    DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+      DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+      DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+      BASIS=>DOMAIN_ELEMENT%BASIS
+      DO basis_local_line_idx=1,BASIS%NUMBER_OF_LOCAL_LINES
+        LINE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
+        DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(LINE_NUMBER)
+        DOMAIN_LINE=>DOMAIN_LINES%LINES(LINE_NUMBER)
+        DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS+1
+        IF(.NOT.ASSOCIATED(DOMAIN_LINE%BASIS)) THEN
+          DECOMPOSITION_LINE%NUMBER=LINE_NUMBER
+          DOMAIN_LINE%NUMBER=LINE_NUMBER
+          DOMAIN_LINE%ELEMENT_NUMBER=element_idx !Needs checking
+          DECOMPOSITION_LINE%XI_DIRECTION=BASIS%localLineXiDirection(basis_local_line_idx)
+          IF(ALLOCATED(BASIS%localLineBasis)) THEN
+            DOMAIN_LINE%BASIS=>BASIS%localLineBasis(basis_local_line_idx)%PTR
+          ELSE
+            !Basis is only 1D
+            DOMAIN_LINE%BASIS=>BASIS
+          ENDIF
+          ALLOCATE(DOMAIN_LINE%NODES_IN_LINE(BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate line nodes in line.",ERR,ERROR,*999)
+          ALLOCATE(DOMAIN_LINE%DERIVATIVES_IN_LINE(2,DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
+            & BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate line derivatives in line.",ERR,ERROR,*999)
+          DOMAIN_LINE%NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx))= &
+            & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx),LINE_NUMBER)
+          DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)
+            !Set derivative number of u (NO_GLOBAL_DERIV) for the domain line
+            DOMAIN_LINE%DERIVATIVES_IN_LINE(1,1,basis_local_line_node_idx)=NO_GLOBAL_DERIV
+            !Set version number of u (NO_GLOBAL_DERIV) for the domain line
+            version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
+              & basis_local_line_node_idx,basis_local_line_idx))
+            DOMAIN_LINE%DERIVATIVES_IN_LINE(2,1,basis_local_line_node_idx)=version_idx
+            IF(DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
+              derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES( &
+                & BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,basis_local_line_idx), &
+                & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,basis_local_line_idx))
+              DOMAIN_LINE%DERIVATIVES_IN_LINE(1,2,basis_local_line_node_idx)=derivative_idx
+              version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
+                & basis_local_line_node_idx,basis_local_line_idx),BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
+                & basis_local_line_node_idx,basis_local_line_idx))
+              DOMAIN_LINE%DERIVATIVES_IN_LINE(2,2,basis_local_line_node_idx)=version_idx
+            ENDIF
+          ENDDO !basis_local_line_node_idx
+        ENDIF
+      ENDDO !basis_local_line_idx
+    ENDDO !element_idx
+    DEALLOCATE(TEMP_LINES)
+    !Calculate adjacent lines and the surrounding elements for each line
+    DO local_line_idx=1,DECOMPOSITION_LINES%NUMBER_OF_LINES
+      DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(local_line_idx)
+      DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
+      BASIS=>DOMAIN_LINE%BASIS
+
+      ! IF(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS==1) THEN
+      ! This has been changed so that lines on boundary plane between two domains isn't counted as a boundary line
+      faceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(local_line_idx)
+      IF(MESH_TOPOLOGY%faces%faces(faceGlobalNo)%externalFace ==.TRUE.) THEN
+        DECOMPOSITION_LINE%BOUNDARY_LINE=.TRUE.
+        DOMAIN_LINE%BOUNDARY_LINE=.TRUE.
+      ENDIF
+      !Allocate the elements surrounding the line
+      ALLOCATE(DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS), &
+        & STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate line surrounding elements.",ERR,ERROR,*999)
+      ALLOCATE(DECOMPOSITION_LINE%ELEMENT_LINES(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS), &
+        & STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate line element lines.",ERR,ERROR,*999)
+      DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=0
+      DECOMPOSITION_LINE%ADJACENT_LINES=0
+      !Loop over the nodes at each end of the line
+      DO line_end_node_idx=0,1
+        FOUND=.FALSE.
+        node_idx=DOMAIN_LINE%NODES_IN_LINE(line_end_node_idx*(BASIS%NUMBER_OF_NODES-1)+1)
+        !Loop over the elements surrounding the node.
+        DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
+          element_idx=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
+          DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+          DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+          !Loop over the local lines of the element
+          DO basis_local_line_idx=1,DOMAIN_ELEMENT%BASIS%NUMBER_OF_LOCAL_LINES
+            surrounding_element_local_line_idx=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
+            IF(surrounding_element_local_line_idx/=local_line_idx) THEN
+              DECOMPOSITION_LINE2=>DECOMPOSITION_LINES%LINES(surrounding_element_local_line_idx)
+              DOMAIN_LINE2=>DOMAIN_LINES%LINES(surrounding_element_local_line_idx)
+              IF(DECOMPOSITION_LINE2%XI_DIRECTION==DECOMPOSITION_LINE%XI_DIRECTION) THEN
+                !Lines run in the same direction.
+                BASIS2=>DOMAIN_LINE2%BASIS
+                IF(line_end_node_idx==0) THEN
+                  local_node_idx=DOMAIN_LINE2%NODES_IN_LINE(BASIS2%NUMBER_OF_NODES)
+                ELSE
+                  local_node_idx=DOMAIN_LINE2%NODES_IN_LINE(1)
+                ENDIF
+                IF(local_node_idx==node_idx) THEN
+                  !The node at the 'other' end of this line matches the node at the current end of the line.
+                  !Check it is not a coexistant line running the other way
+                  IF(BASIS2%INTERPOLATION_ORDER(1)==BASIS%INTERPOLATION_ORDER(1)) THEN
+                    COUNT=0
+                    DO basis_node_idx=1,BASIS%NUMBER_OF_NODES
+                      IF(DOMAIN_LINE2%NODES_IN_LINE(basis_node_idx)== &
+                        & DOMAIN_LINE%NODES_IN_LINE(BASIS2%NUMBER_OF_NODES-basis_node_idx+1)) &
+                        & COUNT=COUNT+1
+                    ENDDO !basis_node_idx
+                    IF(COUNT<BASIS%NUMBER_OF_NODES) THEN
+                      FOUND=.TRUE.
+                      EXIT
                     ENDIF
                   ELSE
-                    CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                    FOUND=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDIF
+              ENDIF
+            ENDIF
+          ENDDO !basis_local_line_idx
+          IF(FOUND) EXIT
+        ENDDO !element_idx
+        IF(FOUND) DECOMPOSITION_LINE%ADJACENT_LINES(line_end_node_idx)=surrounding_element_local_line_idx
+      ENDDO !line_end_node_idx
+    ENDDO !local_line_idx
+    !Set the surrounding elements
+    DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+      DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+      DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+      BASIS=>DOMAIN_ELEMENT%BASIS
+      DO basis_local_line_idx=1,BASIS%NUMBER_OF_LOCAL_LINES
+        LINE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_LINES(basis_local_line_idx)
+        DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(LINE_NUMBER)
+        DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS+1
+        DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS)=element_idx
+        DECOMPOSITION_LINE%ELEMENT_LINES(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS)=basis_local_line_idx
+      ENDDO !basis_local_line_idx
+    ENDDO !element_idx
+
+    !Now loop over the other mesh components in the decomposition and calculate the domain lines
+    MESH=>DECOMPOSITION%MESH
+    IF(ASSOCIATED(MESH)) THEN
+      DO component_idx=1,MESH%NUMBER_OF_COMPONENTS
+        IF(component_idx/=DECOMPOSITION%MESH_COMPONENT_NUMBER) THEN
+          DOMAIN=>DECOMPOSITION%DOMAIN(component_idx)%PTR
+          IF(ASSOCIATED(DOMAIN)) THEN
+            DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+            IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
+              DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
+              IF(ASSOCIATED(DOMAIN_NODES)) THEN
+                DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+                IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                  DOMAIN_LINES=>DOMAIN_TOPOLOGY%LINES
+                  IF(ASSOCIATED(DOMAIN_LINES)) THEN
+                    ALLOCATE(DOMAIN_LINES%LINES(DECOMPOSITION_LINES%NUMBER_OF_LINES),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate domain lines lines.",ERR,ERROR,*999)
+                    DOMAIN_LINES%NUMBER_OF_LINES=DECOMPOSITION_LINES%NUMBER_OF_LINES
+                    ALLOCATE(NODES_NUMBER_OF_LINES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate nodes number of lines array.",ERR,ERROR,*999)
+                    NODES_NUMBER_OF_LINES=0
+                    !Loop over the lines in the topology
+                    DO local_line_idx=1,DECOMPOSITION_LINES%NUMBER_OF_LINES
+                      DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(local_line_idx)
+                      DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
+                      IF(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS>0) THEN
+                        element_idx=DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(1)
+                        basis_local_line_idx=DECOMPOSITION_LINE%ELEMENT_LINES(1)
+                        CALL DOMAIN_TOPOLOGY_LINE_INITIALISE(DOMAIN_LINES%LINES(local_line_idx),ERR,ERROR,*999)
+                        DOMAIN_LINE%NUMBER=local_line_idx
+                        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+                        BASIS=>DOMAIN_ELEMENT%BASIS
+                        DOMAIN_LINE%ELEMENT_NUMBER=DOMAIN_ELEMENT%NUMBER
+                        IF(ALLOCATED(BASIS%localLineBasis)) THEN
+                          DOMAIN_LINE%BASIS=>BASIS%localLineBasis(basis_local_line_idx)%PTR
+                        ELSE
+                          !Basis is only 1D
+                          DOMAIN_LINE%BASIS=>BASIS
+                        ENDIF
+                        ALLOCATE(DOMAIN_LINE%NODES_IN_LINE(BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate nodes in line.",ERR,ERROR,*999)
+                        ALLOCATE(DOMAIN_LINE%DERIVATIVES_IN_LINE(2,DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
+                          & BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate derivatives in line.",ERR,ERROR,*999)
+                        DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)
+                          element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx, &
+                            & basis_local_line_idx)
+                          node_idx=DOMAIN_ELEMENT%ELEMENT_NODES(element_local_node_idx)
+                          DOMAIN_LINE%NODES_IN_LINE(basis_local_line_node_idx)=node_idx
+                          !Set derivative number of u (NO_GLOBAL_DERIV) for the domain line
+                          DOMAIN_LINE%DERIVATIVES_IN_LINE(1,1,basis_local_line_node_idx)=NO_GLOBAL_DERIV
+                          !Set version number of u (NO_GLOBAL_DERIV) for the domain line
+                          version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
+                            & basis_local_line_node_idx,basis_local_line_idx))
+                          DOMAIN_LINE%DERIVATIVES_IN_LINE(2,1,basis_local_line_node_idx)=version_idx
+                          IF(DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
+                            derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
+                              & basis_local_line_node_idx,basis_local_line_idx),element_local_node_idx)
+                            DOMAIN_LINE%DERIVATIVES_IN_LINE(1,2,basis_local_line_node_idx)=derivative_idx
+                            version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
+                              & basis_local_line_node_idx,basis_local_line_idx),BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
+                              & basis_local_line_node_idx,basis_local_line_idx))
+                            DOMAIN_LINE%DERIVATIVES_IN_LINE(2,2,basis_local_line_node_idx)=version_idx
+                          ENDIF
+                          NODES_NUMBER_OF_LINES(node_idx)=NODES_NUMBER_OF_LINES(node_idx)+1
+                        ENDDO !basis_local_line_node_idx
+                      ELSE
+                        CALL FlagError("Line is not surrounded by any elements?",ERR,ERROR,*999)
+                      ENDIF
+                    ENDDO !local_line_idx
+                    DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
+                      ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_LINES(NODES_NUMBER_OF_LINES(node_idx)),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate node lines.",ERR,ERROR,*999)
+                      DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=0
+                    ENDDO !node_idx
+                    DEALLOCATE(NODES_NUMBER_OF_LINES)
+                    DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
+                      DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
+                      BASIS=>DOMAIN_LINE%BASIS
+                      DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES
+                        node_idx=DOMAIN_LINE%NODES_IN_LINE(basis_local_line_node_idx)
+                        DOMAIN_NODE=>DOMAIN_NODES%NODES(node_idx)
+                        DOMAIN_NODE%NUMBER_OF_NODE_LINES=DOMAIN_NODE%NUMBER_OF_NODE_LINES+1
+                        DOMAIN_NODE%NODE_LINES(DOMAIN_NODE%NUMBER_OF_NODE_LINES)=local_line_idx
+                      ENDDO !basis_local_line_node_idx
+                    ENDDO !local_line_idx
+                  ELSE
+                    CALL FlagError("Domain lines is not associated.",ERR,ERROR,*999)
                   ENDIF
                 ELSE
-                  CALL FlagError("Domain topology nodes is not associated.",ERR,ERROR,*999)
+                  CALL FlagError("Domain elements is not associated.",ERR,ERROR,*999)
                 ENDIF
               ELSE
-                CALL FlagError("Topology decomposition domain topology is not associated.",ERR,ERROR,*999)
+                CALL FlagError("Domain nodes is not associated.",ERR,ERROR,*999)
               ENDIF
             ELSE
-              CALL FlagError("Topology decomposition domain is not associated.",ERR,ERROR,*999)
-            ENDIF
-            !Now loop over the other mesh components in the decomposition and calculate the domain lines
-            MESH=>DECOMPOSITION%MESH
-            IF(ASSOCIATED(MESH)) THEN
-              DO component_idx=1,MESH%NUMBER_OF_COMPONENTS
-                IF(component_idx/=DECOMPOSITION%MESH_COMPONENT_NUMBER) THEN
-                  DOMAIN=>DECOMPOSITION%DOMAIN(component_idx)%PTR
-                  IF(ASSOCIATED(DOMAIN)) THEN
-                    DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                    IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
-                      DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
-                      IF(ASSOCIATED(DOMAIN_NODES)) THEN
-                        DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
-                        IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
-                          DOMAIN_LINES=>DOMAIN_TOPOLOGY%LINES
-                          IF(ASSOCIATED(DOMAIN_LINES)) THEN
-                            ALLOCATE(DOMAIN_LINES%LINES(DECOMPOSITION_LINES%NUMBER_OF_LINES),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate domain lines lines.",ERR,ERROR,*999)
-                            DOMAIN_LINES%NUMBER_OF_LINES=DECOMPOSITION_LINES%NUMBER_OF_LINES
-                            ALLOCATE(NODES_NUMBER_OF_LINES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate nodes number of lines array.",ERR,ERROR,*999)
-                            NODES_NUMBER_OF_LINES=0
-                            !Loop over the lines in the topology
-                            DO local_line_idx=1,DECOMPOSITION_LINES%NUMBER_OF_LINES
-                              DECOMPOSITION_LINE=>DECOMPOSITION_LINES%LINES(local_line_idx)
-                              DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
-                              IF(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS>0) THEN
-                                element_idx=DECOMPOSITION_LINE%SURROUNDING_ELEMENTS(1)
-                                basis_local_line_idx=DECOMPOSITION_LINE%ELEMENT_LINES(1)
-                                CALL DOMAIN_TOPOLOGY_LINE_INITIALISE(DOMAIN_LINES%LINES(local_line_idx),ERR,ERROR,*999)
-                                DOMAIN_LINE%NUMBER=local_line_idx
-                                DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
-                                BASIS=>DOMAIN_ELEMENT%BASIS
-                                DOMAIN_LINE%ELEMENT_NUMBER=DOMAIN_ELEMENT%NUMBER
-                                IF(ALLOCATED(BASIS%localLineBasis)) THEN
-                                  DOMAIN_LINE%BASIS=>BASIS%localLineBasis(basis_local_line_idx)%PTR
-                                ELSE
-                                  !Basis is only 1D
-                                  DOMAIN_LINE%BASIS=>BASIS
-                                ENDIF
-                                ALLOCATE(DOMAIN_LINE%NODES_IN_LINE(BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)), &
-                                  & STAT=ERR)
-                                IF(ERR/=0) CALL FlagError("Could not allocate nodes in line.",ERR,ERROR,*999)
-                                ALLOCATE(DOMAIN_LINE%DERIVATIVES_IN_LINE(2,DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
-                                  & BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)),STAT=ERR)
-                                IF(ERR/=0) CALL FlagError("Could not allocate derivatives in line.",ERR,ERROR,*999)
-                                DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(basis_local_line_idx)
-                                  element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx, &
-                                    & basis_local_line_idx)
-                                  node_idx=DOMAIN_ELEMENT%ELEMENT_NODES(element_local_node_idx)
-                                  DOMAIN_LINE%NODES_IN_LINE(basis_local_line_node_idx)=node_idx
-                                  !Set derivative number of u (NO_GLOBAL_DERIV) for the domain line
-                                  DOMAIN_LINE%DERIVATIVES_IN_LINE(1,1,basis_local_line_node_idx)=NO_GLOBAL_DERIV
-                                  !Set version number of u (NO_GLOBAL_DERIV) for the domain line
-                                  version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
-                                    & basis_local_line_node_idx,basis_local_line_idx))
-                                  DOMAIN_LINE%DERIVATIVES_IN_LINE(2,1,basis_local_line_node_idx)=version_idx
-                                  IF(DOMAIN_LINE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
-                                    derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
-                                      & basis_local_line_node_idx,basis_local_line_idx),element_local_node_idx)
-                                    DOMAIN_LINE%DERIVATIVES_IN_LINE(1,2,basis_local_line_node_idx)=derivative_idx
-                                    version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_LINE( &
-                                      & basis_local_line_node_idx,basis_local_line_idx),BASIS%NODE_NUMBERS_IN_LOCAL_LINE( &
-                                      & basis_local_line_node_idx,basis_local_line_idx))
-                                    DOMAIN_LINE%DERIVATIVES_IN_LINE(2,2,basis_local_line_node_idx)=version_idx
-                                  ENDIF
-                                  NODES_NUMBER_OF_LINES(node_idx)=NODES_NUMBER_OF_LINES(node_idx)+1
-                                ENDDO !basis_local_line_node_idx
-                              ELSE
-                                CALL FlagError("Line is not surrounded by any elements?",ERR,ERROR,*999)
-                              ENDIF
-                            ENDDO !local_line_idx
-                            DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
-                              ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_LINES(NODES_NUMBER_OF_LINES(node_idx)),STAT=ERR)
-                              IF(ERR/=0) CALL FlagError("Could not allocate node lines.",ERR,ERROR,*999)
-                              DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=0
-                            ENDDO !node_idx
-                            DEALLOCATE(NODES_NUMBER_OF_LINES)
-                            DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
-                              DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
-                              BASIS=>DOMAIN_LINE%BASIS
-                              DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES
-                                node_idx=DOMAIN_LINE%NODES_IN_LINE(basis_local_line_node_idx)
-                                DOMAIN_NODE=>DOMAIN_NODES%NODES(node_idx)
-                                DOMAIN_NODE%NUMBER_OF_NODE_LINES=DOMAIN_NODE%NUMBER_OF_NODE_LINES+1
-                                DOMAIN_NODE%NODE_LINES(DOMAIN_NODE%NUMBER_OF_NODE_LINES)=local_line_idx
-                              ENDDO !basis_local_line_node_idx
-                            ENDDO !local_line_idx
-                          ELSE
-                            CALL FlagError("Domain lines is not associated.",ERR,ERROR,*999)
-                          ENDIF
-                        ELSE
-                          CALL FlagError("Domain elements is not associated.",ERR,ERROR,*999)
-                        ENDIF
-                      ELSE
-                        CALL FlagError("Domain nodes is not associated.",ERR,ERROR,*999)
-                      ENDIF
-                    ELSE
-                      CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                  ELSE
-                    CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
-                  ENDIF
-                ENDIF
-              ENDDO !component_idx
-            ELSE
-              CALL FlagError("Decomposition mesh is not associated.",ERR,ERROR,*999)
+              CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
             ENDIF
           ELSE
-            CALL FlagError("Topology decomposition is not associated.",ERR,ERROR,*999)
+            CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
           ENDIF
-        ELSE
-          CALL FlagError("Topology decomposition elements is not associated.",ERR,ERROR,*999)
         ENDIF
-      ELSE
-        CALL FlagError("Topology lines is not associated.",ERR,ERROR,*999)
-
-      ENDIF
+      ENDDO !component_idx
     ELSE
-      CALL FlagError("Topology is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Decomposition mesh is not associated.",ERR,ERROR,*999)
     ENDIF
 
     IF(DIAGNOSTICS1) THEN
@@ -4568,9 +4561,9 @@ CONTAINS
       & numberSharedFacesOnRank, numberInCurrentSetToClaim, ghostFaceIdx, ghostFaceGlobalNo, ghostDomain, &
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfFacesToReceive, internalFacesIdx, &
       & boundaryFacesIdx, localFaceNo, domainListInternalIdx, domainListBoundaryIdx, internalFaceGlobalNo, boundaryFaceGlobalNo, &
-      & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, faceIdx, totalNumberOfExternal, &
-      & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, numberOfinternalAndBoundary, &
-      & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, globalNodeNo, surroundingElemIdx
+      & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, &
+      & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, basisLocalFaceIdx2, &
+      & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, globalNodeNo, surroundingElemIdx, basisLocalFaceIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndBoundaryPlaneFaces(:), sendRequestHandle(:), &
       & numberNonBoundaryPlaneAndLocalFacesOnRank(:,:), receiveRequestHandle(:), boundaryAndBoundaryPlaneFacesDomain(:), &
@@ -4584,7 +4577,7 @@ CONTAINS
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: facesMapping
     TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndBoundaryPlaneFacesList, adjacentDomainsList, localAndAdjacentDomainsList, &
-      & boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList, externalFacesList
+      & boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
@@ -4629,7 +4622,7 @@ CONTAINS
     CALL LIST_CREATE_FINISH(internalFacesList,err,error,*999)
 
 
-    !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2), tets have (1,2,3,4)
+    !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
     SELECT CASE(topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
@@ -4650,9 +4643,13 @@ CONTAINS
     !CALL DomainTopology_AssignGlobalFaces(topology,err,error,*999)
     !Assign global numbers to each face
     faceCount=0
+
+    !FIXTHIS, change number order so that it is -2,2,-1,1
     DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
-      DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-        IF(xicIdx ==0) CYCLE
+      DO basisLocalFaceIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdx = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalFaceIdx)
+      ! DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+      !   IF(xicIdx ==0) CYCLE
 
         IF(topology%ELEMENTS%ELEMENTS(elementGlobalNo)%ADJACENT_ELEMENTS(xicIdx)%NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
           adjacentElementGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%ADJACENT_ELEMENTS(xicIdx)% &
@@ -4662,8 +4659,8 @@ CONTAINS
             topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)=faceCount
 
           ELSE
-            DO xicIdx2 = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-              IF(xicIdx2 ==0) CYCLE
+            DO basisLocalFaceIdx2 = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+              xicIdx2 = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalFaceIdx2)
               IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
                 & ADJACENT_ELEMENTS(1)==elementGlobalNo) THEN
                 topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)= &
@@ -4677,8 +4674,8 @@ CONTAINS
           faceCount=faceCount+1
           topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)=faceCount
         ENDIF
-      ENDDO
-    ENDDO
+      ENDDO ! basisLocalFaceIdx
+    ENDDO ! elementGlobalNo
 
     !FIXTHIS This dosn't neccesarily need to be using a type, could just use allocatable local arrays
     ALLOCATE(topology%faces)
@@ -4700,8 +4697,9 @@ CONTAINS
     !Iterate through the elements to assign them as neighbouring elements of the faces
     DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
       !Iterate through the faces of this element
-      DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-        IF(xicIdx ==0) CYCLE
+      DO basisLocalFaceIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdx = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalFaceIdx)
+
         faceGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
 
 
@@ -4713,8 +4711,8 @@ CONTAINS
         ENDIF
         topology%faces%faces(faceGlobalNo)%numberOfSurroundingElements=topology%faces%faces(faceGlobalNo)% &
           & numberOfSurroundingElements+1
-      ENDDO
-    ENDDO
+      ENDDO ! basisLocalFaceIdx
+    ENDDO ! elementGlobalNo
 
     DO faceGlobalNo = 1,topology%faces%numberOfFaces
 
@@ -4744,8 +4742,9 @@ CONTAINS
       elementGlobalNo = elementsMapping%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
 
       ! loop over Faces of element
-      DO xicIdx=startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-        IF(xicIdx ==0) CYCLE
+      DO basisLocalFaceIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdx = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalFaceIdx)
+
         faceGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
 
 
@@ -4814,8 +4813,8 @@ CONTAINS
       elementGlobalNo = elementsMapping%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
 
       ! loop over Faces of element
-      DO xicIdx=startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-        IF(xicIdx ==0) CYCLE
+      DO basisLocalFaceIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdx = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalFaceIdx)
         faceGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
 
         ! if global face is not contained in internal faces list
@@ -5690,73 +5689,6 @@ CONTAINS
     ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
     IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
     facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
-
-
-    !Assign the faces that are external faces to facesMapping%EXTERNAL_LOCALS
-
-    ! create list of external faces
-    NULLIFY(externalFacesList)
-    CALL LIST_CREATE_START(externalFacesList,err,error,*999)
-    CALL LIST_DATA_DIMENSION_SET(externalFacesList,1,err,error,*999)
-    CALL LIST_DATA_TYPE_SET(externalFacesList,LIST_INTG_TYPE,err,error,*999)
-    CALL LIST_INITIAL_SIZE_SET(externalFacesList,facesMapping%NUMBER_OF_LOCAL/2,err,error,*999)
-    CALL LIST_CREATE_FINISH(externalFacesList,err,error,*999)
-
-    DO faceIdx=facesMapping%INTERNAL_START, facesMapping%INTERNAL_FINISH
-      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
-      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
-
-      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
-        !The face is an external face
-        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
-      ELSE
-        !Do nothing
-      ENDIF
-    ENDDO
-
-    CALL LIST_NUMBER_OF_ITEMS_GET(externalFacesList,facesMapping%NUMBER_OF_INTERNAL_EXTERNAL, err,error,*999)
-
-    DO faceIdx=facesMapping%BOUNDARY_START, facesMapping%BOUNDARY_FINISH
-      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
-      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
-
-      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
-        !The face is an external face
-        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
-      ELSE
-        !Do nothing
-      ENDIF
-    ENDDO
-
-    CALL LIST_NUMBER_OF_ITEMS_GET(externalFacesList,numberOfinternalAndBoundary, err,error,*999)
-    facesMapping%NUMBER_OF_BOUNDARY_EXTERNAL=numberOfinternalAndBoundary-facesMapping%NUMBER_OF_INTERNAL_EXTERNAL
-
-    DO faceIdx=facesMapping%GHOST_START, facesMapping%GHOST_FINISH
-      localFaceNo=facesMapping%DOMAIN_LIST(faceIdx)
-      faceGlobalNo=facesMapping%LOCAL_TO_GLOBAL_MAP(localFaceNo)
-
-      IF(topology%faces%faces(faceGlobalNo)%externalFace==.TRUE.) THEN
-        !The face is an external face
-        CALL LIST_ITEM_ADD(externalFacesList,localFaceNo,err,error,*999)
-      ELSE
-        !Do nothing
-      ENDIF
-    ENDDO
-
-
-    ! extract arrays of external faces
-    CALL LIST_DETACH_AND_DESTROY(externalFacesList, totalNumberOfExternal, integerArray, err,error,*999)
-    ALLOCATE(facesMapping%EXTERNAL_LOCALS(totalNumberOfExternal))
-    facesMapping%EXTERNAL_LOCALS=integerArray(1:totalNumberOfExternal)
-    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
-    facesMapping%NUMBER_OF_GHOST_EXTERNAL=totalNumberOfExternal-facesMapping%NUMBER_OF_INTERNAL_EXTERNAL- &
-      & facesMapping%NUMBER_OF_BOUNDARY_EXTERNAL
-
-    !Communicate the numberOfinternalAndBoundary of each domain to get the global number of external faces.
-    ! allreduce number of external faces
-    CALL MPI_ALLREDUCE(numberOfinternalAndBoundary,facesMapping%NUMBER_OF_GLOBAL_EXTERNAL,1,MPI_INTEGER,MPI_SUM, &
-      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
-    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
 
 
 
