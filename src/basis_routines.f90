@@ -5954,7 +5954,7 @@ CONTAINS
           N=1
           IF(SIZE(X,2)>=N) THEN
             IF(SIZE(W,1)>=N) THEN
-              L_C=1.0_DP/REAL(NUMBER_OF_VERTICES,DP)
+              L_C=1.0_DP/2.0_DP
               W_C=1.0_DP
               !Gauss point 1
               X(1,1)=L_C
@@ -6126,9 +6126,9 @@ CONTAINS
           IF(SIZE(X,2)>=N) THEN
             IF(SIZE(W,1)>=N) THEN
               L_C=1.0_DP/REAL(NUMBER_OF_VERTICES,DP)
-              W_C=-1.0_DP*REAL(NUMBER_OF_VERTICES,DP)*REAL(NUMBER_OF_VERTICES,DP)/ &
-                & (REAL(NUMBER_OF_VERTICES,DP)*(REAL(NUMBER_OF_VERTICES,DP)+1.0_DP))
-              ALPHA_1=2.0_DP/(REAL(NUMBER_OF_VERTICES,DP)+2.0_DP)
+              W_C=-1.0_DP*3.0_DP/ &
+                & (3.0_DP+1.0_DP)
+              ALPHA_1=2.0_DP/(3.0_DP+2.0_DP)
               W_ALPHA_1=(REAL(NUMBER_OF_VERTICES,DP)+2.0_DP)*(REAL(NUMBER_OF_VERTICES,DP)+2.0_DP)/ &
                 & (4.0_DP*REAL(NUMBER_OF_VERTICES,DP)*(REAL(NUMBER_OF_VERTICES,DP)+1.0_DP))
               L1_ALPHA_1=(1.0_DP+(REAL(NUMBER_OF_VERTICES,DP)-1.0_DP)*ALPHA_1)/REAL(NUMBER_OF_VERTICES,DP)
