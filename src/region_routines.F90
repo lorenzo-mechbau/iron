@@ -45,6 +45,7 @@
 MODULE REGION_ROUTINES
 
   USE BaseRoutines
+  USE ContextAccessRoutines
   USE COORDINATE_ROUTINES
   USE CoordinateSystemAccessRoutines
   USE CMISS_CELLML
@@ -278,10 +279,11 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Destroys a region given by USER_NUMBER and all sub-regions under it. \todo create destroy by pointer method. \see OPENCMISS::Iron::cmfe_RegionDestroy
-  RECURSIVE SUBROUTINE REGION_DESTROY_NUMBER(USER_NUMBER,ERR,ERROR,*)
+  !>Destroys a region given by USER_NUMBER and all sub-regions under it. \todo create destroy by pointer method. \see OpenCMISS::Iron::cmfe_Region_Destroy
+  RECURSIVE SUBROUTINE REGION_DESTROY_NUMBER(regions,USER_NUMBER,err,error,*)
 
     !Argument variables
+    TYPE(RegionsType), POINTER :: regions !<A pointer to the regions
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the region to destroy
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -293,7 +295,7 @@ CONTAINS
     ENTERS("REGION_DESTROY_NUMBER",ERR,ERROR,*999)
 
     NULLIFY(REGION)
-    CALL REGION_USER_NUMBER_FIND(USER_NUMBER,REGION,ERR,ERROR,*999)
+    CALL REGION_USER_NUMBER_FIND(regions,USER_NUMBER,REGION,err,error,*999)
     IF(ASSOCIATED(REGION)) THEN
 
 !!NOTE: We have to find a pointer to the region to destroy within this routine rather than passing in a pointer to a
@@ -328,7 +330,7 @@ CONTAINS
       ELSE
         !Recursively delete sub regions first
         DO WHILE(REGION%NUMBER_OF_SUB_REGIONS>0)
-          CALL REGION_DESTROY_NUMBER(REGION%SUB_REGIONS(1)%PTR%USER_NUMBER,ERR,ERROR,*999)
+          CALL REGION_DESTROY_NUMBER(regions,REGION%SUB_REGIONS(1)%PTR%USER_NUMBER,err,error,*999)
         ENDDO
         !Now delete this instance
         CALL REGION_DESTROY_NUMBER(REGION%USER_NUMBER,ERR,ERROR,*999)
@@ -356,12 +358,15 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: USER_NUMBER
+    TYPE(RegionsType), POINTER :: regions
  
     ENTERS("REGION_DESTROY",ERR,ERROR,*999)
     
     IF(ASSOCIATED(REGION)) THEN
+      NULLIFY(regions)
+      CALL Region_RegionsGet(region,regions,err,error,*999)
       USER_NUMBER=REGION%USER_NUMBER
-      CALL REGION_DESTROY_NUMBER(USER_NUMBER,ERR,ERROR,*999)
+      CALL REGION_DESTROY_NUMBER(regions,USER_NUMBER,err,error,*999)
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -430,6 +435,7 @@ CONTAINS
       ALLOCATE(REGION,STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate region.",ERR,ERROR,*999)
       REGION%USER_NUMBER=0
+      NULLIFY(region%regions)
       REGION%REGION_FINISHED=.FALSE.
       REGION%LABEL=""
       NULLIFY(REGION%COORDINATE_SYSTEM)
@@ -625,42 +631,52 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Initialises the regions and creates the global world region.
-  SUBROUTINE REGIONS_INITIALISE(WORLD_REGION,ERR,ERROR,*)
+  !>Initialises the regions and creates the global world region for a context.
+  SUBROUTINE Regions_Initialise(context,err,error,*)    
 
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: WORLD_REGION !<On exit, a pointer to the world region. Must not be associated on entry.
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(ContextType), POINTER :: context !<A pointer to the context to initialise the regions for.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: WORLD_COORDINATE_SYSTEM
+    INTEGER(INTG) :: dummyErr
+    TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: worldCoordinateSystem
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems
+    TYPE(VARYING_STRING) :: dummyError
 
-    NULLIFY(WORLD_COORDINATE_SYSTEM)
+    NULLIFY(worldCoordinateSystem)
     
-    ENTERS("REGIONS_INITIALISE",ERR,ERROR,*999)
-    
-    IF(ASSOCIATED(WORLD_REGION)) THEN
-      CALL FlagError("World region is already associated.",ERR,ERROR,*999)
-    ELSE
-      CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(0,WORLD_COORDINATE_SYSTEM,ERR,ERROR,*999)
-      IF(ASSOCIATED(WORLD_COORDINATE_SYSTEM)) THEN        
-        CALL REGION_INITIALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
-        REGIONS%WORLD_REGION%USER_NUMBER=0
-        REGIONS%WORLD_REGION%LABEL="World Region"
-        REGIONS%WORLD_REGION%COORDINATE_SYSTEM=>WORLD_COORDINATE_SYSTEM
-        REGIONS%WORLD_REGION%REGION_FINISHED=.TRUE.
-        !Return the pointer
-        WORLD_REGION=>REGIONS%WORLD_REGION
-      ELSE
-        CALL FlagError("World coordinate system has not been created.",ERR,ERROR,*999)
-      ENDIF
-    ENDIF
+    ENTERS("Regions_Initialise",err,error,*998)
+
+    IF(.NOT.ASSOCIATED(context)) CALL FlagError("Context is not associated.",err,error,*998)
+    IF(ASSOCIATED(context%regions)) CALL FlagError("Context regions is already associated.",err,error,*998)
+
+    NULLIFY(coordinateSystems)
+    CALL Context_CoordinateSystemsGet(context,coordinateSystems,err,error,*998)
+    CALL CoordinateSystem_UserNumberFind(coordinateSystems,0,worldCoordinateSystem,err,error,*998)
+    IF(.NOT.ASSOCIATED(worldCoordinateSystem)) CALL FlagError("World coordinate system has not been created.",err,error,*998)
+
+    !Allocate context regions
+    ALLOCATE(context%regions,STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate regions.",err,error,*999)
+    !Initialise
+    context%regions%context=>context
+    NULLIFY(context%regions%worldRegion)
+    !Create world region 
+    CALL Region_Initialise(context%regions%worldRegion,err,error,*999)
+    context%regions%worldRegion%USER_NUMBER=0
+    context%regions%worldRegion%regions=>context%regions
+    context%regions%worldRegion%LABEL="World Region"
+    context%regions%worldRegion%COORDINATE_SYSTEM=>worldCoordinateSystem
+    context%regions%worldRegion%REGION_FINISHED=.TRUE.
    
-    EXITS("REGIONS_INITIALISE")
+    EXITS("Regions_Initialise")
     RETURN
-999 ERRORSEXITS("REGIONS_INITIALISE",ERR,ERROR)
+999 CALL Regions_Finalise(context%regions,dummyErr,dummyError,*998)
+998 ERRORSEXITS("Regions_Initialise",err,error)
     RETURN 1
-  END SUBROUTINE REGIONS_INITIALISE
+    
+  END SUBROUTINE Regions_Initialise
 
   !
   !================================================================================================================================
@@ -692,9 +708,9 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE REGION_USER_NUMBER_TO_REGION
-
+  
   !
   !================================================================================================================================
   !
-  
+
 END MODULE REGION_ROUTINES

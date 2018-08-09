@@ -274,6 +274,7 @@ MODULE Types
 
   !>Contains information on the list of coordinate systems
   TYPE CoordinateSystemsType
+    TYPE(ContextType), POINTER :: context !<A pointer to the context for the list of coordinate systems
     INTEGER(INTG) :: numberOfCoordinateSystems !<The number of coordinate systems defined
     TYPE(COORDINATE_SYSTEM_PTR_TYPE), POINTER :: coordinateSystems(:) !<coordinateSystems(coordinateSystemIdx). The coordinateSystemIdx'th coordinate system.
   END TYPE CoordinateSystemsType
@@ -987,6 +988,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
 
   !>Contains information on the domain mappings (i.e., local and global numberings).
   TYPE DOMAIN_MAPPING_TYPE
+    TYPE(WorkGroupType), POINTER :: workGroup !<A pointer to the work group for the domain mapping \TODO temp until permanent fix.
     INTEGER(INTG) :: NUMBER_OF_LOCAL !<The number of local numbers in the domain excluding ghost numbers
     INTEGER(INTG) :: TOTAL_NUMBER_OF_LOCAL !<The total number of local numbers in the domain including ghost numbers.
     INTEGER(INTG), ALLOCATABLE :: NUMBER_OF_DOMAIN_LOCAL(:) !<NUMBER_OF_DOMAIN_LOCAL(domain_no). The number of locals for domain_no'th domain. NOTE: the domain_no goes from 0 to the number of domains-1.
@@ -1165,6 +1167,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: numberOfComponents !<The number of mesh components in this decomposition/mesh.
     INTEGER(INTG) :: MESH_COMPONENT_NUMBER !<The component number (index) of the mesh component that this decomposition belongs to (i.e., was generated from).
     INTEGER(INTG) :: DECOMPOSITION_TYPE !<The type of the domain decomposition \see MESH_ROUTINES_DecompositionTypes.
+    TYPE(WorkGroupType), POINTER :: workGroup !<The work group to use for this decomposition
     INTEGER(INTG) :: NUMBER_OF_DOMAINS !<The number of domains that this decomposition contains.
     INTEGER(INTG) :: NUMBER_OF_EDGES_CUT !<For automatically calculated decompositions, the number of edges of the mesh dual graph that were cut for the composition. It provides an indication of the optimally of the automatic decomposition.
     INTEGER(INTG) :: numberOfElements !<The number of elements in the decomposition
@@ -3131,7 +3134,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(GeometricTransformationSolverType), POINTER :: geometricTransformationSolver !<A pointer to the geometric transformation solver information
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS !<A pointer to the solver equations
     TYPE(CELLML_EQUATIONS_TYPE), POINTER :: CELLML_EQUATIONS !<A pointer to the CellML equations
-    
+    TYPE(WorkGroupType), POINTER :: workGroup !<A pointer to the computation work group for the solver
   END TYPE SOLVER_TYPE
 
   !>Contains information on the solvers to be used in a control loop
@@ -3574,6 +3577,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     LOGICAL :: PROBLEM_FINISHED !<Is .TRUE. if the problem has finished being created, .FALSE. if not.
     TYPE(PROBLEMS_TYPE), POINTER :: PROBLEMS !<A pointer to the problems for this problem.
     INTEGER(INTG), ALLOCATABLE :: SPECIFICATION(:) !<The problem specification array, eg. [class, type, subtype], although there can be more or fewer identifiers. Unused identifiers are set to zero.
+    TYPE(WorkGroupType), POINTER :: workGroup !<The work group to use for the problem.
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP !<A pointer to the control loop information for the problem.
   END TYPE PROBLEM_TYPE
   
@@ -3584,6 +3588,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
        
   !>Contains information on the problems defined.
   TYPE PROBLEMS_TYPE
+    TYPE(ContextType), POINTER :: context !<A pointer to the context for the problems
     INTEGER(INTG) :: NUMBER_OF_PROBLEMS !<The number of problems defined.
     TYPE(PROBLEM_PTR_TYPE), POINTER :: PROBLEMS(:) !<The array of pointers to the problems.
   END TYPE PROBLEMS_TYPE
@@ -3619,13 +3624,118 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
 
   !>Contains information about the regions
   TYPE REGIONS_TYPE
+    TYPE(ContextType), POINTER :: context !<A pointer to the context for the regions
     TYPE(REGION_TYPE), POINTER :: WORLD_REGION !<A pointer to the world region
   END TYPE REGIONS_TYPE
 
   !
+  ! Computation types
+  
+  !>Pointer type to WorkGroupType
+  TYPE WorkGroupPtrType
+    TYPE(WorkGroupType), POINTER :: ptr
+  END TYPE WorkGroupPtrType
+  
+  !>Contains information on logical working groups
+  TYPE WorkGroupType
+    INTEGER(INTG) :: userNumber !<The user number of the work group
+    LOGICAL :: workGroupFinished !<Is .TRUE. if the work group has been finished. .FALSE. if not. 
+    TYPE(WorkGroupType), POINTER:: parentWorkGroup !<Parent of this working groups
+    TYPE(VARYING_STRING) :: label !<The label of the work group
+    INTEGER(INTG) :: numberOfGroupComputationNodes !<The size of the total computational nodes belonging to this group
+    INTEGER(INTG), ALLOCATABLE :: worldRanks(:) !<worldRanks(rankIdx). The rank in the world communicator corresponding to the rankIdx'th group rank. 
+    INTEGER(INTG) :: numberOfAvailableRanks !<The number of available ranks for this work group. Note that the numberOfAvaiableRanks plus the sum of the number of ranks in one sub group level down should be the number of nodes in the parent work group.
+    INTEGER(INTG), ALLOCATABLE :: availableRanks(:) !<availableRanks(rankIdx). The list of available ranks for this work group.
+    INTEGER(INTG) :: numberOfSubGroups !<The number of sub work groups
+    TYPE(WorkGroupPtrType), ALLOCATABLE:: subGroups(:) !<subGroups(subgg365GroupIdx). A pointer to the subGroupIdx'th sub work group.
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment !<A pointer to the computational environment
+    INTEGER(INTG) :: mpiGroupCommunicator !<The MPI communicator for this work group
+    INTEGER(INTG) :: mpiGroup !<The MPI communicator for this work group
+    INTEGER(INTG) :: myGroupComputationNodeNumber !<The rank number in the group communicator
+    INTEGER(INTG) :: myWorldComputationNodeNumber !<The rank number in the world communicator
+  END TYPE WorkGroupType
+
+  !>Contains information on a cache heirarchy
+  TYPE ComputationCacheType
+    INTEGER(INTG) :: numberOfLevels !<The number of levels in the cache hierarchy
+    INTEGER(INTG), ALLOCATABLE :: size(:) !<size(levelIdx). The size of the levelIdx'th cache level.
+  END TYPE ComputationCacheType
+
+  !>Contains information on a computation node containing a number of processors
+  TYPE ComputationNodeType
+    INTEGER(INTG) :: numberOfProcessors !<The number of processors for this computation node
+    INTEGER(INTG) :: rank !<The MPI rank of this computation node in the world communicator
+    TYPE(ComputationCacheType) :: cache !<Information about the caches of this computational node (not currently used).
+    INTEGER(INTG) :: nodeNameLength !<The length of the name of the computation node
+    CHARACTER(LEN=MPI_MAX_PROCESSOR_NAME) :: nodeName !<The name of the computation node
+  END TYPE ComputationNodeType
+
+  !>Contains information on the MPI type to transfer information about a computation node
+  TYPE MPIComputationNodeType
+    INTEGER(INTG) :: mpiType !<The MPI data type
+    INTEGER(INTG) :: numberOfBlocks !<The number of blocks in the MPI data type. This will be equal to 4.
+    INTEGER(INTG) :: blockLengths(4) !<The length of each block.
+    INTEGER(INTG) :: types(4) !<The data types of each block.
+    INTEGER(MPI_ADDRESS_KIND) :: displacements(4) !<The address displacements to each block.
+  END TYPE MPIComputationNodeType
+
+  !>Contains information on the computation environment the program is running in.
+  TYPE ComputationEnvironmentType
+    TYPE(ContextType), POINTER :: context !<A pointer back to the context for the compuation environment
+    INTEGER(INTG) :: mpiVersion !<The version of MPI that we are running with
+    INTEGER(INTG) :: mpiSubVersion !<The sub-version of MPI that we are running with
+    INTEGER(INTG) :: mpiCommWorld !<The clone of the MPI world communicator for OpenCMISS
+    INTEGER(INTG) :: mpiGroupWorld !<The group of the cloned MPI world communicator for OpenCMISS
+    INTEGER(INTG) :: numberOfWorldComputationNodes !<The number of computation nodes in the world communicator
+    INTEGER(INTG) :: myWorldComputationNodeNumber !<The rank of the running process in the world communicator
+    TYPE(ComputationNodeType), ALLOCATABLE :: computationNodes(:) !<computationNodes(node_idx). Contains information on the node_idx'th computation node.
+    TYPE(MPIComputationNodeType) :: mpiComputationNode !<The MPI data type information to transfer the computation node information.
+    TYPE(WorkGroupType), POINTER :: worldWorkGroup !<A pointer to the work group corresponding to the world communicator
+  END TYPE ComputationEnvironmentType
+  
+  PUBLIC WorkGroupType,WorkGroupPtrType
+
+  PUBLIC ComputationCacheType
+
+  PUBLIC ComputationNodeType,MPIComputationNodeType
+
+  PUBLIC ComputationEnvironmentType
+  
+  !    
   !================================================================================================================================
   !
+  ! Context type
 
+  !>Contains information on the OpenCMISS context that contains all base level objects
+  TYPE ContextType
+    INTEGER(INTG) :: userNumber !<The context user number
+    TYPE(ContextsType), POINTER :: contexts !<A pointer to the contexts for the context.
+    INTEGER(INTG), ALLOCATABLE :: cmissRandomSeeds(:) !<The current random seeds for OpenCMISS
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<A pointer to the list of basis functions
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment !<A pointer to the computtional environment
+    TYPE(ProblemsType), POINTER :: problems !<A pointer to the list of problems
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems !<A pointer to the list of coordinate systems for the context
+    TYPE(RegionsType), POINTER :: regions !<A pointer to the regions for the context
+  END TYPE ContextType
+
+  !>A buffer type to allow for an array of pointers to a ContexType \see OpenCMISS::Types::ContexTypes
+  TYPE ContextPtrType
+    TYPE(ContextType), POINTER :: ptr !<A pointer to the context
+  END TYPE ContextPtrType
+
+  !>Contains information on the OpenCMISS contexts. 
+  TYPE ContextsType
+    INTEGER(INTG) :: numberOfContexts !<The number of contexts
+    INTEGER(INTG) :: lastContextUserNumber !<The user number of the last context created.
+    TYPE(ContextPtrType), ALLOCATABLE :: contexts(:) !<contexts(contexIdx)%ptr is a pointer to the contextIdx'th context.
+  END TYPE ContextsType
+
+  PUBLIC ContextType,ContextPtrType,ContextsType
+  
+  !  
+  !================================================================================================================================
+  !
+  
 
 END MODULE Types
 

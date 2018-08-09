@@ -100,11 +100,11 @@ MODULE COORDINATE_ROUTINES
   !Module variables
 
   CHARACTER(LEN=21) :: COORDINATE_SYSTEM_TYPE_STRING(5) = &
-    & (/ "Rectangular Cartesian",&
+    & [ "Rectangular Cartesian",&
     &    "Cylindrical Polar    ", &
     &    "Spherical Polar      ", &
     &    "Prolate Spheroidal   ", &
-    &    "Oblate Spheroidal    " /)
+    &    "Oblate Spheroidal    " ]
 
   !Interfaces
 
@@ -1694,6 +1694,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number for the created coordinate system
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems !<A pointer to the coordinate systems to create the coordinate system for.
     TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: COORDINATE_SYSTEM !<On exit, a pointer to the created coordinate system. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -1708,6 +1709,9 @@ CONTAINS
 
     ENTERS("COORDINATE_SYSTEM_CREATE_START",ERR,ERROR,*998)
 
+    IF(ASSOCIATED(COORDINATE_SYSTEM)) CALL FlagError("Coordinate system is already associated.",err,error,*999)
+    IF(.NOT.ASSOCIATED(coordinateSystems)) CALL FlagError("Coordinate systems is not associated.",err,error,*999)
+    
     NULLIFY(NEW_COORDINATE_SYSTEM)
     CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(USER_NUMBER,NEW_COORDINATE_SYSTEM,ERR,ERROR,*999)
     IF(ASSOCIATED(NEW_COORDINATE_SYSTEM)) THEN
@@ -1723,17 +1727,18 @@ CONTAINS
         IF(ERR/=0) CALL FlagError("Could not allocate new coordinate system.",ERR,ERROR,*999)
       
         NEW_COORDINATE_SYSTEM%USER_NUMBER=USER_NUMBER
+        NEW_COORDINATE_SYSTEM%coordinateSystems=>coordinateSystems
         NEW_COORDINATE_SYSTEM%COORDINATE_SYSTEM_FINISHED=.FALSE.
         NEW_COORDINATE_SYSTEM%TYPE=COORDINATE_RECTANGULAR_CARTESIAN_TYPE
         NEW_COORDINATE_SYSTEM%RADIAL_INTERPOLATION_TYPE=COORDINATE_NO_RADIAL_INTERPOLATION_TYPE
         NEW_COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS=3
         NEW_COORDINATE_SYSTEM%FOCUS=1.0_DP    
-        NEW_COORDINATE_SYSTEM%ORIGIN=(/0.0_DP,0.0_DP,0.0_DP/)
+        NEW_COORDINATE_SYSTEM%ORIGIN=[0.0_DP,0.0_DP,0.0_DP]
         NEW_COORDINATE_SYSTEM%ORIENTATION=RESHAPE(&
-          & (/1.0_DP,0.0_DP,0.0_DP, &
+          & [1.0_DP,0.0_DP,0.0_DP, &
           &   0.0_DP,1.0_DP,0.0_DP, &
-          &   0.0_DP,0.0_DP,1.0_DP/), &
-          & (/3,3/))
+          &   0.0_DP,0.0_DP,1.0_DP], &
+          & [3,3])
         
         ALLOCATE(NEW_COORDINATE_SYSTEMS(coordinateSystems%numberOfCoordinateSystems+1),STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate new coordinate systems.",ERR,ERROR,*999)
@@ -1771,6 +1776,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: coord_system_idx
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems
 
     ENTERS("COORDINATE_SYSTEM_CREATE_FINISH",ERR,ERROR,*999)
 
@@ -1781,6 +1787,8 @@ CONTAINS
     ENDIF
     
     IF(DIAGNOSTICS1) THEN
+      NULLIFY(coordinateSystems)
+      CALL CoordinateSystem_CoordinateSystemsGet(COORDINATE_SYSTEM,coordinateSystems,err,error,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Number of coordinate systems = ", &
         & coordinateSystems%numberOfCoordinateSystems,ERR,ERROR,*999)
       DO coord_system_idx=1,coordinateSystems%numberOfCoordinateSystems
@@ -1815,6 +1823,7 @@ CONTAINS
     INTEGER(INTG) :: coord_system_no,new_coord_system_no
     LOGICAL :: FOUND
     TYPE(COORDINATE_SYSTEM_PTR_TYPE), POINTER :: NEW_COORDINATE_SYSTEMS(:)
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems
 
     ENTERS("COORDINATE_SYSTEM_DESTROY",ERR,ERROR,*999)
 
@@ -1822,6 +1831,8 @@ CONTAINS
       IF(COORDINATE_SYSTEM%USER_NUMBER==0) THEN
         CALL FlagError("Cannot destroy the world coordinate system.",ERR,ERROR,*999)
       ELSE
+        NULLIFY(coordinateSystems)
+        CALL CoordinateSystem_CoordinateSystemsGet(COORDINATE_SYSTEM,coordinateSystems,err,error,*999)
         FOUND=.FALSE.
         new_coord_system_no=0
         ALLOCATE(NEW_COORDINATE_SYSTEMS(coordinateSystems%numberOfCoordinateSystems-1),STAT=ERR)
@@ -4201,19 +4212,22 @@ CONTAINS
   SUBROUTINE COORDINATE_SYSTEMS_FINALISE(ERR,ERROR,*)
 
     !Argument variables
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems !<A pointer to the coordinate systems to finalise
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: coord_system_idx
+    INTEGER(INTG) :: coordinateSystemIdx
     
     ENTERS("COORDINATE_SYSTEMS_FINALISE",ERR,ERROR,*999)
 
-    DO coord_system_idx=1,coordinateSystems%numberOfCoordinateSystems
-      CALL COORDINATE_SYSTEM_FINALISE(coordinateSystems%coordinateSystems(coord_system_idx)%ptr,ERR,ERROR,*999)
-    ENDDO !coord_system_idx
-    DEALLOCATE(coordinateSystems%coordinateSystems)
-    coordinateSystems%numberOfCoordinateSystems=0
-    
+    IF(ASSOCIATED(coordinateSystems)) THEN
+      DO coordinateSystemIdx=1,coordinateSystems%numberOfCoordinateSystems
+        CALL COORDINATE_SYSTEM_FINALISE(coordinateSystems%coordinateSystems(coordinateSystemIdx)%ptr,err,error,*999)
+      ENDDO !coordinateSystemIdx
+      DEALLOCATE(coordinateSystems%coordinateSystems)
+      DEALLOCATE(coordinateSystems)
+    ENDIF
+  
     EXITS("COORDINATE_SYSTEMS_FINALISE")
     RETURN
 999 ERRORSEXITS("COORDINATE_SYSTEMS_FINALISE",ERR,ERROR)
@@ -4228,34 +4242,49 @@ CONTAINS
   SUBROUTINE COORDINATE_SYSTEMS_INITIALISE(ERR,ERROR,*)
 
     !Argument variables
+    TYPE(ContextType), POINTER :: context !<The context to initialise the the coordinate systems for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: dummyErr
+    TYPE(VARYING_STRING) :: dummyError
     
     ENTERS("COORDINATE_SYSTEMS_INITIALISE",ERR,ERROR,*999)
 
+    IF(.NOT.ASSOCIATED(context)) CALL FlagError("Context is not associated.",err,error,*998)
+    IF(ASSOCIATED(context%coordinateSystems)) &
+      & CALL FlagError("Context coordinate systems is already associated.",err,error,*998)
+    
     !Allocate the coordinate systems
-    ALLOCATE(coordinateSystems%coordinateSystems(1),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate coordinate systems.",ERR,ERROR,*999)
+    ALLOCATE(context%coordinateSystems,STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate coordinate systems.",err,error,*999)
+    !Initialise
+    context%coordinateSystems%context=>context
+    context%coordinateSystems%numberOfCoordinateSystems=0
+    NULLIFY(context%coordinateSystems%coordinateSystems)
+    !Add in a world coordinate system
+    ALLOCATE(context%coordinateSystems%coordinateSystems(1),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate list of coordinate systems.",err,error,*999)
     !Create the default RC World cooordinate system
-    ALLOCATE(coordinateSystems%coordinateSystems(1)%ptr,STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate world coordinate system.",ERR,ERROR,*999)
-    coordinateSystems%coordinateSystems(1)%ptr%USER_NUMBER=0
-    coordinateSystems%coordinateSystems(1)%ptr%TYPE=COORDINATE_RECTANGULAR_CARTESIAN_TYPE
-    coordinateSystems%coordinateSystems(1)%ptr%NUMBER_OF_DIMENSIONS=3
-    coordinateSystems%coordinateSystems(1)%ptr%FOCUS=1.0_DP    
-    coordinateSystems%coordinateSystems(1)%ptr%ORIGIN=(/0.0_DP,0.0_DP,0.0_DP/)
-    coordinateSystems%coordinateSystems(1)%ptr%ORIENTATION=RESHAPE(&
-      & (/1.0_DP,0.0_DP,0.0_DP, &
-      &   0.0_DP,1.0_DP,0.0_DP, &
-      &   0.0_DP,0.0_DP,1.0_DP/), &
-      & (/3,3/))    
-    coordinateSystems%coordinateSystems(1)%ptr%COORDINATE_SYSTEM_FINISHED=.TRUE.
-    coordinateSystems%numberOfCoordinateSystems=1
+    ALLOCATE(context%coordinateSystems%coordinateSystems(1)%ptr,STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate world coordinate system.",err,error,*999)
+    context%coordinateSystems%coordinateSystems(1)%ptr%USER_NUMBER=0
+    context%coordinateSystems%coordinateSystems(1)%ptr%type=COORDINATE_RECTANGULAR_CARTESIAN_TYPE
+    context%coordinateSystems%coordinateSystems(1)%ptr%NUMBER_OF_DIMENSIONS=3
+    context%coordinateSystems%coordinateSystems(1)%ptr%focus=1.0_DP    
+    context%coordinateSystems%coordinateSystems(1)%ptr%origin=[0.0_DP,0.0_DP,0.0_DP]
+    context%coordinateSystems%coordinateSystems(1)%ptr%orientation=RESHAPE(&
+      & [1.0_DP,0.0_DP,0.0_DP, &
+      &  0.0_DP,1.0_DP,0.0_DP, &
+      &  0.0_DP,0.0_DP,1.0_DP], &
+      & [3,3])    
+    context%coordinateSystems%coordinateSystems(1)%ptr%COORDINATE_SYSTEM_FINISHED=.TRUE.
+    context%coordinateSystems%numberOfCoordinateSystems=1
    
-    EXITS("COORDINATE_SYSTEMS_INITIALISE")
+    EXITS("COORDINATE_SYSTEMS_FINALISE")
     RETURN
-999 ERRORSEXITS("COORDINATE_SYSTEMS_INITIALISE",ERR,ERROR)
+999 CALL CoordinateSystems_Finalise(context%coordinateSystems,dummyErr,dummyError,*998)
+998 ERRORSEXITS("CoordinateSystems_Initialise",err,error)
     RETURN 1
   END SUBROUTINE COORDINATE_SYSTEMS_INITIALISE
 

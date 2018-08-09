@@ -54,8 +54,9 @@ MODULE Cmiss
   
   USE BaseRoutines
   USE BasisRoutines
-  USE ComputationEnvironment
   USE Constants
+  USE ContextRoutines
+  USE ComputationAccessRoutines
   USE COORDINATE_ROUTINES
   USE GENERATED_MESH_ROUTINES
   USE ISO_VARYING_STRING
@@ -100,7 +101,9 @@ MODULE Cmiss
 
   !Module variables
 
+  LOGICAL, SAVE :: cmfeFirstInit = .FALSE. !<cmfeFirstInit will be .TRUE. if cmfe has ever been initialised, .FALSE. if not.
   INTEGER(INTG), SAVE :: cmfe_ErrorHandlingMode !<The current error handling mode for OpenCMISS \see CMFE_ErrorHandlingModes
+  TYPE(ContextsType), SAVE, TARGET :: contexts !<The contexts for OpenCMISS
  
   !Interfaces
 
@@ -120,6 +123,8 @@ MODULE Cmiss
   PUBLIC CMFE_MAJOR_VERSION,CMFE_MINOR_VERSION,CMFE_REVISION_VERSION,CMFE_BUILD_VERSION
 
   PUBLIC CMFE_RETURN_ERROR_CODE,CMFE_OUTPUT_ERROR,CMFE_TRAP_ERROR
+
+  PUBLIC contexts
 
   PUBLIC cmfe_ErrorHandlingModeGet_,cmfe_ErrorHandlingModeSet_
   
@@ -199,28 +204,28 @@ CONTAINS
 
 !!TODO Underscore to avoid name clash. Can be removed upon prefix rename.
   
-  !>Finalises CMISS. \see OPENOpenCMISS::Iron::CMISSFinalise
-  SUBROUTINE cmfe_Finalise_(err,error,*)
+  !>Finalises OpenCMISS. \see OpenCMISS::Iron::cmfe_Finalise
+  SUBROUTINE cmfe_Finalise_(context,err,error,*)
   
     !Argument variables
+    TYPE(ContextType), POINTER :: context !<The context to finalise
     INTEGER(INTG), INTENT(INOUT) :: err !<The error string
     TYPE(VARYING_STRING), INTENT(INOUT) :: error !<The error code
     !Local Variables
 
-    !Finalise the problems
-    CALL PROBLEMS_FINALISE(err,error,*999)
-    !Finalise the regions
-    CALL REGIONS_FINALISE(err,error,*999)
-    !Finalise the coordinate systems
-    CALL COORDINATE_SYSTEMS_FINALISE(err,error,*999)
-    !Finalise bases
-    CALL Bases_Finalise(err,error,*999)
-    !Reset the signal handler
-    CALL cmfe_ResetFatalHandler()
-    !Finalise computational enviroment
-    CALL ComputationalEnvironment_Finalise(err,error,*999)
-    !Finalise the base routines
-    CALL BaseRoutines_Finalise(err,error,*999)
+    !Destroy context
+    CALL Context_Destroy(context,err,error,*999)
+
+    IF(contexts%numberOfContexts==0) THEN
+      !Reset the signal handler
+      CALL cmfe_ResetFatalHandler()
+      !Finalise contexts
+      CALL Contexts_Finalise(contexts,err,error,*999)
+      !Finalise the base routines
+      CALL BaseRoutines_Finalise(err,error,*999)
+      !Reset first init
+      cmfeFirstInit=.FALSE.
+    ENDIF
      
     RETURN
 999 RETURN 1
@@ -233,39 +238,37 @@ CONTAINS
 
 !!TODO Underscore to avoid name clash. Can be removed upon prefix rename.
 
-  !>Initialises CMISS. \see OPENOpenCMISS::Iron::CMISSInitialise
-  SUBROUTINE cmfe_Initialise_(worldRegion,err,error,*)
+  !>Initialises OpenCMISS. \see OpenCMISS::Iron::cmfe_Initialise
+  SUBROUTINE cmfe_Initialise_(newContext,err,error,*)
   
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: worldRegion !<On exit, a pointer to the world region. Must not be associated on entry.
+    TYPE(ContextType), POINTER :: newContext !<On return, a pointer to the new context. Must not be associated on entry.
     INTEGER(INTG), INTENT(INOUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(INOUT) :: error !<The error string
     !Local Variables
+    INTEGER(INTG) :: myWorldComputationNodeNumber
     TYPE(VARYING_STRING) :: versionString
 
-    !Initialise error mode
-    cmfe_ErrorHandlingMode = CMFE_OUTPUT_ERROR !Default for now, maybe make CMFE_RETURN_ERROR_CODE the default
-    !Initialise the base routines
-    CALL BaseRoutines_Initialise(err,error,*999)
-    !Intialise the computational environment
-    CALL ComputationalEnvironment_Initialise(err,error,*999)
-    !Setup signal handling
-    CALL cmfe_InitFatalHandler()
-    CALL cmfe_SetFatalHandler()
-    IF(ASSOCIATED(worldRegion)) THEN
-      CALL FlagError("World region is already associated.",err,error,*999)
-    ELSE
-      !Intialise the bases
-      CALL Bases_Initialise(err,error,*999)
-      !Initialise the coordinate systems
-      CALL COORDINATE_SYSTEMS_INITIALISE(err,error,*999)
-      !Initialise the regions 
-      CALL REGIONS_INITIALISE(worldRegion,err,error,*999)
-      !Initialise the problems
-      CALL PROBLEMS_INITIALISE(err,error,*999)
-      
+    IF(.NOT.cmfeFirstInit) THEN
+      !Initialise error mode
+      cmfe_ErrorHandlingMode = CMFE_OUTPUT_ERROR !Default for now, maybe make CMFE_RETURN_ERROR_CODE the default
+      !Initialise the base routines
+      CALL BaseRoutines_Initialise(err,error,*999)
+      !Initialise contexts
+      CALL Contexts_Initialise(contexts,err,error,*999)
+      !Setup signal handling
+      CALL cmfe_InitFatalHandler()
+      CALL cmfe_SetFatalHandler()
+    ENDIF
+    
+    !Create new context
+    CALL Context_Create(contexts,newContext,err,error,*999)
+
+    IF(.NOT.cmfeFirstInit) THEN
       !Write out the CMISS version
-      IF(computationalEnvironment%myComputationalNodeNumber==0) THEN
+      CALL ComputationEnvironment_WorldNodeNumberGet(newContext%computationEnvironment,myWorldComputationNodeNumber, &
+        & err,error,*999)
+      IF(myWorldComputationNodeNumber==0) THEN
         versionString="OpenCMISS(Iron) version "//TRIM(NumberToVString(CMFE_MAJOR_VERSION,"*",err,error))
         versionString=versionString//"."
         versionString=versionString//TRIM(NumberToVString(CMFE_MINOR_VERSION,"*",err,error))
@@ -273,11 +276,12 @@ CONTAINS
         versionString=versionString//TRIM(NumberToVString(CMFE_REVISION_VERSION,"*",err,error))
         !versionString=versionString//" ("
         !versionString=versionString//TRIM(CMFE_BUILD_VERSION(6:))
-        !versionString=versionString//" )"
-        
+        !versionString=versionString//" )"        
         !WRITE(*,'(A)') CHAR(versionString)
 
       ENDIF
+      !Set first initalised
+      cmfeFirstInit = .TRUE.
     ENDIF
     
     RETURN

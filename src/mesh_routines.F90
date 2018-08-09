@@ -49,7 +49,10 @@ MODULE MESH_ROUTINES
   USE BasisAccessRoutines
   USE CmissMPI
   USE CMISS_PARMETIS
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
+  USE Constants
+  USE ContextAccessRoutines
   USE COORDINATE_ROUTINES
   USE DataProjectionAccessRoutines
   USE DOMAIN_MAPPINGS
@@ -154,6 +157,8 @@ MODULE MESH_ROUTINES
   PUBLIC DECOMPOSITION_MESH_COMPONENT_NUMBER_GET,DECOMPOSITION_MESH_COMPONENT_NUMBER_SET
   
   PUBLIC DECOMPOSITION_NUMBER_OF_DOMAINS_GET,DECOMPOSITION_NUMBER_OF_DOMAINS_SET
+
+  PUBLIC Decomposition_WorkGroupSet
 
   PUBLIC DecompositionTopology_DataPointCheckExists
   
@@ -304,7 +309,7 @@ CONTAINS
       CALL DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
       !Initialise the topology information for this decomposition
       CALL DECOMPOSITION_TOPOLOGY_INITIALISE(DECOMPOSITION,ERR,ERROR,*999)
-      !Initialise the domain for this computational node
+      !Initialise the domain for this computation node
       CALL DOMAIN_INITIALISE(DECOMPOSITION,ERR,ERROR,*999)
       !Calculate the decomposition topology
       CALL DECOMPOSITION_TOPOLOGY_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
@@ -353,9 +358,12 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: decompositionIdx,dummyErr
-    TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+    TYPE(ContextType), POINTER :: context
     TYPE(DECOMPOSITION_TYPE), POINTER :: newDecomposition
     TYPE(DECOMPOSITION_PTR_TYPE), ALLOCATABLE :: newDecompositions(:)
+    TYPE(REGION_TYPE), POINTER :: region    
+    TYPE(WorkGroupType), POINTER :: worldWorkGroup
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain 
 
     NULLIFY(newDecomposition)
@@ -392,6 +400,15 @@ CONTAINS
                 newDecomposition%MESH_COMPONENT_NUMBER=1
                 !Default decomposition is all the mesh with one domain.
                 newDecomposition%DECOMPOSITION_TYPE=DECOMPOSITION_ALL_TYPE
+                NULLIFY(region)
+                CALL Mesh_RegionGet(mesh,region,err,error,*999)
+                NULLIFY(context)
+                CALL Region_ContextGet(region,context,err,error,*999)
+                NULLIFY(computationEnvironment)
+                CALL Context_ComputationEnvironmentGet(context,computationEnvironment,err,error,*999)
+                NULLIFY(worldWorkGroup)
+                CALL ComputationEnvironment_WorldWorkGroupGet(computationEnvironment,worldWorkGroup,err,error,*999)
+                newDecomposition%workGroup=>worldWorkGroup
                 newDecomposition%NUMBER_OF_DOMAINS=1
                 newDecomposition%numberOfElements=mesh%NUMBER_OF_ELEMENTS
                 ALLOCATE(newDecomposition%ELEMENT_DOMAIN(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
@@ -639,10 +656,13 @@ CONTAINS
     ! LOGICAL, ALLOCATABLE :: IRecvCompleted(:)
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain 
 
+    INTEGER(INTG) :: groupCommunicator
+
     REAL(DP) :: UBVEC(1)
     REAL(DP), ALLOCATABLE :: TPWGTS(:)
     !REAL(DP) :: NUMBER_ELEMENTS_PER_NODE
     REAL(DP) :: NumberElementsPerNode 
+    TYPE(ContextType), POINTER :: context    
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -671,11 +691,16 @@ CONTAINS
             !IF(DECOMPOSITION%NUMBER_OF_DOMAINS==1) THEN
             component_idx=DECOMPOSITION%MESH_COMPONENT_NUMBER
 
+            CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
+            CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
+            CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+
+            ! Replaced by work groups above!!   
             ! get rank count and own rank
-            NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
-            MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-            IF(ERR/=0) GOTO 999
+            !NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+            !IF(ERR/=0) GOTO 999
+            !MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+            !IF(ERR/=0) GOTO 999
 
             SELECT CASE(DECOMPOSITION%DECOMPOSITION_TYPE)
             CASE(DECOMPOSITION_ALL_TYPE)
@@ -815,6 +840,12 @@ CONTAINS
                 ENDDO !ne
                 
                 !Set up ParMETIS variables
+                NULLIFY(context)
+                CALL WorkGroup_ContextGet(decomposition%workGroup,context,err,error,*999)
+                CALL Context_RandomSeedsSizeGet(context,randomSeedsSize,err,error,*999)
+                ALLOCATE(randomSeeds(randomSeedsSize),STAT=err)
+                IF(err/=0) CALL FlagError("Could not allocate random seeds.",err,error,*999)
+                CALL Context_RandomSeedsGet(context,randomSeeds,err,error,*999)              
                 WEIGHT_FLAG=0 !No weights
                 ELEMENT_WEIGHT(1)=1 !Isn't used due to weight flag
                 NUMBER_FLAG=0 !C Numbering as there is a bug with Fortran numbering
@@ -827,14 +858,16 @@ CONTAINS
                   NUMBER_OF_COMMON_NODES=2  ! for 2D or 3D nodes it is 2 nodes, i.e. in a 3D mesh also elements sharing an edge are considered adjacent 
                 ENDIF
 
-
                 TPWGTS=1.0_DP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP)  ! target value for weights fraction per partition
                 UBVEC=1.05_DP ! imbalance tolerance: 5% 
 
                 PARMETIS_OPTIONS(0)=1 !If zero, defaults are used, otherwise next two values are used
                 PARMETIS_OPTIONS(1)=7 !Level of information to output
-                PARMETIS_OPTIONS(2)=cmissRandomSeeds(1) !Seed for random number generator
-              
+                !PARMETIS_OPTIONS(2)=cmissRandomSeeds(1) !Seed for random number generator
+                PARMETIS_OPTIONS(2)=randomSeeds(1) !Seed for random number generator
+
+                IF(ALLOCATED(randomSeeds)) DEALLOCATE(randomSeeds)
+
                 IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN 
                 ! use variable DECOMPOSITION%ELEMENT_DOMAIN, distribute information such that every rank has all information
                 
@@ -849,13 +882,13 @@ CONTAINS
                     & TPWGTS,UBVEC,PARMETIS_OPTIONS, &    ! UBVEC: imbalance tolerance
                     & DECOMPOSITION%NUMBER_OF_EDGES_CUT, &  ! output: number of edge cuts
                     & DECOMPOSITION%ELEMENT_DOMAIN(ELEMENT_DISTRIBUTION(MyComputationalNodeNumber)+1:), &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne
-                    & computationalEnvironment%mpiCommunicator,ERR,ERROR,*999)
+                    & groupCommunicator,ERR,ERROR,*999)
                 
                 !Transfer all the element domain information to the other computational nodes so that each rank has all the info
                   IF(NumberComputationalNodes>1) THEN
                   !This should work on a single processor but doesn't for mpich2 under windows. Maybe a bug? Avoid for now.
                   CALL MPI_ALLGATHERV(MPI_IN_PLACE,MaxNumberElementsPerNode,MPI_INTEGER,DECOMPOSITION%ELEMENT_DOMAIN, &
-                    & RECEIVE_COUNTS,ELEMENT_DISTRIBUTION,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                    & RECEIVE_COUNTS,ELEMENT_DISTRIBUTION,MPI_INTEGER,groupCommunicator,MPI_IERROR)
 
                   CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
                 ! note: allgatherV: complete fractioned vector on each rank, where each rank has only its own part
@@ -881,7 +914,7 @@ CONTAINS
                     & TPWGTS,UBVEC,PARMETIS_OPTIONS, &    ! UBVEC: imbalance tolerance
                     & DECOMPOSITION%NUMBER_OF_EDGES_CUT, &  ! output: number of edge cuts
                     & ElementDomain, &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne, c style numbering
-                    & computationalEnvironment%mpiCommunicator,ERR,ERROR,*999)
+                    & groupCommunicator,ERR,ERROR,*999)
                   
                   ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
                   ! the list contains pairs of (global el. no., domain no)
@@ -1039,6 +1072,7 @@ CONTAINS
     IF(ALLOCATED(ADJACENT_NODE_PTR)) DEALLOCATE(ADJACENT_NODE_PTR)
     IF(ALLOCATED(ADJACENT_NODE_INDICES)) DEALLOCATE(ADJACENT_NODE_INDICES) 
     IF(ALLOCATED(TPWGTS)) DEALLOCATE(TPWGTS)
+    IF(ALLOCATED(randomSeeds)) DEALLOCATE(randomSeeds)
     ERRORSEXITS("DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE",ERR,ERROR)
     RETURN 1
     
@@ -1062,6 +1096,7 @@ CONTAINS
       & MaximumNumberElementsToReceiveFromOneComputationalNode, ComputationalNodesToSendToNo, ComputationalNodesToReceiveFromNo, &
       & NumberElementsToComputationalNode, NumberElementsFromComputationalNode, NumberElementsInReceivedElementsList, &
       & ElementToSendNo, NumberOwnLocalElements
+    INTEGER(INTG) :: groupCommunicator
     INTEGER(INTG), ALLOCATABLE :: NumberLocalElementsOnRank(:), NumberStoredElementsForRank(:), ElementSendBuffers(:,:), &
       & SendRequestHandle(:), ReceiveRequestHandle(:)
     INTEGER(INTG), ALLOCATABLE, DIMENSION(:,:) :: ElementReceiveBuffers
@@ -1078,11 +1113,16 @@ CONTAINS
       CALL FlagError("Decomposition Elements mapping is already allocated.",ERR,ERROR,*999)
     ENDIF
 
+    CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+
+    ! Replaced by work groups above!!   
     ! get rank count and own rank
-    NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-    MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
+    ! NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    ! IF(ERR/=0) GOTO 999
+    ! MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    ! IF(ERR/=0) GOTO 999
 
     ! Allocate arrays
     ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING,STAT=ERR)
@@ -1091,7 +1131,7 @@ CONTAINS
     ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
     IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
      
-    CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DECOMPOSITION%ELEMENTS_MAPPING, DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+    CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DECOMPOSITION%ELEMENTS_MAPPING, DECOMPOSITION%workGroup,ERR,ERROR,*999)
     ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
 
     
@@ -1171,7 +1211,7 @@ CONTAINS
       MpiWindowSizeBytes = NumberComputationalNodes*EXTENT
       MpiDisplacementsUnitBytes = EXTENT
       CALL MPI_WIN_CREATE(NumberLocalElementsOnRank(0:NumberComputationalNodes-1), MpiWindowSizeBytes, &
-        & MpiDisplacementsUnitBytes, MPI_INFO_NULL, computationalEnvironment%mpiCommunicator, MpiMemoryWindow, MPI_IERROR)
+        & MpiDisplacementsUnitBytes, MPI_INFO_NULL, groupCommunicator, MpiMemoryWindow, MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
       
       CALL MPI_WIN_FENCE(0, MpiMemoryWindow, MPI_IERROR)
@@ -1289,7 +1329,7 @@ CONTAINS
           
           CALL MPI_ISEND(ElementSendBuffers(1:NumberElementsToComputationalNode,ComputationalNodesToSendToNo), &
             & NumberElementsToComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
-            & computationalEnvironment%mpiCommunicator, SendRequestHandle(ComputationalNodesToSendToNo), MPI_IERROR)
+            & groupCommunicator, SendRequestHandle(ComputationalNodesToSendToNo), MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
           
           ComputationalNodesToSendToNo = ComputationalNodesToSendToNo+1
@@ -1312,7 +1352,7 @@ CONTAINS
           
           CALL MPI_IRECV(ElementReceiveBuffers(1:NumberElementsFromComputationalNode,ComputationalNodesToReceiveFromNo), &
             & NumberElementsFromComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
-            & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
+            & groupCommunicator, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
           
           ComputationalNodesToReceiveFromNo = ComputationalNodesToReceiveFromNo + 1
@@ -1395,7 +1435,7 @@ CONTAINS
       ! fill NUMBER_OF_DOMAIN_LOCAL
       CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,ELEMENTS_MAPPING%& 
         & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
-        & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+        & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
          
 
@@ -1444,6 +1484,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: ElementLocalNo, ElementGlobalNo, NumberComputationalNodes, MyComputationalNodeNumber, nn, NodeGlobalNo, &
       & AdjacentElementIdx, AdjacentElementGlobalNo, I, MPI_IERROR
+    INTEGER(INTG) :: groupCommunicator
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(LIST_TYPE), POINTER :: GhostElementsList, InternalElementsList, BoundaryElementsList
@@ -1452,11 +1493,16 @@ CONTAINS
 
     ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR,*999)
 
+    CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+
+    ! Replaced by work groups above!!   
     ! get rank count and own rank
-    NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-    MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
+    !NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
+    !MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
     
     ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
     TOPOLOGY=>DECOMPOSITION%MESH%TOPOLOGY(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
@@ -1578,7 +1624,7 @@ CONTAINS
           
     CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,ELEMENTS_MAPPING%&
       & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
-      & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+      & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                    
     EXITS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE")
@@ -1606,6 +1652,7 @@ CONTAINS
       & AdjacentDomainIdx, DomainIdx, ElementIdx, MpiRequest, AssertValue, MpiGroup, GhostSendIndexGlobalNo, LocalElementNo, &
       & MaximumReceiveBufferSize, MaximumSendBufferSize, FoundElementsCount, GhostIdx, &
       & FirstGhostElementGlobalNo, LastGhostElementGlobalNo, NumberRemoteGhostElements 
+    INTEGER(INTG) :: groupCommunicator
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     INTEGER(INTG), ALLOCATABLE :: NumberBoundaryElements(:), FirstLastBoundaryElement(:), BoundaryElementGlobalNumber(:), &
       & RemoteBoundaryElements(:), SendRequestHandle(:), ReceiveRequestHandle(:), SendBuffers(:,:), ReceiveBuffers(:,:), &
@@ -1622,17 +1669,16 @@ CONTAINS
 
     ENTERS("DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE",ERR,ERROR,*999) 
 
+    CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+
+    ! Replaced by work groups above!!  
     ! get rank count and own rank
-    NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-    MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-          
-    ! get rank count and own rank
-    NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-    MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
+    !NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
+    !MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
     
     ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
     
@@ -1643,7 +1689,7 @@ CONTAINS
     
     CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
       & NumberBoundaryElements(0:NumberComputationalNodes-1),1,MPI_INTEGER, &
-      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+      & groupCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
     
     ! communicate bounds of boundary nodes, i.e. the first and last global element number of the contained boundary nodes
@@ -1665,7 +1711,7 @@ CONTAINS
     
     CALL MPI_ALLGATHER(MPI_IN_PLACE,2,MPI_INTEGER, &
       & FirstLastBoundaryElement(0:NumberComputationalNodes*2-1),2,MPI_INTEGER, &
-      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+      & groupCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
     
     !PRINT *, MyComputationalNodeNumber, ": NumberBoundaryElements: ", NumberBoundaryElements
@@ -1693,14 +1739,14 @@ CONTAINS
     MpiLocalWindowSizeBytes   = ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY*EXTENT
     MpiDisplacementsUnitBytes = EXTENT
     CALL MPI_WIN_CREATE(BoundaryElementGlobalNumber(1:ELEMENTS_MAPPING%NUMBER_OF_BOUNDARY), MpiLocalWindowSizeBytes, &
-      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, computationalEnvironment%mpiCommunicator, MpiMemoryWindow, MPI_IERROR)
+      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, groupCommunicator, MpiMemoryWindow, MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
     
     !CALL MPI_WIN_FENCE(MPI_MODE_NOPRECEDE, MpiMemoryWindow, MPI_IERROR)
     !CALL MPI_ERROR_CHECK("MPI_WIN_FENCE",MPI_IERROR,ERR,ERROR,*999)
         
     AssertValue = 0
-    !CALL MPI_COMM_GROUP(computationalEnvironment%mpiCommunicator, MpiGroup, MPI_IERROR)
+    !CALL MPI_COMM_GROUP(groupCommunicator, MpiGroup, MPI_IERROR)
     !CALL MPI_ERROR_CHECK("MPI_WIN_START",MPI_IERROR,ERR,ERROR,*999)
     !CALL MPI_WIN_START(MpiGroup, AssertValue, MpiMemoryWindow, MPI_IERROR)
     !CALL MPI_ERROR_CHECK("MPI_WIN_START",MPI_IERROR,ERR,ERROR,*999)
@@ -1961,7 +2007,7 @@ CONTAINS
       
       CALL MPI_ISEND(MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS, &
         & 1, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
-        & computationalEnvironment%mpiCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+        & groupCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
       MaximumSendBufferSize = MAX(MaximumSendBufferSize, MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS)
     ENDDO
@@ -1973,7 +2019,7 @@ CONTAINS
       
       CALL MPI_IRECV(MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS, &
         & 1, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
-        & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+        & groupCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
     ENDDO
     
@@ -2015,7 +2061,7 @@ CONTAINS
       
       CALL MPI_ISEND(SendBuffers(1:MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS,AdjacentDomainIdx), &
         & MappingAdjacentDomain%NUMBER_OF_RECEIVE_GHOSTS, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
-        & computationalEnvironment%mpiCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+        & groupCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
     ENDDO
     
@@ -2026,7 +2072,7 @@ CONTAINS
       
       CALL MPI_IRECV(ReceiveBuffers(1:MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS,AdjacentDomainIdx), &
         & MappingAdjacentDomain%NUMBER_OF_SEND_GHOSTS, MPI_INT, MappingAdjacentDomain%DOMAIN_NUMBER, 0, &
-        & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+        & groupCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
     ENDDO 
     
@@ -2064,7 +2110,7 @@ CONTAINS
     
     CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
       & NumberGhostElements(0:NumberComputationalNodes-1),1,MPI_INTEGER, &
-      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+      & groupCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
     
     ! communicate bounds of ghost nodes, i.e. the first and last global element number of the contained ghost nodes
@@ -2086,7 +2132,7 @@ CONTAINS
     
     CALL MPI_ALLGATHER(MPI_IN_PLACE,2,MPI_INTEGER, &
       & FirstLastGhostElement(0:NumberComputationalNodes*2-1),2,MPI_INTEGER, &
-      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+      & groupCommunicator,MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
     
     ! provide own ghost element global numbers to all processes via RMA
@@ -2112,7 +2158,7 @@ CONTAINS
     MpiLocalWindowSizeBytes = ELEMENTS_MAPPING%NUMBER_OF_GHOST*EXTENT
     MpiDisplacementsUnitBytes = EXTENT
     CALL MPI_WIN_CREATE(GhostElementGlobalNumber(1:ELEMENTS_MAPPING%NUMBER_OF_GHOST), MpiLocalWindowSizeBytes, &
-      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, computationalEnvironment%mpiCommunicator, MpiMemoryWindow, MPI_IERROR)
+      & MpiDisplacementsUnitBytes, MPI_INFO_NULL, groupCommunicator, MpiMemoryWindow, MPI_IERROR)
     CALL MPI_ERROR_CHECK("MPI_WIN_CREATE",MPI_IERROR,ERR,ERROR,*999)
             
     AssertValue = 0
@@ -2642,7 +2688,8 @@ CONTAINS
           MESH_TOPOLOGY=>MESH%TOPOLOGY(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
           IF(ASSOCIATED(MESH_TOPOLOGY)) THEN
             IF(GLOBAL_ELEMENT_NUMBER>0.AND.GLOBAL_ELEMENT_NUMBER<=MESH_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS) THEN
-              number_computational_nodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+              CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,number_computational_nodes,err,error,*999)
+              !number_computational_nodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
               IF(ERR/=0) GOTO 999
               IF(DOMAIN_NUMBER>=0.AND.DOMAIN_NUMBER<number_computational_nodes) THEN
 !              DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
@@ -2746,6 +2793,7 @@ CONTAINS
       decomposition%numberOfDimensions=0
       decomposition%numberOfComponents=0
       decomposition%DECOMPOSITION_TYPE=DECOMPOSITION_ALL_TYPE
+      NULLIFY(decomposition%workGroup)
       decomposition%NUMBER_OF_DOMAINS=0
       decomposition%NUMBER_OF_EDGES_CUT=0
       decomposition%numberOfElements=0
@@ -2915,7 +2963,9 @@ CONTAINS
             !wolfye???<=?
             IF(NUMBER_OF_DOMAINS<=DECOMPOSITION%numberOfElements) THEN
               !Get the number of computational nodes
-              numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+              !numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+              CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationalNodes, &
+                & err,error,*999)
               IF(ERR/=0) GOTO 999
               !!TODO: relax this later
               !IF(NUMBER_OF_DOMAINS==numberOfComputationalNodes) THEN
@@ -2950,6 +3000,40 @@ CONTAINS
 999 ERRORSEXITS("DECOMPOSITION_NUMBER_OF_DOMAINS_SET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE DECOMPOSITION_NUMBER_OF_DOMAINS_SET
+
+  !
+  !================================================================================================================================
+  !
+
+
+
+  !>Sets the workgroup to use for a decomposition on a given mesh. \see OpenCMISS::Iron::cmfe_Decomposition_WorkGroupSet
+  SUBROUTINE Decomposition_WorkGroupSet(decomposition,workGroup,err,error,*)
+
+    !Argument variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition !<A pointer to the decomposition to set the work group for
+    TYPE(WorkGroupType), POINTER :: workGroup !<A pointer to the work group to use for the decomposition
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: decomposition_no
+    TYPE(MESH_TYPE), POINTER :: MESH
+
+    ENTERS("Decomposition_WorkGroupSet",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(decomposition)) CALL FlagError("Decomposition is not associated.",err,error,*999)
+    IF(decomposition%DECOMPOSITION_FINISHED) CALL FlagError("Decomposition has already been finished.",err,error,*999)
+    IF(.NOT.ASSOCIATED(workGroup)) CALL FlagError("Work group is not associated.",err,error,*999)
+    IF(.NOT.workGroup%workGroupFinished) CALL FlagError("Work group has not been finished.",err,error,*999)
+
+    decomposition%workGroup=>workGroup
+       
+    EXITS("Decomposition_WorkGroupSet")
+    RETURN
+999 ERRORSEXITS("Decomposition_WorkGroupSet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Decomposition_WorkGroupSet
 
   !
   !================================================================================================================================
@@ -3007,7 +3091,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: localElement,globalElement,dataPointIdx,localData,meshComponentNumber
     INTEGER(INTG) :: INSERT_STATUS,MPI_IERROR,NUMBER_OF_COMPUTATIONAL_NODES,myComputationalNodeNumber,NUMBER_OF_GHOST_DATA, &
-      & NUMBER_OF_LOCAL_DATA
+      & NUMBER_OF_LOCAL_DATA, groupCommunicator
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: decompositionElements
     TYPE(DecompositionDataPointsType), POINTER :: decompositionData
@@ -3021,6 +3105,7 @@ CONTAINS
       IF(ASSOCIATED(decompositionData)) THEN
         decomposition=>decompositionData%DECOMPOSITION
         IF(ASSOCIATED(decomposition)) THEN
+         CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
          decompositionElements=>TOPOLOGY%ELEMENTS
          IF(ASSOCIATED(decompositionElements)) THEN
            elementsMapping=>decomposition%DOMAIN(decomposition%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS
@@ -3028,10 +3113,12 @@ CONTAINS
               meshComponentNumber=decomposition%MESH_COMPONENT_NUMBER
               meshData=>decomposition%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints
               IF(ASSOCIATED(meshData)) THEN
-                NUMBER_OF_COMPUTATIONAL_NODES=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
-                myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
+                CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,NUMBER_OF_COMPUTATIONAL_NODES,err,error,*999)
+                CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationalNodeNumber,err,error,*999)
+                !NUMBER_OF_COMPUTATIONAL_NODES=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+                !IF(ERR/=0) GOTO 999
+                !myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+                !IF(ERR/=0) GOTO 999
                 ALLOCATE(decompositionData%numberOfDomainLocal(0:NUMBER_OF_COMPUTATIONAL_NODES-1),STAT=ERR)
                 ALLOCATE(decompositionData%numberOfDomainGhost(0:NUMBER_OF_COMPUTATIONAL_NODES-1),STAT=ERR)
                 ALLOCATE(decompositionData%numberOfElementDataPoints(decompositionElements%NUMBER_OF_GLOBAL_ELEMENTS),STAT=ERR)
@@ -3076,11 +3163,11 @@ CONTAINS
                 NUMBER_OF_GHOST_DATA=decompositionData%totalNumberOfDataPoints-decompositionData%numberOfDataPoints
                 !Gather number of local data points on all computational nodes
                 CALL MPI_ALLGATHER(NUMBER_OF_LOCAL_DATA,1,MPI_INTEGER,decompositionData% &
-                  & numberOfDomainLocal,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & numberOfDomainLocal,1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 !Gather number of ghost data points on all computational nodes
                 CALL MPI_ALLGATHER(NUMBER_OF_GHOST_DATA,1,MPI_INTEGER,decompositionData% &
-                  & numberOfDomainGhost,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & numberOfDomainGhost,1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
               ELSE
                 CALL FlagError("Mesh data points topology is not associated.",ERR,ERROR,*999)
@@ -5774,7 +5861,7 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%DOFS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings dofs.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOFS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%NUMBER_OF_DOMAINS, &
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOFS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
           & ERR,ERROR,*999)
       ENDIF
     ELSE
@@ -5802,7 +5889,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,adjacent_element,domain_no,domain_idx,ne,nn,np,NUMBER_OF_DOMAINS, &
 !      & NUMBER_OF_ADJACENT_ELEMENTS,myComputationalNodeNumber,component_idx
-       & NUMBER_OF_ADJACENT_ELEMENTS,MyComputationalNodeNumber,component_idx 
+       & NUMBER_OF_ADJACENT_ELEMENTS,component_idx 
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_ELEMENTS(:),DOMAINS(:),LOCAL_ELEMENT_NUMBERS(:)
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: ADJACENT_ELEMENTS_LIST(:)
@@ -5833,10 +5920,7 @@ CONTAINS
             IF(ASSOCIATED(DOMAIN%MESH)) THEN
               MESH=>DOMAIN%MESH
               component_idx=DOMAIN%MESH_COMPONENT_NUMBER
-              !myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-              MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR) 
-              IF(ERR/=0) GOTO 999        
-              
+             
               !Calculate the local and global numbers and set up the mappings
               ALLOCATE(ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate element mapping global to local map.",ERR,ERROR,*999)
@@ -6113,7 +6197,7 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%ELEMENTS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings elements.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%ELEMENTS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%NUMBER_OF_DOMAINS, &
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%ELEMENTS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
           & ERR,ERROR,*999)
       ENDIF
     ELSE
@@ -6629,16 +6713,21 @@ CONTAINS
     TYPE(DOMAIN_MAPPING_TYPE) :: DOFS_MAPPING_NEW 
     TYPE(DOMAIN_MAPPING_TYPE),POINTER :: NODES_MAPPING_NEW_PTR
     INTEGER(INTG) :: DOFS_NUMBER_OF_LOCAL_NEW, DOFS_TOTAL_NUMBER_OF_LOCAL_NEW, DOFS_NUMBER_OF_GLOBAL_NEW, &
-      & MaxDepth,MaxArrayLength,I,MyComputationalNodeNumber,NumberComputationalNodes
+      & MaxDepth,MaxArrayLength,I,MyComputationalNodeNumber,NumberComputationalNodes, groupCommunicator
 
 
     ENTERS("DOMAIN_MAPPINGS_INITIALISE",ERR,ERROR,*999)
 
+    CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,NumberComputationalNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,MyComputationalNodeNumber,err,error,*999)
+
+    ! Replaced by work groups above!!   
     ! get rank count and own rank
-    NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
-    MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-    IF(ERR/=0) GOTO 999
+    !NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
+    !MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    !IF(ERR/=0) GOTO 999
         
 
     IF(ASSOCIATED(DOMAIN)) THEN
@@ -6919,6 +7008,9 @@ CONTAINS
       & NumberInteriorAndLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryAndGhostNodesDomain(:), &
       & NumberNodesInDomain(:), GhostNodes(:), InternalNodes(:), BoundaryNodes(:), IntegerArray(:), ReceiveBuffer(:), &
       & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:)
+
+    INTEGER(INTG) :: groupCommunicator
+
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -6943,6 +7035,7 @@ CONTAINS
         IF(ASSOCIATED(DOMAIN%MAPPINGS%NODES)) THEN
           NODES_MAPPING=>DOMAIN%MAPPINGS%NODES
           IF(ASSOCIATED(DOMAIN%DECOMPOSITION)) THEN
+            CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
             DECOMPOSITION=>DOMAIN%DECOMPOSITION
             IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
               ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
@@ -6950,11 +7043,15 @@ CONTAINS
                 MESH=>DOMAIN%MESH
                 component_idx=DOMAIN%MESH_COMPONENT_NUMBER
                 TOPOLOGY=>MESH%TOPOLOGY(component_idx)%PTR
-                
-                NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
-                MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
+
+                CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,NumberComputationalNodes,err,error,*999)
+                CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,MyComputationalNodeNumber,err,error,*999)
+
+            ! Replaced by work groups above!!                   
+                !NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+                !IF(ERR/=0) GOTO 999
+                !MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+                !IF(ERR/=0) GOTO 999
                 
                 IF(DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
@@ -7311,7 +7408,7 @@ CONTAINS
                 
                 ! allreduce number of nodes
                 CALL MPI_ALLREDUCE(NumberNodes,TotalNumberNodes,1,MPI_DOUBLE,MPI_SUM, &
-                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 NODES_MAPPING%NUMBER_OF_GLOBAL = NINT(TotalNumberNodes)
                 
@@ -7367,7 +7464,7 @@ CONTAINS
                   AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
                 
                   CALL MPI_ISEND(NumberInteriorAndLocalNodes, 2, MPI_INT, AdjacentDomain, 0, &
-                    & computationalEnvironment%mpiCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+                    & groupCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                 ENDDO
                 
@@ -7375,7 +7472,7 @@ CONTAINS
                 DO AdjacentDomainIdx=1,NumberAdjacentDomains+1 
                   AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
                   CALL MPI_IRECV(NumberInteriorAndLocalNodesOnRank(:,AdjacentDomainIdx), 2, MPI_INT, AdjacentDomain, 0, &
-                    & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
+                    & groupCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)            
                 ENDDO
                 
@@ -7954,13 +8051,13 @@ CONTAINS
                   
                   ! number of nodes to be send to domain
                   CALL MPI_ISEND(NumberToSendToDomain(DomainIdx),1,MPI_INT,DomainNo,0, &
-                    & computationalEnvironment%mpiCommunicator, SendRequestHandle0(DomainIdx), MPI_IERROR)
+                    & groupCommunicator, SendRequestHandle0(DomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! actual global node numbers to send
                   IF (NumberToSendToDomain(DomainIdx) > 0) THEN
                     CALL MPI_ISEND(SendBuffer(1:NumberToSendToDomain(DomainIdx),DomainIdx),NumberToSendToDomain(DomainIdx), &
-                      & MPI_INT,DomainNo,1,computationalEnvironment%mpiCommunicator, SendRequestHandle1(DomainIdx), MPI_IERROR)
+                      & MPI_INT,DomainNo,1,groupCommunicator, SendRequestHandle1(DomainIdx), MPI_IERROR)
                     CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                   ENDIF
                 ENDDO
@@ -7970,7 +8067,7 @@ CONTAINS
                   DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
                           
                   CALL MPI_RECV(NumberOfNodesToReceive,1,MPI_INT,DomainNo,0, &
-                    & computationalEnvironment%mpiCommunicator,MPI_STATUS_IGNORE, MPI_IERROR)
+                    & groupCommunicator,MPI_STATUS_IGNORE, MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_RECV",MPI_IERROR,ERR,ERROR,*999)
             
                   IF (NumberOfNodesToReceive>0) THEN  
@@ -7979,7 +8076,7 @@ CONTAINS
                       & TRIM(NUMBER_TO_VSTRING(NumberOfNodesToReceive,"*",ERR,ERROR))//".",ERR,ERROR,*999)
                   
                     CALL MPI_RECV(ReceiveBuffer,NumberOfNodesToReceive,MPI_INT,DomainNo,1, &
-                      & computationalEnvironment%mpiCommunicator,MPI_STATUS_IGNORE,MPI_IERROR)
+                      & groupCommunicator,MPI_STATUS_IGNORE,MPI_IERROR)
                     CALL MPI_ERROR_CHECK("MPI_RECV",MPI_IERROR,ERR,ERROR,*999)
               
                     ! store received ghost nodes with domain in GhostNodesDomainsList
@@ -8329,7 +8426,7 @@ CONTAINS
                       
                 CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,NODES_MAPPING%&
                   & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
-                  & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                       
                 ! allocate number_of_domain_ghost
@@ -8340,7 +8437,7 @@ CONTAINS
                       
                 CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,NODES_MAPPING%&
                   & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
-                  & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                       
               
@@ -8405,7 +8502,7 @@ CONTAINS
                
                   ! allreduce number of dofs
                   CALL MPI_ALLREDUCE(DOFS_MAPPING%NUMBER_OF_LOCAL,DOFS_MAPPING%NUMBER_OF_GLOBAL,1,MPI_INT,MPI_SUM, &
-                    & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                    & groupCommunicator,MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! compute index positions for DOMAIN_LIST
@@ -8425,7 +8522,7 @@ CONTAINS
                  
                   CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DOFS_MAPPING%&
                     & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
-                    & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                    & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                          
                   ! allocate number_of_domain_ghost
@@ -8436,7 +8533,7 @@ CONTAINS
                         
                   CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,DOFS_MAPPING%&
                     & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
-                    & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                    & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                         
                   ! adjacent domains from nodes mapping
@@ -8543,10 +8640,14 @@ CONTAINS
                   component_idx=DOMAIN%MESH_COMPONENT_NUMBER
                   MESH_TOPOLOGY=>MESH%TOPOLOGY(component_idx)%PTR
                   
-                  numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-                  IF(ERR/=0) GOTO 999
-                  myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-                  IF(ERR/=0) GOTO 999
+                  CALL WorkGroup_NumberOfGroupNodesGet(NODES_MAPPING%workGroup,numberOfComputationalNodes, &
+                    & err,error,*999)
+                  CALL WorkGroup_GroupNodeNumberGet(NODES_MAPPING%workGroup,myComputationalNodeNumber, &
+                    & err,error,*999)
+                  !numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+                  !IF(ERR/=0) GOTO 999
+                  !myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+                  !IF(ERR/=0) GOTO 999
                   
                   !Calculate the local and global numbers and set up the mappings
                   ! allocate arrays 
@@ -9068,7 +9169,7 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%NODES,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings nodes.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%NODES,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%NUMBER_OF_DOMAINS, &
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%NODES,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
           & ERR,ERROR,*999)
       ENDIF
     ELSE
@@ -9401,7 +9502,7 @@ CONTAINS
 
     IF(ASSOCIATED(TOPOLOGY)) THEN
       IF(ASSOCIATED(TOPOLOGY%DOFS)) THEN
-        CALL FlagError("Decomposition already has topology dofs associated",ERR,ERROR,*999)
+        CALL FlagError("Domain already has topology dofs associated",ERR,ERROR,*999)
       ELSE
         ALLOCATE(TOPOLOGY%DOFS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate topology dofs",ERR,ERROR,*999)

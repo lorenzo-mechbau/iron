@@ -49,8 +49,10 @@ MODULE FIELDML_INPUT_ROUTINES
   USE BasisRoutines
   USE BasisAccessRoutines
   USE CMISS
-  USE CONSTANTS
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
+  USE Constants
+  USE ContextAccessRoutines
   USE COORDINATE_ROUTINES
   USE FIELD_ROUTINES
   USE FieldAccessRoutines
@@ -561,11 +563,12 @@ CONTAINS
   !
 
   !>Creates an OpenCMISS coordinate system using relevant parameters from FieldML. Does not call CreateFinish.
-  SUBROUTINE FieldmlInput_CoordinateSystemCreateStart( FIELDML_INFO, EVALUATOR_NAME, COORDINATE_SYSTEM, USER_NUMBER, &
-    & ERR, ERROR, * )
+  SUBROUTINE FieldmlInput_CoordinateSystemCreateStart( FIELDML_INFO, EVALUATOR_NAME, coordinateSystems, COORDINATE_SYSTEM, & 
+    & USER_NUMBER, ERR, ERROR, * )
     !Arguments
     TYPE(FIELDML_IO_TYPE), POINTER :: FIELDML_INFO !<The FieldML parsing state.
     TYPE(VARYING_STRING), INTENT(IN) :: EVALUATOR_NAME !<The name of the coordinate system evaluator.
+    TYPE(CoordinateSystemsType), POINTER :: coordinateSystems !<A pointer to the coordinate systems to create the coordinate system for
     TYPE(COORDINATE_SYSTEM_TYPE), POINTER, INTENT(IN) :: COORDINATE_SYSTEM !<The OpenCMISS coordinate system to initialize.
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number to assign to the coordinate system.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
@@ -604,7 +607,7 @@ CONTAINS
       CALL FlagError( "Coordinate system "//NAME(1:LENGTH)//" not yet supported.", ERR, ERROR, *999 )
     ENDIF
 
-    CALL COORDINATE_SYSTEM_CREATE_START( USER_NUMBER, COORDINATE_SYSTEM, ERR, ERROR, *999 )
+    CALL COORDINATE_SYSTEM_CREATE_START( USER_NUMBER, coordinateSystems, COORDINATE_SYSTEM, ERR, ERROR, *999 )
     !Set the coordinate system dimension and type
     CALL COORDINATE_SYSTEM_DIMENSION_SET( COORDINATE_SYSTEM, COORDINATE_COUNT, ERR, ERROR, *999 )
     CALL COORDINATE_SYSTEM_TYPE_SET( COORDINATE_SYSTEM, COORDINATE_TYPE, ERR, ERROR, *999 )
@@ -733,11 +736,12 @@ CONTAINS
   !
   
   !>Creates an OpenCMISS basis object using relevant parameters from FieldML. Does not call CreateFinish.
-  SUBROUTINE FIELDML_INPUT_BASIS_CREATE_START( FIELDML_INFO, EVALUATOR_NAME, USER_NUMBER, BASIS, ERR, ERROR, * )
+  SUBROUTINE FIELDML_INPUT_BASIS_CREATE_START( FIELDML_INFO, EVALUATOR_NAME, USER_NUMBER, basisFunctions, BASIS, ERR, ERROR, * )
     !Arguments
     TYPE(FIELDML_IO_TYPE), POINTER :: FIELDML_INFO !<The FieldML parsing state.
     TYPE(VARYING_STRING), INTENT(IN) :: EVALUATOR_NAME !<The name of the basis evaluator.
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number to assign to the basis.
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<A pointer to the basis functions to create the basis for
     TYPE(BASIS_TYPE), POINTER, INTENT(INOUT) :: BASIS !<The OpenCMISS basis object to create.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
@@ -772,7 +776,7 @@ CONTAINS
       & FIELDML_INFO%FML_HANDLE, ERR, ERROR, *999 )
   
     NULLIFY(BASIS)
-    CALL BASIS_CREATE_START( USER_NUMBER, BASIS, ERR, ERROR, *999 )
+    CALL BASIS_CREATE_START(USER_NUMBER, basisFunctions, BASIS, ERR, ERROR, *999 )
     CALL BASIS_TYPE_SET( BASIS, BASISTYPE, ERR, ERROR, *999 )
     CALL BASIS_NUMBER_OF_XI_SET( BASIS, size( BASIS_INTERPOLATIONS ), ERR, ERROR, *999 )
     CALL BASIS_INTERPOLATION_XI_SET( BASIS, BASIS_INTERPOLATIONS, ERR, ERROR, *999 )
@@ -946,14 +950,24 @@ CONTAINS
     TYPE(INTEGER_CINT_ALLOC_TYPE), ALLOCATABLE :: CONNECTIVITY_ORDERS(:)
     INTEGER(INTG) :: TEMP_POINTER, DATA_SOURCE, ORDER_HANDLE, TEMP_BASIS_HANDLE, FML_ERR
     TYPE(BASIS_TYPE), POINTER :: BASIS
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
+    TYPE(ContextType), POINTER :: context
     TYPE(MeshElementsType), POINTER :: MESH_ELEMENTS
+    TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS( "FIELDML_INPUT_CREATE_MESH_COMPONENT", ERR, ERROR, *999 )
     
     CALL FIELDML_ASSERT_IS_IN( FIELDML_INFO, ERR, ERROR, *999 )
     
     NULLIFY( BASIS )
-    NULLIFY( MESH_ELEMENTS )    
+    NULLIFY( MESH_ELEMENTS )
+
+    NULLIFY(region)
+    CALL Mesh_RegionGet(mesh,region,err,error,*999)
+    NULLIFY(context)
+    CALL Region_ContextGet(region,context,err,error,*999)
+    NULLIFY(basisFunctions)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
 
     HANDLE = Fieldml_GetObjectByName( FIELDML_INFO%FML_HANDLE, cchar(EVALUATOR_NAME) )
     IF( .NOT. FIELDML_INPUT_IS_TEMPLATE_COMPATIBLE( FIELDML_INFO, HANDLE, FIELDML_INFO%ELEMENTS_HANDLE, ERR, ERROR ) ) THEN
@@ -1028,7 +1042,7 @@ CONTAINS
         BASIS_NUMBER = Fieldml_GetObjectInt( FIELDML_INFO%FML_HANDLE, BASIS_REFERENCE_HANDLE )
         CALL FIELDML_UTIL_CHECK_FIELDML_ERROR( "Cannot get basis user number for element evaluator for mesh component "//&
           & EVALUATOR_NAME//".", FIELDML_INFO%FML_HANDLE, ERR, ERROR, *999 )
-        CALL BASIS_USER_NUMBER_FIND( BASIS_NUMBER, BASIS, ERR, ERROR, *999 )
+        CALL BASIS_USER_NUMBER_FIND(basisFunctions, BASIS_NUMBER, BASIS, ERR, ERROR, *999 )
         IF( .NOT. ASSOCIATED( BASIS ) ) THEN
           CALL FlagError( "Basis not found for component "//EVALUATOR_NAME//".", ERR, ERROR, *999 ) 
         ENDIF
@@ -1262,7 +1276,7 @@ CONTAINS
     INTEGER(INTG), TARGET :: OFFSETS(2), SIZES(2)
     REAL(C_DOUBLE), ALLOCATABLE, TARGET :: BUFFER(:)
     INTEGER(INTG) :: READER
-    INTEGER(INTG) :: myComputationalNodeNumber,nodeDomain,meshComponentNumber
+    INTEGER(INTG) :: myWorldComputationNodeNumber,nodeDomain,meshComponentNumber
     
     ENTERS( "FieldmlInput_FieldNodalParametersUpdate", ERR, ERROR, *999 )
     
@@ -1300,7 +1314,13 @@ CONTAINS
     OFFSETS(:) = 0
     SIZES(1) = 1
     SIZES(2) = FIELD_DIMENSIONS
-    
+
+    NULLIFY(context)
+    CALL Region_ContextGet(mesh%region,context,err,error,*999)
+    NULLIFY(computationEnvironment)
+    CALL Context_ComputationEnvironmentGet(context,computationEnvironment,err,error,*999)
+    CALL ComputationEnvironment_WorldNodeNumberGet(computationEnvironment,myWorldComputationNodeNumber,err,error,*999)
+
     DO NODE_NUMBER = 1, MESH_NODE_COUNT
       FML_ERR = Fieldml_ReadDoubleSlab( READER, C_LOC(OFFSETS), C_LOC(SIZES), C_LOC(BUFFER) )
       OFFSETS(1) = OFFSETS(1) + 1
@@ -1313,10 +1333,10 @@ CONTAINS
         !Default to version 1 of each node derivative (value hardcoded in loop)
         VERSION_NUMBER = 1
 
-        myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(err,error)
+        ! myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(err,error)
         CALL DECOMPOSITION_MESH_COMPONENT_NUMBER_GET(FIELD%DECOMPOSITION,meshComponentNumber,err,error,*999)
         CALL DECOMPOSITION_NODE_DOMAIN_GET(FIELD%DECOMPOSITION,NODE_NUMBER,meshComponentNumber,nodeDomain,err,error,*999)
-        IF(nodeDomain==myComputationalNodeNumber) THEN
+        IF(nodeDomain==myWorldComputationNodeNumber) THEN
           CALL FIELD_PARAMETER_SET_UPDATE_NODE( FIELD, VARIABLE_TYPE, SET_TYPE, VERSION_NUMBER, &
             & NO_GLOBAL_DERIV, NODE_NUMBER, COMPONENT_NUMBER, BUFFER( COMPONENT_NUMBER ), ERR, ERROR, *999 )
         ENDIF

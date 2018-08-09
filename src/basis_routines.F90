@@ -904,16 +904,16 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: USER_NUMBER
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
         
     ENTERS("BASIS_DESTROY",err,error,*999)
 
-    IF(ASSOCIATED(BASIS)) THEN
-      USER_NUMBER=BASIS%USER_NUMBER
-      CALL Basis_FamilyDestroy(USER_NUMBER,0,err,error,*999)
-      !NULLIFY(BASIS)
-    ELSE
-      CALL FlagError("Basis is not associated.",err,error,*999)
-    ENDIF
+    IF(.NOT.ASSOCIATED(basis)) CALL FlagError("Basis is not associated.",err,error,*999)
+
+    NULLIFY(basisFunctions)
+    CALL Basis_BasisFunctionsGet(basis,basisFunctions,err,error,*999)
+    userNumber=basis%USER_NUMBER
+    CALL Basis_FamilyDestroy(basisFunctions,userNumber,0,err,error,*999)
     
     EXITS("BASIS_DESTROY")
     RETURN
@@ -1870,11 +1870,12 @@ CONTAINS
   !================================================================================================================================
   !
   
-  !>Destroys a basis identified by its basis user number and family number. Called from the library visible routine BASIS_DESTROY
-  !> \see BASIS_ROUTINES::BASIS_DESTROY
-  RECURSIVE SUBROUTINE Basis_FamilyDestroy(userNumber,familyNumber,err,error,*)
+  !>Destroys a basis identified by its basis user number and family number. Called from the library visible routine Basis_Destroy
+  !> \see BASIS_ROUTINES::Basis_Destroy
+  RECURSIVE SUBROUTINE Basis_FamilyDestroy(basisFunctions,userNumber,familyNumber,err,error,*)
 
     !Argument variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions with the basis to destroy
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to destroy
     INTEGER(INTG), INTENT(IN) :: familyNumber !<The family number of the basis to destroy
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -1888,7 +1889,7 @@ CONTAINS
     ENTERS("Basis_FamilyDestroy",err,error,*999)
 
     NULLIFY(basis)
-    CALL Basis_FamilyNumberFind(userNumber,familyNumber,basis,err,error,*999)
+    CALL Basis_FamilyNumberFind(basisFunctions,userNumber,familyNumber,basis,err,error,*999)
     IF(.NOT.ASSOCIATED(basis)) THEN
       localError="The basis with a user number of "//TRIM(NumberToVString(userNumber,"*",err,error))// &
         & " and a family number of "//TRIM(NumberToVString(familyNumber,"*",err,error))//" does not exist."      
@@ -1943,10 +1944,11 @@ CONTAINS
     ELSE
       !Recursively delete sub-bases first
       DO WHILE(basis%numberOfSubBases>0)
-        CALL Basis_FamilyDestroy(basis%subBases(1)%ptr%USER_NUMBER,basis%subBases(1)%ptr%FAMILY_NUMBER,err,error,*999)
+        CALL Basis_FamilyDestroy(basisFunctions,basis%subBases(1)%ptr%USER_NUMBER, &
+          & basis%subBases(1)%ptr%FAMILY_NUMBER,err,error,*999)
       ENDDO
       !Now delete this instance
-      CALL Basis_FamilyDestroy(userNumber,familyNumber,err,error,*999)
+      CALL Basis_FamilyDestroy(basisFunctions,userNumber,familyNumber,err,error,*999)
     ENDIF
     
     EXITS("Basis_FamilyDestroy")
@@ -2041,6 +2043,7 @@ CONTAINS
     basis%USER_NUMBER=0
     basis%GLOBAL_NUMBER=0
     basis%FAMILY_NUMBER=0
+    NULLIFY(basis%basisFunctions)
     basis%BASIS_FINISHED=.FALSE.
     basis%hermite=.FALSE.
     basis%type=0
@@ -3478,8 +3481,8 @@ CONTAINS
     
     EXITS("Basis_LHTPFamilyCreate")
     RETURN
-999 IF(ASSOCIATED(newSubBasis)) CALL Basis_FamilyDestroy(newSubBasis%USER_NUMBER,newSubBasis%FAMILY_NUMBER, &
-      & dummyErr,dummyError,*998)
+999 IF(ASSOCIATED(newSubBasis)) CALL Basis_FamilyDestroy(newSubBasis%basisFunctions,newSubBasis%USER_NUMBER, &
+      & newSubBasis%FAMILY_NUMBER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Basis_LHTPFamilyCreate",err,error)
     RETURN 1
     
@@ -5981,8 +5984,8 @@ CONTAINS
     
     EXITS("Basis_SimplexFamilyCreate")
     RETURN
-999 IF(ASSOCIATED(newSubBasis)) CALL Basis_FamilyDestroy(newSubBasis%USER_NUMBER,newSubBasis%FAMILY_NUMBER, &
-      & dummyErr,dummyError,*998)
+999 IF(ASSOCIATED(newSubBasis)) CALL Basis_FamilyDestroy(newSubBasis%basisFunctions,newSubBasis%USER_NUMBER, &
+      & newSubBasis%FAMILY_NUMBER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Basis_SimplexFamilyCreate",err,error)
     RETURN 1
     
@@ -6363,6 +6366,7 @@ CONTAINS
     newSubBasis%USER_NUMBER=parentBasis%USER_NUMBER
     newSubBasis%GLOBAL_NUMBER=parentBasis%GLOBAL_NUMBER
     newSubBasis%FAMILY_NUMBER=parentBasis%numberOfSubBases+1
+    newSubBasis%basisFunctions=>parentBasis%basisFunctions
     newSubBasis%parentBasis=>parentBasis
     newSubBasis%NUMBER_OF_XI=numberOfXi
     newSubBasis%TYPE=parentBasis%TYPE
@@ -8311,6 +8315,72 @@ CONTAINS
 999 ERRORSEXITS("SIMPLEX_QUADRATIC_EVALUATE_DP",err,error)
     RETURN 
   END FUNCTION SIMPLEX_QUADRATIC_EVALUATE_DP
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Finalises the basis functions for a context and deallocates all memory
+  SUBROUTINE BasisFunctions_Finalise(basisFunctions,err,error,*)
+
+    !Argument variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<A pointer to the basis functions to finalise
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+
+    ENTERS("BasisFunctions_Finalise",err,error,*999)
+
+    IF(ASSOCIATED(basisFunctions)) THEN
+      !Destroy any created basis functions
+      DO WHILE(basisFunctions%numberOfBasisFunctions>0)
+        CALL Basis_Destroy(basisFunctions%bases(1)%ptr,err,error,*999)
+      ENDDO !nb
+      !Destroy basis functions and deallocated any memory allocated
+      IF(ALLOCATED(basisFunctions%bases)) DEALLOCATE(basisFunctions%bases)
+      DEALLOCATE(basisFunctions)
+    ENDIF
+    
+    EXITS("BasisFunctions_Finalise")
+    RETURN
+999 ERRORSEXITS("BasisFunctions_Finalise",err,error)
+    RETURN 1
+    
+  END SUBROUTINE BasisFunctions_Finalise
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Initialises the basis functions for a context.
+  SUBROUTINE BasisFunctions_Initialise(context,err,error,*)
+
+    !Argument variables
+    TYPE(ContextType), POINTER :: context !<The context to intialise the basis functions for.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dummyErr
+    TYPE(VARYING_STRING) :: dummyError
+
+    ENTERS("BasisFunctions_Initialise",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(context)) CALL FlagError("Context is not associated.",err,error,*998)
+    IF(ASSOCIATED(context%basisFunctions)) CALL FlagError("Context basis functions is already associated.",err,error,*998)
+
+    ALLOCATE(context%basisFunctions,STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate basis functions.",err,error,*999)
+    !Initialise
+    context%basisFunctions%context=>context    
+    context%basisFunctions%numberOfBasisFunctions=0    
+    
+    EXITS("BasisFunctions_Initialise")
+    RETURN
+999 CALL BasisFunctions_Finalise(context%basisFunctions,dummyErr,dummyError,*998)
+998 ERRORSEXITS("BasisFunctions_Initialise",err,error)
+    RETURN 1
+    
+  END SUBROUTINE BasisFunctions_Initialise
 
   !
   !================================================================================================================================

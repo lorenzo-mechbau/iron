@@ -117,6 +117,8 @@ MODULE ProblemAccessRoutines
 
   PUBLIC PROBLEM_CELLML_EQUATIONS_GET
 
+  PUBLIC Problem_ContextGet
+
   PUBLIC Problem_ControlLoopGet
 
   PUBLIC PROBLEM_CONTROL_LOOP_GET
@@ -124,6 +126,8 @@ MODULE ProblemAccessRoutines
   PUBLIC Problem_ControlLoopRootGet
 
   PUBLIC Problem_Get
+
+  PUBLIC Problem_ProblemsGet
 
   PUBLIC Problem_SolverGet
 
@@ -136,6 +140,8 @@ MODULE ProblemAccessRoutines
   PUBLIC Problem_UserNumberFind
 
   PUBLIC PROBLEM_USER_NUMBER_FIND
+
+  PUBLIC Problems_ContextGet
 
 CONTAINS
 
@@ -186,10 +192,10 @@ CONTAINS
     TYPE(SOLVERS_TYPE), POINTER :: solvers
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
-    ENTERS("Problem_CellMLEquationsGet1",err,error,*999)
+    ENTERS("Problem_CellMLEquationsGet1",err,error,*998)
 
+    IF(ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
-    IF(ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is already associated.",err,error,*999)
 
     NULLIFY(controlLoopRoot)
     NULLIFY(controlLoop)
@@ -204,10 +210,51 @@ CONTAINS
     
     EXITS("Problem_CellMLEquationsGet1")
     RETURN
-999 ERRORSEXITS("Problem_CellMLEquationsGet1",err,error)
+999 NULLIFY(cellMLEquations)
+998 ERRORSEXITS("Problem_CellMLEquationsGet1",err,error)
     RETURN 1
   END SUBROUTINE Problem_CellMLEquationsGet1
   
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to the context for a problem.
+  SUBROUTINE Problem_ContextGet(problem,context,err,error,*)
+
+    !Argument variables
+    TYPE(PROBLEM_TYPE), POINTER :: problem !<A pointer to the problem to get the context for
+    TYPE(ContextType), POINTER :: context !<On exit, a pointer to the context for the problem. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(VARYING_STRING) :: localError
+ 
+    ENTERS("Problem_ContextGet",err,error,*998)
+
+    IF(ASSOCIATED(context)) CALL FlagError("Context is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(problem%problems)) THEN
+      localError="Problems is not associated for problem number "// &
+        & TRIM(NumberToVString(problem%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+    context=>problem%problems%context
+    IF(.NOT.ASSOCIATED(context)) THEN
+      localError="The context is not associated for the problems for problem number "// &
+        & TRIM(NumberToVString(problem%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+    
+    EXITS("Problem_ContextGet")
+    RETURN
+999 NULLIFY(context)
+998 ERRORSEXITS("Problem_ContextGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Problem_ContextGet
+
   !
   !================================================================================================================================
   !
@@ -249,10 +296,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
  
-    ENTERS("Problem_ControlLoopGet1",err,error,*999)
+    ENTERS("Problem_ControlLoopGet1",err,error,*998)
 
+    IF(ASSOCIATED(controlLoop)) CALL FlagError("Control loop is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
-    IF(ASSOCIATED(controlLoop)) CALL FlagError("Control loop is already associated.",err,error,*999)
     IF(.NOT.ASSOCIATED(problem%CONTROL_LOOP)) CALL FlagError("Problem control loop is not associated.",err,error,*999)
 
     NULLIFY(controlLoop)
@@ -260,7 +307,8 @@ CONTAINS
     
     EXITS("Problem_ControlLoopGet1")
     RETURN
-999 ERRORSEXITS("Problem_ControlLoopGet1",err,error)
+999 NULLIFY(controlLoop)
+998 ERRORSEXITS("Problem_ControlLoopGet1",err,error)
     RETURN 1
     
   END SUBROUTINE Problem_ControlLoopGet1
@@ -280,10 +328,10 @@ CONTAINS
     !Local Variables
     TYPE(VARYING_STRING) :: localError
     
-    ENTERS("Problem_ControlLoopRootGet",err,error,*999)
+    ENTERS("Problem_ControlLoopRootGet",err,error,*998)
 
+    IF(ASSOCIATED(controlLoopRoot)) CALL FlagError("Control loop root is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
-    IF(ASSOCIATED(controlLoopRoot)) CALL FlagError("Control loop root is already associated.",err,error,*999)
 
     controlLoopRoot=>problem%CONTROL_LOOP
     IF(.NOT.ASSOCIATED(controlLoopRoot)) THEN
@@ -294,7 +342,8 @@ CONTAINS
        
     EXITS("Problem_ControlLoopRootGet")
     RETURN
-999 ERRORSEXITS("Problem_ControlLoopRootGet",err,error)
+999 NULLIFY(controlLoopRoot)
+998 ERRORSEXITS("Problem_ControlLoopRootGet",err,error)
     RETURN 1
     
   END SUBROUTINE Problem_ControlLoopRootGet
@@ -304,9 +353,10 @@ CONTAINS
   !
 
   !>Finds and returns a pointer to the problem with the given user number. 
-  SUBROUTINE Problem_Get(userNumber,problem,err,error,*)
+  SUBROUTINE Problem_Get(problems,userNumber,problem,err,error,*)
 
     !Argument variables
+    TYPE(ProblemsType), POINTER :: problems !<The problems to get the user number for.
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the problem to find
     TYPE(PROBLEM_TYPE), POINTER :: problem !<On exit, a pointer to the problem with the specified user number if it exists. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -316,7 +366,7 @@ CONTAINS
     
     ENTERS("Problem_Get",err,error,*999)
 
-    CALL Problem_UserNumberFind(userNumber,problem,err,error,*999)
+    CALL Problem_UserNumberFind(problems,userNumber,problem,err,error,*999)
     IF(.NOT.ASSOCIATED(problem)) THEN
       localError="A problem with an user number of "//TRIM(NumberToVString(userNumber,"*",err,error))//" does not exist."
       CALL FlagError(localError,err,error,*999)
@@ -328,6 +378,41 @@ CONTAINS
     RETURN 1
     
   END SUBROUTINE Problem_Get
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to the problems for a problem. 
+  SUBROUTINE Problem_ProblemsGet(problem,problems,err,error,*)
+
+    !Argument variables
+    TYPE(PROBLEM_TYPE), POINTER :: problem !<a pointer to the problem to get the problems for.
+    TYPE(ProblemsType), POINTER :: problems !<On return, a pointer to the problems for the problem. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("Problem_ProblemsGet",err,error,*998)
+
+    IF(ASSOCIATED(problems)) CALL FlagError("Problems is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
+
+    problems=>problem%problems
+    IF(.NOT.ASSOCIATED(problems)) THEN
+      localError="The problem problems is not associated for problem number "// &
+        & TRIM(NumberToVString(problem%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+       
+    EXITS("Problem_ProblemsGet")
+    RETURN
+999 NULLIFY(problems)
+998 ERRORSEXITS("Problem_ProblemsGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Problem_ProblemsGet
 
   !
   !================================================================================================================================
@@ -376,8 +461,8 @@ CONTAINS
  
     ENTERS("Problem_SolverGet1",err,error,*998)
 
+    IF(ASSOCIATED(solver)) CALL FlagError("Solver is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
-    IF(ASSOCIATED(solver)) CALL FlagError("Solver is already associated.",err,error,*999)
 
     NULLIFY(controlLoopRoot)
     NULLIFY(controlLoop)
@@ -444,10 +529,10 @@ CONTAINS
     TYPE(SOLVERS_TYPE), POINTER :: solvers
     TYPE(VARYING_STRING) :: localError
 
-    ENTERS("Problem_SolverEquationsGet1",err,error,*999)
+    ENTERS("Problem_SolverEquationsGet1",err,error,*998)
 
+    IF(ASSOCIATED(solverEquations)) CALL FlagError("Solver equations is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
-    IF(ASSOCIATED(solverEquations)) CALL FlagError("Solver equations is already associated.",err,error,*999)
 
     NULLIFY(controlLoopRoot)
     NULLIFY(controlLoop)
@@ -462,7 +547,8 @@ CONTAINS
         
     EXITS("Problem_SolverEquationsGet1")
     RETURN
-999 ERRORSEXITS("Problem_SolverEquationsGet1",err,error)
+999 NULLIFY(solverEquations)
+998 ERRORSEXITS("Problem_SolverEquationsGet1",err,error)
     RETURN 1
     
   END SUBROUTINE Problem_SolverEquationsGet1
@@ -472,9 +558,10 @@ CONTAINS
   !
 
   !>Finds and returns a pointer to the problem identified by a user number. If no problem with that user number exists problem is left nullified.
-  SUBROUTINE Problem_UserNumberFind(userNumber,problem,err,error,*)
+  SUBROUTINE Problem_UserNumberFind(problems,userNumber,problem,err,error,*)
 
     !Argument variables
+    TYPE(ProblemsType), POINTER :: problems !<The problems to find the user number for.
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number to find.
     TYPE(PROBLEM_TYPE), POINTER :: problem !<On return, a pointer to the problem with the given user number. If no problem with that user number exists then the pointer is returned as NULL. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -483,9 +570,10 @@ CONTAINS
     INTEGER(INTG) :: problemIdx
     TYPE(VARYING_STRING) :: localError
 
-    ENTERS("Problem_UserNumberFind",err,error,*999)
+    ENTERS("Problem_UserNumberFind",err,error,*998)
 
-    IF(ASSOCIATED(problem)) CALL FlagError("Problem is already associated.",err,error,*999)
+    IF(ASSOCIATED(problem)) CALL FlagError("Problem is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(problems)) CALL FlagError("Problems is not associated.",err,error,*999)
    
     NULLIFY(problem)
     IF(ASSOCIATED(problems%problems)) THEN
@@ -505,10 +593,41 @@ CONTAINS
     
     EXITS("Problem_UserNumberFind")
     RETURN
-999 ERRORSEXITS("Problem_UserNumberFind",err,error)
+999 NULLIFY(problem)
+998 ERRORSEXITS("Problem_UserNumberFind",err,error)
     RETURN 1
     
   END SUBROUTINE Problem_UserNumberFind
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to the context for a problems.
+  SUBROUTINE Problems_ContextGet(problems,context,err,error,*)
+
+    !Argument variables
+    TYPE(ProblemsType), POINTER :: problems !<A pointer to the problems to get the context for
+    TYPE(ContextType), POINTER :: context !<On exit, a pointer to the context for the problems. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+  
+    ENTERS("Problems_ContextGet",err,error,*998)
+
+    IF(ASSOCIATED(context)) CALL FlagError("Context is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(problems)) CALL FlagError("Problems is not associated.",err,error,*999)
+
+    context=>problems%context
+    IF(.NOT.ASSOCIATED(context)) CALL FlagError("The context is not associated for the problems.",err,error,*999)
+    
+    EXITS("Problems_ContextGet")
+    RETURN
+999 NULLIFY(context)
+998 ERRORSEXITS("Problems_ContextGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Problems_ContextGet
 
   !
   !================================================================================================================================

@@ -1,7 +1,7 @@
 !> \file
 !> \author Vijay Rajagopal
 !> \brief This module handles some mesh/parameter input routines and cmgui output routines for reaction diffusion
-!> routines and should be eventually replaces by field_IO_routines.F90
+!> routines and should be eventually replaced by field_IO_routines.F90
 !>
 !> \section LICENSE
 !>
@@ -48,6 +48,7 @@ MODULE REACTION_DIFFUSION_IO_ROUTINES
 
  USE BaseRoutines
  USE ComputationEnvironment
+ USE ContextAccessRoutines
  USE EquationsSetConstants
  USE FIELD_ROUTINES
  USE FieldAccessRoutines
@@ -90,6 +91,8 @@ CONTAINS
     TYPE(VARYING_STRING):: ERROR !<The error string
 
     !Local Variables
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+    TYPE(ContextType), POINTER :: context
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(DOMAIN_TYPE), POINTER :: COMPUTATIONAL_DOMAIN
     TYPE(FIELD_TYPE), POINTER :: SOURCE_FIELD
@@ -107,14 +110,19 @@ CONTAINS
 
     ENTERS("REACTION_DIFFUSION_IO_WRITE_CMGUI",ERR,ERROR,*999)
 
-    myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(err,error)
+    NULLIFY(context)
+    CALL Region_ContextGet(region,context,err,error,*999)
+    NULLIFY(computationEnvironment)
+    CALL Context_ComputationEnvironmentGet(context,computationEnvironment,err,error,*999)
+
+    CALL ComputationEnvironment_NumberOfWorldNodesGet(computationEnvironment,numberOfWorldComputationNodes,err,error,*999)
+    CALL ComputationEnvironment_WorldNodeNumberGet(computationEnvironment,myComputationalNodeNumber,err,error,*999)
 
     EQUATIONS_SET => REGION%equations_sets%equations_sets(EQUATIONS_SET_GLOBAL_NUMBER)%ptr
     NULLIFY(SOURCE_FIELD)
     COMPUTATIONAL_DOMAIN=>REGION%MESHES%MESHES(1) &
       & %ptr%DECOMPOSITIONS%DECOMPOSITIONS(1)%ptr%DOMAIN(1)%ptr
 
-    myComputationalNodeNumber = ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
     NumberOfDimensions = COMPUTATIONAL_DOMAIN%NUMBER_OF_DIMENSIONS
     NumberOfNodes = COMPUTATIONAL_DOMAIN%TOPOLOGY%NODES%NUMBER_OF_NODES
     NodesInMeshComponent = REGION%meshes%meshes(1)%ptr%topology(1)%ptr%nodes%numberOfNodes

@@ -88,6 +88,8 @@ MODULE RegionAccessRoutines
 
   PUBLIC Region_CellMLGet
 
+  PUBLIC Region_ContextGet
+
   PUBLIC Region_CoordinateSystemGet
 
   PUBLIC REGION_COORDINATE_SYSTEM_GET
@@ -155,8 +157,48 @@ CONTAINS
     RETURN 1
     
   END SUBROUTINE Region_CellMLGet
+  
+  !
+  !================================================================================================================================
+  !
 
-   !
+  !>Returns a pointer to the context for a region.
+  SUBROUTINE Region_ContextGet(region,context,err,error,*)
+
+    !Argument variables
+    TYPE(REGION_TYPE), POINTER :: region !<A pointer to the region to get the context for
+    TYPE(ContextType), POINTER :: context !<On exit, a pointer to the context for the region. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(VARYING_STRING) :: localError
+ 
+    ENTERS("Region_ContextGet",err,error,*998)
+
+    IF(ASSOCIATED(context)) CALL FlagError("Context is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(region)) CALL FlagError("Region is not associated.",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(region%regions)) THEN
+      localError="Regions is not associated for region number "// &
+        & TRIM(NumberToVString(region%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+    context=>region%regions%context
+    IF(.NOT.ASSOCIATED(context)) THEN
+      localError="The context is not associated for the regions for region number "// &
+        & TRIM(NumberToVString(region%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+    
+    EXITS("Region_ContextGet")
+    RETURN
+999 NULLIFY(context)
+998 ERRORSEXITS("Region_ContextGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Region_ContextGet
+
+  !
   !================================================================================================================================
   !
 
@@ -350,9 +392,10 @@ CONTAINS
   !
 
   !>Finds and returns a pointer to the region with the given user number. 
-  SUBROUTINE Region_Get(userNumber,region,err,error,*)
+  SUBROUTINE Region_Get(regions,userNumber,region,err,error,*)
 
     !Argument variables
+    TYPE(RegionsType), POINTER :: regions !<The regions to get the user number for.
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the region to find
     TYPE(REGION_TYPE), POINTER :: region !<On exit, a pointer to the region with the specified user number if it exists. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -362,7 +405,7 @@ CONTAINS
     
     ENTERS("Region_Get",err,error,*999)
 
-    CALL Region_UserNumberFind(userNumber,region,err,error,*999)
+    CALL Region_UserNumberFind(regions,userNumber,region,err,error,*999)
     IF(.NOT.ASSOCIATED(region)) THEN
       localError="A region with an user number of "//TRIM(NumberToVString(userNumber,"*",err,error))//" does not exist."
       CALL FlagError(localError,err,error,*999)
@@ -486,10 +529,46 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finds and returns a pointer to the region with the given user number. If no region with that number exists region is left nullified.
-  SUBROUTINE Region_UserNumberFind(userNumber,region,err,error,*)
+  !>Returns a pointer to the regions for a region. 
+  SUBROUTINE Region_RegionsGet(region,regions,err,error,*)
 
     !Argument variables
+    TYPE(REGION_TYPE), POINTER :: region !<A pointer to the region to get the regions for
+    TYPE(RegionsType), POINTER :: regions !<On exit, a pointer to the regions for the region. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(VARYING_STRING) :: localError
+ 
+    ENTERS("Region_RegionsGet",err,error,*998)
+
+    IF(ASSOCIATED(regions)) CALL FlagError("Regions is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(region)) CALL FlagError("Region is not associated.",err,error,*999)
+    
+    regions=>region%regions   
+    IF(.NOT.ASSOCIATED(regions)) THEN
+      localError="Regions is not associated for region number "// &
+        & TRIM(NumberToVString(region%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+       
+    EXITS("Region_RegionsGet")
+    RETURN
+999 NULLIFY(regions)
+998 ERRORSEXITS("Region_RegionsGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Region_RegionsGet
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Finds and returns a pointer to the region with the given user number. If no region with that number exists region is left nullified.
+  SUBROUTINE Region_UserNumberFind(regions,userNumber,region,err,error,*)
+
+    !Argument variables
+    TYPE(RegionsType), POINTER :: regions !<The regions to find the user number for.
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the region to find
     TYPE(REGION_TYPE), POINTER :: region !<On exit, a pointer to the region with the specified user number if it exists. If no region exists with the specified user number a NULL pointer is returned. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err
@@ -590,6 +669,36 @@ CONTAINS
     
   END SUBROUTINE Region_UserNumberGet
 
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to the world region for a regions.
+  SUBROUTINE Regions_WorldRegionGet(regions,worldRegion,err,error,*)
+
+    !Argument variables
+    TYPE(RegionsType), POINTER :: regions !<A pointer to the regions to get the world region for
+    TYPE(REGION_TYPE), POINTER :: worldRegion !<On exit, a pointer to the world region for the regions. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+ 
+    ENTERS("Regions_WorldRegionGet",err,error,*998)
+
+    IF(ASSOCIATED(worldRegion)) CALL FlagError("World region is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(regions)) CALL FlagError("Regions is not associated.",err,error,*998)
+
+    worldRegion=>regions%worldREgion
+    IF(.NOT.ASSOCIATED(worldRegion)) CALL FlagError("Regions world region is not associated.",err,error,*999)
+       
+    EXITS("Regions_WorldRegionGet")
+    RETURN
+999 NULLIFY(worldRegion)
+998 ERRORSEXITS("Regions_WorldRegionGet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Regions_WorldRegionGet
+  
   !
   !================================================================================================================================
   !

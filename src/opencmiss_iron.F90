@@ -66,6 +66,8 @@ MODULE OpenCMISS_Iron
   USE CMISS_CELLML
   USE ComputationEnvironment
   USE Constants
+ USE ContextRoutines
+ USE ContextAccessRoutines
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines
   USE COORDINATE_ROUTINES
@@ -153,6 +155,18 @@ MODULE OpenCMISS_Iron
     PRIVATE
     TYPE(CELLML_EQUATIONS_TYPE), POINTER :: cellmlEquations
   END TYPE cmfe_CellMLEquationsType
+
+ !>Contains information on a computation environment
+ TYPE cmfe_ComputationEnvironmentType
+   PRIVATE
+   TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+ END TYPE cmfe_ComputationEnvironmentType
+
+ !>Contains information on a context.
+ TYPE cmfe_ContextType
+   PRIVATE
+   TYPE(ContextType), POINTER :: context
+ END TYPE cmfe_ContextType
 
   !>Contains information on a control loop.
   TYPE cmfe_ControlLoopType
@@ -329,6 +343,11 @@ MODULE OpenCMISS_Iron
     TYPE(ComputationalWorkGroupType), POINTER :: computationalWorkGroup
   END TYPE cmfe_ComputationalWorkGroupType
 
+ !>Contains information on a work group
+ TYPE cmfe_WorkGroupType
+   PRIVATE
+   TYPE(WorkGroupType), POINTER :: workGroup
+ END TYPE cmfe_WorkGroupType
   !Module variables
 
   TYPE(VARYING_STRING) :: error
@@ -1261,36 +1280,179 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_CellML_ParametersFieldCreateFinish,cmfe_CellML_ParametersFieldCreateStart,cmfe_CellML_ParametersFieldGet
 
-  PUBLIC cmfe_CellML_Generate
+!==================================================================================================================================
+!
+! Computation
+!
+!==================================================================================================================================
 
-!!==================================================================================================================================
-!!
-!! ComputationalEnvironment
-!!
-!!==================================================================================================================================
+ !Module parameters
 
-  !Module parameters
+ !Module types
 
-  !Module types
+ !Module variables
 
-  !Module variables
+ !Interfaces
 
-  !Interfaces
+ !>Returns the number of world nodes in the computation environment
+ INTERFACE cmfe_ComputationEnvironment_NumberOfWorldNodesGet
+   MODULE PROCEDURE cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber
+   MODULE PROCEDURE cmfe_ComputationEnvironment_NumberOfWorldNodesGetObj
+ END INTERFACE cmfe_ComputationEnvironment_NumberOfWorldNodesGet
+   
+ !>Returns the world communicator for the computation environment
+ INTERFACE cmfe_ComputationEnvironment_WorldCommunicatorGet
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldCommunicatorGetNumber
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldCommunicatorGetObj
+ END INTERFACE cmfe_ComputationEnvironment_WorldCommunicatorGet
+   
+ !>Returns the world node number for the computation environment
+ INTERFACE cmfe_ComputationEnvironment_WorldNodeNumberGet
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldNodeNumberGetNumber
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldNodeNumberGetObj
+ END INTERFACE cmfe_ComputationEnvironment_WorldNodeNumberGet
+   
+ !>Returns the world work group for the computation environment
+ INTERFACE cmfe_ComputationEnvironment_WorldWorkGroupGet
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldWorkGroupGetNumber
+   MODULE PROCEDURE cmfe_ComputationEnvironment_WorldWorkGroupGetObj
+ END INTERFACE cmfe_ComputationEnvironment_WorldWorkGroupGet
+   
+ !>Starts the creation of a work group
+ INTERFACE cmfe_WorkGroup_CreateStart
+   MODULE PROCEDURE cmfe_WorkGroup_CreateStartNumber
+   MODULE PROCEDURE cmfe_WorkGroup_CreateStartObj
+ END INTERFACE cmfe_WorkGroup_CreateStart
+   
+ !>Finishes the creation of a work group
+ INTERFACE cmfe_WorkGroup_CreateFinish
+   MODULE PROCEDURE cmfe_WorkGroup_CreateFinishNumber
+   MODULE PROCEDURE cmfe_WorkGroup_CreateFinishObj
+ END INTERFACE cmfe_WorkGroup_CreateFinish
+   
+ !>Destroys a work group
+ INTERFACE cmfe_WorkGroup_Destroy
+   MODULE PROCEDURE cmfe_WorkGroup_DestroyNumber
+   MODULE PROCEDURE cmfe_WorkGroup_DestroyObj
+ END INTERFACE cmfe_WorkGroup_Destroy
+   
+ !>Gets the group communicator for a work group
+ INTERFACE cmfe_WorkGroup_GroupCommunicatorGet
+   MODULE PROCEDURE cmfe_WorkGroup_GroupCommunicatorGetNumber
+   MODULE PROCEDURE cmfe_WorkGroup_GroupCommunicatorGetObj
+ END INTERFACE cmfe_WorkGroup_GroupCommunicatorGet
+   
+ !>Returns the label of a work group.
+ INTERFACE cmfe_WorkGroup_LabelGet
+   MODULE PROCEDURE cmfe_WorkGroup_LabelGetCNumber
+   MODULE PROCEDURE cmfe_WorkGroup_LabelGetCObj
+   MODULE PROCEDURE cmfe_WorkGroup_LabelGetVSNumber
+   MODULE PROCEDURE cmfe_WorkGroup_LabelGetVSObj
+ END INTERFACE cmfe_WorkGroup_LabelGet
+ 
+ !>Sets/changes the label of a work group.
+ INTERFACE cmfe_WorkGroup_LabelSet
+   MODULE PROCEDURE cmfe_WorkGroup_LabelSetCNumber
+   MODULE PROCEDURE cmfe_WorkGroup_LabelSetCObj
+   MODULE PROCEDURE cmfe_WorkGroup_LabelSetVSNumber
+   MODULE PROCEDURE cmfe_WorkGroup_LabelSetVSObj
+ END INTERFACE cmfe_WorkGroup_LabelSet
 
-  PUBLIC cmfe_ComputationalWorldCommunicatorGet,cmfe_ComputationalWorldCommunicatorSet
+ !>Gets the group node number in a work group
+ INTERFACE cmfe_WorkGroup_GroupNodeNumberGet
+   MODULE PROCEDURE cmfe_WorkGroup_GroupNodeNumberGetNumber
+   MODULE PROCEDURE cmfe_WorkGroup_GroupNodeNumberGetObj
+ END INTERFACE cmfe_WorkGroup_GroupNodeNumberGet
+   
+ !>Gets the number of group nodes in a work group
+ INTERFACE cmfe_WorkGroup_NumberOfGroupNodesGet
+   MODULE PROCEDURE cmfe_WorkGroup_NumberOfGroupNodesGetNumber
+   MODULE PROCEDURE cmfe_WorkGroup_NumberOfGroupNodesGetObj
+ END INTERFACE cmfe_WorkGroup_NumberOfGroupNodesGet
+   
+ !>Sets/changes the number of group nodes in a work group
+ INTERFACE cmfe_WorkGroup_NumberOfGroupNodesSet
+   MODULE PROCEDURE cmfe_WorkGroup_NumberOfGroupNodesSetNumber
+   MODULE PROCEDURE cmfe_WorkGroup_NumberOfGroupNodesSetObj
+ END INTERFACE cmfe_WorkGroup_NumberOfGroupNodesSet
+ 
+ PUBLIC cmfe_ComputationEnvironment_NumberOfWorldNodesGet
 
-  PUBLIC cmfe_ComputationalNodeNumberGet
+ PUBLIC cmfe_ComputationEnvironment_WorldCommunicatorGet
+ 
+ PUBLIC cmfe_ComputationEnvironment_WorldNodeNumberGet
 
-  PUBLIC cmfe_ComputationalNumberOfNodesGet
+ PUBLIC cmfe_ComputationEnvironment_WorldWorkGroupGet
 
-  PUBLIC cmfe_ComputationalWorkGroup_CreateStart
+ PUBLIC cmfe_WorkGroup_CreateStart
 
-  PUBLIC cmfe_ComputationalWorkGroup_CreateFinish
+ PUBLIC cmfe_WorkGroup_CreateFinish
 
-  PUBLIC cmfe_ComputationalWorkGroup_SubgroupAdd
+ PUBLIC cmfe_WorkGroup_Destroy
 
-  PUBLIC cmfe_Decomposition_WorldWorkGroupSet
+ PUBLIC cmfe_WorkGroup_GroupCommunicatorGet
 
+ PUBLIC cmfe_WorkGroup_GroupNodeNumberGet
+
+ PUBLIC cmfe_WorkGroup_LabelGet,cmfe_WorkGroup_LabelSet
+
+ PUBLIC cmfe_WorkGroup_NumberOfGroupNodesGet,cmfe_WorkGroup_NumberOfGroupNodesSet
+ 
+!==================================================================================================================================
+!
+! ContextRoutines
+!
+!==================================================================================================================================
+
+ !Module parameters
+
+ !Module types
+
+ !Module variables
+
+ !Interfaces
+
+ !>Gets the computation environment for an OpenCMISS context.
+ INTERFACE cmfe_Context_ComputationEnvironmentGet
+   MODULE PROCEDURE cmfe_Context_ComputationEnvironmentGetNumber
+   MODULE PROCEDURE cmfe_Context_ComputationEnvironmentGetObj
+ END INTERFACE cmfe_Context_ComputationEnvironmentGet
+ 
+ !>Gets the random seeds for an OpenCMISS context.
+ INTERFACE cmfe_Context_RandomSeedsGet    
+   MODULE PROCEDURE cmfe_Context_RandomSeedsGetNumber0
+   MODULE PROCEDURE cmfe_Context_RandomSeedsGetNumber1
+   MODULE PROCEDURE cmfe_Context_RandomSeedsGetObj0
+   MODULE PROCEDURE cmfe_Context_RandomSeedsGetObj1
+ END INTERFACE cmfe_Context_RandomSeedsGet
+
+ !>Gets the size of the random seeds for an OpenCMISS context.
+ INTERFACE cmfe_Context_RandomSeedsSizeGet    
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSizeGetNumber
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSizeGetObj
+ END INTERFACE cmfe_Context_RandomSeedsSizeGet
+
+ !>Sets the random seeds for an OpenCMISS context.
+ INTERFACE cmfe_Context_RandomSeedsSet    
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSetNumber0
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSetNumber1
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSetObj0
+   MODULE PROCEDURE cmfe_Context_RandomSeedsSetObj1
+ END INTERFACE cmfe_Context_RandomSeedsSet
+
+ !>Gets the world region for an OpenCMISS context.
+ INTERFACE cmfe_Context_WorldRegionGet
+   MODULE PROCEDURE cmfe_Context_WorldRegionGetNumber
+   MODULE PROCEDURE cmfe_Context_WorldRegionGetObj
+ END INTERFACE cmfe_Context_WorldRegionGet
+ 
+ PUBLIC cmfe_Context_ComputationEnvironmentGet
+
+ PUBLIC cmfe_Context_RandomSeedsGet,cmfe_Context_RandomSeedsSizeGet,cmfe_Context_RandomSeedsSet
+ 
+ PUBLIC cmfe_Context_UserNumberGet
+
+ PUBLIC cmfe_Context_WorldRegionGet
 !!==================================================================================================================================
 !!
 !! CONSTANTS
@@ -7729,6 +7891,75 @@ MODULE OpenCMISS_Iron
 
 CONTAINS
 
+ !
+ !================================================================================================================================
+ !
+
+ !>Finalises an OpenCMISS context specified by user number.
+ SUBROUTINE cmfe_FinaliseNumber(contextUserNumber,err)
+   !DLLEXPORT(cmfe_Finalise)
+
+   !Argument variables
+   INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context to finalise.
+   INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+   !Local variables
+   TYPE(ContextType), POINTER :: context
+
+   NULLIFY(context)
+   CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+   CALL cmfe_Finalise_(context,err,error,*999)
+
+   RETURN
+999 CALL cmfe_HandleError(err,error)
+   RETURN
+
+ END SUBROUTINE cmfe_FinaliseNumber
+
+ !
+ !================================================================================================================================
+ !
+
+ !>Finalises an OpenCMISS context specified by an object.
+ SUBROUTINE cmfe_FinaliseObj(context,err)
+   !DLLEXPORT(cmfe_Finalise)
+
+   !Argument variables
+   TYPE(cmfe_ContextType), INTENT(INOUT) :: context !<The context o finalise
+   INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+   !Local variables
+
+   CALL cmfe_Finalise_(context%context,err,error,*999)
+
+   RETURN
+999 CALL cmfe_HandleError(err,error)
+   RETURN
+
+ END SUBROUTINE cmfe_FinaliseObj
+
+ !
+ !================================================================================================================================
+ !
+
+ !>Initialises OpenCMISS context returning a user number new context.
+ SUBROUTINE cmfe_InitialiseNumber(newContextUserNumber,err)
+   !DLLEXPORT(cmfe_InitialiseNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(OUT) :: newContextUserNumber !<On return, the context user number.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(ContextType), POINTER :: newContext
+
+    NULLIFY(newContext)
+    CALL cmfe_Initialise_(newContext,err,error,*999)
+    CALL Context_UserNumberGet(newContext,newContextUserNumber,err,error,*999)
+ 
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_InitialiseNumber
+
   !
   !================================================================================================================================
   !
@@ -7757,65 +7988,81 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Initialises CMISS returning a user number to the world coordinate system and region.
-  SUBROUTINE cmfe_InitialiseNumber(worldCoordinateSystemUserNumber,worldRegionUserNumber,err)
-    !DLLEXPORT(cmfe_InitialiseNumber)
+ 
 
-    !Argument variables
-    INTEGER(INTG), INTENT(OUT) :: worldCoordinateSystemUserNumber !<On return, the world coordinate system user number.
-    INTEGER(INTG), INTENT(OUT) :: worldRegionUserNumber !<On return, the world region user number.
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-    TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: worldCoordinateSystem
-    TYPE(REGION_TYPE), POINTER :: worldRegion
-
-#ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('OpenCMISS World Phase')
-#endif
-
-    NULLIFY(worldCoordinateSystem)
-    NULLIFY(worldRegion)
-    CALL cmfe_Initialise_(worldRegion,err,error,*999)
-    worldCoordinateSystemUserNumber=0
-    worldRegionUserNumber=worldRegion%USER_NUMBER
-
-    RETURN
-999 CALL cmfe_HandleError(err,error)
-    RETURN
-
-  END SUBROUTINE cmfe_InitialiseNumber
-
-  !
+    !
   !================================================================================================================================
   !
 
-  !>Initialises CMISS returning a pointer to the world coordinate system and region.
-  SUBROUTINE cmfe_InitialiseObj(worldCoordinateSystem,worldRegion,err)
+  !>Initialises OpenCMISS returning a pointer to the new context.
+  SUBROUTINE cmfe_InitialiseObj(newContext,err)
     !DLLEXPORT(cmfe_InitialiseObj)
 
     !Argument variables
-    TYPE(cmfe_CoordinateSystemType), INTENT(INOUT) :: worldCoordinateSystem !<On return, the world coordinate system.
-    TYPE(cmfe_RegionType), INTENT(INOUT) :: worldRegion !<On return, the world region.
+    TYPE(cmfe_ContextType), INTENT(INOUT) :: newContext !<On return, the new context. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
-#ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('OpenCMISS World Phase')
-#endif
-
-    CALL cmfe_CoordinateSystem_Initialise(worldCoordinateSystem,err)
-    CALL cmfe_Region_Initialise(worldRegion,err)
-    CALL cmfe_Initialise_(worldRegion%region,err,error,*999)
+    CALL cmfe_Initialise_(newContext%context,err,error,*999)
 
     RETURN
 999 CALL cmfe_HandleError(err,error)
     RETURN
 
   END SUBROUTINE cmfe_InitialiseObj
+  !
+  !================================================================================================================================
+  !
+ !
+  !================================================================================================================================
+  !
+
+  !>Finalises a cmfe_ContextType object.
+  SUBROUTINE cmfe_Context_Finalise(cmfe_Context,err)
+    !DLLEXPORT(cmfe_Context_Finalise)
+
+    !Argument variables
+    TYPE(cmfe_ContextType), INTENT(OUT) :: cmfe_Context !<The cmfe_ContextType object to finalise.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Context_Finalise",err,error,*999)
+
+    IF(ASSOCIATED(cmfe_Context%context))  &
+      & CALL Context_Destroy(cmfe_Context%context,err,error,*999)
+
+    EXITS("cmfe_Context_Finalise")
+    RETURN
+999 ERRORSEXITS("cmfe_Context_Finalise",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Context_Finalise
 
   !
   !================================================================================================================================
   !
+
+  !>Initialises a cmfe_ContextType object.
+  SUBROUTINE cmfe_Context_Initialise(cmfe_Context,err)
+    !DLLEXPORT(cmfe_Context_Initialise)
+
+    !Argument variables
+    TYPE(cmfe_ContextType), INTENT(OUT) :: cmfe_Context !<The cmfe_ContextType object to initialise.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Context_Initialise",err,error,*999)
+
+    NULLIFY(cmfe_Context%context)
+
+    EXITS("cmfe_Context_Initialise")
+    RETURN
+999 ERRORSEXITS("cmfe_Context_Initialise",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Context_Initialise
 
   !>Sets a PETSc option (so that they can be set from python when we don't have the command line.)
   SUBROUTINE cmfe_PetscOptionsSetValue(name,VALUE,err)
@@ -8113,6 +8360,56 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_CellMLEquations_Initialise
+
+!
+  !================================================================================================================================
+  !
+
+  !>Finalises a cmfe_ComputationEnvironmentType object.
+  SUBROUTINE cmfe_ComputationEnvironment_Finalise(cmfe_ComputationEnvironment,err)
+    !DLLEXPORT(cmfe_ComputationEnvironment_Finalise)
+
+    !Argument variables
+    TYPE(cmfe_ComputationEnvironmentType), INTENT(OUT) :: cmfe_ComputationEnvironment !<The cmfe_ComputationEnvironmentType object to finalise.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_ComputationEnvironment_Finalise",err,error,*999)
+
+    NULLIFY(cmfe_ComputationEnvironment%computationEnvironment)
+
+    EXITS("cmfe_ComputationEnvironment_Finalise")
+    RETURN
+999 ERRORSEXITS("cmfe_ComputationEnvironment_Finalise",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_ComputationEnvironment_Finalise
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Initialises a cmfe_ComputationEnvironmentType object.
+  SUBROUTINE cmfe_ComputationEnvironment_Initialise(cmfe_ComputationEnvironment,err)
+    !DLLEXPORT(cmfe_ComputationEnvironment_Initialise)
+
+    !Argument variables
+    TYPE(cmfe_ComputationEnvironmentType), INTENT(OUT) :: cmfe_ComputationEnvironment !<The cmfe_ComputationEnvironmentType object to initialise.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_ComputationEnvironment_Initialise",err,error,*999)
+
+    NULLIFY(cmfe_ComputationEnvironment%computationEnvironment)
+
+    EXITS("cmfe_ComputationEnvironment_Initialise")
+    RETURN
+999 ERRORSEXITS("cmfe_ComputationEnvironment_Initialise",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_ComputationEnvironment_Initialise
 
   !
   !================================================================================================================================
@@ -9540,23 +9837,30 @@ CONTAINS
 !!==================================================================================================================================
 
   !>Output the analytic error analysis for a field specified by a user number compared to the analytic values parameter set.
-  SUBROUTINE cmfe_AnalyticAnalysis_OutputNumber(regionUserNumber,fieldUserNumber,fileName,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_OutputNumber(contextUserNumber,regionUserNumber,fieldUserNumber,fileName,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_OutputNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     CHARACTER(LEN=*), INTENT(IN) :: fileName !<If not empty, the filename to output the analytic analysis to. If empty, the analysis will be output to the standard output.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_OutputNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_Output(field,fileName,err,error,*999)
 
@@ -9599,11 +9903,12 @@ CONTAINS
   !
 
   !>Get absolute error value for the node in a field specified by a user number compared to the analytic value.
-  SUBROUTINE cmfe_AnalyticAnalysis_AbsoluteErrorGetNodeNumber(regionUserNumber,fieldUserNumber,variableType,versionNumber, &
-    & derivativeNumber, nodeNumber,componentNumber,value,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_AbsoluteErrorGetNodeNumber(contextUserNumber,regionUserNumber,fieldUserNumber,variableType, &
+    & versionNumber,derivativeNumber, nodeNumber,componentNumber,value,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_AbsoluteErrorGetNodeNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: versionNumber !<derivative version number
@@ -9614,14 +9919,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: VALUE !<On return, the absolute error
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_AbsoluteErrorGetNodeNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_AbsoluteErrorGetNode(field,variableType,versionNumber,derivativeNumber,nodeNumber,componentNumber, &
       & VALUE,err,error,*999)
@@ -9674,11 +9985,12 @@ CONTAINS
   !
 
   !>Get percentage error value for the node in a field specified by a user number compared to the analytic value.
-  SUBROUTINE cmfe_AnalyticAnalysis_PercentageErrorGetNodeNumber(regionUserNumber,fieldUserNumber,variableType,versionNumber, &
-    & derivativeNumber,nodeNumber,componentNumber,value,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_PercentageErrorGetNodeNumber(contextUserNumber,regionUserNumber,fieldUserNumber,variableType, &
+    & versionNumber,derivativeNumber,nodeNumber,componentNumber,value,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_PercentageErrorGetNodeNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: versionNumber !<derivative version number
@@ -9689,14 +10001,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: VALUE !<On return, the percentage error
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_PercentageErrorGetNodeNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_PercentageErrorGetNode(field,variableType,versionNumber,derivativeNumber,nodeNumber, &
       & componentNumber,VALUE,err,error,*999)
@@ -9750,11 +10068,12 @@ CONTAINS
   !
 
   !>Get relative error value for the node in a field specified by a user number compared to the analytic value.
-  SUBROUTINE cmfe_AnalyticAnalysis_RelativeErrorGetNodeNumber(regionUserNumber,fieldUserNumber,variableType,versionNumber, &
-    & derivativeNumber,nodeNumber,componentNumber,value,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_RelativeErrorGetNodeNumber(contextUserNumber,regionUserNumber,fieldUserNumber,variableType, &
+    & versionNumber,derivativeNumber,nodeNumber,componentNumber,value,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_RelativeErrorGetNodeNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: versionNumber !<derivative version number
@@ -9765,14 +10084,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: VALUE !<On return, the relative error
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_RelativeErrorGetNodeNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_RelativeErrorGetNode(field,variableType,versionNumber,derivativeNumber,nodeNumber, &
       & componentNumber,VALUE,err,error,*999)
@@ -9825,11 +10150,12 @@ CONTAINS
   !
 
   !>Get absolute error value for the element in a field specified by a user number compared to the analytic value.
-  SUBROUTINE cmfe_AnalyticAnalysis_AbsoluteErrorGetElementNumber(regionUserNumber,fieldUserNumber,variableType,elementNumber, &
-    & componentNumber,value,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_AbsoluteErrorGetElementNumber(contextUserNumber,regionUserNumber,fieldUserNumber,variableType, &
+    & elementNumber,componentNumber,value,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_AbsoluteErrorGetElementNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: elementNumber !<element number
@@ -9838,8 +10164,10 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: VALUE !<On return, the absolute error
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_AbsoluteErrorGetElementNumber",err,error,*999)
 
@@ -10518,11 +10846,12 @@ CONTAINS
   !
 
   !>Get integral value for the percentage errors.
-  SUBROUTINE cmfe_AnalyticAnalysis_IntegralPercentageErrorGetNumber(regionUserNumber,fieldUserNumber,variableType,componentNumber, &
-    & integralValue,ghostIntegralValue,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_IntegralPercentageErrorGetNumber(contextUserNumber,regionUserNumber,fieldUserNumber, &
+    & variableType,componentNumber,integralValue,ghostIntegralValue,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_IntegralPercentageErrorGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: componentNumber !<component number
@@ -10531,14 +10860,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: ghostIntegralValue(2) !<On return, ghost integral value
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_IntegralPercentageErrorGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_IntegralPercentageErrorGet(field,variableType,componentNumber,integralValue,ghostIntegralValue, &
       & err,error,*999)
@@ -10589,11 +10924,12 @@ CONTAINS
   !
 
   !>Get integral value for the absolute errors.
-  SUBROUTINE cmfe_AnalyticAnalysis_IntegralAbsoluteErrorGetNumber(regionUserNumber,fieldUserNumber,variableType,componentNumber, &
-    & integralValue,ghostIntegralValue,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_IntegralAbsoluteErrorGetNumber(contextUserNumber,regionUserNumber,fieldUserNumber, &
+    & variableType,componentNumber,integralValue,ghostIntegralValue,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_IntegralAbsoluteErrorGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: componentNumber !<component number
@@ -10602,14 +10938,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: ghostIntegralValue(2) !<On return, ghost integral value
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_IntegralAbsoluteErrorGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_IntegralAbsoluteErrorGet(field,variableType,componentNumber,integralValue,ghostIntegralValue, &
       & err,error,*999)
@@ -10660,11 +11002,12 @@ CONTAINS
   !
 
   !>Get integral value for the relative error.
-  SUBROUTINE cmfe_AnalyticAnalysis_IntegralRelativeErrorGetNumber(regionUserNumber,fieldUserNumber,variableType,componentNumber, &
-    & integralValue,ghostIntegralValue,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_IntegralRelativeErrorGetNumber(contextUserNumber,regionUserNumber,fieldUserNumber, &
+    & variableType,componentNumber,integralValue,ghostIntegralValue,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_IntegralRelativeErrorGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: componentNumber !<component number
@@ -10673,14 +11016,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: ghostIntegralValue(2) !<On return, ghost integral value
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_IntegralRelativeErrorGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_IntegralRelativeErrorGet(field,variableType,componentNumber,integralValue,ghostIntegralValue, &
       & err,error,*999)
@@ -10731,11 +11080,12 @@ CONTAINS
   !
 
   !>Get integral value for the nid numerical.
-  SUBROUTINE cmfe_AnalyticAnalysis_IntegralNIDNumericalValueGetNumber(regionUserNumber,fieldUserNumber,variableType, &
-    & componentNumber,integralValue,ghostIntegralValue,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_IntegralNIDNumericalValueGetNumber(contextUserNumber,regionUserNumber,fieldUserNumber, &
+    & variableType,componentNumber,integralValue,ghostIntegralValue,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_IntegralNIDNumericalValueGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: componentNumber !<component number
@@ -10744,14 +11094,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: ghostIntegralValue(2) !<On return, ghost integral value
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_AnalyticAnalysis_IntegralNIDNumericalValueGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_IntegralNIDNumericalValueGet(field,variableType,componentNumber,integralValue, &
       & ghostIntegralValue,err,error,*999)
@@ -10802,11 +11158,12 @@ CONTAINS
   !
 
   !>Get integral value for the nid error.
-  SUBROUTINE cmfe_AnalyticAnalysis_IntegralNIDErrorGetNumber(regionUserNumber,fieldUserNumber,variableType,componentNumber, &
-    & integralValue,ghostIntegralValue,err)
+  SUBROUTINE cmfe_AnalyticAnalysis_IntegralNIDErrorGetNumber(contextUserNumber,regionUserNumber,fieldUserNumber,variableType, &
+    & componentNumber,integralValue,ghostIntegralValue,err)
     !DLLEXPORT(cmfe_AnalyticAnalysis_IntegralNIDErrorGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field for analytic error analysis.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to calculate the analytic error analysis for.
     INTEGER(INTG), INTENT(IN) :: componentNumber !<component number
@@ -10815,14 +11172,20 @@ CONTAINS
     REAL(DP), INTENT(OUT) :: ghostIntegralValue(2) !<On return, ghost integral value
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
-
+    TYPE(RegionsType), POINTER :: regions
+ 
     ENTERS("cmfe_AnalyticAnalysis_IntegralNIDErrorGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL AnalyticAnalysis_IntegralNIDErrorGet(field,variableType,componentNumber,integralValue,ghostIntegralValue,err, &
       & error,*999)
@@ -11068,21 +11431,28 @@ CONTAINS
 !!
 !!==================================================================================================================================
 
-  !>Returns the collapsed Xi flags of a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_CollapsedXiGetNumber(userNumber,collapsedXi,err)
+  !>Returns the collapsed Xi flags of a basis identified by user number.
+  SUBROUTINE cmfe_Basis_CollapsedXiGetNumber(contextUserNumber,basisUserNumber,collapsedXi,err)
     !DLLEXPORT(cmfe_Basis_CollapsedXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the collapsed Xi flags for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the collapsed Xi flags for.
     INTEGER(INTG), INTENT(OUT) :: collapsedXi(:) !<collapsedXi(xiIdx). On return, the collapsed Xi parameter for the xiIdx'th Xi direction. \see OpenCMISS_BasisXiCollapse
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_CollapsedXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_CollapsedXiGet(basis,collapsedXi,err,error,*999)
 
     EXITS("cmfe_Basis_CollapsedXiGetNumber")
@@ -11124,20 +11494,27 @@ CONTAINS
   !
 
   !>Sets/changes the collapsed Xi flags of a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_CollapsedXiSetNumber(userNumber,collapsedXi,err)
+  SUBROUTINE cmfe_Basis_CollapsedXiSetNumber(contextUserNumber,basisUserNumber,collapsedXi,err)
     !DLLEXPORT(cmfe_Basis_CollapsedXiSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to set the collapsed Xi flags for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to set the collapsed Xi flags for.
     INTEGER(INTG), INTENT(IN) :: collapsedXi(:) !<collapsedXi(xiIdx). The collapsed Xi parameter for the xiIdx'th Xi direction to set. \see OpenCMISS_BasisXiCollapse
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_CollapsedXiSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_CollapsedXiSet(basis,collapsedXi,err,error,*999)
 
     EXITS("cmfe_Basis_CollapsedXiSetNumber")
@@ -11179,19 +11556,26 @@ CONTAINS
   !
 
    !>Finishes the creation of a new basis identified by a user number.
-  SUBROUTINE cmfe_Basis_CreateFinishNumber(userNumber,err)
+  SUBROUTINE cmfe_Basis_CreateFinishNumber(contextUserNumber,basisUserNumber,err)
     !DLLEXPORT(cmfe_Basis_CreateFinishNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to finish the creation of.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to finish the creation of.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_CreateFinishNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_CreateFinish(basis,err,error,*999)
 
 #ifdef TAUPROF
@@ -11240,14 +11624,17 @@ CONTAINS
   !
 
   !>Starts the creation of a new basis for a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_CreateStartNumber(userNumber,err)
+  SUBROUTINE cmfe_Basis_CreateStartNumber(basisUserNumber,contextUserNumber,err)
     !DLLEXPORT(cmfe_Basis_CreateStartNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to start the creation of.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to start the creation of.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_CreateStartNumber",err,error,*999)
 
@@ -11255,8 +11642,12 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('Basis Create')
 #endif
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_CreateStart(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_CreateStart(basisUserNumber,basisFunctions,basis,err,error,*999)
 
     EXITS("cmfe_Basis_CreateStartNumber")
     RETURN
@@ -11271,14 +11662,16 @@ CONTAINS
   !
 
   !>Starts the creation of a new basis for a basis identified by an object.
-  SUBROUTINE cmfe_Basis_CreateStartObj(userNumber,basis,err)
+  SUBROUTINE cmfe_Basis_CreateStartObj(userNumber,context,basis,err)
     !DLLEXPORT(cmfe_Basis_CreateStartObj)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to start the creation of.
+    TYPE(cmfe_ContextType), INTENT(IN) :: context !<The context to create the basis function for.
     TYPE(cmfe_BasisType), INTENT(INOUT) :: basis !<On exit, the newly created basis.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_CreateStartObj",err,error,*999)
 
@@ -11286,7 +11679,9 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('basis Create')
 #endif
 
-    CALL Basis_CreateStart(userNumber,basis%basis,err,error,*999)
+    NULLIFY(basisFunctions)
+    CALL Context_BasisFunctionsGet(context%context,basisFunctions,err,error,*999)
+    CALL Basis_CreateStart(userNumber,basisFunctions,basis%basis,err,error,*999)
 
     EXITS("cmfe_Basis_CreateStartObj")
     RETURN
@@ -11301,19 +11696,26 @@ CONTAINS
   !
 
   !>Destroys a basis identified by its basis user number.
-  SUBROUTINE cmfe_Basis_DestroyNumber(userNumber,err)
+  SUBROUTINE cmfe_Basis_DestroyNumber(contextUserNumber,basisUserNumber,err)
     !DLLEXPORT(cmfe_Basis_DestroyNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to destroy.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to destroy.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_DestroyNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_Destroy(basis,err,error,*999)
 
     EXITS("cmfe_Basis_DestroyNumber")
@@ -11354,20 +11756,27 @@ CONTAINS
   !
 
   !>Get the interpolation type in each xi directions for a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_InterpolationXiGetNumber(userNumber,interpolationXi,err)
+  SUBROUTINE cmfe_Basis_InterpolationXiGetNumber(contextUserNumber,basisUserNumber,interpolationXi,err)
     !DLLEXPORT(cmfe_Basis_InterpolationXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the interpolation xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the interpolation xi for.
     INTEGER(INTG), INTENT(OUT) :: interpolationXi(:) !<interpolationXi(xiIdx). On return, the interpolation xi parameters for each Xi direction \see OpenCMISS_BasisInterpolationSpecifications.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_InterpolationXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_InterpolationXiGet(basis,interpolationXi,err,error,*999)
 
     EXITS("cmfe_Basis_InterpolationXiGetNumber")
@@ -11409,20 +11818,27 @@ CONTAINS
   !
 
   !>Sets/changes the interpolation type in each xi directions for a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_InterpolationXiSetNumber(userNumber,interpolationXi,err)
+  SUBROUTINE cmfe_Basis_InterpolationXiSetNumber(contextUserNumber,basisUserNumber,interpolationXi,err)
     !DLLEXPORT(cmfe_Basis_InterpolationXiSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the interpolation xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the interpolation xi for.
     INTEGER(INTG), INTENT(IN) :: interpolationXi(:) !<interpolationXi(xiIdx). The interpolation xi parameters for each Xi direction \see OpenCMISS_BasisInterpolationSpecifications.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_InterpolationXiSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_InterpolationXiSet(basis,interpolationXi,err,error,*999)
 
     EXITS("cmfe_Basis_InterpolationXiSetNumber")
@@ -11464,20 +11880,27 @@ CONTAINS
   !
 
   !>Returns the number of local nodes in a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_NumberOfLocalNodesGetNumber(userNumber,numberOfLocalNodes,err)
+  SUBROUTINE cmfe_Basis_NumberOfLocalNodesGetNumber(contextUserNumber,basisUserNumber,numberOfLocalNodes,err)
     !DLLEXPORT(cmfe_Basis_NumberOfLocalNodesGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the interpolation xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the interpolation xi for.
     INTEGER(INTG), INTENT(OUT) :: numberOfLocalNodes !<On return, the number of local nodes in the specified basis.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_NumberOfLocalNodesGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_NumberOfLocalNodesGet(basis,numberOfLocalNodes,err,error,*999)
 
     EXITS("cmfe_Basis_NumberOfLocalNodesGetNumber")
@@ -11519,20 +11942,27 @@ CONTAINS
   !
 
   !>Returns the number of Xi directions in a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_NumberOfXiGetNumber(userNumber,numberOfXi,err)
+  SUBROUTINE cmfe_Basis_NumberOfXiGetNumber(contextUserNumber,basisUserNumber,numberOfXi,err)
     !DLLEXPORT(cmfe_Basis_NumberOfXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the number xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the number xi for.
     INTEGER(INTG), INTENT(OUT) :: numberOfXi !<On return, the number of xi directions in the specified basis.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_NumberOfXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_NumberOfXiGet(basis,numberOfXi,err,error,*999)
 
     EXITS("cmfe_Basis_NumberOfXiGetNumber")
@@ -11574,20 +12004,27 @@ CONTAINS
   !
 
   !>Sets/changes the number of Xi directions in a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_NumberOfXiSetNumber(userNumber,numberOfXi,err)
+  SUBROUTINE cmfe_Basis_NumberOfXiSetNumber(contextUserNumber,basisUserNumber,numberOfXi,err)
     !DLLEXPORT(cmfe_Basis_NumberOfXiSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to set the number xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to set the number xi for.
     INTEGER(INTG), INTENT(IN) :: numberOfXi !<The number of xi directions in the specified basis to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_NumberOfXiSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_NumberOfXiSet(basis,numberOfXi,err,error,*999)
 
     EXITS("cmfe_Basis_NumberOfXiSetNumber")
@@ -11629,20 +12066,27 @@ CONTAINS
   !
 
   !>Returns the number of Gauss points in each Xi directions for a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureNumberOfGaussXiGetNumber(userNumber,numberOfGaussXi,err)
+  SUBROUTINE cmfe_Basis_QuadratureNumberOfGaussXiGetNumber(contextUserNumber,basisUserNumber,numberOfGaussXi,err)
     !DLLEXPORT(cmfe_Basis_QuadratureNumberOfGaussXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the number of Gauss Xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the number of Gauss Xi for.
     INTEGER(INTG), INTENT(OUT) :: numberOfGaussXi(:) !<numberOfGauss(xiIdx). On return, the number of Gauss points in each Xi directions in the specified basis.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureNumberOfGaussXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureNumberOfGaussXiGet(basis,numberOfGaussXi,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureNumberOfGaussXiGetNumber")
@@ -11685,20 +12129,27 @@ CONTAINS
   !
 
   !>Sets/changes the number of Gauss points in each Xi directions for a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureNumberOfGaussXiSetNumber(userNumber,numberOfGaussXi,err)
+  SUBROUTINE cmfe_Basis_QuadratureNumberOfGaussXiSetNumber(contextUserNumber,basisUserNumber,numberOfGaussXi,err)
     !DLLEXPORT(cmfe_Basis_QuadratureNumberOfGaussXiSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to set the number of Gauss Xi for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to set the number of Gauss Xi for.
     INTEGER(INTG), INTENT(IN) :: numberOfGaussXi(:) !<numberOfGaussXi(xiIdx). The number of Gauss points in each Xi directions in the specified basis to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureNumberOfGaussXiSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureNumberOfGaussXiSet(basis,numberOfGaussXi,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureNumberOfGaussXiSetNumber")
@@ -11740,22 +12191,29 @@ CONTAINS
   !================================================================================================================================
   !
   !>Returns the xi position of a Gauss point on a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureSingleGaussXiGetNumber(userNumber,quadratureScheme,gaussPoint,gaussXi,err)
+  SUBROUTINE cmfe_Basis_QuadratureSingleGaussXiGetNumber(contextUserNumber,basisUserNumber,quadratureScheme,gaussPoint,gaussXi,err)
     !DLLEXPORT(cmfe_Basis_QuadratureSingleGaussXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the Gauss Xi positions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the Gauss Xi positions for.
     INTEGER(INTG), INTENT(IN) :: quadratureScheme !<The quadrature scheme to return the Gauss positions for.
     INTEGER(INTG), INTENT(IN) :: gaussPoint !<The Gauss point to return the element xi positions for.
     REAL(DP), INTENT(OUT) :: gaussXi(:) !<On return, gaussXi(xiIdx) the xi position of the specified Gauss point for the specified quadrature scheme.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureSingleGaussXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureSingleGaussXiGet(basis,quadratureScheme,gaussPoint,gaussXi,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureSingleGaussXiGetNumber")
@@ -11799,22 +12257,30 @@ CONTAINS
   !
 
   !>Returns the xi positions of Gauss points on a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureMultipleGaussXiGetNumber(userNumber,quadratureScheme,gaussPoints,gaussXi,err)
+  SUBROUTINE cmfe_Basis_QuadratureMultipleGaussXiGetNumber(contextUserNumber,basisUserNumber,quadratureScheme,gaussPoints,gaussXi, &
+    & err)
     !DLLEXPORT(cmfe_Basis_QuadratureMultipleGaussXiGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the Gauss Xi positions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the Gauss Xi positions for.
     INTEGER(INTG), INTENT(IN) :: quadratureScheme !<The quadrature scheme to return the Gauss positions for.
     INTEGER(INTG), INTENT(IN) :: gaussPoints(:) !<gaussPoints(gaussPointIdx). The Gauss points to return the element xi positions for.
     REAL(DP), INTENT(OUT) :: gaussXi(:,:) !<gaussXi(gaussPointIdx,xiIdx). On return, the Gauss xi positions for the specified quadrature scheme.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureMultipleGaussXiGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureMultipleGaussXiGet(basis,quadratureScheme,gaussPoints,gaussXi,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureMultipleGaussXiGetNumber")
@@ -11859,20 +12325,27 @@ CONTAINS
   !
 
   !>Returns the order of quadrature a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureOrderGetNumber(userNumber,quadratureOrder,err)
+  SUBROUTINE cmfe_Basis_QuadratureOrderGetNumber(contextUserNumber,basisUserNumber,quadratureOrder,err)
     !DLLEXPORT(cmfe_Basis_QuadratureOrderGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the quadrature order for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the quadrature order for.
     INTEGER(INTG), INTENT(OUT) :: quadratureOrder !<On return, the order of quadrature in the specified basis.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureOrderGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureOrderGet(basis,quadratureOrder,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureOrderGetNumber")
@@ -11915,20 +12388,27 @@ CONTAINS
   !
 
   !>Sets/changes the order of quadrature a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureOrderSetNumber(userNumber,quadratureOrder,err)
+  SUBROUTINE cmfe_Basis_QuadratureOrderSetNumber(contextUserNumber,basisUserNumber,quadratureOrder,err)
     !DLLEXPORT(cmfe_Basis_QuadratureOrderSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to set the quadrature order for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to set the quadrature order for.
     INTEGER(INTG), INTENT(IN) :: quadratureOrder !<The order of quadrature in the specified basis to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureOrderSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureOrderSet(basis,quadratureOrder,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureOrderSetNumber")
@@ -11970,20 +12450,27 @@ CONTAINS
   !
 
   !>Returns the type of quadrature a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureTypeGetNumber(userNumber,quadratureType,err)
+  SUBROUTINE cmfe_Basis_QuadratureTypeGetNumber(contextUserNumber,basisUserNumber,quadratureType,err)
     !DLLEXPORT(cmfe_Basis_QuadratureTypeGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the quadrature type for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the quadrature type for.
     INTEGER(INTG), INTENT(OUT) :: quadratureType !<On return, the type of quadrature in the specified basis. \see OpenCMISS_QuadratureTypes
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureTypeGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureTypeGet(basis,quadratureType,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureTypeGetNumber")
@@ -12025,20 +12512,27 @@ CONTAINS
   !
 
   !>Sets/changes the type of quadrature a basis quadrature identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureTypeSetNumber(userNumber,quadratureType,err)
+  SUBROUTINE cmfe_Basis_QuadratureTypeSetNumber(contextUserNumber,basisUserNumber,quadratureType,err)
     !DLLEXPORT(cmfe_Basis_QuadratureTypeSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the quadrature type for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the quadrature type for.
     INTEGER(INTG), INTENT(IN) :: quadratureType !<The type of quadrature in the specified basis to set. \see OpenCMISS_QuadratureTypes
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureTypeSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureTypeSet(basis,quadratureType,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureTypeSetNumber")
@@ -12080,20 +12574,27 @@ CONTAINS
   !
 
   !>Sets/changes the local face Gauss scheme calculation, on a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_QuadratureLocalFaceGaussEvaluateSetNumber(userNumber,faceGaussEvaluate,err)
+  SUBROUTINE cmfe_Basis_QuadratureLocalFaceGaussEvaluateSetNumber(contextUserNumber,basisUserNumber,faceGaussEvaluate,err)
     !DLLEXPORT(cmfe_Basis_QuadratureLocalFaceGaussEvaluateSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the quadrature type for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the quadrature type for.
     LOGICAL, INTENT(IN) :: faceGaussEvaluate !<The value to set face Gauss evaluation flag to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_QuadratureLocalFaceGaussEvaluateSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_QuadratureLocalFaceGaussEvaluateSet(basis,faceGaussEvaluate,err,error,*999)
 
     EXITS("cmfe_Basis_QuadratureLocalFaceGaussEvaluateSetNumber")
@@ -12136,20 +12637,27 @@ CONTAINS
   !
 
   !>Returns the type of a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_TypeGetNumber(userNumber,basisType,err)
+  SUBROUTINE cmfe_Basis_TypeGetNumber(contextUserNumber,basisUserNumber,basisType,err)
     !DLLEXPORT(cmfe_Basis_TypeGetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to get the type for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to get the type for.
     INTEGER(INTG), INTENT(OUT) :: basisType !<On return, the type of the specified basis. \see OpenCMISS_BasisTypes
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_TypeGetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_TypeGet(basis,basisType,err,error,*999)
 
     EXITS("cmfe_Basis_TypeGetNumber")
@@ -12191,20 +12699,27 @@ CONTAINS
   !
 
   !>Sets/changes the type of a basis identified by a user number.
-  SUBROUTINE cmfe_Basis_TypeSetNumber(userNumber,basisType,err)
+  SUBROUTINE cmfe_Basis_TypeSetNumber(contextUserNumber,basisUserNumber,basisType,err)
     !DLLEXPORT(cmfe_Basis_TypeSetNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to set the type for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the basis function.
+    INTEGER(INTG), INTENT(IN) :: basisUserNumber !<The user number of the basis to set the type for.
     INTEGER(INTG), INTENT(IN) :: basisType !<The type of the specified basis to set. \see OpenCMISS_BasisTypes
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions
 
     ENTERS("cmfe_Basis_TypeSetNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(basisFunctions)
     NULLIFY(basis)
-    CALL Basis_Get(userNumber,basis,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_BasisFunctionsGet(context,basisFunctions,err,error,*999)
+    CALL Basis_Get(basisFunctions,basisUserNumber,basis,err,error,*999)
     CALL Basis_TypeSet(basis,basisType,err,error,*999)
 
     EXITS("cmfe_Basis_TypeSetNumber")
@@ -12249,25 +12764,31 @@ CONTAINS
 !!==================================================================================================================================
 
   !>Destroys the boundary conditions for solver equations identified by a control loop identifier.
-  SUBROUTINE cmfe_BoundaryConditions_DestroyNumber0(problemUserNumber,controlLoopIdentifier,solverIndex,err)
+  SUBROUTINE cmfe_BoundaryConditions_DestroyNumber0(contextUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex,err)
     !DLLEXPORT(cmfe_BoundaryConditions_DestroyNumber0)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
-
+    TYPE(ContextType), POINTER :: context
     ENTERS("cmfe_BoundaryConditions_DestroyNumber0",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(problems)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_DESTROY(boundaryConditions,err,error,*999)
@@ -12285,25 +12806,32 @@ CONTAINS
   !
 
   !>Destroys the boundary conditions for solver equations identified by a control loop identifier.
-  SUBROUTINE cmfe_BoundaryConditions_DestroyNumber1(problemUserNumber,controlLoopIdentifiers,solverIndex,err)
+  SUBROUTINE cmfe_BoundaryConditions_DestroyNumber1(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex,err)
     !DLLEXPORT(cmfe_BoundaryConditions_DestroyNumber1)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
 
     ENTERS("cmfe_BoundaryConditions_DestroyNumber1",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(problems)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_DESTROY(boundaryConditions,err,error,*999)
@@ -12346,15 +12874,16 @@ CONTAINS
   !
 
   !>Adds to the value of the specified constant and sets this as a boundary condition on the specified constant for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_AddConstantNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & fieldUserNumber,variableType,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_AddConstantNumber(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,componentNumber,condition,value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_AddConstantNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the dependent field to add the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to add the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the dependent field to add the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to add the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to add the boundary condition at.
@@ -12363,21 +12892,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_AddConstantNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_ADD_CONSTANT(boundaryConditions,dependentField,variableType,componentNumber, &
@@ -12428,15 +12966,16 @@ CONTAINS
 
 
   !>Sets the value of the specified constant as a boundary condition on the specified constant for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_SetConstantNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & variableType,fieldUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_SetConstantNumber(contextUserNumber,problemUserNumber, &
+    & controlLoopIdentifiers,solverIndex,regionUserNumber,fieldUserNumber,variableType,componentNumber,condition,value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_SetConstantNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
@@ -12445,21 +12984,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_SetConstantNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_SET_CONSTANT(boundaryConditions,dependentField,variableType,componentNumber, &
@@ -12509,15 +13057,16 @@ CONTAINS
   !
 
   !>Adds the value to the specified element and sets this as a boundary condition on the specified element for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_AddElementNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & fieldUserNumber,variableType,elementUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_AddElementNumber(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,elementUserNumber,componentNumber,condition,value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_AddElementNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to add the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to add the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to add the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to add the boundary conditions for.
@@ -12527,21 +13076,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_AddElementNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_ADD_ELEMENT(boundaryConditions,dependentField,variableType,elementUserNumber, &
@@ -12593,15 +13151,16 @@ CONTAINS
   !
 
   !>Sets the value of the specified element as a boundary condition on the specified element for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_SetElementNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & fieldUserNumber,variableType,elementUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_SetElementNumber(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,elementUserNumber,componentNumber,condition,value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_SetElementNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
@@ -12611,21 +13170,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_SetElementNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_SET_ELEMENT(boundaryConditions,dependentField,variableType,elementUserNumber, &
@@ -12677,15 +13245,17 @@ CONTAINS
   !
 
   !>Adds the value to the specified node and sets this as a boundary condition on the specified node for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_AddNodeNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_AddNodeNumber(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition, &
+    & value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_AddNodeNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to add the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to add the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to add the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the node derivative version to add the boundary conditions for.
@@ -12697,21 +13267,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_AddNodeNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_ADD_NODE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
@@ -12765,15 +13344,17 @@ CONTAINS
   !
 
   !>Sets the value of the specified node as a boundary condition on the specified node for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_SetNodeNumber0(regionUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
-    & fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_SetNodeNumber0(contextUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition, &
+    & value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_SetNodeNumber0)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the node derivative version to set the boundary conditions for.
@@ -12785,21 +13366,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_SetNodeNumber0",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_SET_NODE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
@@ -12818,15 +13408,17 @@ CONTAINS
   !
 
   !>Sets the value of the specified node as a boundary condition on the specified node for boundary conditions identified by a user number.
-  SUBROUTINE cmfe_BoundaryConditions_SetNodeNumber1(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
-    & fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition,value,err)
+  SUBROUTINE cmfe_BoundaryConditions_SetNodeNumber1(contextUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & regionUserNumber,fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition, &
+    & value,err)
     !DLLEXPORT(cmfe_BoundaryConditions_SetNodeNumber1)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
     INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the node derivative version to set the boundary conditions for.
@@ -12838,21 +13430,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: dependentField
 
     ENTERS("cmfe_BoundaryConditions_SetNodeNumber1",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
     NULLIFY(dependentField)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BOUNDARY_CONDITIONS_SET_NODE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
@@ -12906,27 +13507,34 @@ CONTAINS
   !
 
   !>Sets the Neumann integration matrix sparsity for boundary conditions identified by a control loop identifier.
-  SUBROUTINE cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber0( &
-      & problemUserNumber,controlLoopIdentifier,solverIndex,sparsityType,err)
+  SUBROUTINE cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber0(contextUserNumber,problemUserNumber,controlLoopIdentifier, &
+    & solverIndex,sparsityType,err)
     !DLLEXPORT(cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber0)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier of the solver equations containing the boundary conditions.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: sparsityType !<The sparsity type for the Neumann integration matrices. \see OpenCMISS_BoundaryConditionSparsityTypes,OpenCMISS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
 
     ENTERS("cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber0",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(problems)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BoundaryConditions_NeumannSparsityTypeSet(boundaryConditions,sparsityType,err,error,*999)
@@ -12945,27 +13553,34 @@ CONTAINS
   !
 
   !>Sets the Neumann integration matrix sparsity for boundary conditions identified by a control loop identifier.
-  SUBROUTINE cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber1( &
-      & problemUserNumber,controlLoopIdentifiers,solverIndex,sparsityType,err)
+  SUBROUTINE cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber1(contextUserNumber,problemUserNumber,controlLoopIdentifiers, &
+    & solverIndex,sparsityType,err)    
     !DLLEXPORT(cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber1)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
     INTEGER(INTG), INTENT(IN) :: sparsityType !<The sparsity type for the Neumann integration matrices. \see OpenCMISS_BoundaryConditionSparsityTypes,OpenCMISS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
 
     ENTERS("cmfe_BoundaryConditions_NeumannSparsityTypeSetNumber1",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(problems)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(boundaryConditions)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BoundaryConditions_NeumannSparsityTypeSet(boundaryConditions,sparsityType,err,error,*999)
@@ -13011,15 +13626,17 @@ CONTAINS
   !
 
   !>Constrain multiple nodal equations dependent field DOFs to be a single solver DOF in the solver equations
-  SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber(regionUserNumber,problemUserNumber,controlLoopIdentifier, &
-    & solverIndex,fieldUserNumber,fieldVariableType,versionNumber,derivativeNumber,component,nodes,coefficient,err)
+  SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber(contextUserNumber,problemUserNumber,controlLoopIdentifier, &
+    & solverIndex,regionUserNumber,fieldUserNumber,fieldVariableType,versionNumber,derivativeNumber,component,nodes, &
+    & coefficient,err)
     !DLLEXPORT(cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field DOFs to constrain.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the problem/region.
     INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations.
     INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations.
     INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index of the solver equations.
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the field DOFs to constrain.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field containing the DOFs to contrain.
     INTEGER(INTG), INTENT(IN) :: fieldVariableType !<The variable type of the dependent field containing the DOFs to constrain. \see OpenCMISS_FieldVariableTypes
     INTEGER(INTG), INTENT(IN) :: versionNumber !<The derivative version number.
@@ -13030,21 +13647,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
     TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(ProblemsType), POINTER :: problems
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(ContextType), POINTER :: context
     TYPE(FIELD_TYPE), POINTER :: field
 
     ENTERS("cmfe_BoundaryConditions_ConstrainNodeDofsEqualNumber",err,error,*999)
 
+    NULLIFY(context)
+    NULLIFY(regions)
+    NULLIFY(problems)
     NULLIFY(region)
     NULLIFY(problem)
     NULLIFY(solverEquations)
     NULLIFY(field)
     NULLIFY(boundaryConditions)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Context_ProblemsGet(context,problems,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
-    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_Get(problems,problemUserNumber,problem,err,error,*999)
     CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
     CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
     CALL BoundaryConditions_ConstrainNodeDofsEqual(boundaryConditions,field, &
@@ -13064,8 +13690,8 @@ CONTAINS
   !
 
   !>Constrain multiple nodal equations dependent field DOFs to be a single solver DOF in the solver equations
-  SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj( &
-      & boundaryConditions,field,fieldVariableType,versionNumber,derivativeNumber,component,nodes,coefficient,err)
+  SUBROUTINE cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj(boundaryConditions,field,fieldVariableType,versionNumber, &
+    & derivativeNumber,component,nodes,coefficient,err)
     !DLLEXPORT(cmfe_BoundaryConditions_ConstrainNodeDofsEqualObj)
 
     !Argument variables
@@ -13359,26 +13985,35 @@ CONTAINS
 !!==================================================================================================================================
 
   !>Sets a CellML model variable to be known by user number.
-  SUBROUTINE cmfe_CellML_VariableSetAsKnownNumberC(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID,err)
+  SUBROUTINE cmfe_CellML_VariableSetAsKnownNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,err)
     !DLLEXPORT(cmfe_CellML_VariableSetAsKnownNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model in which to find the given variable.
     CHARACTER(LEN=*), INTENT(IN) :: variableID !<The CellML variable to set as known (in the format 'component_name/variable_name').
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_VariableSetAsKnownNumberC",err,error,*999)
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
+    NULLIFY(context)    
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_VARIABLE_SET_AS_KNOWN(cellml,cellMLModelUserNumber,variableID,err,error,*999)
 
@@ -13412,7 +14047,8 @@ CONTAINS
     !Local variables
 
     ENTERS("cmfe_CellML_VariableSetAsKnownObjC",err,error,*999)
-
+    
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -13437,27 +14073,36 @@ CONTAINS
   !
 
   !>Sets a CellML model variable to be known by user number.
-  SUBROUTINE cmfe_CellML_VariableSetAsKnownNumberVS(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID,err)
+  SUBROUTINE cmfe_CellML_VariableSetAsKnownNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,err)
     !DLLEXPORT(cmfe_CellML_VariableSetAsKnownNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model in which to find the given variable.
     TYPE(VARYING_STRING), INTENT(IN) :: variableID !<The CellML variable to set as known (in the format 'component_name/variable_name').
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_VariableSetAsKnownNumberVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
-
+    
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_VARIABLE_SET_AS_KNOWN(cellml,cellMLModelUserNumber,variableID,err,error,*999)
 
@@ -13491,6 +14136,7 @@ CONTAINS
     !Local variables
 
     ENTERS("cmfe_CellML_VariableSetAsKnownObjVS",err,error,*999)
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -13515,26 +14161,36 @@ CONTAINS
   !
 
   !>Sets a CellML model variable to be wanted by user number.
-  SUBROUTINE cmfe_CellML_VariableSetAsWantedNumberC(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID,err)
+  SUBROUTINE cmfe_CellML_VariableSetAsWantedNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,err)
     !DLLEXPORT(cmfe_CellML_VariableSetAsWantedNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model in which to find the given variable.
     CHARACTER(LEN=*), INTENT(IN) :: variableID !<The CellML variable to set as wanted (in the format 'component_name/variable_name').
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_VariableSetAsWantedNumberC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_VARIABLE_SET_AS_WANTED(cellml,cellMLModelUserNumber,variableID,err,error,*999)
 
@@ -13569,6 +14225,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_VariableSetAsWantedObjC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
     CALL CELLML_VARIABLE_SET_AS_WANTED(CellML%cellML,cellMLModelUserNumber,variableID,err,error,*999)
@@ -13592,26 +14250,36 @@ CONTAINS
   !
 
   !>Sets a CellML model variable to be wanted by user number.
-  SUBROUTINE cmfe_CellML_VariableSetAsWantedNumberVS(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID,err)
+  SUBROUTINE cmfe_CellML_VariableSetAsWantedNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,err)
     !DLLEXPORT(cmfe_CellML_VariableSetAsWantedNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model in which to find the given variable.
     TYPE(VARYING_STRING), INTENT(IN) :: variableID !<The CellML variable to set as wanted (in the format 'component_name/variable_name').
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_VariableSetAsWantedNumberVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_VARIABLE_SET_AS_WANTED(cellml,cellMLModelUserNumber,variableID,err,error,*999)
 
@@ -13670,11 +14338,12 @@ CONTAINS
   !
 
   !>Defines a CellML model variable to field variable component map by user number
-  SUBROUTINE cmfe_CellML_CreateCellMLToFieldMapNumberC(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID, &
-    & cellMLParameterSet,fieldUserNumber,variableType,componentNumber,fieldParameterSet,err)
+  SUBROUTINE cmfe_CellML_CreateCellMLToFieldMapNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,cellMLParameterSet,fieldUserNumber,variableType,componentNumber,fieldParameterSet,err)
     !DLLEXPORT(cmfe_CellML_CreateCellMLToFieldMapNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model to map fom.
@@ -13686,18 +14355,26 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: fieldParameterSet !<The field variable parameter set to map to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateCellMLToFieldMapNumberC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL CELLML_CREATE_CELLML_TO_FIELD_MAP(cellml,cellMLModelUserNumber,variableID,cellMLParameterSet, &
@@ -13740,6 +14417,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_CreateCellMLToFieldMapObjC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
     CALL CELLML_CREATE_CELLML_TO_FIELD_MAP(cellML%cellML,cellMLModelUserNumber,variableID,cellMLParameterSet, &
@@ -13763,11 +14442,12 @@ CONTAINS
   !
 
   !>Defines a CellML model variable to field variable component map by user number
-  SUBROUTINE cmfe_CellML_CreateCellMLToFieldMapNumberVS(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,variableID, &
-    & cellMLParameterSet,fieldUserNumber,variableType,componentNumber,fieldParameterSet,err)
+  SUBROUTINE cmfe_CellML_CreateCellMLToFieldMapNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & variableID,cellMLParameterSet,fieldUserNumber,variableType,componentNumber,fieldParameterSet,err)
     !DLLEXPORT(cmfe_CellML_CreateCellMLToFieldMapNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model to map from.
@@ -13779,18 +14459,26 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: fieldParameterSet !<The field variable parameter set to map to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateCellMLToFieldMapNumberVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL CELLML_CREATE_CELLML_TO_FIELD_MAP(cellml,cellMLModelUserNumber,variableID,cellMLParameterSet, &
@@ -13833,6 +14521,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_CreateCellMLToFieldMapObjVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_CREATE_CELLML_TO_FIELD_MAP(cellML%cellML,cellMLModelUserNumber,variableID,cellMLParameterSet, &
@@ -13856,11 +14546,12 @@ CONTAINS
   !
 
   !>Defines a field variable component to CellML model variable map by user number.
-  SUBROUTINE cmfe_CellML_CreateFieldToCellMLMapNumberC(regionUserNumber,cellMLUserNumber,fieldUserNumber,variableType, &
-    & componentNumber,fieldParameterSet,cellMLModelUserNumber,variableID,cellMLParameterSet,err)
+  SUBROUTINE cmfe_CellML_CreateFieldToCellMLMapNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,fieldUserNumber, &
+    & variableType,componentNumber,fieldParameterSet,cellMLModelUserNumber,variableID,cellMLParameterSet,err)
     !DLLEXPORT(cmfe_CellML_CreateFieldToCellMLMapNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to map from.
@@ -13872,18 +14563,26 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: cellMLParameterSet !<The CellML variable parameter set to map to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateFieldToCellMLMapNumberC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL CELLML_CREATE_FIELD_TO_CELLML_MAP(cellml,field,variableType,componentNumber,fieldParameterSet, &
@@ -13926,6 +14625,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_CreateFieldToCellMLMapObjC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
     CALL CELLML_CREATE_FIELD_TO_CELLML_MAP(cellML%cellML,field%field,variableType,componentNumber,fieldParameterSet, &
@@ -13950,11 +14651,12 @@ CONTAINS
   !
 
   !>Defines a field variable component to CellML model variable map by user number
-  SUBROUTINE cmfe_CellML_CreateFieldToCellMLMapNumberVS(regionUserNumber,cellMLUserNumber,fieldUserNumber,variableType, &
-    & fieldParameterSet,componentNumber,cellMLModelUserNumber,variableID,cellMLParameterSet,err)
+  SUBROUTINE cmfe_CellML_CreateFieldToCellMLMapNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,fieldUserNumber, &
+    & variableType,fieldParameterSet,componentNumber,cellMLModelUserNumber,variableID,cellMLParameterSet,err)
     !DLLEXPORT(cmfe_CellML_CreateFieldToCellMLMapNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the field to map from.
@@ -13966,18 +14668,26 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: cellMLParameterSet !<The CellML variable parameter set to map to.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateFieldToCellMLMapNumberVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL Region_FieldGet(region,fieldUserNumber,field,err,error,*999)
     CALL CELLML_CREATE_FIELD_TO_CELLML_MAP(cellml,field,variableType,componentNumber,fieldParameterSet, &
@@ -14020,6 +14730,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_CreateFieldToCellMLMapObjVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_CREATE_FIELD_TO_CELLML_MAP(cellML%cellML,field%field,variableType,componentNumber,fieldParameterSet, &
@@ -14043,24 +14755,33 @@ CONTAINS
   !
 
   !>Finishes the creation of a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_CreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_CreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_CreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_CREATE_FINISH(cellml,err,error,*999)
 
@@ -14096,6 +14817,7 @@ CONTAINS
     !Local variables
 
     ENTERS("cmfe_CellML_CreateFinishObj",err,error,*999)
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14124,18 +14846,23 @@ CONTAINS
   !
 
   !>Starts the creation of a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_CreateStartNumber(cellMLUserNumber,regionUserNumber,err)
+  SUBROUTINE cmfe_CellML_CreateStartNumber(cellMLUserNumber,contextUserNumber,regionUserNumber,err)
     !DLLEXPORT(cmfe_CellML_CreateStartNumber)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to start creating.
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the Region containing the field to start the CellML enviroment creation on.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_CreateStartNumber",err,error,*999)
+
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14143,9 +14870,13 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL CELLML_CREATE_START(cellMLUserNumber,region,cellml,err,error,*999)
 
 #else
@@ -14179,6 +14910,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_CreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
 #ifdef TAUPROF
@@ -14206,24 +14939,33 @@ CONTAINS
   !
 
   !>Destroys a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_DestroyNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_DestroyNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_DestroyNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment to destroy.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to destroy.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_DestroyNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_DESTROY(cellml,err,error,*999)
 
@@ -14256,6 +14998,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_DestroyObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
    CALL CELLML_DESTROY(cellML%cellML,err,error,*999)
@@ -14279,24 +15023,33 @@ CONTAINS
   !
 
   !>Finishes the creation of field maps for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_FieldMapsCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_FieldMapsCreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_FieldMapsCreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_FieldMapsCreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_FIELD_MAPS_CREATE_FINISH(cellml,err,error,*999)
 
@@ -14333,6 +15086,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_FieldMapsCreateFinishObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14357,24 +15111,33 @@ CONTAINS
   !
 
   !>Starts the creation of field maps for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_FieldMapsCreateStartNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_FieldMapsCreateStartNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_FieldMapsCreateStartNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the Region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to start creating the maps for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_FieldMapsCreateStartNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_FIELD_MAPS_CREATE_START(cellml,err,error,*999)
 
@@ -14407,6 +15170,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_FieldMapsCreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14431,27 +15195,35 @@ CONTAINS
   !
 
   !>Imports a specified CellML model as specified by a character URI into a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ModelImportNumberC(regionUserNumber,cellMLUserNumber,URI,modelIndex,err)
+  SUBROUTINE cmfe_CellML_ModelImportNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,URI,modelIndex,err)
     !DLLEXPORT(cmfe_CellML_ModelImportNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment to import the model into.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to import the model into.
     CHARACTER(LEN=*), INTENT(IN) :: URI !<The URI of the CellML model to import.
     INTEGER(INTG), INTENT(OUT) :: modelIndex !<On return, the index of the imported model.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ModelImportNumberC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_MODEL_IMPORT(cellml,URI,modelIndex,err,error,*999)
 
@@ -14486,6 +15258,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ModelImportObjC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14510,26 +15283,35 @@ CONTAINS
   !
 
   !>Imports a specified CellML model as specified by a varying string URI into a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ModelImportNumberVS(regionUserNumber,cellMLUserNumber,URI,modelIndex,err)
+  SUBROUTINE cmfe_CellML_ModelImportNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,URI,modelIndex,err)
     !DLLEXPORT(cmfe_CellML_ModelImportNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment to import the model into.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to import the model into.
     TYPE(VARYING_STRING), INTENT(IN) :: URI !<The URI of the CellML model to import.
     INTEGER(INTG), INTENT(OUT) :: modelIndex !<On return, the index of the imported model.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ModelImportNumberVS",err,error,*999)
 
-#ifdef WITH_CELLML
+    ASSERT_WITH_CELLML()
+    
+#ifdef WITH_CELLML    
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
-    NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    NULLIFY(cellml)    
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_MODEL_IMPORT(cellml,URI,modelIndex,err,error,*999)
 
@@ -14564,6 +15346,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ModelImportObjVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_MODEL_IMPORT(cellML%cellML,URI,modelIndex,err,error,*999)
@@ -14587,24 +15371,33 @@ CONTAINS
   !
 
   !>Finishes the creation of CellML models field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ModelsFieldCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_ModelsFieldCreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldCreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment to finish creating.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating the models field for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ModelsFieldCreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
-    NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    NULLIFY(cellml)    
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_MODELS_FIELD_CREATE_FINISH(cellml,err,error,*999)
 
@@ -14637,6 +15430,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ModelsFieldCreateFinishObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14661,27 +15455,37 @@ CONTAINS
   !
 
   !>Starts the creation of CellML models field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ModelsFieldCreateStartNumber(regionUserNumber,cellMLUserNumber,cellMLModelsFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_ModelsFieldCreateStartNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLModelsFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldCreateStartNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML environment to start creating the models field for.
     INTEGER(INTG), INTENT(IN) :: cellMLModelsFieldUserNumber !<The user number of the CellML models field to start creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ModelsFieldCreateStartNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
-
+    
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(field)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_MODELS_FIELD_CREATE_START(cellMLModelsFieldUserNumber,cellml,field,err,error,*999)
 
@@ -14716,6 +15520,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ModelsFieldCreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -14740,35 +15545,44 @@ CONTAINS
   !
 
   !>Returns the CellML models field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ModelsFieldGetNumber(regionUserNumber,cellMLUserNumber,cellMLModelsFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_ModelsFieldGetNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelsFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment to get the CellML models field for.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the CellML models field for.
     INTEGER(INTG), INTENT(OUT) :: cellMLModelsFieldUserNumber !<On return, the user number of the CellML models field.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ModelsFieldGetNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    NULLIFY(field)   
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_MODELS_FIELD_GET(cellml,field,err,error,*999)
     cellMLModelsFieldUserNumber = FIELD%USER_NUMBER
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
-
+    cellMLModelsFieldUserNumber = 0
+    
 #endif
 
 
@@ -14796,6 +15610,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ModelsFieldGetObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_MODELS_FIELD_GET(cellML%cellML,field%field,err,error,*999)
@@ -14819,24 +15635,33 @@ CONTAINS
   !
 
   !>Finishes the creation of CellML state field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_StateFieldCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_StateFieldCreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_StateFieldCreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating the state field for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_StateFieldCreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_STATE_FIELD_CREATE_FINISH(cellml,err,error,*999)
 
@@ -14869,6 +15694,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_StateFieldCreateFinishObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_STATE_FIELD_CREATE_FINISH(cellML%cellML,err,error,*999)
@@ -14892,27 +15719,37 @@ CONTAINS
   !
 
   !>Starts the creation of CellML state field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_StateFieldCreateStartNumber(regionUserNumber,cellMLUserNumber,cellMLStateFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_StateFieldCreateStartNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLStateFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_StateFieldCreateStartNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML environment to start creating the state field for.
     INTEGER(INTG), INTENT(IN) :: cellMLStateFieldUserNumber !<The user number of the CellML state field to start creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_StateFieldCreateStartNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_STATE_FIELD_CREATE_START(cellMLStateFieldUserNumber,cellml,field,err,error,*999)
 
@@ -14947,6 +15784,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_StateFieldCreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_STATE_FIELD_CREATE_START(cellMLStateFieldUserNumber,cellML%cellML,field%field,err,error,*999)
@@ -14970,34 +15809,43 @@ CONTAINS
   !
 
   !>Returns the CellML state field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_StateFieldGetNumber(regionUserNumber,cellMLUserNumber,cellMLStateFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_StateFieldGetNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLStateFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_StateFieldGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the CellML state field for.
     INTEGER(INTG), INTENT(OUT) :: cellMLStateFieldUserNumber !<On return, the user number of the CellML state field.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_StateFieldGetNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_STATE_FIELD_GET(cellml,field,err,error,*999)
     cellMLStateFieldUserNumber = field%USER_NUMBER
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
+    cellMLStateFieldUserNumber = 0
 
 #endif
 
@@ -15025,6 +15873,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_StateFieldGetObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_STATE_FIELD_GET(cellML%cellML,field%field,err,error,*999)
@@ -15048,11 +15898,12 @@ CONTAINS
   !
 
   !>Returns the field component number that corresponds to a character string VariableID for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_FieldComponentGetNumberC(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,cellMLFieldType,&
-  & variableID,fieldComponent,err)
+  SUBROUTINE cmfe_CellML_FieldComponentGetNumberC(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & cellMLFieldType,variableID,fieldComponent,err)
     !DLLEXPORT(cmfe_CellML_FieldComponentGetNumberC)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the field component for.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model to map fom.
@@ -15061,23 +15912,31 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: fieldComponent !<On return, the field component corresponding to the ID.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_FieldComponentGetNumberC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_FIELD_COMPONENT_GET(cellml,cellMLModelUserNumber,cellMLFieldType,variableID,fieldComponent,err,error,*999)
 
 #else
-
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
-
+    
+    fieldComponent=0
+    
 #endif
 
     EXITS("cmfe_CellML_FieldComponentGetNumberC")
@@ -15108,13 +15967,15 @@ CONTAINS
 
     ENTERS("cmfe_CellML_FieldComponentGetObjC",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_FIELD_COMPONENT_GET(cellML%cellML,cellMLModelUserNumber,cellMLFieldType,variableID,fieldComponent,err,error,*999)
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
+    fieldComponent=0
 
 #endif
 
@@ -15131,11 +15992,12 @@ CONTAINS
   !
 
   !>Returns the field component number that corresponds to a varying string variable ID for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_FieldComponentGetNumberVS(regionUserNumber,cellMLUserNumber,cellMLModelUserNumber,cellMLFieldType,&
-  & variableID,fieldComponent,err)
+  SUBROUTINE cmfe_CellML_FieldComponentGetNumberVS(contextUserNumber,regionUserNumber,cellMLUserNumber,cellMLModelUserNumber, &
+    & cellMLFieldType,variableID,fieldComponent,err)
     !DLLEXPORT(cmfe_CellML_FieldComponentGetNumberVS)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the field component for.
     INTEGER(INTG), INTENT(IN) :: cellMLModelUserNumber !<The user number of the CellML model to map from.
@@ -15144,22 +16006,30 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: fieldComponent !<On return, the field component corresponding to the ID.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_FieldComponentGetNumberVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_FIELD_COMPONENT_GET(cellml,cellMLModelUserNumber,cellMLFieldType,variableID,fieldComponent,err,error,*999)
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
+    fieldComponent=0
 
 #endif
 
@@ -15190,6 +16060,7 @@ CONTAINS
 
     ENTERS("cmfe_CellML_FieldComponentGetObjVS",err,error,*999)
 
+    ASSERT_WITH_CELLML()
 
 #ifdef WITH_CELLML
 
@@ -15197,8 +16068,8 @@ CONTAINS
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
-
+    fieldComponent=0
+    
 #endif
 
     EXITS("cmfe_CellML_FieldComponentGetObjVS")
@@ -15214,24 +16085,33 @@ CONTAINS
   !
 
   !>Finishes the creation of CellML intermediate field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_IntermediateFieldCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_IntermediateFieldCreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_IntermediateFieldCreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating the intermediate field for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_IntermediateFieldCreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_INTERMEDIATE_FIELD_CREATE_FINISH(cellml,err,error,*999)
 
@@ -15265,6 +16145,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_IntermediateFieldCreateFinishObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_INTERMEDIATE_FIELD_CREATE_FINISH(cellML%cellML,err,error,*999)
@@ -15289,27 +16171,37 @@ CONTAINS
   !
 
   !>Starts the creation of CellML intermediate field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_IntermediateFieldCreateStartNumber(regionUserNumber,cellMLUserNumber,cellMLIntermediateFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_IntermediateFieldCreateStartNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLIntermediateFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_IntermediateFieldCreateStartNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML environment to start creating the intermediate field for.
     INTEGER(INTG), INTENT(IN) :: cellMLIntermediateFieldUserNumber !<The user number of the CellML intermediate field to start creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_IntermediateFieldCreateStartNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_INTERMEDIATE_FIELD_CREATE_START(cellMLIntermediateFieldUserNumber,cellml,field,err,error,*999)
 
@@ -15345,6 +16237,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_IntermediateFieldCreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_INTERMEDIATE_FIELD_CREATE_START(cellMLIntermediateFieldUserNumber,cellML%cellML,field%field,err,error,*999)
@@ -15368,34 +16262,44 @@ CONTAINS
   !
 
   !>Returns the CellML intermediate field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_IntermediateFieldGetNumber(regionUserNumber,cellMLUserNumber,cellMLIntermediateFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_IntermediateFieldGetNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLIntermediateFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_IntermediateFieldGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the CellML intermediate field for.
     INTEGER(INTG), INTENT(OUT) :: cellMLIntermediateFieldUserNumber !<On return, the user number of the CellML intermediate field.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_IntermediateFieldGetNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_INTERMEDIATE_FIELD_GET(cellml,field,err,error,*999)
     cellMLIntermediateFieldUserNumber = field%USER_NUMBER
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
+    cellMLIntermediateFieldUserNumber=0
 
 #endif
 
@@ -15423,6 +16327,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_IntermediateFieldGetObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_INTERMEDIATE_FIELD_GET(cellML%cellML,field%field,err,error,*999)
@@ -15446,24 +16352,33 @@ CONTAINS
   !
 
   !>Finishes the creation of CellML parameters field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ParametersFieldCreateFinishNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_ParametersFieldCreateFinishNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ParametersFieldCreateFinishNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to finish creating the parameters field for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ParametersFieldCreateFinishNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_PARAMETERS_FIELD_CREATE_FINISH(cellml,err,error,*999)
 
@@ -15497,6 +16412,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ParametersFieldCreateFinishObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
    CALL CELLML_PARAMETERS_FIELD_CREATE_FINISH(cellML%cellML,err,error,*999)
@@ -15520,27 +16437,37 @@ CONTAINS
   !
 
   !>Starts the creation of CellML parameters field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ParametersFieldCreateStartNumber(regionUserNumber,cellMLUserNumber,cellMLParametersFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_ParametersFieldCreateStartNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLParametersFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ParametersFieldCreateStartNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML environment to start creating the parameters field for.
     INTEGER(INTG), INTENT(IN) :: cellMLParametersFieldUserNumber !<The user number of the CellML parameters field to start creating.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ParametersFieldCreateStartNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_PARAMETERS_FIELD_CREATE_START(cellMLParametersFieldUserNumber,cellml,field,err,error,*999)
 
@@ -15576,6 +16503,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ParametersFieldCreateStartObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
     CALL CELLML_PARAMETERS_FIELD_CREATE_START(cellMLParametersFieldUserNumber,cellML%cellML,field%field,err,error,*999)
@@ -15599,34 +16528,44 @@ CONTAINS
   !
 
   !>Returns the CellML parameters field for a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_ParametersFieldGetNumber(regionUserNumber,cellMLUserNumber,cellMLParametersFieldUserNumber,err)
+  SUBROUTINE cmfe_CellML_ParametersFieldGetNumber(contextUserNumber,regionUserNumber,cellMLUserNumber, &
+    & cellMLParametersFieldUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ParametersFieldGetNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to get the CellML parameters field for.
     INTEGER(INTG), INTENT(OUT) :: cellMLParametersFieldUserNumber !<On return, the user number of the CellML parameters field.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(FIELD_TYPE), POINTER :: field
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_ParametersFieldGetNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
     NULLIFY(field)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_PARAMETERS_FIELD_GET(cellml,field,err,error,*999)
     cellMLParametersFieldUserNumber = field%USER_NUMBER
 
 #else
 
-    CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
+    cellMLParametersFieldUserNumber=0
 
 #endif
 
@@ -15654,6 +16593,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_ParametersFieldGetObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
     CALL CELLML_PARAMETERS_FIELD_GET(cellML%cellML,field%field,err,error,*999)
@@ -15677,24 +16618,33 @@ CONTAINS
   !
 
   !>Validiate and instantiate a CellML environment identified by a user number.
-  SUBROUTINE cmfe_CellML_GenerateNumber(regionUserNumber,cellMLUserNumber,err)
+  SUBROUTINE cmfe_CellML_GenerateNumber(contextUserNumber,regionUserNumber,cellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_GenerateNumber)
 
     !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the region.
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML environment.
     INTEGER(INTG), INTENT(IN) :: cellMLUserNumber !<The user number of the CellML enviroment to generate.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
+    TYPE(ContextType), POINTER :: context
     TYPE(CELLML_TYPE), POINTER :: cellml
     TYPE(REGION_TYPE), POINTER :: region
+    TYPE(RegionsType), POINTER :: regions
 
     ENTERS("cmfe_CellML_GenerateNumber",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+    
 #ifdef WITH_CELLML
 
+    NULLIFY(context)
+    NULLIFY(regions)
     NULLIFY(region)
     NULLIFY(cellml)
-    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)    
+    CALL Context_RegionsGet(context,regions,err,error,*999)
+    CALL Region_Get(regions,regionUserNumber,region,err,error,*999)
     CALL Region_CellMLGet(region,cellMLUserNumber,cellml,err,error,*999)
     CALL CELLML_GENERATE(cellml,err,error,*999)
 
@@ -15727,6 +16677,8 @@ CONTAINS
 
     ENTERS("cmfe_CellML_GenerateObj",err,error,*999)
 
+    ASSERT_WITH_CELLML()
+
 #ifdef WITH_CELLML
 
     CALL CELLML_GENERATE(cellML%cellML,err,error,*999)
@@ -15748,10 +16700,42 @@ CONTAINS
 
 !!==================================================================================================================================
 !!
-!! Computational Environment
+!! Computation
 !!
 !!==================================================================================================================================
 
+
+  !>Returns the number of computation nodes in the world communicator identified by user number.
+  SUBROUTINE cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber(contextUserNumber,numberOfWorldNodes,err)
+    !DLLEXPORT(cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: contextUserNumber !<The user number of the context with the computation environment.
+    INTEGER(INTG), INTENT(OUT) :: numberOfWorldNodes !<On return, the number of computation nodes in the world communicator.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+    TYPE(ContextType), POINTER :: context
+
+    ENTERS("cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber",err,error,*999)
+
+    NULLIFY(context)
+    NULLIFY(computationEnvironment)
+    CALL Context_Get(contexts,contextUserNumber,context,err,error,*999)
+    CALL Context_ComputationEnvironmentGet(context,computationEnvironment,err,error,*999)
+    CALL ComputationEnvironment_NumberOfWorldNodesGet(computationEnvironment,numberOfWorldNodes,err,error,*999)
+
+    EXITS("cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber")
+    RETURN
+999 ERRORS("cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber",err,error)
+    EXITS("cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_ComputationEnvironment_NumberOfWorldNodesGetNumber
+  
+  !  
+  !================================================================================================================================
   !
   !================================================================================================================================
   !

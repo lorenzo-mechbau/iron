@@ -47,6 +47,7 @@ MODULE PROBLEM_ROUTINES
   USE BaseRoutines
   USE BIOELECTRIC_ROUTINES
   USE CLASSICAL_FIELD_ROUTINES
+  USE ContextAccessRoutines
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines
   USE DistributedMatrixVector
@@ -121,6 +122,8 @@ MODULE PROBLEM_ROUTINES
   PUBLIC PROBLEM_SOLVERS_CREATE_START,PROBLEM_SOLVERS_CREATE_FINISH
   
   PUBLIC PROBLEM_SOLVERS_DESTROY
+
+  PUBLIC Problem_WorkGroupSet
   
 CONTAINS
 
@@ -667,7 +670,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     INTEGER(INTG) :: problem_idx
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
+    TYPE(ProblemsType), POINTER :: problems
 
     ENTERS("PROBLEM_CREATE_FINISH",err,error,*999)
 
@@ -687,8 +691,10 @@ CONTAINS
     ENDIF
     
     IF(DIAGNOSTICS1) THEN
-      CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Number of problems = ",PROBLEMS%NUMBER_OF_PROBLEMS,err,error,*999)
-      DO problem_idx=1,PROBLEMS%NUMBER_OF_PROBLEMS
+      NULLIFY(problems)
+      CALL Problem_ProblemsGet(problem,problems,err,error,*999)
+      CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Number of problems = ",problems%numberOfProblems,err,error,*999)
+      DO problem_idx=1,problems%numberOfProblems
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Problem number  = ",problem_idx,err,error,*999)
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  User number     = ",PROBLEMS%PROBLEMS(problem_idx)%PTR%USER_NUMBER, &
           & err,error,*999)
@@ -712,20 +718,24 @@ CONTAINS
   !
 
   !>Starts the process of creating a problem defined by USER_NUMBER. \see OpenCMISS::cmfe_Problem_CreateStart
-  SUBROUTINE PROBLEM_CREATE_START(USER_NUMBER,PROBLEM_SPECIFICATION,PROBLEM,err,error,*)
+  SUBROUTINE PROBLEM_CREATE_START(USER_NUMBER,problems,PROBLEM_SPECIFICATION,PROBLEM,err,error,*)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the problem to create
+    TYPE(ProblemsType), POINTER :: problems !<The problems to create the problem for. 
     INTEGER(INTG), INTENT(IN) :: PROBLEM_SPECIFICATION(:) !<The problem specification array, eg. [problem_class, problem_type, problem_subtype]
     TYPE(PROBLEM_TYPE), POINTER :: PROBLEM !<On return, a pointer to the created problem. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     INTEGER(INTG) :: problem_idx
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+    TYPE(ContextType), POINTER :: context
     TYPE(PROBLEM_TYPE), POINTER :: NEW_PROBLEM
     TYPE(PROBLEM_PTR_TYPE), POINTER :: NEW_PROBLEMS(:)
     TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
     TYPE(VARYING_STRING) :: localError
+    TYPE(WorkGroupType), POINTER :: worldWorkGroup
  
     NULLIFY(NEW_PROBLEM)
     NULLIFY(NEW_PROBLEMS)
@@ -736,7 +746,7 @@ CONTAINS
       CALL FlagError("Problem is already associated.",err,error,*999)
     ELSE
       NULLIFY(PROBLEM)
-      CALL PROBLEM_USER_NUMBER_FIND(USER_NUMBER,PROBLEM,err,error,*999)
+      CALL Problem_UserNumberFind(problems,USER_NUMBER,problem,err,error,*999)
       IF(ASSOCIATED(PROBLEM)) THEN
         localError="Problem number "//TRIM(NumberToVString(USER_NUMBER,"*",err,error))//" has already been created."
         CALL FlagError(localError,err,error,*999)
@@ -750,6 +760,13 @@ CONTAINS
         NEW_PROBLEM%USER_NUMBER=USER_NUMBER
         NEW_PROBLEM%GLOBAL_NUMBER=PROBLEMS%NUMBER_OF_PROBLEMS+1
         NEW_PROBLEM%PROBLEMS=>PROBLEMS
+        NULLIFY(context)
+        CALL Problems_ContextGet(problems,context,err,error,*999)
+        NULLIFY(computationEnvironment)
+        CALL Context_ComputationEnvironmentGet(context,computationEnvironment,err,error,*999)
+        NULLIFY(worldWorkGroup)
+        CALL ComputationEnvironment_WorldWorkGroupGet(computationEnvironment,worldWorkGroup,err,error,*999)
+        NEW_PROBLEM%workGroup=>worldWorkGroup
         !Set problem specification
         CALL Problem_SpecificationSet(NEW_PROBLEM,PROBLEM_SPECIFICATION,err,error,*999)
         !For compatibility with old code, set class, type and subtype
@@ -796,12 +813,15 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: problem_idx,problem_position
     TYPE(PROBLEM_PTR_TYPE), POINTER :: NEW_PROBLEMS(:)
+    TYPE(ProblemsType), POINTER :: problems
 
     NULLIFY(NEW_PROBLEMS)
 
     ENTERS("PROBLEM_DESTROY",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN
+      NULLIFY(problems)
+      CALL Problem_ProblemsGet(problem,problems,err,error,*999)
       IF(ASSOCIATED(PROBLEMS%PROBLEMS)) THEN
         
         problem_position=PROBLEM%GLOBAL_NUMBER
@@ -938,6 +958,7 @@ CONTAINS
       PROBLEM%GLOBAL_NUMBER=0
       PROBLEM%PROBLEM_FINISHED=.FALSE.
       NULLIFY(PROBLEM%PROBLEMS)
+      NULLIFY(problem%workGroup)
       NULLIFY(PROBLEM%CONTROL_LOOP)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
@@ -3743,19 +3764,53 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Sets the work group for a problem. \see OpenCMISS::cmfe_Problem_WorkGroupGet
+  SUBROUTINE Problem_WorkGroupSet(problem,workGroup,err,error,*)
+
+    !Argument variables
+    TYPE(PROBLEM_TYPE), POINTER, INTENT(INOUT) :: problem !<A pointer to the problem to set the work group for.
+    TYPE(WorkGroupType), POINTER, INTENT(IN) :: workGroup !<A pointer to the workgroup to set for the problem.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+
+    ENTERS("Problem_WorkGroupSet",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(problem)) CALL FlagError("Problem is not associated.",err,error,*999)
+    IF(problem%PROBLEM_FINISHED) CALL FlagError("Problem has already been finished.",err,error,*999)
+    IF(.NOT.ASSOCIATED(workGroup)) CALL FlagError("Work group is not associated.",err,error,*999)
+    IF(.NOT.workGroup%workGroupFinished) CALL FlagError("Work group has not been finished.",err,error,*999)
+
+    problem%workGroup=>workGroup
+
+    EXITS("Problem_WorkGroupSet")
+    RETURN
+999 ERRORSEXITS("Problem_WorkGroupSet",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Problem_WorkGroupSet
+
+  !
+  !================================================================================================================================
+  !
+
   !>Finalises all problems and deallocates all memory.
   SUBROUTINE PROBLEMS_FINALISE(err,error,*)
 
     !Argument variables
+    TYPE(ProblemsType), POINTER :: problems !<A pointer to the problems to finalise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
 
     ENTERS("PROBLEMS_FINALISE",err,error,*999)
 
-    DO WHILE(PROBLEMS%NUMBER_OF_PROBLEMS>0)
-      CALL PROBLEM_DESTROY(PROBLEMS%PROBLEMS(1)%PTR,err,error,*999)
-    ENDDO !problem_idx
+    IF(ASSOCIATED(problems)) THEN
+      DO WHILE(problems%numberOfProblems>0)
+        CALL Problem_Destroy(problems%problems(1)%ptr,err,error,*999)
+      ENDDO !problemIdx
+      DEALLOCATE(problems)
+    ENDIF
     
     EXITS("PROBLEMS_FINALISE")
     RETURN
@@ -3771,20 +3826,32 @@ CONTAINS
   SUBROUTINE PROBLEMS_INITIALISE(err,error,*)
 
     !Argument variables
+    TYPE(ContextType), POINTER :: context !<The context to intialise the problems for.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
+    INTEGER(INTG) :: dummyErr
+    TYPE(VARYING_STRING) :: dummyError
 
-    ENTERS("PROBLEMS_INITIALISE",err,error,*999)
+    ENTERS("Problems_Initialise",err,error,*998)
 
-    PROBLEMS%NUMBER_OF_PROBLEMS=0
-    NULLIFY(PROBLEMS%PROBLEMS)
+    IF(.NOT.ASSOCIATED(context)) CALL FlagError("Context is not associated.",err,error,*998)
+    IF(ASSOCIATED(context%problems)) CALL FlagError("Context problems is already associated.",err,error,*998)
     
-    EXITS("PROBLEMS_INITIALISE")
+    ALLOCATE(context%problems,STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate problems.",err,error,*999)
+    !Initialise
+    context%problems%context=>context
+    context%problems%numberOfProblems=0
+    NULLIFY(context%problems%problems)
+    
+    EXITS("Problems_Initialise")
     RETURN
-999 ERRORSEXITS("PROBLEMS_INITIALISE",err,error)
-    RETURN 1   
-  END SUBROUTINE PROBLEMS_INITIALISE
+999 CALL Problems_Finalise(context%problems,dummyErr,dummyError,*998)
+998 ERRORSEXITS("Problems_Initialise",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Problems_Initialise
   
   !
   !================================================================================================================================
