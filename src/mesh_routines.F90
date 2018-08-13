@@ -364,6 +364,7 @@ CONTAINS
     TYPE(DECOMPOSITION_PTR_TYPE), ALLOCATABLE :: newDecompositions(:)
     TYPE(REGION_TYPE), POINTER :: region    
     TYPE(WorkGroupType), POINTER :: worldWorkGroup
+    TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain 
 
     NULLIFY(newDecomposition)
@@ -648,7 +649,7 @@ CONTAINS
       & RECEIVE_COUNTS(:),ElementDomain(:) 
 
     INTEGER(INTG) :: ELEMENT_WEIGHT(1),WEIGHT_FLAG,NUMBER_FLAG,NUMBER_OF_CONSTRAINTS, &
-      & NUMBER_OF_COMMON_NODES,PARMETIS_OPTIONS(0:2)
+      & NUMBER_OF_COMMON_NODES,PARMETIS_OPTIONS(0:2), randomSeedsSize
     !ParMETIS now has double for these
     !REAL(SP) :: UBVEC(1)
     !REAL(SP), ALLOCATABLE :: TPWGTS(:)
@@ -657,6 +658,7 @@ CONTAINS
     TYPE(LIST_TYPE), POINTER :: GlobalElementDomain 
 
     INTEGER(INTG) :: groupCommunicator
+    INTEGER(INTG), ALLOCATABLE :: randomSeeds(:)
 
     REAL(DP) :: UBVEC(1)
     REAL(DP), ALLOCATABLE :: TPWGTS(:)
@@ -692,8 +694,8 @@ CONTAINS
             component_idx=DECOMPOSITION%MESH_COMPONENT_NUMBER
 
             CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
-            CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
-            CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+            CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberComputationalNodes,err,error,*999)
+            CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationalNodeNumber,err,error,*999)
 
             ! Replaced by work groups above!!   
             ! get rank count and own rank
@@ -1114,8 +1116,8 @@ CONTAINS
     ENDIF
 
     CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
-    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
-    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberComputationalNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationalNodeNumber,err,error,*999)
 
     ! Replaced by work groups above!!   
     ! get rank count and own rank
@@ -1131,7 +1133,8 @@ CONTAINS
     ALLOCATE(DECOMPOSITION%ELEMENTS_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1),STAT=ERR)
     IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",ERR,ERROR,*999)
      
-    CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DECOMPOSITION%ELEMENTS_MAPPING, DECOMPOSITION%workGroup,ERR,ERROR,*999)
+    CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DECOMPOSITION%workGroup, &
+      & DECOMPOSITION%ELEMENTS_MAPPING, ERR,ERROR,*999)
     ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
 
     
@@ -1494,8 +1497,8 @@ CONTAINS
     ENTERS("DECOMPOSITION_ELEMENTS_MAPPING_CALCULATE",ERR,ERROR,*999)
 
     CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
-    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
-    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberComputationalNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationalNodeNumber,err,error,*999)
 
     ! Replaced by work groups above!!   
     ! get rank count and own rank
@@ -1670,8 +1673,8 @@ CONTAINS
     ENTERS("DECOMPOSITION_ADJACENT_DOMAINS_CALCULATE",ERR,ERROR,*999) 
 
     CALL WorkGroup_GroupCommunicatorGet(decomposition%workGroup,groupCommunicator,err,error,*999)
-    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationNodes,err,error,*999)
-    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationNodeNumber,err,error,*999)
+    CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberComputationalNodes,err,error,*999)
+    CALL WorkGroup_GroupNodeNumberGet(decomposition%workGroup,myComputationalNodeNumber,err,error,*999)
 
     ! Replaced by work groups above!!  
     ! get rank count and own rank
@@ -2966,7 +2969,7 @@ CONTAINS
               !numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
               CALL WorkGroup_NumberOfGroupNodesGet(decomposition%workGroup,numberOfComputationalNodes, &
                 & err,error,*999)
-              IF(ERR/=0) GOTO 999
+
               !!TODO: relax this later
               !IF(NUMBER_OF_DOMAINS==numberOfComputationalNodes) THEN
                 DECOMPOSITION%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS             
@@ -5792,7 +5795,7 @@ CONTAINS
             !DECOMPOSITION%DOMAIN(component_idx)%PTR%NUMBER_OF_MESH_DOFS=0
             NULLIFY(DECOMPOSITION%DOMAIN(component_idx)%PTR%MAPPINGS)
             NULLIFY(DECOMPOSITION%DOMAIN(component_idx)%PTR%TOPOLOGY)
-            CALL DOMAIN_MAPPINGS_INITIALISE(DECOMPOSITION%DOMAIN(component_idx)%PTR,ERR,ERROR,*999)
+            CALL DOMAIN_MAPPINGS_INITIALISE(DECOMPOSITION, DECOMPOSITION%DOMAIN(component_idx)%PTR,ERR,ERROR,*999)
             CALL DOMAIN_TOPOLOGY_INITIALISE(DECOMPOSITION%DOMAIN(component_idx)%PTR,ERR,ERROR,*999)
           ENDDO !component_idx
         ENDIF
@@ -5861,8 +5864,8 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%DOFS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings dofs.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOFS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
-          & ERR,ERROR,*999)
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
+          & DOMAIN_MAPPINGS%DOFS, ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Domain mapping is not associated.",ERR,ERROR,*999)
@@ -6197,8 +6200,8 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%ELEMENTS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings elements.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%ELEMENTS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
-          & ERR,ERROR,*999)
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
+          & DOMAIN_MAPPINGS%ELEMENTS, ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Domain mapping is not associated.",ERR,ERROR,*999)
@@ -6702,10 +6705,11 @@ CONTAINS
   !
 
   !>Initialises the mappings for a domain decomposition. \todo finalise on error.
-  SUBROUTINE DOMAIN_MAPPINGS_INITIALISE(DOMAIN,ERR,ERROR,*)
+  SUBROUTINE DOMAIN_MAPPINGS_INITIALISE(DECOMPOSITION, DOMAIN,ERR,ERROR,*)
 
     !Argument variables
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN !<A pointer to the domain to initialise the mappings for
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to initialise the domain for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -9169,8 +9173,8 @@ CONTAINS
       ELSE
         ALLOCATE(DOMAIN_MAPPINGS%NODES,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings nodes.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%NODES,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
-          & ERR,ERROR,*999)
+        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION%workGroup, &
+          & DOMAIN_MAPPINGS%NODES, ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Domain mapping is not associated.",ERR,ERROR,*999)

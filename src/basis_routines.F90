@@ -167,13 +167,13 @@ MODULE BasisRoutines
   
   !>Sets/changes the collapsed Xi flags for a basis.
   INTERFACE BASIS_COLLAPSED_XI_SET
-    MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_NUMBER
+    !MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_NUMBER
     MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_PTR
   END INTERFACE BASIS_COLLAPSED_XI_SET
 
   !>Sets/changes the collapsed Xi flags for a basis.
   INTERFACE Basis_CollapsedXiSet
-    MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_NUMBER
+    !MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_NUMBER
     MODULE PROCEDURE BASIS_COLLAPSED_XI_SET_PTR
   END INTERFACE Basis_CollapsedXiSet
 
@@ -235,13 +235,13 @@ MODULE BasisRoutines
   
   !>Sets/changes the interpolation type in each Xi direction for a basis
   INTERFACE BASIS_INTERPOLATION_XI_SET
-    MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_NUMBER
+    !MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_NUMBER
     MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_PTR
   END INTERFACE BASIS_INTERPOLATION_XI_SET
 
    !>Sets/changes the interpolation type in each Xi direction for a basis
   INTERFACE Basis_InterpolationXiSet
-    MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_NUMBER
+    !MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_NUMBER
     MODULE PROCEDURE BASIS_INTERPOLATION_XI_SET_PTR
   END INTERFACE Basis_InterpolationXiSet
 
@@ -279,13 +279,13 @@ MODULE BasisRoutines
   
   !>Sets/changes the order of a quadrature for a basis quadrature.
   INTERFACE BASIS_QUADRATURE_ORDER_SET
-    MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_NUMBER
+   ! MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_NUMBER
     MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_PTR
   END INTERFACE BASIS_QUADRATURE_ORDER_SET
 
   !>Sets/changes the order of a quadrature for a basis quadrature.
   INTERFACE Basis_QuadratureOrderSet
-    MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_NUMBER
+   ! MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_NUMBER
     MODULE PROCEDURE BASIS_QUADRATURE_ORDER_SET_PTR
   END INTERFACE Basis_QuadratureOrderSet
 
@@ -299,13 +299,13 @@ MODULE BasisRoutines
   
   !>Sets/changes the quadrature type for a basis
   INTERFACE BASIS_QUADRATURE_TYPE_SET
-    MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_NUMBER
+    !MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_NUMBER
     MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_PTR
   END INTERFACE BASIS_QUADRATURE_TYPE_SET
   
   !>Sets/changes the quadrature type for a basis
   INTERFACE Basis_QuadratureTypeSet
-    MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_NUMBER
+    !MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_NUMBER
     MODULE PROCEDURE BASIS_QUADRATURE_TYPE_SET_PTR
   END INTERFACE Basis_QuadratureTypeSet
 
@@ -315,13 +315,13 @@ MODULE BasisRoutines
   
   !>Sets/changes the type for a basis.
   INTERFACE BASIS_TYPE_SET
-    MODULE PROCEDURE BASIS_TYPE_SET_NUMBER
+    !MODULE PROCEDURE BASIS_TYPE_SET_NUMBER
     MODULE PROCEDURE BASIS_TYPE_SET_PTR
   END INTERFACE BASIS_TYPE_SET
 
   !>Sets/changes the type for a basis.
   INTERFACE Basis_TypeSet
-    MODULE PROCEDURE BASIS_TYPE_SET_NUMBER
+    !MODULE PROCEDURE BASIS_TYPE_SET_NUMBER
     MODULE PROCEDURE BASIS_TYPE_SET_PTR
   END INTERFACE Basis_TypeSet
 
@@ -803,10 +803,11 @@ CONTAINS
   !>  - TYPE: 1 (BASIS_LAGRANGE_HERMITE_TP_TYPE)
   !>  - NUMBER_OF_GAUSS_XI: (2,2,2)
   !>  - GAUSS_ORDER: 0 
-  SUBROUTINE Basis_CreateStart(userNumber,basis,err,error,*)
+  SUBROUTINE Basis_CreateStart(userNumber,basisFunctions,basis,err,error,*)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to start the creation of
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions to create the basis for.
     TYPE(BASIS_TYPE), POINTER :: basis !<On return, A pointer to the created basis. Must not be associated on entry.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -818,10 +819,11 @@ CONTAINS
 
     ENTERS("Basis_CreateStart",err,error,*999)
 
+    IF(.NOT.ASSOCIATED(basisFunctions)) CALL FlagError("Basis functions is not associated.",err,error,*999)
     IF(ASSOCIATED(basis)) CALL FlagError("Basis is already associated",err,error,*999)
     
     !See if basis number has already been created
-    CALL Basis_UserNumberFind(userNumber,basis,err,error,*999)
+    CALL Basis_UserNumberFind(basisFunctions, userNumber,basis,err,error,*999)
     IF(ASSOCIATED(basis)) THEN
       localError="A basis with a user number of "//TRIM(NumberToVString(userNumber,"*",err,error))// &
         & " already exists."
@@ -833,6 +835,7 @@ CONTAINS
     IF(err/=0) CALL FlagError("Could not allocate new bases.",err,error,*999)
     NULLIFY(newBasis)
     CALL Basis_Initialise(newBasis,err,error,*999)
+    newBasis%basisFunctions=>basisFunctions
     DO basisIdx=1,basisFunctions%numberOfBasisFunctions
       newBases(basisIdx)%ptr=>basisFunctions%bases(basisIdx)%ptr
     ENDDO !basisIdx
@@ -872,17 +875,18 @@ CONTAINS
   !
 
   !>Destroys a basis identified by its basis user number \see BASIS_ROUTINES::BASIS_DESTROY_FAMILY,OpenCMISS::Iron::cmfe_BasisDestroy
-  RECURSIVE SUBROUTINE BASIS_DESTROY_NUMBER(USER_NUMBER,err,error,*)
+  RECURSIVE SUBROUTINE BASIS_DESTROY_NUMBER(basisFunctions,userNumber,err,error,*)
 
     !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis to destroy
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions for the basis to destroy
+    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to destroy
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
 
     ENTERS("BASIS_DESTROY_NUMBER",err,error,*999)
 
-    CALL Basis_FamilyDestroy(USER_NUMBER,0,err,error,*999)
+    CALL Basis_FamilyDestroy(basisFunctions,userNumber,0,err,error,*999)
     
     EXITS("BASIS_DESTROY_NUMBER")
     RETURN
@@ -903,7 +907,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: USER_NUMBER
+    INTEGER(INTG) :: userNumber
     TYPE(BasisFunctionsType), POINTER :: basisFunctions
         
     ENTERS("BASIS_DESTROY",err,error,*999)
@@ -2315,31 +2319,6 @@ CONTAINS
   END SUBROUTINE BASIS_INTERPOLATION_XI_GET
   
 
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets/changes the interpolation type in each xi directions where the basis is identified by user number. \see OpenCMISS::Iron::cmfe_BasisInterpolationXiSet
-  SUBROUTINE BASIS_INTERPOLATION_XI_SET_NUMBER(USER_NUMBER,INTERPOLATION_XI,err,error,*)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis to set the interpolation xi
-    INTEGER(INTG), INTENT(IN) :: INTERPOLATION_XI(:) !<The interpolation xi parameters for each Xi direction \see BASIS_ROUTINES_InterpolationSpecifications
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    
-    ENTERS("BASIS_INTERPOLATION_XI_SET_NUMBER",err,error,*999)
-
-    CALL Basis_UserNumberFind(USER_NUMBER,BASIS,err,error,*999)
-    CALL BASIS_INTERPOLATION_XI_SET(BASIS,INTERPOLATION_XI,err,error,*999)
-    
-    EXITS("BASIS_INTERPOLATION_XI_SET_NUMBER")
-    RETURN
-999 ERRORSEXITS("BASIS_INTERPOLATION_XI_SET_NUMBER",err,error)
-    RETURN 1
-  END SUBROUTINE BASIS_INTERPOLATION_XI_SET_NUMBER
 
   !
   !================================================================================================================================
@@ -4594,32 +4573,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
-  !>Sets/changes the order of a quadrature for a basis quadrature identified by a user number.
-  SUBROUTINE BASIS_QUADRATURE_ORDER_SET_NUMBER(USER_NUMBER,ORDER,err,error,*)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis
-    INTEGER(INTG), INTENT(IN) :: ORDER !<The quadrature order to be set.
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    
-    ENTERS("BASIS_QUADRATURE_ORDER_SET_NUMBER",err,error,*999)
-
-    CALL Basis_UserNumberFind(USER_NUMBER,BASIS,err,error,*999)
-    CALL BASIS_QUADRATURE_ORDER_SET(BASIS,ORDER,err,error,*999)
-    
-    EXITS("BASIS_QUADRATURE_ORDER_SET_NUMBER")
-    RETURN
-999 ERRORSEXITS("BASIS_QUADRATURE_ORDER_SET_NUMBER",err,error)
-    RETURN 1
-  END SUBROUTINE BASIS_QUADRATURE_ORDER_SET_NUMBER
-
-  !
-  !================================================================================================================================
-  !
 
   !>Sets/changes the order of a quadrature for a basis quadrature identified by a pointer. \see OpenCMISS::Iron::cmfe_BasisQuadratureOrderSet
   SUBROUTINE BASIS_QUADRATURE_ORDER_SET_PTR(BASIS,ORDER,err,error,*)
@@ -4703,33 +4656,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
-  !>Sets/changes the quadrature type for a basis quadrature identified by a user number.
-  SUBROUTINE BASIS_QUADRATURE_TYPE_SET_NUMBER(USER_NUMBER,TYPE,err,error,*)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis
-    INTEGER(INTG), INTENT(IN) :: TYPE !<The quadrature type to be set \see BASIS_ROUTINES_QuadratureTypes
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    
-    ENTERS("BASIS_QUADRATURE_TYPE_SET_NUMBER",err,error,*999)
-
-    CALL Basis_UserNumberFind(USER_NUMBER,BASIS,err,error,*999)
-    CALL BASIS_QUADRATURE_TYPE_SET_PTR(BASIS,TYPE,err,error,*999)
-    
-    EXITS("BASIS_QUADRATURE_TYPE_SET_NUMBER")
-    RETURN
-999 ERRORSEXITS("BASIS_QUADRATURE_TYPE_SET_NUMBER",err,error)
-    RETURN 1
-  END SUBROUTINE BASIS_QUADRATURE_TYPE_SET_NUMBER
-
-  !
-  !================================================================================================================================
-  !
-  
+ 
   !>Sets/changes the quadrature type on a basis identified by a pointer.
   SUBROUTINE BASIS_QUADRATURE_TYPE_SET_PTR(BASIS,TYPE,err,error,*)
 
@@ -6453,32 +6380,6 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Sets/changes the type for a basis is identified by a user number.
-  SUBROUTINE BASIS_TYPE_SET_NUMBER(USER_NUMBER,TYPE,err,error,*)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis to set.
-    INTEGER(INTG), INTENT(IN) :: TYPE !<The type of the basis to set \see BASIS_ROUTINES_BasisTypes
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    
-    ENTERS("BASIS_TYPE_SET_NUMBER",err,error,*999)
-
-    CALL Basis_UserNumberFind(USER_NUMBER,BASIS,err,error,*999)
-    CALL BASIS_TYPE_SET_PTR(BASIS,TYPE,err,error,*999)
-    
-    EXITS("BASIS_TYPE_SET_NUMBER")
-    RETURN
-999 ERRORSEXITS("BASIS_TYPE_SET_NUMBER",err,error)
-    RETURN 1
-  END SUBROUTINE BASIS_TYPE_SET_NUMBER
-
-  !
-  !================================================================================================================================
-  !
-
   !>Sets/changes the type for a basis is identified by a a pointer. \see OpenCMISS::Iron::cmfe_BasisTypeGet
   SUBROUTINE BASIS_TYPE_SET_PTR(BASIS,TYPE,err,error,*)
 
@@ -6561,32 +6462,6 @@ CONTAINS
 999 ERRORSEXITS("BASIS_COLLAPSED_XI_GET",err,error)
     RETURN
   END SUBROUTINE BASIS_COLLAPSED_XI_GET
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets/changes the collapsed xi flags for a basis is identified by a user number.
-  SUBROUTINE BASIS_COLLAPSED_XI_SET_NUMBER(USER_NUMBER,COLLAPSED_XI,err,error,*)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the basis to be set
-    INTEGER(INTG), INTENT(IN) :: COLLAPSED_XI(:) !<COLLAPSED_XI(ni). The collapse parameter for each Xi direction. \see BASIS_ROUTINES_XiCollapse
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(BASIS_TYPE), POINTER :: BASIS
-    
-    ENTERS("BASIS_COLLAPSED_XI_SET_NUMBER",err,error,*999)
-
-    CALL Basis_UserNumberFind(USER_NUMBER,BASIS,err,error,*999)
-    CALL BASIS_COLLAPSED_XI_SET_PTR(BASIS,COLLAPSED_XI,err,error,*999)
-    
-    EXITS("BASIS_COLLAPSED_XI_SET_NUMBER")
-    RETURN
-999 ERRORSEXITS("BASIS_COLLAPSED_XI_SET_NUMBER",err,error)
-    RETURN 1
-  END SUBROUTINE BASIS_COLLAPSED_XI_SET_NUMBER
 
   !
   !================================================================================================================================

@@ -45,6 +45,7 @@
 MODULE ProfilingRoutines
   
   USE BaseRoutines
+  USE Constants
   USE INPUT_OUTPUT
   USE Kinds
   USE Strings

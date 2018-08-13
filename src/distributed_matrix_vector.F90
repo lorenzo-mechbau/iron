@@ -59,6 +59,7 @@ MODULE DistributedMatrixVector
 #ifndef NOMPIMOD
   USE MPI
 #endif
+  USE CMISSPETScTypes, ONLY : PetscMatType,PetscVecType
   USE Strings
   USE Types
   USE LINKEDLIST_ROUTINES

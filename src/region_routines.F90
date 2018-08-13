@@ -96,8 +96,6 @@ MODULE REGION_ROUTINES
   PUBLIC REGION_INITIALISE,REGION_FINALISE
 
   PUBLIC REGION_LABEL_GET,REGION_LABEL_SET
-  
-  PUBLIC REGION_USER_NUMBER_TO_REGION
 
   PUBLIC REGIONS_INITIALISE,REGIONS_FINALISE
 
@@ -213,6 +211,7 @@ CONTAINS
     INTEGER(INTG) :: DUMMY_ERR,region_idx
     TYPE(REGION_TYPE), POINTER :: NEW_REGION
     TYPE(REGION_PTR_TYPE), POINTER :: NEW_SUB_REGIONS(:)
+    TYPE(RegionsType), POINTER :: regions
     TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR,LOCAL_STRING
 
     NULLIFY(NEW_REGION)
@@ -220,7 +219,9 @@ CONTAINS
     
     ENTERS("REGION_CREATE_START",ERR,ERROR,*997)
 
-    CALL REGION_USER_NUMBER_FIND(USER_NUMBER,NEW_REGION,ERR,ERROR,*997)
+    NULLIFY(regions)
+    CALL Region_RegionsGet(PARENT_REGION,regions,err,error,*999)
+    CALL REGION_USER_NUMBER_FIND(regions, USER_NUMBER,NEW_REGION,ERR,ERROR,*997)
     IF(ASSOCIATED(NEW_REGION)) THEN
       LOCAL_ERROR="Region number "//TRIM(NUMBER_TO_VSTRING(USER_NUMBER,"*",ERR,ERROR))// &
         & " has already been created."
@@ -333,7 +334,7 @@ CONTAINS
           CALL REGION_DESTROY_NUMBER(regions,REGION%SUB_REGIONS(1)%PTR%USER_NUMBER,err,error,*999)
         ENDDO
         !Now delete this instance
-        CALL REGION_DESTROY_NUMBER(REGION%USER_NUMBER,ERR,ERROR,*999)
+        CALL REGION_DESTROY_NUMBER(regions, REGION%USER_NUMBER,ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Region number does not exist.",ERR,ERROR,*999)
@@ -602,23 +603,24 @@ CONTAINS
   !
 
   !>Finalises the regions and destroys any current regions.
-  SUBROUTINE REGIONS_FINALISE(ERR,ERROR,*)
+  SUBROUTINE REGIONS_FINALISE(regions, ERR,ERROR,*)
 
     !Argument variables
+    TYPE(RegionsType), POINTER :: regions !<A pointer to the regions to destroy
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
 
     ENTERS("REGIONS_FINALISE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(REGIONS%WORLD_REGION)) THEN
+    IF(ASSOCIATED(REGIONS%worldRegion)) THEN
       !Destroy any global region daughter regions first
-      DO WHILE(REGIONS%WORLD_REGION%NUMBER_OF_SUB_REGIONS>0)
-        CALL REGION_DESTROY_NUMBER(REGIONS%WORLD_REGION%SUB_REGIONS(1)%PTR%USER_NUMBER,ERR,ERROR,*999)
+      DO WHILE(REGIONS%worldRegion%NUMBER_OF_SUB_REGIONS>0)
+        CALL REGION_DESTROY_NUMBER(regions, REGIONS%worldRegion%SUB_REGIONS(1)%PTR%USER_NUMBER,ERR,ERROR,*999)
       ENDDO !region
       !Destroy global region and deallocated any memory allocated in the global region
-      CALL REGION_FINALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
-      NULLIFY(REGIONS%WORLD_REGION)
+      CALL REGION_FINALISE(REGIONS%worldRegion,ERR,ERROR,*999)
+      NULLIFY(REGIONS%worldRegion)
     ENDIF
    
     EXITS("REGIONS_FINALISE")
@@ -678,37 +680,6 @@ CONTAINS
     
   END SUBROUTINE Regions_Initialise
 
-  !
-  !================================================================================================================================
-  !
-
-  !> Find the region with the given user number, or throw an error if it does not exist.
-  SUBROUTINE REGION_USER_NUMBER_TO_REGION( USER_NUMBER, REGION, ERR, ERROR, * )
-    !Arguments
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the region to find
-    TYPE(REGION_TYPE), POINTER :: REGION !<On return, a pointer to the region with the specified user number.
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-
-    !Locals
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-
-    ENTERS("REGION_USER_NUMBER_TO_REGION",ERR,ERROR,*999)
-
-    NULLIFY( REGION )
-    CALL REGION_USER_NUMBER_FIND( USER_NUMBER, REGION, ERR, ERROR, *999 )
-    IF( .NOT.ASSOCIATED( REGION ) ) THEN
-      LOCAL_ERROR = "A region with an user number of "//TRIM(NUMBER_TO_VSTRING(USER_NUMBER,"*", ERR, ERROR ) )//" does not exist."
-      CALL FlagError( LOCAL_ERROR, ERR, ERROR, *999 )
-    ENDIF
-
-    EXITS("REGION_USER_NUMBER_TO_REGION")
-    RETURN
-999 ERRORSEXITS("REGION_USER_NUMBER_TO_REGION",ERR,ERROR)
-    RETURN 1
-
-  END SUBROUTINE REGION_USER_NUMBER_TO_REGION
-  
   !
   !================================================================================================================================
   !

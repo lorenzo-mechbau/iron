@@ -46,6 +46,7 @@ module electrophysiology_cell_routines
   USE field_routines
   USE FieldAccessRoutines
   use kinds
+  USE ISO_VARYING_STRING
   use strings
   use types
 

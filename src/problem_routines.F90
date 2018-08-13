@@ -64,8 +64,8 @@ MODULE PROBLEM_ROUTINES
   USE INTERFACE_CONDITIONS_CONSTANTS
   USE INTERFACE_CONDITIONS_ROUTINES
   USE INTERFACE_ROUTINES
-  USE ISO_VARYING_STRING
   USE Kinds
+  USE ISO_VARYING_STRING
   USE MULTI_PHYSICS_ROUTINES
   USE PROBLEM_CONSTANTS
   USE ProblemAccessRoutines
@@ -139,19 +139,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_CELLML_EQUATIONS_CREATE_FINISH",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN      
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_CELLML_EQUATIONS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_CELLML_EQUATIONS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
       !Finish problem specific startup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -174,19 +174,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_CELLML_EQUATIONS_CREATE_START",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_CELLML_EQUATIONS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_CELLML_EQUATIONS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
       !Start the problem specific control setup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -677,13 +677,13 @@ CONTAINS
 
     IF(ASSOCIATED(PROBLEM)) THEN
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_INITIAL_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_INITIAL_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
       !Finish the problem specific setup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
       !Finish the problem creation
       PROBLEM%PROBLEM_FINISHED=.TRUE.
     ELSE        
@@ -693,8 +693,8 @@ CONTAINS
     IF(DIAGNOSTICS1) THEN
       NULLIFY(problems)
       CALL Problem_ProblemsGet(problem,problems,err,error,*999)
-      CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Number of problems = ",problems%numberOfProblems,err,error,*999)
-      DO problem_idx=1,problems%numberOfProblems
+      CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Number of problems = ",problems%NUMBER_OF_PROBLEMS,err,error,*999)
+      DO problem_idx=1,problems%NUMBER_OF_PROBLEMS
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"Problem number  = ",problem_idx,err,error,*999)
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  User number     = ",PROBLEMS%PROBLEMS(problem_idx)%PTR%USER_NUMBER, &
           & err,error,*999)
@@ -733,7 +733,7 @@ CONTAINS
     TYPE(ContextType), POINTER :: context
     TYPE(PROBLEM_TYPE), POINTER :: NEW_PROBLEM
     TYPE(PROBLEM_PTR_TYPE), POINTER :: NEW_PROBLEMS(:)
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
     TYPE(VARYING_STRING) :: localError
     TYPE(WorkGroupType), POINTER :: worldWorkGroup
  
@@ -772,13 +772,13 @@ CONTAINS
         !For compatibility with old code, set class, type and subtype
         NEW_PROBLEM%PROBLEM_FINISHED=.FALSE.
         !Initialise the problem setup information
-        CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-        PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_INITIAL_TYPE
-        PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
+        CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+        problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_INITIAL_TYPE
+        problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
         !Start problem specific setup
-        CALL PROBLEM_SETUP(NEW_PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+        CALL PROBLEM_SETUP(NEW_PROBLEM,problemSetupInfo,err,error,*999)
         !Finalise the problem setup information
-        CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+        CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
         !Add new problem into list of problems
         ALLOCATE(NEW_PROBLEMS(PROBLEMS%NUMBER_OF_PROBLEMS+1),STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate new problems.",err,error,*999)
@@ -868,18 +868,18 @@ CONTAINS
   !
 
   !>Finalise the problem setup and deallocate all memory.
-  SUBROUTINE PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*)
+  SUBROUTINE PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*)
 
     !Argument variables
-    TYPE(PROBLEM_SETUP_TYPE), INTENT(OUT) :: PROBLEM_SETUP_INFO !<The problem setup to finalise.
+    TYPE(PROBLEM_SETUP_TYPE), INTENT(OUT) :: problemSetupInfo !<The problem setup to finalise.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
 
     ENTERS("PROBLEM_SETUP_FINALISE",err,error,*999)
 
-    PROBLEM_SETUP_INFO%SETUP_TYPE=0
-    PROBLEM_SETUP_INFO%ACTION_TYPE=0
+    problemSetupInfo%SETUP_TYPE=0
+    problemSetupInfo%ACTION_TYPE=0
        
     EXITS("PROBLEM_SETUP_FINALISE")
     RETURN
@@ -892,18 +892,18 @@ CONTAINS
   !
 
   !>Initialise the problem setup.
-  SUBROUTINE PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*)
+  SUBROUTINE PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*)
 
     !Argument variables
-    TYPE(PROBLEM_SETUP_TYPE), INTENT(OUT) :: PROBLEM_SETUP_INFO !<The problem setup to intialise.
+    TYPE(PROBLEM_SETUP_TYPE), INTENT(OUT) :: problemSetupInfo !<The problem setup to intialise.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
 
     ENTERS("PROBLEM_SETUP_INITIALISE",err,error,*999)
 
-    PROBLEM_SETUP_INFO%SETUP_TYPE=0
-    PROBLEM_SETUP_INFO%ACTION_TYPE=0
+    problemSetupInfo%SETUP_TYPE=0
+    problemSetupInfo%ACTION_TYPE=0
         
     EXITS("PROBLEM_SETUP_INITIALISE")
     RETURN
@@ -982,7 +982,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_CONTROL_LOOP_CREATE_FINISH",err,error,*999)
 
@@ -992,13 +992,13 @@ CONTAINS
           CALL FlagError("Problem control loop has already been finished.",err,error,*999)
         ELSE
           !Initialise the problem setup information
-          CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-          PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_CONTROL_TYPE
-          PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
+          CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+          problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_CONTROL_TYPE
+          problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
           !Finish problem specific startup
-          CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+          CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
           !Finalise the problem setup information
-          CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+          CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
           !Finish problem control creation
           PROBLEM%CONTROL_LOOP%CONTROL_LOOP_FINISHED=.TRUE.
         ENDIF
@@ -1031,7 +1031,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_CONTROL_LOOP_CREATE_START",err,error,*999)
 
@@ -1040,13 +1040,13 @@ CONTAINS
         CALL FlagError("The problem control loop is already associated.",err,error,*999)        
       ELSE
         !Initialise the problem setup information
-        CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-        PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_CONTROL_TYPE
-        PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
+        CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+        problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_CONTROL_TYPE
+        problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
         !Start the problem specific control setup
-        CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+        CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
         !Finalise the problem setup information
-        CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+        CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
       ENDIF
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
@@ -1731,19 +1731,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
      
     ENTERS("PROBLEM_SOLVERS_CREATE_FINISH",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN              
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_SOLVERS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_SOLVERS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
       !Finish the problem specific solvers setup.
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -1766,19 +1766,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_SOLVERS_CREATE_START",err,error,*999)
     
     IF(ASSOCIATED(PROBLEM)) THEN    
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_SOLVERS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_SOLVERS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
       !Start the problem specific solvers setup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -2893,19 +2893,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_SOLVER_EQUATIONS_CREATE_FINISH",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN      
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_SOLVER_EQUATIONS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_SOLVER_EQUATIONS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_FINISH_ACTION
       !Finish problem specific startup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -2932,19 +2932,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(PROBLEM_SETUP_TYPE) :: PROBLEM_SETUP_INFO
+    TYPE(PROBLEM_SETUP_TYPE) :: problemSetupInfo
 
     ENTERS("PROBLEM_SOLVER_EQUATIONS_CREATE_START",err,error,*999)
 
     IF(ASSOCIATED(PROBLEM)) THEN
       !Initialise the problem setup information
-      CALL PROBLEM_SETUP_INITIALISE(PROBLEM_SETUP_INFO,err,error,*999)
-      PROBLEM_SETUP_INFO%SETUP_TYPE=PROBLEM_SETUP_SOLVER_EQUATIONS_TYPE
-      PROBLEM_SETUP_INFO%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
+      CALL PROBLEM_SETUP_INITIALISE(problemSetupInfo,err,error,*999)
+      problemSetupInfo%SETUP_TYPE=PROBLEM_SETUP_SOLVER_EQUATIONS_TYPE
+      problemSetupInfo%ACTION_TYPE=PROBLEM_SETUP_START_ACTION
       !Start the problem specific control setup
-      CALL PROBLEM_SETUP(PROBLEM,PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP(PROBLEM,problemSetupInfo,err,error,*999)
       !Finalise the problem setup information
-      CALL PROBLEM_SETUP_FINALISE(PROBLEM_SETUP_INFO,err,error,*999)
+      CALL PROBLEM_SETUP_FINALISE(problemSetupInfo,err,error,*999)
     ELSE
       CALL FlagError("Problem is not associated.",err,error,*999)
     ENDIF
@@ -3795,7 +3795,7 @@ CONTAINS
   !
 
   !>Finalises all problems and deallocates all memory.
-  SUBROUTINE PROBLEMS_FINALISE(err,error,*)
+  SUBROUTINE PROBLEMS_FINALISE(problems, err,error,*)
 
     !Argument variables
     TYPE(ProblemsType), POINTER :: problems !<A pointer to the problems to finalise
@@ -3806,7 +3806,7 @@ CONTAINS
     ENTERS("PROBLEMS_FINALISE",err,error,*999)
 
     IF(ASSOCIATED(problems)) THEN
-      DO WHILE(problems%numberOfProblems>0)
+      DO WHILE(problems%NUMBER_OF_PROBLEMS>0)
         CALL Problem_Destroy(problems%problems(1)%ptr,err,error,*999)
       ENDDO !problemIdx
       DEALLOCATE(problems)
@@ -3823,7 +3823,7 @@ CONTAINS
   !
 
   !>Intialises all problems.
-  SUBROUTINE PROBLEMS_INITIALISE(err,error,*)
+  SUBROUTINE PROBLEMS_INITIALISE(context, err,error,*)
 
     !Argument variables
     TYPE(ContextType), POINTER :: context !<The context to intialise the problems for.
@@ -3842,7 +3842,7 @@ CONTAINS
     IF(err/=0) CALL FlagError("Could not allocate problems.",err,error,*999)
     !Initialise
     context%problems%context=>context
-    context%problems%numberOfProblems=0
+    context%problems%NUMBER_OF_PROBLEMS=0
     NULLIFY(context%problems%problems)
     
     EXITS("Problems_Initialise")
@@ -4301,9 +4301,11 @@ SUBROUTINE Problem_SolverConvergenceTestPetsc(snes,iterationNumber,xnorm,gnorm,f
   USE BaseRoutines
   USE CmissPetsc
   USE CmissPetscTypes
+  USE Constants
   USE DistributedMatrixVector
   USE INPUT_OUTPUT
   USE KINDS
+  USE ISO_VARYING_STRING
   USE PROBLEM_ROUTINES
   USE SOLVER_ROUTINES
   USE STRINGS
@@ -4458,8 +4460,11 @@ SUBROUTINE Problem_SolverDAECellMLRHSPetsc(ts,time,states,rates,ctx,err)
   USE BaseRoutines
   USE CmissPetscTypes
   USE CmissPetsc
+  USE Constants
   USE PROBLEM_ROUTINES
   USE TYPES
+  USE Kinds
+  USE ISO_VARYING_STRING
 
   IMPLICIT NONE
 

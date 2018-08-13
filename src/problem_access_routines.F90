@@ -47,6 +47,7 @@ MODULE ProblemAccessRoutines
   USE BaseRoutines
   USE ControlLoopAccessRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE SolverAccessRoutines
   USE Strings
   USE Types
@@ -63,7 +64,7 @@ MODULE ProblemAccessRoutines
 
   !Module variables
 
-  TYPE(PROBLEMS_TYPE), TARGET :: problems
+  TYPE(ProblemsType), TARGET :: problems
   
   !Interfaces
 

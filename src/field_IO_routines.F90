@@ -45,6 +45,7 @@
 !> Implements lists of Field IO operation
 MODULE FIELD_IO_ROUTINES
   USE BaseRoutines
+  USE CONSTANTS
   USE LISTS
   USE BasisRoutines
   USE BasisAccessRoutines
@@ -328,7 +329,8 @@ MODULE FIELD_IO_ROUTINES
 
     FUNCTION FieldExport_ElementGridValues( handle, isFirstSet, numberOfXi, elementValue ) &
       & BIND(C,NAME="FieldExport_ElementGridValues")
-      USE TYPES
+      USE Kinds
+      USE Types
       USE ISO_C_BINDING
       INTEGER(C_INT), VALUE :: handle
       INTEGER(C_INT), VALUE :: isFirstSet

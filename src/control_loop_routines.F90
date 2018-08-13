@@ -45,6 +45,7 @@
 MODULE CONTROL_LOOP_ROUTINES
 
   USE BaseRoutines
+  USE CONSTANTS
   USE ControlLoopAccessRoutines
   USE FIELD_ROUTINES
   USE FieldAccessRoutines

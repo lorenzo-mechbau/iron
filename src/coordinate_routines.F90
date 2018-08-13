@@ -1690,7 +1690,7 @@ CONTAINS
   !>- Focus: 1.0
   !>- Origin: (0.0,0.0,0.0)
   !>- Oritention: ((1.0,0.0,0.0),(0.0,1.0,0.0),(0.0,0.0,1.0))
-  SUBROUTINE COORDINATE_SYSTEM_CREATE_START(USER_NUMBER,COORDINATE_SYSTEM,ERR,ERROR,*)
+  SUBROUTINE COORDINATE_SYSTEM_CREATE_START(USER_NUMBER,coordinateSystems, COORDINATE_SYSTEM,ERR,ERROR,*)
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number for the created coordinate system
@@ -1713,7 +1713,7 @@ CONTAINS
     IF(.NOT.ASSOCIATED(coordinateSystems)) CALL FlagError("Coordinate systems is not associated.",err,error,*999)
     
     NULLIFY(NEW_COORDINATE_SYSTEM)
-    CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(USER_NUMBER,NEW_COORDINATE_SYSTEM,ERR,ERROR,*999)
+    CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(coordinateSystems, USER_NUMBER,NEW_COORDINATE_SYSTEM,ERR,ERROR,*999)
     IF(ASSOCIATED(NEW_COORDINATE_SYSTEM)) THEN
       LOCAL_ERROR="Coordinate system number "//TRIM(NUMBER_TO_VSTRING(USER_NUMBER,"*",ERR,ERROR))// &
         & " has already been created."

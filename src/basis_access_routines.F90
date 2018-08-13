@@ -46,6 +46,7 @@ MODULE BasisAccessRoutines
   
   USE BaseRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE Strings
   USE Types
   
@@ -73,7 +74,7 @@ MODULE BasisAccessRoutines
 
   !Module variables
 
-  TYPE(BASIS_FUNCTIONS_TYPE) :: basisFunctions !<The tree of defined basis functions
+  TYPE(BasisFunctionsType) :: basisFunctions !<The tree of defined basis functions
 
   !Interfaces
 
@@ -116,9 +117,10 @@ CONTAINS
 
   !>Finds and returns a pointer to the basis with the given user number and family number. If no basis with that
   !>number and family number exists then basis is returned nullified \see BasisAccessRoutines::Basis_UserNumberFind
-  RECURSIVE SUBROUTINE Basis_FamilyNumberFind(userNumber,familyNumber,basis,err,error,*)
+  RECURSIVE SUBROUTINE Basis_FamilyNumberFind(basisFunctions, userNumber,familyNumber,basis,err,error,*)
 
     !Argument variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions to find the user number. 
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to find
     INTEGER(INTG), INTENT(IN) :: familyNumber !<The family number of the basis to find
     TYPE(BASIS_TYPE), POINTER :: basis !<On exit, A pointer to the basis. If no basis with the specified user and family numbers can be found the pointer is not associated.
@@ -179,9 +181,10 @@ CONTAINS
   !
 
   !>Finds and returns a pointer to the basis with the given user number. 
-  SUBROUTINE Basis_Get(userNumber,basis,err,error,*)
+  SUBROUTINE Basis_Get(basisFunctions, userNumber,basis,err,error,*)
 
     !Argument variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions to get the user number for. 
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to find
     TYPE(BASIS_TYPE), POINTER :: basis !<On exit, a pointer to the basis with the specified user number if it exists. Must not be associated on entry
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -191,7 +194,7 @@ CONTAINS
     
     ENTERS("Basis_Get",err,error,*999)
 
-    CALL Basis_UserNumberFind(userNumber,basis,err,error,*999)
+    CALL Basis_UserNumberFind(basisFunctions, userNumber,basis,err,error,*999)
     IF(.NOT.ASSOCIATED(basis)) THEN
       localError="A basis with an user number of "//TRIM(NumberToVString(userNumber,"*",err,error))//" does not exist."
       CALL FlagError(localError,err,error,*999)
@@ -355,9 +358,10 @@ CONTAINS
   !
 
   !>Finds and returns a pointer to a basis with the given user number. If no basis with that number exists basis is left nullified.
-  SUBROUTINE Basis_UserNumberFind(userNumber,basis,err,error,*)
+  SUBROUTINE Basis_UserNumberFind(basisFunctions, userNumber,basis,err,error,*)
 
     !Argument variables
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<The basis functions to find the user number for.
     INTEGER(INTG), INTENT(IN) :: userNumber !<The user number of the basis to find.
     TYPE(BASIS_TYPE), POINTER :: basis !<On exit, a pointer to the found basis. If no basis with the given user number exists the pointer is NULL.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
@@ -366,7 +370,7 @@ CONTAINS
 
     ENTERS("Basis_UserNumberFind",err,error,*999)
     
-    CALL Basis_FamilyNumberFind(userNumber,0,basis,err,error,*999)
+    CALL Basis_FamilyNumberFind(basisFunctions, userNumber,0,basis,err,error,*999)
   
     EXITS("Basis_UserNumberFind")
     RETURN

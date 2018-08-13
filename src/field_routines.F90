@@ -47,7 +47,9 @@ MODULE FIELD_ROUTINES
   USE BaseRoutines
   USE BasisRoutines
   USE BasisAccessRoutines
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
+  USE Constants
   USE COORDINATE_ROUTINES
   USE CmissMPI
   USE DistributedMatrixVector
@@ -4454,6 +4456,8 @@ CONTAINS
     INTEGER(INTG) :: domain_idx
     INTEGER(INTG) :: local_number, local_type, domain_no
     INTEGER(INTG) :: DofLocalNumber, DofGlobalNumber, StorageIdx
+
+    INTEGER(INTG) :: myComputationalNodeNumber
   
     ENTERS("FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING",ERR,ERROR,*999)
     
@@ -4462,7 +4466,12 @@ CONTAINS
     M_DOFS_MAPPING=>FIELD_VARIABLE_DOFS_MAPPING
                     
     ! output all values
-    PRINT *, "process ",ComputationalEnvironment_NodeNumberGet(ERR,ERROR), " FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING " // TRIM(Str)
+
+    CALL WorkGroup_GroupNodeNumberGet(M_DOFS_MAPPING%workGroup,myComputationalNodeNumber,err,error,*999)
+    ! Replace call below with myComputationalNodeNumber (also in following "print")
+    !PRINT *, "process ",ComputationalEnvironment_NodeNumberGet(ERR,ERROR), " FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING " // TRIM(Str)
+   
+    PRINT *, "process ",myComputationalNodeNumber, " FIELD_OUTPUT_FIELD_VARIABLE_DOFS_MAPPING " // TRIM(Str)
     
     IF (.FALSE.) THEN
       PRINT *, "    process, dof global,    process,  dof local,       type"
@@ -4474,9 +4483,9 @@ CONTAINS
           domain_no = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%DOMAIN_NUMBER(domain_idx)
           local_type = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_TYPE(domain_idx)
           IF (local_type == 3) THEN
-            PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type, "ghost"
+            PRINT *, myComputationalNodeNumber,DofGlobalNumber, domain_no, local_number, local_type, "ghost"
           ELSE
-            PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type
+            PRINT *, myComputationalNodeNumber,DofGlobalNumber, domain_no, local_number, local_type
           ENDIF
         ENDDO
         
@@ -4494,9 +4503,9 @@ CONTAINS
         local_type = M_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(DofGlobalNumber)%LOCAL_TYPE(domain_idx)
         IF (domain_no /= 0) CYCLE
         IF (local_type == 3) THEN
-          PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type, "ghost"
+          PRINT *, myComputationalNodeNumber,DofGlobalNumber, domain_no, local_number, local_type, "ghost"
         ELSE
-          PRINT *, ComputationalEnvironment_NodeNumberGet(ERR,ERROR),DofGlobalNumber, domain_no, local_number, local_type
+          PRINT *, myComputationalNodeNumber,DofGlobalNumber, domain_no, local_number, local_type
         ENDIF
       ENDIF
       
@@ -9997,6 +10006,8 @@ CONTAINS
     TYPE(FIELD_TYPE),POINTER :: FIELD,FIELD1, FIELD2
     LOGICAL :: CurrentNodeIsInternal, AdjacentDomainFound, NodeIsOnCurrentAdjacentDomain, CurrentElementIsInternal, &
       & ElementIsOnCurrentAdjacentDomain
+
+    INTEGER(INTG) :: groupCommunicator
     
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
@@ -10009,13 +10020,17 @@ CONTAINS
 
     CALL_COUNTER = CALL_COUNTER + 1
     DEBUGGING = .FALSE.
-    IF (CALL_COUNTER == 10 .AND. ComputationalEnvironment_NodeNumberGet(ERR,ERROR) == 0) DEBUGGING = .FALSE.
+    ! What is this for?
+    !IF (CALL_COUNTER == 10 .AND. ComputationalEnvironment_NodeNumberGet(ERR,ERROR) == 0) DEBUGGING = .FALSE.
 
     IF(ASSOCIATED(FIELD0)) THEN
-      NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-      IF(ERR/=0) GOTO 999
-      MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-      IF(ERR/=0) GOTO 999
+      CALL WorkGroup_GroupCommunicatorGet(FIELD0%decomposition%workGroup,groupCommunicator,err,error,*999)
+      CALL WorkGroup_NumberOfGroupNodesGet(FIELD0%decomposition%workGroup,NumberComputationalNodes,err,error,*999)
+      CALL WorkGroup_GroupNodeNumberGet(FIELD0%decomposition%workGroup,MyComputationalNodeNumber,err,error,*999)
+!      NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+!      IF(ERR/=0) GOTO 999
+!      MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+!      IF(ERR/=0) GOTO 999
       
       IF (MyComputationalNodeNumber == 0) THEN
         DIAGNOSTICS2 = .TRUE.
@@ -10330,7 +10345,7 @@ CONTAINS
               ! merge information from every rank
               NumberBreaks(MyComputationalNodeNumber) = LocalNumberBreaks
               CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
-                & NumberBreaks,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                & NumberBreaks,1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
               CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 
               IF (DIAGNOSTICS2) THEN
@@ -10432,7 +10447,7 @@ CONTAINS
                   
               ! merge information from every rank
               CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
-                & DofTable,NumberBreaksDouble,RowOffsetZeroBased,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                & DofTable,NumberBreaksDouble,RowOffsetZeroBased,MPI_INTEGER,groupCommunicator,MPI_IERROR)
               CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
                         
               IF (DIAGNOSTICS2) THEN
@@ -10874,7 +10889,7 @@ CONTAINS
                 
                 ! reduce over all processes
                 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberNodesCommunicate,1,MPI_INT,MPI_MAX, &
-                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 
                 IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": MaximumNumberNodesSend=",MaximumNumberNodesSend, &
@@ -10914,13 +10929,13 @@ CONTAINS
                   ! post receive calls
                   CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
                     & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,groupCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! post send calls
                   CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberNodesCommunicate,MPI_INTEGER, &
                     & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,groupCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                   
                 ENDDO   ! AdjacentDomainIdx
@@ -10974,7 +10989,7 @@ CONTAINS
                 
                 ! reduce over all processes
                 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxNumberDerivativesAtGhostNode,1,MPI_INT,MPI_MAX, &
-                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  & groupCommunicator,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
                 
                 ! transfer information that reproduces all global ghost numbers at ghost nodes to the domains where it is a boundary node, each
@@ -11046,14 +11061,14 @@ CONTAINS
                   CALL MPI_IRECV(ReceiveBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
                     & (MaxNumberDerivativesAtGhostNode+1), &
                     & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,groupCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                   
                   ! post send calls
                   CALL MPI_ISEND(SendBuffer3(:,:,AdjacentDomainIdx),MaximumNumberNodesCommunicate* &
                     & (MaxNumberDerivativesAtGhostNode+1), &
                     & MPI_INTEGER,NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
-                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                    & 0,groupCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                       
                 ENDDO  ! AdjacentDomainIdx
@@ -11316,7 +11331,7 @@ CONTAINS
                 
           CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
             & NUMBER_OF_DOMAIN_LOCAL(0:NumberComputationalNodes-1), &
-            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+            & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                 
           ! allocate number_of_domain_ghost
@@ -11328,7 +11343,7 @@ CONTAINS
                 
           CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,FIELD_VARIABLE_DOFS_MAPPING%&
             & NUMBER_OF_DOMAIN_GHOST(0:NumberComputationalNodes-1), &
-            & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+            & 1,MPI_INTEGER,groupCommunicator,MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
                  
           ! deallocate used arrays
@@ -32795,8 +32810,12 @@ CONTAINS
           FIELD_VARIABLE%NUMBER_OF_GLOBAL_DOFS=0
           ALLOCATE(FIELD_VARIABLE%DOMAIN_MAPPING,STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate field variable domain mapping.",ERR,ERROR,*999)
-          CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(FIELD_VARIABLE%DOMAIN_MAPPING, &
-            & FIELD%DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+!           CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(FIELD_VARIABLE%DOMAIN_MAPPING, &
+!            & FIELD%DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+            ! Is this correct??? Should be: First argument is work group (=> number of domains in old implementation)
+            ! second is the domain mapping to initialize
+          CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(FIELD%DECOMPOSITION%workGroup, &
+            & FIELD_VARIABLE%DOMAIN_MAPPING,ERR,ERROR,*999)
           CALL FIELD_DOF_TO_PARAM_MAP_INITIALISE(FIELD_VARIABLE%DOF_TO_PARAM_MAP,ERR,ERROR,*999)
         ELSE
           LOCAL_ERROR="Variable number "//TRIM(NumberToVString(VARIABLE_NUMBER,"*",ERR,ERROR))// &

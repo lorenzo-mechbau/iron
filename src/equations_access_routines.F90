@@ -47,6 +47,7 @@ MODULE EquationsAccessRoutines
   USE BaseRoutines
   USE FieldAccessRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE Strings
   USE Types
 

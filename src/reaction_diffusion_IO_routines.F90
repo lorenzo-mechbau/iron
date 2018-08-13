@@ -55,6 +55,7 @@ MODULE REACTION_DIFFUSION_IO_ROUTINES
  USE TYPES
  USE INPUT_OUTPUT
  USE KINDS
+ USE ISO_VARYING_STRING
  USE MESH_ROUTINES
 
 #ifndef NOMPIMOD
@@ -100,7 +101,7 @@ CONTAINS
     INTEGER(INTG):: myComputationalNodeNumber,NumberOfOutputFields,NumberOfDimensions,NumberOfElements,NumberOfNodes
     INTEGER(INTG):: NumberOfVariableComponents,NumberOfSourceComponents,I,J,K,ValueIndex,NODE_GLOBAL_NUMBER
     INTEGER(INTG) :: NodesInMeshComponent,BasisType,MaxNodesPerElement,NumberOfFieldComponents(3),ELEMENT_GLOBAL_NUMBER
-    INTEGER(INTG) :: NODE_LOCAL_NUMBER
+    INTEGER(INTG) :: NODE_LOCAL_NUMBER, numberOfWorldComputationNodes
     INTEGER(INTG),ALLOCATABLE :: ElementNodes(:,:),SimplexOutputHelp(:)
     REAL(DP), ALLOCATABLE :: ElementNodesScales(:,:)
     LOGICAL :: OUTPUT_SOURCE

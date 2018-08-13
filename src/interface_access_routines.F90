@@ -49,6 +49,7 @@ MODULE InterfaceAccessRoutines
   USE FieldAccessRoutines
   USE InterfaceConditionAccessRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE MeshAccessRoutines
   USE Strings
   USE Types

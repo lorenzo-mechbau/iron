@@ -61,7 +61,9 @@ MODULE CMISS_CELLML
   ! on some platforms.
   USE CMISS_FORTRAN_C
   USE CmissMPI
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
+  USE Constants
   USE FIELD_ROUTINES
   USE FieldAccessRoutines
   USE ISO_VARYING_STRING
@@ -2529,11 +2531,13 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !< The error string
     !Local variables
-    INTEGER(INTG) :: model_idx,source_dof_idx,first_dof_idx,mpiIError,onlyOneModelIndex
+    INTEGER(INTG) :: model_idx,source_dof_idx,first_dof_idx,mpiIError,onlyOneModelIndex,groupCommunicator
     INTEGER(INTG), POINTER :: MODELS_DATA(:)
     TYPE(CELLML_TYPE), POINTER :: CELLML
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: MODELS_VARIABLE
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(WorkGroupType), POINTER :: workGroup
     
     ENTERS("CELLML_MODELS_FIELD_CHECK",ERR,ERROR,*999)
 
@@ -2544,6 +2548,11 @@ CONTAINS
         IF(MODELS_FIELD%ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CHECKED) THEN
           CELLML=>MODELS_FIELD%CELLML
           IF(ASSOCIATED(CELLML)) THEN
+            NULLIFY(decomposition)
+            CALL Field_DecompositionGet(MODELS_FIELD%MODELS_FIELD,decomposition,err,error,*999)
+            NULLIFY(workGroup)
+            CALL Decomposition_WorkGroupGet(decomposition,workGroup,err,error,*999)
+            CALL WorkGroup_GroupCommunicatorGet(workGroup,groupCommunicator,err,error,*999)
             !Models field has not been checked before.
             NULLIFY(MODELS_VARIABLE)
             CALL Field_VariableGet(MODELS_FIELD%MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
@@ -2587,7 +2596,7 @@ CONTAINS
                 ENDDO !source_dof_idx
                 onlyOneModelIndex=0
                 CALL MPI_ALLREDUCE(MODELS_FIELD%ONLY_ONE_MODEL_INDEX,onlyOneModelIndex,1,MPI_INTEGER,MPI_MAX, &
-                  & computationalEnvironment%mpiCommunicator,mpiIerror)
+                  & groupCommunicator,mpiIerror)
                 CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",mpiIerror,ERR,ERROR,*999)
                 IF(onlyOneModelIndex==0) &
                   & CALL FlagError("Models field does not have any models set.",ERR,ERROR,*999)

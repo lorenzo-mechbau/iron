@@ -52,6 +52,7 @@ MODULE RegionAccessRoutines
   USE GeneratedMeshAccessRoutines
   USE InterfaceAccessRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE MeshAccessRoutines
   USE Strings
   USE Types
@@ -68,7 +69,7 @@ MODULE RegionAccessRoutines
 
   !Module variables
 
-  TYPE(REGIONS_TYPE) :: regions
+  TYPE(RegionsType) :: regions
   
   !Interfaces
 
@@ -580,7 +581,7 @@ CONTAINS
     ENTERS("Region_UserNumberFind",err,error,*999)
 
     IF(ASSOCIATED(region)) CALL FlagError("Region is already associated.",err,error,*999)
-    worldRegion=>regions%WORLD_REGION
+    worldRegion=>regions%worldRegion
     IF(.NOT.ASSOCIATED(worldRegion)) CALL FlagError("World region is not associated.",err,error,*999)
     
     NULLIFY(region)

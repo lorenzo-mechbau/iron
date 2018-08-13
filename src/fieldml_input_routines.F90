@@ -66,6 +66,7 @@ MODULE FIELDML_INPUT_ROUTINES
   USE REGION_ROUTINES
   USE RegionAccessRoutines
   USE STRINGS
+  USE ISO_VARYING_STRING
 
 #include "macros.h"  
 
@@ -1269,6 +1270,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     
     !Locals
+    TYPE(ComputationEnvironmentType), POINTER :: computationEnvironment
+    TYPE(ContextType), POINTER :: context
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(NODES_TYPE), POINTER :: NODES
     INTEGER(INTG) :: NODAL_DOFS_HANDLE, DATA_SOURCE, FML_ERR, RANK

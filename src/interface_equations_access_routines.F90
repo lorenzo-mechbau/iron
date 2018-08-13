@@ -46,6 +46,7 @@ MODULE InterfaceEquationsAccessRoutines
   
   USE BaseRoutines
   USE Kinds
+  USE ISO_VARYING_STRING
   USE Strings
   USE Types
 
