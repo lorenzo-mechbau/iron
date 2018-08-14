@@ -46,6 +46,8 @@ MODULE COORDINATE_ROUTINES
 
   USE BaseRoutines
   USE Constants
+  USE ContextRoutines
+  USE ContextAccessRoutines
   USE CoordinateSystemAccessRoutines
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING

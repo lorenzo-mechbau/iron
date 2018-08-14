@@ -48,30 +48,32 @@ PROGRAM IRON_TEST_FIELDML_IO
   IMPLICIT NONE
 
   ! CMISS variables
-  TYPE(cmfe_CoordinateSystemType) :: worldCoordinateSystem
-  TYPE(cmfe_RegionType) :: worldRegion
+  TYPE(cmfe_ContextType) :: context
+  TYPE(cmfe_ComputationEnvironmentType) :: ComputationEnvironment
 
   ! Generic CMISS variables
 
-  INTEGER(CMISSIntg) :: numberOfComputationalNodes, computationalNodeNumber
+  INTEGER(CMISSIntg) :: numberOfComputationNodes, computationNodeNumber
   INTEGER(CMISSIntg) :: err
 
   CALL INITIALISE_TESTS()
 
   ! Initialise OpenCMISS-Iron
 
-  CALL cmfe_Initialise(worldCoordinateSystem, worldRegion, err)
+  CALL cmfe_Context_Initialise(context,err)
+  CALL cmfe_Initialise(context,Err)  
   CALL cmfe_ErrorHandlingModeSet(CMFE_ERRORS_TRAP_ERROR, err)
 
-  ! Get computational nodes information
+  ! Get computation nodes information
+  CALL cmfe_ComputationEnvironment_Initialise(ComputationEnvironment,Err)
+  CALL cmfe_Context_ComputationEnvironmentGet(context,computationEnvironment,err)
+  CALL cmfe_ComputationEnvironment_NumberOfWorldNodesGet(ComputationEnvironment,NumberOfComputationNodes,Err)
+  CALL cmfe_ComputationEnvironment_WorldNodeNumberGet(ComputationEnvironment,ComputationNodeNumber,Err)
 
-  CALL cmfe_ComputationalNumberOfNodesGet(numberOfComputationalNodes, err)
-  CALL cmfe_ComputationalNodeNumberGet(computationalNodeNumber, err)
+  CALL TestFieldMLIOCube(context)
+  CALL TestFieldMLArguments(context)
 
-  CALL TestFieldMLIOCube(worldRegion)
-  CALL TestFieldMLArguments(worldRegion)
-
-  CALL cmfe_Finalise(err)
+  CALL cmfe_Finalise(context,err)
 
   CALL FINALISE_TESTS(err)
 

@@ -48,6 +48,8 @@ MODULE REACTION_DIFFUSION_IO_ROUTINES
 
  USE BaseRoutines
  USE ComputationEnvironment
+ USE ComputationRoutines
+ USE ComputationAccessRoutines
  USE ContextAccessRoutines
  USE EquationsSetConstants
  USE FIELD_ROUTINES
@@ -57,6 +59,7 @@ MODULE REACTION_DIFFUSION_IO_ROUTINES
  USE KINDS
  USE ISO_VARYING_STRING
  USE MESH_ROUTINES
+ USE RegionAccessRoutines
 
 #ifndef NOMPIMOD
   USE MPI

@@ -45,7 +45,8 @@
 MODULE DOMAIN_MAPPINGS
 
   USE BaseRoutines
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE KINDS
@@ -151,6 +152,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: myGroupComputationNodeNumber
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("DOMAIN_MAPPINGS_GLOBAL_TO_LOCAL_GET",ERR,ERROR,*999)
@@ -159,8 +161,8 @@ CONTAINS
     LOCAL_NUMBER=0
     IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
       IF(GLOBAL_NUMBER>=1.AND.GLOBAL_NUMBER<=DOMAIN_MAPPING%NUMBER_OF_GLOBAL) THEN
-        IF(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(GLOBAL_NUMBER)%DOMAIN_NUMBER(1)== &
-          & computationalEnvironment%myComputationalNodeNumber) THEN
+        CALL WorkGroup_GroupNodeNumberGet(DOMAIN_MAPPING%workGroup,myGroupComputationNodeNumber,err,error,*999)
+        IF(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(GLOBAL_NUMBER)%DOMAIN_NUMBER(1)== myGroupComputationNodeNumber) THEN
           LOCAL_NUMBER=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(GLOBAL_NUMBER)%LOCAL_NUMBER(1)
           LOCAL_EXISTS=.TRUE.
         ENDIF
@@ -205,7 +207,7 @@ CONTAINS
     ENTERS("DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
-      myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+      CALL WorkGroup_GroupNodeNumberGet(DOMAIN_MAPPING%workGroup,myComputationalNodeNumber,err,error,*999)
       IF(ERR/=0) GOTO 999        
       
       !Calculate local to global maps from global to local map

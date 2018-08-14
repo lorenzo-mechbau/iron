@@ -52,10 +52,10 @@ MODULE IRON_TEST_FIELDML_CUBE
 
 CONTAINS
 
-  SUBROUTINE TestFieldMLIOCube(worldRegion)
-    TYPE(cmfe_RegionType), INTENT(IN) :: worldRegion
+  SUBROUTINE TestFieldMLIOCube(context)
+    TYPE(cmfe_ContextType), INTENT(IN) :: context
     ! local variables
-    TYPE(cmfe_RegionType) :: region
+    TYPE(cmfe_RegionType) :: region,worldRegion
     TYPE(cmfe_MeshType) :: mesh
     TYPE(cmfe_FieldType) :: geometricField
     INTEGER(CMISSIntg) :: err
@@ -63,11 +63,14 @@ CONTAINS
     err = 0
     CALL BEGIN_TEST("cube")
 
+    CALL cmfe_Region_Initialise(worldRegion,err)
+    CALL cmfe_Context_WorldRegionGet(context,worldRegion,err)
+    
     ! Initial FieldML file is using Zinc-like naming conventions
     ! Files exported from Zinc are currently not yet readable in Iron due to the
     ! additional derivative/version mappings for element field parameters, which
     ! are present even for Lagrange bases (and set to defaults of 1).
-    CALL ReadCube(worldRegion, "input/cube.fieldml", &
+    CALL ReadCube(context,worldRegion, "input/cube.fieldml", &
       & region, mesh, geometricField, &
       & geometricFieldName = "coordinates", &
       & geometricFieldNodeParametersName = "nodes.coordinates", &
@@ -84,7 +87,7 @@ CONTAINS
     CALL cmfe_Region_Destroy(region, err)
 
     ! File is re-read with Iron naming conventions
-    CALL ReadCube(worldRegion, "cube.fieldml", &
+    CALL ReadCube(context,worldRegion, "cube.fieldml", &
       & region, mesh, geometricField, &
       & geometricFieldName = "coordinates", &
       & geometricFieldNodeParametersName = "coordinates.dofs.node", &
@@ -101,9 +104,10 @@ CONTAINS
     CALL END_TEST()
   END SUBROUTINE TestFieldMLIOCube
 
-  SUBROUTINE ReadCube(worldRegion, inputFilename, region, mesh, geometricField, &
+  SUBROUTINE ReadCube(context, worldRegion, inputFilename, region, mesh, geometricField, &
       & geometricFieldName, geometricFieldNodeParametersName, nodesArgumentName, &
       & basisEvaluatorName, meshArgumentName, meshComponentTemplateName)
+    TYPE(cmfe_ContextType), INTENT(IN) :: context
     TYPE(cmfe_RegionType), INTENT(IN) :: worldRegion
     CHARACTER(KIND=C_CHAR,LEN=*), INTENT(IN) :: inputFilename
     CHARACTER(KIND=C_CHAR,LEN=*), INTENT(IN) :: geometricFieldName
@@ -117,19 +121,21 @@ CONTAINS
     TYPE(cmfe_FieldType), INTENT(OUT) :: geometricField
     ! local variables
     TYPE(cmfe_BasisType) :: basis
+    TYPE(cmfe_ComputationEnvironmentType) :: ComputationEnvironment
     TYPE(cmfe_CoordinateSystemType) :: coordinateSystem
     TYPE(cmfe_DecompositionType) :: decomposition
     TYPE(cmfe_NodesType) :: nodes
     TYPE(cmfe_FieldMLIOType) :: fieldmlInfo
-    INTEGER(CMISSIntg) :: numberOfComputationalNodes, computationalNodeNumber
+    INTEGER(CMISSIntg) :: numberOfComputationNodes, computationNodeNumber
     INTEGER(CMISSIntg) :: err
 
     err = 0
 
-    ! Get computational nodes information
-
-    CALL cmfe_ComputationalNumberOfNodesGet(numberOfComputationalNodes, err)
-    CALL cmfe_ComputationalNodeNumberGet(computationalNodeNumber, err)
+    ! Get computation nodes information
+    CALL cmfe_ComputationEnvironment_Initialise(ComputationEnvironment,Err)
+    CALL cmfe_Context_ComputationEnvironmentGet(context,computationEnvironment,err)
+    CALL cmfe_ComputationEnvironment_NumberOfWorldNodesGet(ComputationEnvironment,NumberOfComputationNodes,Err)
+    CALL cmfe_ComputationEnvironment_WorldNodeNumberGet(ComputationEnvironment,ComputationNodeNumber,Err)
 
     ! Initialise FieldML and parse input file
 
@@ -139,8 +145,8 @@ CONTAINS
     ! Define Coordinate System from value type of coordinates field evaluator
 
     CALL cmfe_CoordinateSystem_Initialise(coordinateSystem, err)
-    CALL cmfe_FieldML_InputCoordinateSystemCreateStart( fieldmlInfo, geometricFieldName, coordinateSystem, &
-      & AUTO_USER_NUMBER(), err )
+    CALL cmfe_FieldML_InputCoordinateSystemCreateStart( fieldmlInfo, geometricFieldName, &
+      & AUTO_USER_NUMBER(), context, coordinateSystem, err )
     CALL cmfe_CoordinateSystem_CreateFinish(coordinateSystem, err)
     ! CALL cmfe_CoordinateSystem_DimensionGet(coordinateSystem, coordinateCount, err )
 
@@ -161,7 +167,7 @@ CONTAINS
     ! Define bases from FieldML evaluator (referencing interpolator)
 
     CALL cmfe_Basis_Initialise(basis, err)
-    CALL cmfe_FieldML_InputBasisCreateStart(fieldmlInfo, basisEvaluatorName, AUTO_USER_NUMBER(), basis, err)
+    CALL cmfe_FieldML_InputBasisCreateStart(fieldmlInfo, basisEvaluatorName, AUTO_USER_NUMBER(), context, basis, err)
     CALL cmfe_Basis_CreateFinish(basis, err)
 
     ! Define mesh from FieldML mesh argument
@@ -178,7 +184,7 @@ CONTAINS
     CALL cmfe_Decomposition_Initialise(decomposition, err)
     CALL cmfe_Decomposition_CreateStart(AUTO_USER_NUMBER(), mesh, decomposition, err)
     CALL cmfe_Decomposition_TypeSet(decomposition, CMFE_DECOMPOSITION_ALL_TYPE, err)
-    CALL cmfe_Decomposition_NumberOfDomainsSet(decomposition, numberOfComputationalNodes, err)
+    CALL cmfe_Decomposition_NumberOfDomainsSet(decomposition, numberOfComputationNodes, err)
     CALL cmfe_Decomposition_CreateFinish(decomposition, err)
 
     ! Define Geometric Field

@@ -52,7 +52,8 @@ MODULE SOLVER_ROUTINES
   USE CMISS_CELLML
   USE CmissPetsc
   USE CmissPetscTypes
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
   USE Constants
   USE DistributedMatrixVector
   USE EquationsAccessRoutines

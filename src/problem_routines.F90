@@ -47,6 +47,8 @@ MODULE PROBLEM_ROUTINES
   USE BaseRoutines
   USE BIOELECTRIC_ROUTINES
   USE CLASSICAL_FIELD_ROUTINES
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
   USE ContextAccessRoutines
   USE CONTROL_LOOP_ROUTINES
   USE ControlLoopAccessRoutines

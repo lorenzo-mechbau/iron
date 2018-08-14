@@ -113,11 +113,15 @@ MODULE RegionAccessRoutines
 
   PUBLIC REGION_NODES_GET
 
+  PUBLIC Region_RegionsGet
+
   PUBLIC Region_UserNumberFind
 
   PUBLIC REGION_USER_NUMBER_FIND
 
   PUBLIC Region_UserNumberGet
+
+  PUBLIC Regions_WorldRegionGet
 
 CONTAINS
 

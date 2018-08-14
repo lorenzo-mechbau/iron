@@ -39,7 +39,7 @@
 !> the terms of any one of the MPL, the GPL or the LGPL.
 !>
 
-!> \example cellml/model-integration/Fortran/FortranExample.F90
+!> \example cellml/model-integration/Fortran/FortranExample.f90
 !! Example program to integrate a CellML model using OpenCMISS.
 !! \par Latest Builds:
 !! \li <a href='http://autotest.bioeng.auckland.ac.nz/opencmiss-build/logs_x86_64-linux/Bioelectrics/Monodomain/build-intel'>Linux Intel Build</a>
@@ -48,7 +48,7 @@
 !<
 
 !> Main program
-PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
+PROGRAM CellMLIntegrationFortranExample
 
   USE OpenCMISS
   USE OpenCMISS_Iron
@@ -124,8 +124,10 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   TYPE(cmfe_BoundaryConditionsType) :: BoundaryConditions
   TYPE(cmfe_CellMLType) :: CellML
   TYPE(cmfe_CellMLEquationsType) :: CellMLEquations
+  TYPE(cmfe_ComputationEnvironmentType) :: ComputationEnvironment
+  TYPE(cmfe_ContextType) :: context
   TYPE(cmfe_ControlLoopType) :: ControlLoop
-  TYPE(cmfe_CoordinateSystemType) :: CoordinateSystem,WorldCoordinateSystem
+  TYPE(cmfe_CoordinateSystemType) :: CoordinateSystem
   TYPE(cmfe_DecompositionType) :: Decomposition
   TYPE(cmfe_EquationsType) :: Equations
   TYPE(cmfe_EquationsSetType) :: EquationsSet
@@ -141,7 +143,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
 
   !Generic CMISS variables
   
-  INTEGER(CMISSIntg) :: NumberOfComputationalNodes,ComputationalNodeNumber
+  INTEGER(CMISSIntg) :: NumberOfComputationNodes,ComputationNodeNumber
   INTEGER(CMISSIntg) :: EquationsSetIndex,CellMLIndex
   INTEGER(CMISSIntg) :: FirstNodeNumber,LastNodeNumber
   INTEGER(CMISSIntg) :: FirstNodeDomain,LastNodeDomain,NodeDomain
@@ -183,17 +185,22 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
 !  ENDIF
 
   !Intialise OpenCMISS
-  CALL cmfe_Initialise(WorldCoordinateSystem,WorldRegion,Err)
+  CALL cmfe_Context_Initialise(context,err)
+  CALL cmfe_Initialise(context,Err)  
+  CALL cmfe_Region_Initialise(worldRegion,err)
+  CALL cmfe_Context_WorldRegionGet(context,worldRegion,err)
 
   !Trap errors
   CALL cmfe_ErrorHandlingModeSet(CMFE_ERRORS_TRAP_ERROR,Err)
   
-  !Get the computational nodes information
-  CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes,Err)
-  CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber,Err)
+  !Get the computation nodes information
+  CALL cmfe_ComputationEnvironment_Initialise(ComputationEnvironment,Err)
+  CALL cmfe_Context_ComputationEnvironmentGet(context,computationEnvironment,err)
+  CALL cmfe_ComputationEnvironment_NumberOfWorldNodesGet(ComputationEnvironment,NumberOfComputationNodes,Err)
+  CALL cmfe_ComputationEnvironment_WorldNodeNumberGet(ComputationEnvironment,ComputationNodeNumber,Err)
 
-!  IF (NumberOfComputationalNodes .gt. 2)
-!    WRITE(*,'(">>NOTE: ",A)') "It doesn't make any sense to use more than 2 computational nodes for this example?"
+!  IF (NumberOfComputationNodes .gt. 2)
+!    WRITE(*,'(">>NOTE: ",A)') "It doesn't make any sense to use more than 2 computation nodes for this example?"
 !    STOP
 !  ENDIF
 
@@ -205,7 +212,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   
   !Start the creation of a new RC coordinate system
   CALL cmfe_CoordinateSystem_Initialise(CoordinateSystem,Err)
-  CALL cmfe_CoordinateSystem_CreateStart(CoordinateSystemUserNumber,CoordinateSystem,Err)
+  CALL cmfe_CoordinateSystem_CreateStart(CoordinateSystemUserNumber,context,CoordinateSystem,Err)
   !Set the coordinate system to be 1D
   CALL cmfe_CoordinateSystem_DimensionSet(CoordinateSystem,1,Err)
   !Finish the creation of the coordinate system
@@ -223,7 +230,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
 
   !Start the creation of a basis (default is trilinear lagrange)
   CALL cmfe_Basis_Initialise(Basis,Err)
-  CALL cmfe_Basis_CreateStart(BasisUserNumber,Basis,Err)
+  CALL cmfe_Basis_CreateStart(BasisUserNumber,context,Basis,Err)
   !Set the basis to be a bilinear Lagrange basis
   CALL cmfe_Basis_NumberOfXiSet(Basis,1,Err)
   !Finish the creation of the basis
@@ -248,7 +255,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   CALL cmfe_Decomposition_CreateStart(DecompositionUserNumber,Mesh,Decomposition,Err)
   !Set the decomposition to be a general decomposition with the specified number of domains
   CALL cmfe_Decomposition_TypeSet(Decomposition,CMFE_DECOMPOSITION_CALCULATED_TYPE,Err)
-  CALL cmfe_Decomposition_NumberOfDomainsSet(Decomposition,NumberOfComputationalNodes,Err)
+  CALL cmfe_Decomposition_NumberOfDomainsSet(Decomposition,NumberOfComputationNodes,Err)
   !Finish the decomposition
   CALL cmfe_Decomposition_CreateFinish(Decomposition,Err)
   
@@ -384,7 +391,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   !Set the Stimulus all nodes?
   DO node_idx=1,NUMBER_OF_ELEMENTS+1
     CALL cmfe_Decomposition_NodeDomainGet(Decomposition,node_idx,1,NodeDomain,Err)
-    IF(NodeDomain==ComputationalNodeNumber) THEN
+    IF(NodeDomain==ComputationNodeNumber) THEN
       CALL cmfe_Field_ParameterSetUpdateNode(CellMLParametersField,CMFE_FIELD_U_VARIABLE_TYPE,CMFE_FIELD_VALUES_SET_TYPE,1,1, &
         & node_idx,stimcomponent,STIM_VALUE,Err)
     ENDIF
@@ -396,7 +403,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
 !  !Loop over the nodes
 !  DO node_idx=1,LastNodeNumber
 !    CALL cmfe_Decomposition_NodeDomainGet(Decomposition,node_idx,1,NodeDomain,Err)
-!    IF(NodeDomain==ComputationalNodeNumber) THEN
+!    IF(NodeDomain==ComputationNodeNumber) THEN
 !      CALL cmfe_Field_ParameterSetGetNode(GeometricField,CMFE_FIELD_U_VARIABLE_TYPE,CMFE_FIELD_VALUES_SET_TYPE,1,1,node_idx,1, &
 !        & X,Err)
 !      CALL cmfe_Field_ParameterSetGetNode(GeometricField,CMFE_FIELD_U_VARIABLE_TYPE,CMFE_FIELD_VALUES_SET_TYPE,1,1,node_idx,2, &
@@ -411,7 +418,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   !Start the creation of a problem.
   CALL cmfe_Problem_Initialise(Problem,Err)
   !Set the problem to be a standard Monodomain problem
-  CALL cmfe_Problem_CreateStart(ProblemUserNumber,[CMFE_PROBLEM_BIOELECTRICS_CLASS,CMFE_PROBLEM_MONODOMAIN_EQUATION_TYPE, &
+  CALL cmfe_Problem_CreateStart(ProblemUserNumber,context,[CMFE_PROBLEM_BIOELECTRICS_CLASS,CMFE_PROBLEM_MONODOMAIN_EQUATION_TYPE, &
     & CMFE_PROBLEM_MONODOMAIN_GUDUNOV_SPLIT_SUBTYPE],Problem,Err)
   !Finish the creation of a problem.
   CALL cmfe_Problem_CreateFinish(Problem,Err)
@@ -488,11 +495,11 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   CALL cmfe_BoundaryConditions_Initialise(BoundaryConditions,Err)
   CALL cmfe_SolverEquations_BoundaryConditionsCreateStart(SolverEquations,BoundaryConditions,Err)
  !Set the first node to 0.0 and the last node to 1.0
-  IF(FirstNodeDomain==ComputationalNodeNumber) THEN
+  IF(FirstNodeDomain==ComputationNodeNumber) THEN
    !CALL cmfe_BoundaryConditions_SetNode(BoundaryConditions,DependentField,CMFE_FIELD_U_VARIABLE_TYPE,1,1,FirstNodeNumber,1, &
    !  & CMFE_BOUNDARY_CONDITION_FIXED,0.0_CMISSRP,Err)
   ENDIF
-  IF(LastNodeDomain==ComputationalNodeNumber) THEN
+  IF(LastNodeDomain==ComputationNodeNumber) THEN
    !CALL cmfe_BoundaryConditions_SetNode(BoundaryConditions,DependentField,CMFE_FIELD_U_VARIABLE_TYPE,1,1,LastNodeNumber,1, &
    !  & CMFE_BOUNDARY_CONDITION_FIXED,1.0_CMISSRP,Err)
   ENDIF
@@ -506,7 +513,7 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   !Set the Stimulus at node 1
   DO node_idx=1,NUMBER_OF_ELEMENTS+1
     CALL cmfe_Decomposition_NodeDomainGet(Decomposition,node_idx,1,NodeDomain,Err)
-    IF(NodeDomain==ComputationalNodeNumber) THEN
+    IF(NodeDomain==ComputationNodeNumber) THEN
       CALL cmfe_Field_ParameterSetUpdateNode(CellMLParametersField,CMFE_FIELD_U_VARIABLE_TYPE,CMFE_FIELD_VALUES_SET_TYPE,1,1, &
         & node_idx,stimcomponent,0.0_CMISSRP,Err)
     ENDIF
@@ -528,10 +535,10 @@ PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
   ENDIF
 
   !Finialise CMISS
-  CALL cmfe_Finalise(Err)
+  CALL cmfe_Finalise(context,Err)
 
   WRITE(*,'(A)') "Program successfully completed."
   
   STOP
   
-END PROGRAM CELLMLINTEGRATIONFORTRANEXAMPLE
+END PROGRAM CellMLIntegrationFortranExample

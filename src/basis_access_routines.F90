@@ -88,6 +88,8 @@ MODULE BasisAccessRoutines
 
   PUBLIC BASIS_NUMBER_OF_QUADRATURE_SCHEME_TYPES,BASIS_DEFAULT_QUADRATURE_SCHEME,BASIS_LOW_QUADRATURE_SCHEME, &
     & BASIS_MID_QUADRATURE_SCHEME,BASIS_HIGH_QUADRATURE_SCHEME
+
+  PUBLIC Basis_BasisFunctionsGet
   
   PUBLIC basisFunctions
 
@@ -110,6 +112,42 @@ MODULE BasisAccessRoutines
   PUBLIC Basis_UserNumberGet
 
 CONTAINS
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns the basis functionsfor the basis. 
+  SUBROUTINE Basis_BasisFunctionsGet(basis,basisFunctions,err,error,*)
+
+    !Argument variables
+    TYPE(BASIS_TYPE), POINTER :: basis !<A pointer to the basis to get the quadrature scheme for
+    TYPE(BasisFunctionsType), POINTER :: basisFunctions !<On return, the basis fucntions for the basis. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("Basis_BasisFunctionsGet",err,error,*998)
+
+    IF(ASSOCIATED(basisFunctions)) CALL FlagError("Basis functions is already associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(basis)) CALL FlagError("Basis is not associated.",err,error,*999)    
+    IF(.NOT.basis%BASIS_FINISHED) CALL FlagError("Basis has not been finished.",err,error,*999)
+    
+    basisFunctions=>basis%basisFunctions
+    IF(.NOT.ASSOCIATED(basisFunctions)) THEN
+      localError="Basis functions is not associated for basis number "// &
+        & TRIM(NumberToVString(basis%USER_NUMBER,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+      
+    EXITS("Basis_BasisFunctionsGet")
+    RETURN
+999 NULLIFY(basisFunctions)
+998 ERRORSEXITS("Basis_BasisFunctionsGet",err,error)    
+    RETURN 1
+    
+  END SUBROUTINE Basis_BasisFunctionsGet
 
   !
   !================================================================================================================================

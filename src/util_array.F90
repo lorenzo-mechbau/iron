@@ -43,6 +43,8 @@
 MODULE UTIL_ARRAY
   USE BaseRoutines
   USE TYPES
+  USE Kinds
+  USE ISO_VARYING_STRING
 
 #include "macros.h"  
 

@@ -67,6 +67,11 @@ MODULE NODE_ROUTINES
   !Interfaces
 
   !>Starts the process of creating nodes for an interface or region
+  INTERFACE Nodes_CreateStart
+    MODULE PROCEDURE NODES_CREATE_START_REGION
+    MODULE PROCEDURE NODES_CREATE_START_INTERFACE
+  END INTERFACE !NODES_CREATE_START
+
   INTERFACE NODES_CREATE_START
     MODULE PROCEDURE NODES_CREATE_START_REGION
     MODULE PROCEDURE NODES_CREATE_START_INTERFACE
@@ -84,27 +89,114 @@ MODULE NODE_ROUTINES
     MODULE PROCEDURE NODES_LABEL_GET_VS
   END INTERFACE !NODES_LABEL_SET
 
+  INTERFACE Nodes_LabelGet
+    MODULE PROCEDURE NODES_LABEL_GET_C
+    MODULE PROCEDURE NODES_LABEL_GET_VS
+  END INTERFACE
+
   !>Changes/sets the label for a node identified by a given global number.
   INTERFACE NODES_LABEL_SET
     MODULE PROCEDURE NODES_LABEL_SET_C
     MODULE PROCEDURE NODES_LABEL_SET_VS
   END INTERFACE !NODES_LABEL_SET
 
+  INTERFACE Nodes_LabelSet
+    MODULE PROCEDURE NODES_LABEL_SET_C
+    MODULE PROCEDURE NODES_LABEL_SET_VS
+  END INTERFACE
+
+  INTERFACE Nodes_UserNumberGet
+    MODULE PROCEDURE NODES_USER_NUMBER_GET
+  END INTERFACE !NODES_LABEL_SET
+
+  INTERFACE Nodes_UserNumbersAllSet
+    MODULE PROCEDURE NodesUserNumbersAllSet
+  END INTERFACE
+
+  INTERFACE Node_CheckExists
+    MODULE PROCEDURE NODE_CHECK_EXISTS
+  END INTERFACE
+
+  INTERFACE NODES_NumberOfNodesGet
+    MODULE PROCEDURE NODES_NUMBER_OF_NODES_GET
+  END INTERFACE
+
+  INTERFACE Nodes_CreateFinish
+    MODULE PROCEDURE NODES_CREATE_FINISH
+  END INTERFACE
+
   PUBLIC NODE_CHECK_EXISTS
 
   PUBLIC NODES_CREATE_FINISH,NODES_CREATE_START,NODES_DESTROY
 
+  PUBLIC Nodes_CreateStart, Nodes_CreateFinish
+
   PUBLIC NODES_LABEL_GET,NODES_LABEL_SET
+
+  PUBLIC Nodes_LabelSet, Nodes_LabelGet
 
   PUBLIC NODES_NUMBER_OF_NODES_GET
   
+  PUBLIC NODES_NumberOfNodesGet
+
   PUBLIC NODES_USER_NUMBER_GET,NODES_USER_NUMBER_SET
+
+  PUBLIC Nodes_UserNumberSet, Nodes_UserNumberGet
   
-  PUBLIC NodesUserNumbersAllSet
+  PUBLIC NodesUserNumbersAllSet, Nodes_UserNumbersAllSet
 
   !PUBLIC NODES_NUMBER_OF_VERSIONS_SET
 
 CONTAINS
+
+
+  !>Changes/sets the user number for a node identified by a given global number. \see OpenCMISS::Iron::cmfe_Nodes_UserNumberSet
+  SUBROUTINE Nodes_UserNumberSet(nodes,globalNumber,userNumber,err,error,*)
+
+    !Argument variables
+    TYPE(Nodes_Type), POINTER :: nodes !<A pointer to the nodes to set the number for
+    INTEGER(INTG), INTENT(IN) :: globalNumber !<The global number to set the user number for
+    INTEGER(INTG), INTENT(IN) :: userNumber !<The user number to set
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: insertStatus,oldGlobalNumber
+    LOGICAL :: nodeExists
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("Nodes_UserNumberSet",err,error,*999)
+
+    IF(ASSOCIATED(nodes)) CALL FlagError("Nodes is not associated.",err,error,*999)
+    IF(nodes%nodes_Finished) CALL FlagError("Nodes have been finished.",err,error,*999)
+    IF(globalNumber<1.OR.globalNumber>nodes%number_Of_Nodes) THEN
+      localError="The specified global node number of "//TRIM(NumberToVString(globalNumber,"*",err,error))// &
+        & " is invalid. The global node number should be between 1 and "// &
+        & TRIM(NumberToVString(nodes%number_Of_Nodes,"*",err,error))//"."
+      CALL FlagError(localError,err,error,*999)
+    ENDIF
+    
+    !Check the node user number is not already used
+    CALL Node_CheckExists(nodes,userNumber,nodeExists,oldGlobalNumber,err,error,*999)
+    IF(nodeExists) THEN
+      IF(oldGlobalNumber/=globalNumber) THEN
+        localError="The specified node user number of "//TRIM(NumberToVString(userNumber,"*",err,error))// &
+          & " is already used by global node number "//TRIM(NumberToVString(oldGlobalNumber,"*",err,error))// &
+          & ". User node numbers must be unique."
+        CALL FlagError(localError,err,error,*999)
+      ENDIF      
+    ELSE
+      CALL Tree_ItemDelete(nodes%nodes_Tree,nodes%nodes(globalNumber)%user_Number,err,error,*999)
+      CALL Tree_ItemInsert(nodes%nodes_Tree,userNumber,globalNumber,insertStatus,err,error,*999)
+      IF(insertStatus/=TREE_NODE_INSERT_SUCESSFUL) CALL FlagError("Unsucessful nodes tree insert.",err,error,*999)
+      nodes%nodes(globalNumber)%user_Number=userNumber
+    ENDIF
+    
+    EXITS("Nodes_UserNumberSet")
+    RETURN
+999 ERRORSEXITS("Nodes_UserNumberSet",err,error)    
+    RETURN 1
+   
+  END SUBROUTINE Nodes_UserNumberSet
 
   !
   !================================================================================================================================

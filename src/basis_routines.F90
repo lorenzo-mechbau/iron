@@ -459,6 +459,8 @@ MODULE BasisRoutines
 
   PUBLIC Basis_XiToAreaCoordinates
 
+  PUBLIC BasisFunctions_Finalise,BasisFunctions_Initialise
+
 CONTAINS
 
   !

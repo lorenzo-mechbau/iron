@@ -64,7 +64,8 @@ MODULE OpenCMISS_Iron
   USE Cmiss
   USE CmissPetsc
   USE CMISS_CELLML
-  USE ComputationEnvironment
+  USE ComputationRoutines
+  USE ComputationAccessRoutines
   USE Constants
   USE ContextRoutines
   USE ContextAccessRoutines
@@ -337,12 +338,6 @@ MODULE OpenCMISS_Iron
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
   END TYPE cmfe_SolverEquationsType
 
-  !>Contains information on a computational work group
-  TYPE cmfe_ComputationalWorkGroupType
-    PRIVATE
-    TYPE(ComputationalWorkGroupType), POINTER :: computationalWorkGroup
-  END TYPE cmfe_ComputationalWorkGroupType
-
  !>Contains information on a work group
  TYPE cmfe_WorkGroupType
    PRIVATE
@@ -382,7 +377,9 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_CellMLEquationsType,cmfe_CellMLEquations_Finalise,cmfe_CellMLEquations_Initialise
 
-  PUBLIC cmfe_ComputationalWorkGroupType,cmfe_ComputationalWorkGroup_Initialise
+  PUBLIC cmfe_ComputationEnvironmentType,cmfe_ComputationEnvironment_Initialise,cmfe_ComputationEnvironment_Finalise
+
+  PUBLIC cmfe_ContextType,cmfe_Context_Finalise,cmfe_Context_Initialise
 
   PUBLIC cmfe_ControlLoopType,cmfe_ControlLoop_Finalise,cmfe_ControlLoop_Initialise,cmfe_ControlLoop_LoadOutputSet
 
@@ -8382,31 +8379,6 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_ComputationEnvironment_Initialise
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Initialises a cmfe_ComputationalWorkGroupType object.
-  SUBROUTINE cmfe_ComputationalWorkGroup_Initialise(cmfe_ComputationalWorkGroup,err)
-    !DLLEXPORT(cmfe_ComputationalWorkGroup_Initialise)
-
-    !Argument variables
-    TYPE(cmfe_ComputationalWorkGroupType), INTENT(OUT) :: cmfe_ComputationalWorkGroup !<The cmfe_ComputationalWorkGroupType object to initialise.
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-
-    ENTERS("cmfe_ComputationalWorkGroup_Initialise",err,error,*999)
-
-    NULLIFY(cmfe_ComputationalWorkGroup%computationalWorkGroup)
-
-    EXITS("cmfe_ComputationalWorkGroup_Initialise")
-    RETURN
-999 ERRORSEXITS("cmfe_ComputationalWorkGroup_Initialise",err,error)
-    CALL cmfe_HandleError(err,error)
-    RETURN
-
-  END SUBROUTINE cmfe_ComputationalWorkGroup_Initialise
 
   !
   !================================================================================================================================
