@@ -941,6 +941,20 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_BoundaryConditions_AddNodeObj
   END INTERFACE cmfe_BoundaryConditions_AddNode
 
+  !>Sets the value of the face specified with element number and xi direction as a boundary condition on the specified face.
+  INTERFACE cmfe_BoundaryConditions_SetFace
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceNumber0
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceNumber1
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceObj
+  END INTERFACE cmfe_BoundaryConditions_SetFace
+
+  !>Sets the value of the line specified with element number and xi direction as a boundary condition on the specified line.
+  INTERFACE cmfe_BoundaryConditions_SetLine
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineNumber0
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineNumber1
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineObj
+  END INTERFACE cmfe_BoundaryConditions_SetLine
+
   !>Sets the value of the specified node as a boundary condition on the specified node.
   INTERFACE cmfe_BoundaryConditions_SetNode
     MODULE PROCEDURE cmfe_BoundaryConditions_SetNodeNumber0
@@ -982,6 +996,10 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_BoundaryConditions_AddElement,cmfe_BoundaryConditions_SetElement
 
   PUBLIC cmfe_BoundaryConditions_AddNode,cmfe_BoundaryConditions_SetNode
+
+  PUBLIC cmfe_BoundaryConditions_SetFace
+
+  PUBLIC cmfe_BoundaryConditions_SetLine
 
   PUBLIC cmfe_BoundaryConditions_NeumannSparsityTypeSet
 
@@ -3644,11 +3662,13 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_CONSTANT_INTERPOLATION = FIELD_CONSTANT_INTERPOLATION !<Constant interpolation. One parameter for the field \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_BASED_INTERPOLATION = FIELD_ELEMENT_BASED_INTERPOLATION !<Element based interpolation. Parameters are different in each element \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_FACE_BASED_INTERPOLATION = FIELD_FACE_BASED_INTERPOLATION !<Face based interpolation. Parameters are different on each face \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_LINE_BASED_INTERPOLATION = FIELD_LINE_BASED_INTERPOLATION !<Line based interpolation. Parameters are different on each line \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_NODE_BASED_INTERPOLATION = FIELD_NODE_BASED_INTERPOLATION !<Node based interpolation. Parameters are nodal based and a basis function is used \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION = FIELD_GRID_POINT_BASED_INTERPOLATION !<Grid point based interpolation. Parameters are different at each grid point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION = FIELD_GAUSS_POINT_BASED_INTERPOLATION !<Gauss point based interpolation. Parameters are different at each Gauss point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION = FIELD_DATA_POINT_BASED_INTERPOLATION !<Data point based interpolation. Parameters are different at each data point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION = FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION !<Element and external boundary face based interpolation. Parameters are different in each element and there are different parameters at the boundary faces of the mesh \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION = FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION !<Element and external boundary line based interpolation. Parameters are different in each element and there are different parameters at the boundary lines of the mesh \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   !>@}
   !> \addtogroup OpenCMISS_FieldVariableTypes OpenCMISS::Iron::Field::VariableTypes
   !> \brief Field variable type parameters.
@@ -4317,7 +4337,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_FIELD_CONSTANT_INTERPOLATION,CMFE_FIELD_ELEMENT_BASED_INTERPOLATION,CMFE_FIELD_NODE_BASED_INTERPOLATION, &
     & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, CMFE_FIELD_FACE_BASED_INTERPOLATION, &
-    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION
+    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION, &
+    & CMFE_FIELD_LINE_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION
 
   PUBLIC CMFE_FIELD_NUMBER_OF_VARIABLE_SUBTYPES
 
@@ -12705,6 +12726,298 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_BoundaryConditions_SetElementObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of a face specified by element number and xi direction as a boundary condition on the specified face for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber0(regionUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceNumber0)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xi direction of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceNumber0",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_FACE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceNumber0",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber0
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the face specified by element number and xi direction as a boundary condition on the specified face for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber1(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceNumber1)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDir of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceNumber1",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_FACE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceNumber1")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceNumber1",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber1
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the face specified by element number and xi direction and sets this as a boundary condition on the specified face for boundary conditions identified by an object.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceObj(boundaryConditions,field,variableType,versionNumber,derivativeNumber, &
+    & elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceObj)
+
+    !Argument variables
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to set the face to.
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDirection of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceObj",err,error,*999)
+
+    CALL BoundaryConditions_SetFace(boundaryConditions%boundaryConditions,field%field,variableType,versionNumber, &
+      & derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceObj")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of a line specified by element number and xi direction as a boundary condition on the specified line for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineNumber0(regionUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineNumber0)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xi direction of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetLineNumber0",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_LINE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineNumber0",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineNumber0
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the line specified by element number and xi direction as a boundary condition on the specified line for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineNumber1(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineNumber1)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDir of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetLineNumber1",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_LINE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineNumber1")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineNumber1",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineNumber1
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the line specified by element number and xi direction and sets this as a boundary condition on the specified line for boundary conditions identified by an object.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineObj(boundaryConditions,field,variableType,versionNumber,derivativeNumber, &
+    & elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineObj)
+
+    !Argument variables
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to set the line to.
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDirection of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_BoundaryConditions_SetLineObj",err,error,*999)
+
+    CALL BoundaryConditions_SetLine(boundaryConditions%boundaryConditions,field%field,variableType,versionNumber, &
+      & derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineObj")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineObj
 
   !
   !================================================================================================================================

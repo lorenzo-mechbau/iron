@@ -114,11 +114,13 @@ MODULE FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_CONSTANT_INTERPOLATION=1 !<Constant interpolation. One parameter for the field \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_BASED_INTERPOLATION=2 !<Element based interpolation. Parameters are different in each element \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_FACE_BASED_INTERPOLATION=3 !<Face based interpolation. Parameters are different in each face \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_NODE_BASED_INTERPOLATION=4 !<Node based interpolation. Parameters are nodal based and a basis function is used \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_BASED_INTERPOLATION=5 !<Grid point based interpolation. Parameters are different at each grid point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_BASED_INTERPOLATION=6 !<Gauss point based interpolation. Parameters are different at each Gauss point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_BASED_INTERPOLATION=7 !<data point based interpolation. Parameters are different at each data point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION=8 !<Element and external boundary face based interpolation. Parameters are different in each element with seperate values for boundary faces \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_LINE_BASED_INTERPOLATION=4 !<Line based interpolation. Parameters are different in each Line \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_NODE_BASED_INTERPOLATION=5 !<Node based interpolation. Parameters are nodal based and a basis function is used \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_BASED_INTERPOLATION=6 !<Grid point based interpolation. Parameters are different at each grid point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_BASED_INTERPOLATION=7 !<Gauss point based interpolation. Parameters are different at each Gauss point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_BASED_INTERPOLATION=8 !<data point based interpolation. Parameters are different at each data point \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION=9 !<Element and external boundary face based interpolation. Parameters are different in each element with seperate values for boundary faces \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION=10 !<Element and external boundary line based interpolation. Parameters are different in each element with seperate values for boundary lines \see FIELD_ROUTINES_InterpolationTypes,FIELD_ROUTINES
   !>@}
 
 !> \addtogroup FIELD_ROUTINES_DofTypes FIELD_ROUTINES::DofTypes
@@ -128,10 +130,11 @@ MODULE FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_CONSTANT_DOF_TYPE=1 !<The dof is from a field variable component with constant interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_ELEMENT_DOF_TYPE=2 !<The dof is from a field variable component with element based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
   INTEGER(INTG), PARAMETER :: FIELD_FACE_DOF_TYPE=3 !<The dof is from a field variable component with element based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_NODE_DOF_TYPE=4 !<The dof is from a field variable component with node based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_DOF_TYPE=5 !<The dof is from a field variable component with grid point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_DOF_TYPE=6 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
-  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_DOF_TYPE=7 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_LINE_DOF_TYPE=4 !<The dof is from a field variable component with element based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_NODE_DOF_TYPE=5 !<The dof is from a field variable component with node based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GRID_POINT_DOF_TYPE=6 !<The dof is from a field variable component with grid point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_GAUSS_POINT_DOF_TYPE=7 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
+  INTEGER(INTG), PARAMETER :: FIELD_DATA_POINT_DOF_TYPE=8 !<The dof is from a field variable component with Gauss point based interpolation \see FIELD_ROUTINES_DofTypes,FIELD_ROUTINES
   !>@}
 
   !> \addtogroup FIELD_ROUTINES_DataTypes FIELD_ROUTINES::DataTypes
@@ -1072,10 +1075,11 @@ MODULE FIELD_ROUTINES
 
   PUBLIC FIELD_CONSTANT_INTERPOLATION,FIELD_ELEMENT_BASED_INTERPOLATION,FIELD_NODE_BASED_INTERPOLATION, &
     & FIELD_GRID_POINT_BASED_INTERPOLATION,FIELD_GAUSS_POINT_BASED_INTERPOLATION,FIELD_DATA_POINT_BASED_INTERPOLATION, &
-    & FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION
+    & FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION, FIELD_LINE_BASED_INTERPOLATION, &
+    & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION
 
   PUBLIC FIELD_CONSTANT_DOF_TYPE,FIELD_ELEMENT_DOF_TYPE,FIELD_NODE_DOF_TYPE,FIELD_GRID_POINT_DOF_TYPE,FIELD_GAUSS_POINT_DOF_TYPE, &
-    & FIELD_DATA_POINT_DOF_TYPE, FIELD_FACE_DOF_TYPE
+    & FIELD_DATA_POINT_DOF_TYPE, FIELD_FACE_DOF_TYPE, FIELD_LINE_DOF_TYPE
 
   PUBLIC FIELD_INTG_TYPE,FIELD_SP_TYPE,FIELD_DP_TYPE,FIELD_L_TYPE
 
@@ -1087,7 +1091,7 @@ MODULE FIELD_ROUTINES
   PUBLIC FIELD_ALL_COMPONENTS_TYPE,FIELD_GEOMETRIC_COMPONENTS_TYPE,FIELD_NONGEOMETRIC_COMPONENTS_TYPE
 
   PUBLIC FIELD_COMPONENT_DOF_GET_CONSTANT,FIELD_COMPONENT_DOF_GET_USER_ELEMENT,FIELD_COMPONENT_DOF_GET_USER_NODE, &
-    & Field_componentDofGetUserDataPoint, FIELD_COMPONENT_DOF_GET_USER_FACE
+    & Field_componentDofGetUserDataPoint, FIELD_COMPONENT_DOF_GET_USER_FACE, FIELD_COMPONENT_DOF_GET_USER_LINE
 
   PUBLIC FIELD_COMPONENT_INTERPOLATION_CHECK,FIELD_COMPONENT_INTERPOLATION_SET,FIELD_COMPONENT_INTERPOLATION_SET_AND_LOCK
 
@@ -1356,6 +1360,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 IF(FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%INTERPOLATION_TYPE/=FIELD_NODE_BASED_INTERPOLATION) THEN
                   LOCAL_ERROR="Invalid interpolation type. The interpolation type for component number "// &
@@ -1478,6 +1490,10 @@ CONTAINS
                   CASE(FIELD_FACE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                    FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
+                  CASE(FIELD_LINE_BASED_INTERPOLATION)
+                    FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
+                  CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                     FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(COMPONENT_NUMBER,VARIABLE_TYPE)=INTERPOLATION_TYPE
@@ -1618,6 +1634,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by constant for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1737,6 +1761,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 localError="Can not get the dof by user data point for component number "// &
@@ -1899,6 +1931,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by user element for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -1987,7 +2027,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: DECOMPOSITION_LOCAL_ELEMENT_NUMBER, faceLocalNo, myComputationalNodeNumber, faceBasisLocalNo,faceGlobalNo
+    INTEGER(INTG) :: DECOMPOSITION_LOCAL_ELEMENT_NUMBER, faceLocalNo, myComputationalNodeNumber, faceBasisLocalNo,faceGlobalNo, &
+      & lineBasisLocalNo, lineLocalNo
     LOGICAL :: GHOST_ELEMENT,USER_ELEMENT_EXISTS
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: DECOMPOSITION_TOPOLOGY
@@ -1995,7 +2036,6 @@ CONTAINS
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(DOMAIN_ELEMENT_TYPE), POINTER :: DOMAIN_ELEMENT
     TYPE(DECOMPOSITION_ELEMENT_TYPE), POINTER :: DECOMPOSITION_ELEMENT
-    TYPE(MeshComponentTopologyType), POINTER :: meshTopology
     TYPE(BASIS_TYPE), POINTER :: ELEMENT_BASIS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -2025,11 +2065,19 @@ CONTAINS
                   & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                   & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
                 CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-              CASE(FIELD_FACE_BASED_INTERPOLATION)
-                !!!!!
-                CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                !!!!!
-              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+              ! CASE(FIELD_FACE_BASED_INTERPOLATION)
+              !   LOCAL_ERROR="Can not get the dof by user element for component number "// &
+              !     & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+              !     & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+              !     & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has face based interpolation."
+              !   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has line based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION, FIELD_FACE_BASED_INTERPOLATION)
                 DECOMPOSITION=>FIELD%DECOMPOSITION
                 IF(.NOT. ASSOCIATED(DECOMPOSITION)) CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
 
@@ -2051,17 +2099,14 @@ CONTAINS
                   IF(.NOT. ASSOCIATED(DOMAIN_ELEMENT)) CALL FlagError("domain element is not associated.",ERR,ERROR,*999)
                   ELEMENT_BASIS=>DOMAIN_ELEMENT%BASIS
                   IF(.NOT. ASSOCIATED(ELEMENT_BASIS)) CALL FlagError("element basis is not associated.",ERR,ERROR,*999)
-                  !FIXTHIS, remove this when I have assigned decomposition external face
-                  meshTopology=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN%mesh%topology(1)%PTR
 
                   !FIXTHIS, get lines should probably have its own subroutine
                   faceBasisLocalNo=ELEMENT_BASIS%xiNormalsLocalLine(userXiDir,1)
-                  IF(DECOMPOSITION%numberOfDimensions==2) THEN
-                    faceLocalNo=DECOMPOSITION_ELEMENT%ELEMENT_LINES(faceBasisLocalNo)
-                  ELSEIF(DECOMPOSITION%numberOfDimensions==3) THEN
+
+                  IF(DECOMPOSITION%numberOfDimensions==3) THEN
                     faceLocalNo=DECOMPOSITION_ELEMENT%ELEMENT_FACES(faceBasisLocalNo)
                   ELSE
-                    CALL FlagError("number of dimensions must = 2 or 3",ERR,ERROR,*999)
+                    CALL FlagError("number of dimensions must = 3 for faces",ERR,ERROR,*999)
                   ENDIF
                   !FIXTHIS should include a check here for the face being a boundary face!!!!!
                   faceGlobalNo=DOMAIN%MAPPINGS%FACES%LOCAL_TO_GLOBAL_MAP(faceLocalNo)
@@ -2077,6 +2122,207 @@ CONTAINS
                   IF(ASSOCIATED(FIELD_VARIABLE%DOMAIN_MAPPING)) THEN
                     LOCAL_DOF=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
                       & FACE_PARAM2DOF_MAP%FACES(faceLocalNo)%DERIVATIVES(DERIVATIVE_NUMBER)%VERSIONS(VERSION_NUMBER)
+                    GLOBAL_DOF=FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(LOCAL_DOF)
+                  ELSE
+                    CALL FlagError("The field variable domain mapping is not associated.",ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  LOCAL_ERROR="The specified user element number of "// &
+                    & TRIM(NumberToVString(userElementNumber,"*",ERR,ERROR))// &
+                    & " does not exist in the decomposition for field component number "// &
+                    & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of field variable "// &
+                    & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                    & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element and ext line based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_NODE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has node based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE DEFAULT
+                LOCAL_ERROR="The field component interpolation type of "//TRIM(NumberToVString(FIELD_VARIABLE% &
+                  & COMPONENTS(COMPONENT_NUMBER)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                  & " is invalid for component number "//TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))// &
+                  & " of variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                  & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              END SELECT
+            ELSE
+              LOCAL_ERROR="Component number "//TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))// &
+                & " is invalid for variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                & TRIM(NumberToVString(FIELD_VARIABLE%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                & " components."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            LOCAL_ERROR="The specified field variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The specified variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        LOCAL_ERROR="Field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("FIELD_COMPONENT_DOF_GET_USER_FACE")
+    RETURN
+999 ERRORSEXITS("FIELD_COMPONENT_DOF_GET_USER_FACE",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE FIELD_COMPONENT_DOF_GET_USER_FACE
+
+  !
+  !================================================================================================================================
+  !
+
+
+  !>Returns the dof numbers for a field component that corresponds to the specified user element.
+  SUBROUTINE FIELD_COMPONENT_DOF_GET_USER_LINE(FIELD,VARIABLE_TYPE,VERSION_NUMBER,DERIVATIVE_NUMBER, &
+    & userElementNumber, userXiDir,COMPONENT_NUMBER,LOCAL_DOF,GLOBAL_DOF,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to get the dof for
+    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The field variable type to get the dof for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number to get the dof for
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<The user xi direction to get the face for, from this element
+    INTEGER(INTG), INTENT(IN) :: COMPONENT_NUMBER !<The field component number to get the dof for
+    INTEGER(INTG), INTENT(IN) :: DERIVATIVE_NUMBER !<The field component number to get the dof for
+    INTEGER(INTG), INTENT(IN) :: VERSION_NUMBER !<The field component number to get the dof for
+    INTEGER(INTG), INTENT(OUT) :: LOCAL_DOF !<On exit, the local dof corresponding to the user element
+    INTEGER(INTG), INTENT(OUT) :: GLOBAL_DOF !<On exit, the global dof corresponding to the user element
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: DECOMPOSITION_LOCAL_ELEMENT_NUMBER, lineLocalNo, myComputationalNodeNumber, lineBasisLocalNo,lineGlobalNo
+    LOGICAL :: GHOST_ELEMENT,USER_ELEMENT_EXISTS
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: DECOMPOSITION_TOPOLOGY
+    TYPE(DOMAIN_TYPE), POINTER :: DOMAIN
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
+    TYPE(DOMAIN_ELEMENT_TYPE), POINTER :: DOMAIN_ELEMENT
+    TYPE(DECOMPOSITION_ELEMENT_TYPE), POINTER :: DECOMPOSITION_ELEMENT
+    TYPE(BASIS_TYPE), POINTER :: ELEMENT_BASIS
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("FIELD_COMPONENT_DOF_GET_USER_LINE",ERR,ERROR,*999)
+
+
+    myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+
+    IF(ASSOCIATED(FIELD)) THEN
+      IF(FIELD%FIELD_FINISHED) THEN
+        IF(VARIABLE_TYPE>=1.AND.VARIABLE_TYPE<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          FIELD_VARIABLE=>FIELD%VARIABLE_TYPE_MAP(VARIABLE_TYPE)%PTR
+          IF(ASSOCIATED(FIELD_VARIABLE)) THEN
+            IF(COMPONENT_NUMBER>=1.AND.COMPONENT_NUMBER<=FIELD_VARIABLE%NUMBER_OF_COMPONENTS) THEN
+              SELECT CASE(FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%INTERPOLATION_TYPE)
+              CASE(FIELD_CONSTANT_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has face based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              ! CASE(FIELD_LINE_BASED_INTERPOLATION)
+              !   !!!!!
+              !   CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !   !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user element for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element and ext face based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION, FIELD_LINE_BASED_INTERPOLATION)
+                DECOMPOSITION=>FIELD%DECOMPOSITION
+                IF(.NOT. ASSOCIATED(DECOMPOSITION)) CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
+
+                DECOMPOSITION_TOPOLOGY=>DECOMPOSITION%TOPOLOGY
+                CALL DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION_TOPOLOGY,userElementNumber, &
+                  & USER_ELEMENT_EXISTS,DECOMPOSITION_LOCAL_ELEMENT_NUMBER,GHOST_ELEMENT,ERR,ERROR,*999)
+
+                IF(USER_ELEMENT_EXISTS) THEN
+                  !Here we must find the local line number from the local element number and the xi direction.
+                  !We do this using basis%xiNormalLocalLine
+                  DECOMPOSITION_ELEMENT=>DECOMPOSITION_TOPOLOGY%ELEMENTS%ELEMENTS(DECOMPOSITION_LOCAL_ELEMENT_NUMBER)
+                  IF(.NOT. ASSOCIATED(DECOMPOSITION_ELEMENT)) CALL FlagError("decomposition element is not associated.", &
+                    & ERR,ERROR,*999)
+                  DOMAIN=>DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+                  IF(.NOT. ASSOCIATED(DOMAIN)) CALL FlagError("domain is not associated.",ERR,ERROR,*999)
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  IF(.NOT. ASSOCIATED(DOMAIN_TOPOLOGY)) CALL FlagError("domain topology is not associated.",ERR,ERROR,*999)
+                  DOMAIN_ELEMENT=>DOMAIN_TOPOLOGY%ELEMENTS%ELEMENTS(DECOMPOSITION_LOCAL_ELEMENT_NUMBER)
+                  IF(.NOT. ASSOCIATED(DOMAIN_ELEMENT)) CALL FlagError("domain element is not associated.",ERR,ERROR,*999)
+                  ELEMENT_BASIS=>DOMAIN_ELEMENT%BASIS
+                  IF(.NOT. ASSOCIATED(ELEMENT_BASIS)) CALL FlagError("element basis is not associated.",ERR,ERROR,*999)
+
+                  lineBasisLocalNo=ELEMENT_BASIS%xiNormalsLocalLine(userXiDir,1)
+
+                  lineLocalNo=DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)
+
+                  !FIXTHIS should include a check here for the line being a boundary line!!!!!
+                  lineGlobalNo=DOMAIN%MAPPINGS%LINES%LOCAL_TO_GLOBAL_MAP(lineLocalNo)
+                  IF(DECOMPOSITION_TOPOLOGY%lines%lines(lineLocalNo)%BOUNDARY_LINE==.TRUE.) THEN
+                    !do nothing
+                  ELSE
+                    LOCAL_ERROR="The external line with global number of " // &
+                      & TRIM(NumberToVString(lineGlobalNo,"*",ERR,ERROR)) // " is not a boundary line"
+                    CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                  ENDIF
+                  !Now find the local dof number from the line local number
+
+                  IF(ASSOCIATED(FIELD_VARIABLE%DOMAIN_MAPPING)) THEN
+                    LOCAL_DOF=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                      & LINE_PARAM2DOF_MAP%LINES(lineLocalNo)%DERIVATIVES(DERIVATIVE_NUMBER)%VERSIONS(VERSION_NUMBER)
                     GLOBAL_DOF=FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(LOCAL_DOF)
                   ELSE
                     CALL FlagError("The field variable domain mapping is not associated.",ERR,ERROR,*999)
@@ -2150,12 +2396,11 @@ CONTAINS
       CALL FlagError("Field is not associated.",ERR,ERROR,*999)
     ENDIF
 
-    EXITS("FIELD_COMPONENT_DOF_GET_USER_FACE")
+    EXITS("FIELD_COMPONENT_DOF_GET_USER_LINE")
     RETURN
-999 ERRORSEXITS("FIELD_COMPONENT_DOF_GET_USER_FACE",ERR,ERROR)
+999 ERRORSEXITS("FIELD_COMPONENT_DOF_GET_USER_LINE",ERR,ERROR)
     RETURN 1
-  END SUBROUTINE FIELD_COMPONENT_DOF_GET_USER_FACE
-
+  END SUBROUTINE FIELD_COMPONENT_DOF_GET_USER_LINE
   !
   !================================================================================================================================
   !
@@ -2216,6 +2461,18 @@ CONTAINS
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
                   & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
                   & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has elem and ext face based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user node for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has line based interpolation."
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                LOCAL_ERROR="Can not get the dof by user node for component number "// &
+                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
+                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has elem and ext line based interpolation."
                 CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -2848,7 +3105,8 @@ CONTAINS
                       CASE(FIELD_ELEMENT_BASED_INTERPOLATION,FIELD_NODE_BASED_INTERPOLATION,FIELD_GRID_POINT_BASED_INTERPOLATION, &
                         & FIELD_GAUSS_POINT_BASED_INTERPOLATION, FIELD_CONSTANT_INTERPOLATION, &
                         & FIELD_DATA_POINT_BASED_INTERPOLATION, FIELD_FACE_BASED_INTERPOLATION, &
-                        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION, FIELD_LINE_BASED_INTERPOLATION, &
+                        & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
                         IF(MESH_COMPONENT_NUMBER>0.AND.MESH_COMPONENT_NUMBER<=MESH%NUMBER_OF_COMPONENTS) THEN
                           FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER(COMPONENT_NUMBER,VARIABLE_TYPE)=MESH_COMPONENT_NUMBER
                         ELSE
@@ -3030,6 +3288,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -3261,6 +3527,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -3424,13 +3698,14 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: elementIdx,derivative_idx,version_idx,field_dof,node_idx,partial_deriv_idx,gauss_point_idx,MAX_NGP, &
-      & dataPointIdx,localDataPointNumber, faceIdx,faceGlobalNo
+      & dataPointIdx,localDataPointNumber, faceIdx, lineIdx
     REAL(DP), POINTER :: FIELD_PARAMETERS(:)
     TYPE(DOMAIN_TYPE), POINTER :: COMPONENT_DOMAIN
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: DOMAIN_ELEMENTS
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: FACE_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: LINE_MAPPING
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(DecompositionDataPointsType), POINTER :: decompositionData
     TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: FIELD_PARAMETER_SET
@@ -3536,6 +3811,73 @@ CONTAINS
                                   ENDDO !faceIdx
                                 ELSE
                                   CALL FlagError("Domain mapping faces is not associated.",ERR,ERROR,*999)
+                                ENDIF
+                              ELSE
+                                CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
+                              ENDIF
+                            ELSE
+                              CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain mesh topology is not associated.",ERR,ERROR,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
+                      IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
+                        DOMAIN_MAPPINGS=>COMPONENT_DOMAIN%MAPPINGS
+                        IF(ASSOCIATED(DOMAIN_MAPPINGS)) THEN
+                          LINE_MAPPING=>DOMAIN_MAPPINGS%LINES
+                          IF(ASSOCIATED(LINE_MAPPING)) THEN
+                            DO lineIdx=1,LINE_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                              !Here we assume that for line the derivative number and the version number for lines is 1. We have kept the line param_to_dof_map the same as nodes incase we want line derivatives in the future
+                              field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                & LINE_PARAM2DOF_MAP%LINES(lineIdx)%DERIVATIVES(1)%VERSIONS(1)
+                              FIELD_PARAMETERS(field_dof)=VALUE
+                            ENDDO !lineIdx
+                          ELSE
+                            CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
+                      IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
+                        DOMAIN_TOPOLOGY=>COMPONENT_DOMAIN%TOPOLOGY
+                        !idx of topology here is 1 because we are already in the domain of the component. FIXTHIS, make sure this is correct
+                        meshTopology=>COMPONENT_DOMAIN%mesh%topology(1)%PTR
+                        IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
+                          DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+                          IF(ASSOCIATED(meshTopology)) THEN
+                            IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                              DOMAIN_MAPPINGS=>COMPONENT_DOMAIN%MAPPINGS
+                              IF(ASSOCIATED(DOMAIN_MAPPINGS)) THEN
+                                LINE_MAPPING=>DOMAIN_MAPPINGS%LINES
+                                IF(ASSOCIATED(LINE_MAPPING)) THEN
+                                  DO elementIdx=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                                    field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                      & ELEMENT_PARAM2DOF_MAP%ELEMENTS(elementIdx)
+                                    FIELD_PARAMETERS(field_dof)=VALUE
+                                  ENDDO !elementIdx
+                                  DO lineIdx=1,LINE_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                                    IF(DOMAIN_TOPOLOGY%lines%LINES(lineIdx)%BOUNDARY_LINE==.TRUE.) THEN
+                                      !Here we assume that for line the derivative number and the version number for lines is 1. We have kept the line param_to_dof_map the same as nodes incase we want line derivatives in the future
+                                      field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                        & LINE_PARAM2DOF_MAP%LINES(lineIdx)%DERIVATIVES(1)%VERSIONS(1)
+                                      FIELD_PARAMETERS(field_dof)=VALUE
+                                    ENDIF
+                                  ENDDO !lineIdx
+                                ELSE
+                                  CALL FlagError("Domain mapping lines is not associated.",ERR,ERROR,*999)
                                 ENDIF
                               ELSE
                                 CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
@@ -3809,6 +4151,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -4550,6 +4900,12 @@ CONTAINS
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=0
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=1
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=0
+                FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=1
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberNodeInterpolationParameters=0
               CASE(FIELD_NODE_BASED_INTERPOLATION)
@@ -6196,6 +6552,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -6249,6 +6613,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -6311,6 +6683,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -6455,6 +6835,14 @@ CONTAINS
                                             !!!!!
                                             CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                             !!!!!
+                                          CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
+                                          CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                               & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6490,6 +6878,14 @@ CONTAINS
                                           CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                                             !!!!!
                                             CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
+                                          CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                            !!!!!
+                                          CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                            !!!!!
+                                            CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                             !!!!!
                                           CASE(FIELD_NODE_BASED_INTERPOLATION)
                                             CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
@@ -6569,6 +6965,10 @@ CONTAINS
                                     CASE(FIELD_FACE_BASED_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                      !Do nothing
+                                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                      !Do nothing
+                                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
                                       !Do nothing
                                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                                       PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -6752,6 +7152,14 @@ CONTAINS
                                               !!!!!
                                               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                               !!!!!
+                                            CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
+                                            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               PHYSICAL_POINT%VALUES(component_idx)=BASIS_INTERPOLATE_XI( &
                                                 & FIELD_INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR,NO_PART_DERIV, &
@@ -6787,6 +7195,14 @@ CONTAINS
                                             CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                                               !!!!!
                                               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
+                                            CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                              !!!!!
+                                            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                              !!!!!
+                                              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                               !!!!!
                                             CASE(FIELD_NODE_BASED_INTERPOLATION)
                                               CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,element, &
@@ -6866,6 +7282,10 @@ CONTAINS
                                       CASE(FIELD_FACE_BASED_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                                        !Do nothing
+                                      CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                        !Do nothing
+                                      CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
                                         !Do nothing
                                       CASE(FIELD_NODE_BASED_INTERPOLATION)
                                         PHYSICAL_POINT%VALUES(component_idx)=PHYSICAL_POINT%VALUES(component_idx)/ &
@@ -7030,6 +7450,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
 !                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_GAUSS(INTERPOLATION_PARAMETERS%BASES( &
 !                   & component_idx)%PTR,NO_PART_DERIV,QUADRATURE_SCHEME,GAUSS_POINT_NUMBER,INTERPOLATION_PARAMETERS% &
@@ -7087,6 +7515,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -7157,6 +7593,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -7288,6 +7732,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 INTERPOLATED_POINT%VALUES(component_idx,1)=BASIS_INTERPOLATE_XI(INTERPOLATION_PARAMETERS% &
                   & BASES(component_idx)%PTR,NO_PART_DERIV,XI,INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx),ERR,ERROR)
@@ -7341,6 +7793,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 !Handle the first case of no partial derivative
@@ -7404,6 +7864,14 @@ CONTAINS
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO nu=1,INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR%NUMBER_OF_PARTIAL_DERIVATIVES
@@ -7653,6 +8121,14 @@ CONTAINS
                                   CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                                     !!!!!
                                     CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                    !!!!!
+                                  CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                    !!!!!
+                                    CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                    !!!!!
+                                  CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                    !!!!!
+                                    CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                                     !!!!!
                                   CASE(FIELD_NODE_BASED_INTERPOLATION)
                                     DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -8607,6 +9083,14 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   ELEMENTS_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -8918,6 +9402,14 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9134,6 +9626,14 @@ CONTAINS
                   !!!!!
                   CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
+                CASE(FIELD_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
                   INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -9297,6 +9797,14 @@ CONTAINS
             CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
               !!!!!
               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -9992,6 +10500,14 @@ CONTAINS
               !!!!!
               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
               INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
@@ -10126,6 +10642,14 @@ CONTAINS
             CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
               !!!!!
               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NODES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%NODES
@@ -10418,12 +10942,17 @@ CONTAINS
       & NodeReceiveIdx, MaxNumberDerivativesAtGhostNode, NumberVersions, StartDofGlobalNo, InternalDofIdx, AdjacentDomainIdx, &
       & GhostNodeNo, NumberDerivatives, CurrentDofLocalNo, CurrentDofGlobalNo, GhostReceiveIdx, GhostSendIdx, &
       & MaximumNumberNodesCommunicate, ElementDofIdx, CurrentElementDofIdx, ElementGlobalNo, ElementLocalNo, Element1LocalNo, &
-      & AdjacentDomainNo, AdjacentDomainIdx2, ConstantDofIdx, countIfFace, NUMBER_OF_FACE_DOFS, face_nyy, face_Idx, faceDofIdx, &
+      & AdjacentDomainNo, AdjacentDomainIdx2, ConstantDofIdx, countIfFace, NUMBER_OF_FACE_DOFS, face_nyy, faceDofIdx, &
       & PreviousFaceGlobalNo, FaceLocalNo, FaceGlobalNo, LocalInternalFaceIdx, FaceReceiveIdx, MaxNumberDerivativesAtGhostFace, &
       & FaceStartGlobalNo, FaceStopGlobalNo, LocalFaceIdx, FaceOnCurrentComputationalNodeGlobalNo, GhostFaceNo, &
       & MaximumNumberFacesSend, MaximumNumberFacesReceive, FaceSendIdx, FirstGhostFaceLocalNo, LastGhostFaceLocalNo, &
-      & MaximumNumberFacesCommunicate, faceIdx, count, numberOfInternalExternalFaces, Face1LocalNo, globalDofStartNumber, &
-      & numberOfBoundaryExternalFaces, numberOfGhostExternalFaces, numberOfGlobalExternalFaces
+      & MaximumNumberFacesCommunicate, faceIdx, count, numberOfInternalExternalFaces, globalDofStartNumberFace, &
+      & numberOfBoundaryExternalFaces, numberOfGhostExternalFaces, numberOfGlobalExternalFaces, lineIdx, lineDofIdx, &
+      & NUMBER_OF_LINE_DOFS, numberOfBoundaryExternalLines, numberOfGhostExternalLines, numberOfGlobalExternalLines, &
+      & PreviousLineGlobalNo, LineLocalNo, LineGlobalNo, LocalInternalLineIdx, LineReceiveIdx, MaxNumberDerivativesAtGhostLine, &
+      & LineStartGlobalNo, LineStopGlobalNo, LocalLineIdx, LineOnCurrentComputationalNodeGlobalNo, GhostLineNo, &
+      & MaximumNumberLinesSend, MaximumNumberLinesReceive, LineSendIdx, FirstGhostLineLocalNo, LastGhostLineLocalNo, &
+      & MaximumNumberLinesCommunicate, numberOfInternalExternalLines, globalDofStartNumberLine
 
     INTEGER(INTG), ALLOCATABLE :: VARIABLE_LOCAL_DOFS_OFFSETS(:),VARIABLE_GHOST_DOFS_OFFSETS(:), &
         & localDataParamCount(:),ghostDataParamCount(:), NumberBreaksNode(:), RowOffsetNode(:), DofTable(:), IntegerArray(:), &
@@ -10432,12 +10961,14 @@ CONTAINS
         & RowOffsetZeroBasedNode(:), FirstDofGlobalNo(:), Element1GlobalNo(:), FirstElementDofIdx(:), FirstDofLocalNo(:), &
         & RowOffsetFace(:), RowOffsetZeroBasedFace(:), NumberBreaksFace(:), NumberBreaksDoubleFace(:), &
         & NumberDerivativesAtGhostFace(:), FaceDofSpecification(:,:), ReceiveRequestHandle2(:), SendRequestHandle2(:), &
-        & numberOfInternalAndBoundaryExternalFacesOnRank(:), dofGlobalNumberFromFaceLocalNumber(:)
+        & numberOfInternalAndBoundaryExternalFacesOnRank(:), dofGlobalNumberFromFaceLocalNumber(:), NumberBreaksLine(:), &
+        & NumberBreaksDoubleLine(:), RowOffsetLine(:), RowOffsetZeroBasedLine(:), LineDofSpecification(:,:), &
+        & numberOfInternalAndBoundaryExternalLinesOnRank(:), NumberDerivativesAtGhostLine(:), dofGlobalNumberFromLineLocalNumber(:)
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: decompositionTopology
     TYPE(DOMAIN_TYPE), POINTER :: domain
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping,DOFS_MAPPING,FIELD_VARIABLE_DOFS_MAPPING,ELEMENTS_MAPPING, &
-      & NODES_MAPPING, FACES_MAPPING
+      & NODES_MAPPING, FACES_MAPPING, LINES_MAPPING
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: domainMappings
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
@@ -10446,7 +10977,8 @@ CONTAINS
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(LIST_TYPE), POINTER :: BoundaryDofLocalNosList
     LOGICAL :: CurrentNodeIsInternal, AdjacentDomainFound, NodeIsOnCurrentAdjacentDomain, CurrentElementIsInternal, &
-      & ElementIsOnCurrentAdjacentDomain, CurrentFaceIsInternal, FaceIsOnCurrentAdjacentDomain, BoundaryFaceNumbersCalculated
+      & ElementIsOnCurrentAdjacentDomain, CurrentFaceIsInternal, FaceIsOnCurrentAdjacentDomain, BoundaryFaceNumbersCalculated, &
+      & BoundaryLineNumbersCalculated, CurrentLineIsInternal, LineIsOnCurrentAdjacentDomain
 
     ENTERS("FIELD_MAPPINGS_CALCULATE",ERR,ERROR,*999)
 
@@ -10457,12 +10989,17 @@ CONTAINS
       IF(ERR/=0) GOTO 999
 
 
-      !The following line is what the if statement should be, for now we will just use new implementation if one of the components has FACE_interpolation
+      !The following line is what the if statement should be, for now we will just use new implementation if one of the components has face or line interpolation
       !IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
       countIfFace=0
       DO variable_idx=1,FIELD%NUMBER_OF_VARIABLES
         DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
-          IF(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE==FIELD_FACE_BASED_INTERPOLATION) THEN
+          IF(FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE==FIELD_FACE_BASED_INTERPOLATION .OR. &
+            & FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE==FIELD_LINE_BASED_INTERPOLATION .OR. &
+            & FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE== &
+            & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION .OR. &
+            & FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)%INTERPOLATION_TYPE== &
+            & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION) THEN
             countIfFace=countIfFace+1
           ELSE
             !do nothing
@@ -10473,6 +11010,7 @@ CONTAINS
       IF(countIfFace>=1) THEN
 
         BoundaryFaceNumbersCalculated=.FALSE.
+        BoundaryLineNumbersCalculated=.FALSE.
 
         !Calculate the number of global and local degrees of freedom for the field variables and components. Each field variable
         !component has a set of DOFs so loop over the components for each variable component and count up the DOFs.
@@ -10480,6 +11018,7 @@ CONTAINS
           NUMBER_OF_CONSTANT_DOFS=0
           NUMBER_OF_ELEMENT_DOFS=0
           NUMBER_OF_FACE_DOFS=0
+          NUMBER_OF_LINE_DOFS=0
           NUMBER_OF_NODE_DOFS=0
           NUMBER_OF_GRID_POINT_DOFS=0
           NUMBER_OF_GAUSS_POINT_DOFS=0
@@ -10506,8 +11045,17 @@ CONTAINS
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_BASED_INTERPOLATION"
 
+              CASE(FIELD_FACE_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_FACE_BASED_INTERPOLATION"
+
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_LINE_BASED_INTERPOLATION"
+
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                 IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION"
+
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION"
 
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 IF (DIAGNOSTICS2) WRITE(*, '(A)') " FIELD_NODE_BASED_INTERPOLATION"
@@ -10523,6 +11071,7 @@ CONTAINS
             domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
             ELEMENTS_MAPPING=>domainMappings%ELEMENTS
             FACES_MAPPING=>domainMappings%FACES
+            LINES_MAPPING=>domainMappings%LINES
             NODES_MAPPING=>domainMappings%NODES
             DOFS_MAPPING=>domainMappings%DOFS   ! dofs_mapping contains only some information like DOFS_MAPPING%NUMBER_OF_LOCAL, that was set in domainMappings_NODES_CALCULATE, the real dofs mapping is FIELD_VARIABLE_DOFS_MAPPING
 
@@ -10662,10 +11211,10 @@ CONTAINS
                 IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
                 IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
 
-                globalDofStartNumber=1
+                globalDofStartNumberFace=1
                 DO DomainNo=0,MyComputationalNodeNumber-1
 
-                  globalDofStartNumber=globalDofStartNumber+numberOfInternalAndBoundaryExternalFacesOnRank(DomainNo)
+                  globalDofStartNumberFace=globalDofStartNumberFace+numberOfInternalAndBoundaryExternalFacesOnRank(DomainNo)
 
                 ENDDO
 
@@ -10708,6 +11257,172 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
               & FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces map.",ERR,ERROR,*999)
+
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              NUMBER_OF_LINE_DOFS = NUMBER_OF_LINE_DOFS + LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + LINES_MAPPING%NUMBER_OF_LOCAL
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + LINES_MAPPING%NUMBER_OF_GLOBAL
+
+              ! allocate param_to_dof_map for lines
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
+                & STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+
+              !Calculate the number of external lines that are, internal, boundary, and ghost to this domain
+
+
+              IF(BoundaryLineNumbersCalculated==.FALSE.) THEN
+                count=0
+
+                DO lineIdx=LINES_MAPPING%INTERNAL_START, LINES_MAPPING%INTERNAL_FINISH
+                  lineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
+
+                  IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(lineLocalNo)%BOUNDARY_LINE==.TRUE.) THEN
+                    !The line is an external line
+                    count = count + 1
+
+                  ELSE
+                    !Do nothing
+                  ENDIF
+                ENDDO
+                !This is the number of external lines of the mesh that are internal to this domain
+
+                numberOfInternalExternalLines=count
+                count=0
+
+                DO lineIdx=LINES_MAPPING%BOUNDARY_START, LINES_MAPPING%BOUNDARY_FINISH
+                  lineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
+
+                  IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(lineLocalNo)%BOUNDARY_LINE==.TRUE.) THEN
+                    !The line is an external line
+                    count = count + 1
+                  ELSE
+                    !Do nothing
+                  ENDIF
+                ENDDO
+
+                numberOfBoundaryExternalLines=count
+                count=0
+
+                DO lineIdx=LINES_MAPPING%GHOST_START, LINES_MAPPING%GHOST_FINISH
+                  LineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
+
+                  IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(lineLocalNo)%BOUNDARY_LINE==.TRUE.) THEN
+                    !The line is an external line
+                    count = count + 1
+                  ELSE
+                    !Do nothing
+                  ENDIF
+                ENDDO
+
+
+                numberOfGhostExternalLines=count
+
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(NumberComputationalNodes-1),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(NumberComputationalNodes-1),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+
+                !The has the number of internal and boundary external lines
+                ALLOCATE(numberOfInternalAndBoundaryExternalLinesOnRank(0:NumberComputationalNodes-1))
+                numberOfInternalAndBoundaryExternalLinesOnRank(MyComputationalNodeNumber)= &
+                  & numberOfInternalExternalLines+numberOfBoundaryExternalLines
+
+
+                DomainIdx=1
+                ! commit send commands
+                DO DomainNo=0,NumberComputationalNodes-1
+
+                  IF(DomainNo==MyComputationalNodeNumber) THEN
+                    !Do nothing
+                  ELSE
+                    CALL MPI_ISEND(numberOfInternalAndBoundaryExternalLinesOnRank(MyComputationalNodeNumber), 1, MPI_INT,  &
+                      & DomainNo,0,computationalEnvironment%mpiCommunicator, sendRequestHandle(DomainIdx), MPI_IERROR)
+                    CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+                    DomainIdx=DomainIdx+1
+                  ENDIF
+                ENDDO
+
+
+                DomainIdx=1
+                ! commit receive commands
+                DO DomainNo=0,NumberComputationalNodes-1
+                  IF(DomainNo==MyComputationalNodeNumber) THEN
+                    !Do nothing
+                  ELSE
+                    CALL MPI_IRECV(numberOfInternalAndBoundaryExternalLinesOnRank(DomainNo), 1, MPI_INT, DomainNo, 0, &
+                      & computationalEnvironment%mpiCommunicator, receiveRequestHandle(DomainIdx), MPI_IERROR)
+                    CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+                    DomainIdx=DomainIdx+1
+                  ENDIF
+                ENDDO
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(NumberComputationalNodes-1, sendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+                CALL MPI_WAITALL(NumberComputationalNodes-1, receiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+                !Calculate the start number for iterating through global dof numbers for this rank
+
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
+
+                globalDofStartNumberLine=1
+                DO DomainNo=0,MyComputationalNodeNumber-1
+
+                  globalDofStartNumberLine=globalDofStartNumberLine+numberOfInternalAndBoundaryExternalLinesOnRank(DomainNo)
+
+                ENDDO
+
+
+                !Communicate the numberOfinternalAndBoundary of each domain to get the global number of external lines.
+                ! allreduce number of external lines
+                CALL MPI_ALLREDUCE(numberOfInternalExternalLines+numberOfBoundaryExternalLines, &
+                  & numberOfGlobalExternalLines,1,MPI_INTEGER,MPI_SUM, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+
+                BoundaryLineNumbersCalculated=.TRUE.
+              ENDIF
+
+
+
+
+
+              NUMBER_OF_ELEMENT_DOFS = NUMBER_OF_ELEMENT_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL
+
+              NUMBER_OF_LINE_DOFS = NUMBER_OF_LINE_DOFS + numberOfInternalExternalLines + numberOfBoundaryExternalLines + &
+                & numberOfGhostExternalLines
+
+              NUMBER_OF_LOCAL_VARIABLE_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_LOCAL+ &
+                & numberOfInternalExternalLines + numberOfBoundaryExternalLines
+              TOTAL_NUMBER_OF_VARIABLE_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS + ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL+ &
+                & numberOfInternalExternalLines + numberOfBoundaryExternalLines + &
+                & numberOfGhostExternalLines
+              NUMBER_OF_GLOBAL_VARIABLE_DOFS = NUMBER_OF_GLOBAL_VARIABLE_DOFS + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL+ &
+                & numberOfGlobalExternalLines
+
+
+
+              ! allocate param_to_dof_map for elements
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+
+              !FIXTHIS, this allocates all local lines, not just boundary lines, seems to be the only way to have a line-dof map
+              ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+              & LINES(LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines map.",ERR,ERROR,*999)
+
 
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               NUMBER_OF_NODE_DOFS = NUMBER_OF_NODE_DOFS + DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
@@ -10801,6 +11516,13 @@ CONTAINS
             FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS=NUMBER_OF_FACE_DOFS
           ENDIF
 
+          ! allocate DOF2PARAM_MAP for line based dofs
+          IF(NUMBER_OF_LINE_DOFS>0) THEN
+            ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,NUMBER_OF_LINE_DOFS),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate dof to parameter line map.",ERR,ERROR,*999)
+            FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_LINE_DOFS=NUMBER_OF_LINE_DOFS
+          ENDIF
+
           ! allocate DOF2PARAM_MAP for node based dofs
           IF(NUMBER_OF_NODE_DOFS>0) THEN
             ALLOCATE(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,NUMBER_OF_NODE_DOFS),STAT=ERR)
@@ -10883,6 +11605,24 @@ CONTAINS
             faceDofIdx = 1
           ENDIF
 
+          ! create helper objects for line dofs
+          IF(NUMBER_OF_LINE_DOFS>0) THEN
+            ! allocate helper arrays
+            ALLOCATE(NumberBreaksLine(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksLine",ERR,ERROR,*999)
+
+            ALLOCATE(NumberBreaksDoubleLine(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate NumberBreaksDoubleLine",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetLine(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetLine",ERR,ERROR,*999)
+
+            ALLOCATE(RowOffsetZeroBasedLine(0:NumberComputationalNodes-1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate RowOffsetZeroBasedLine",ERR,ERROR,*999)
+
+            lineDofIdx = 1
+          ENDIF
+
           ! create helper objects for element dofs
           IF(NUMBER_OF_ELEMENT_DOFS>0) THEN
 
@@ -10916,6 +11656,7 @@ CONTAINS
             ELEMENTS_MAPPING=>domainMappings%ELEMENTS
             NODES_MAPPING=>domainMappings%NODES
             FACES_MAPPING=>domainMappings%FACES
+            LINES_MAPPING=>domainMappings%LINES
 
             ! handle node based interpolation dofs
             SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
@@ -11769,7 +12510,494 @@ CONTAINS
 
               ENDDO ! ElementIdx
               CurrentDofGlobalNo = CurrentDofGlobalNo + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              ! Count number of 'breaks' in contiguous global line numbering on current domain. A break is when there
+              ! is a jump in the global line number for successive local line numbers.
+              LocalNumberBreaks = 0
+              PreviousLineGlobalNo = -1
 
+              ! loop over internal and boundary lines
+              DO LineLocalNo = 1,LINES_MAPPING%NUMBER_OF_LOCAL
+                LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                ! if there is a jump in global line no. count break
+                IF (LineGlobalNo /= PreviousLineGlobalNo+1 .AND. PreviousLineGlobalNo /= -1) THEN
+                  LocalNumberBreaks = LocalNumberBreaks + 1
+                ENDIF
+                PreviousLineGlobalNo = LineGlobalNo
+              ENDDO
+              ! add last line also as break
+              LocalNumberBreaks = LocalNumberBreaks + 1
+
+              ! exchange the number of breaks on every rank
+              ! merge information from every rank
+              NumberBreaksLine(MyComputationalNodeNumber) = LocalNumberBreaks
+              CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
+                & NumberBreaksLine,1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, " ------------------------------------ "
+                PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", number breaks: ",NumberBreaksLine
+              ENDIF
+
+              ! DofTable
+              !                         1 break: 2 values
+              !        break no. ->     /--^-\
+              ! rank   (glob.line,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! ---------------------------
+              ! explanation of the triple values:
+              !    global line: the last global line no. that is on the rank before the break
+              !    dof: number of dofs in last break-free sequence
+              !
+              ! the table is laid out row-major as a 1D array where each row has NumberBreaksLine(rank) entries
+
+              ! compute the row offsets, i.e. the indices where each row starts
+              RowOffsetLine(0) = 1
+              DO I = 1,NumberComputationalNodes-1
+                RowOffsetLine(I) = RowOffsetLine(I-1) + NumberBreaksLine(I-1)*2
+              ENDDO
+
+              ! compute global number of breaks as sum over all LocalNumberBreaks
+              GlobalNumberBreaks = 0
+              DO I = 0,NumberComputationalNodes-1
+                GlobalNumberBreaks = GlobalNumberBreaks + NumberBreaksLine(I)
+              ENDDO
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": RowOffsetLine: ", RowOffsetLine, &
+                & ", GlobalNumberBreaks=", GlobalNumberBreaks
+
+              ! allocate lookup table
+              ALLOCATE(DofTable(GlobalNumberBreaks*2),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate DofTable of size "//&
+                & TRIM(NUMBER_TO_VSTRING(GlobalNumberBreaks*2,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+
+              ! reset row that belongs to own rank to 0
+              DofTable(RowOffsetLine(MyComputationalNodeNumber):RowOffsetLine(MyComputationalNodeNumber)+LocalNumberBreaks) = 0
+
+              ! fill table with own values
+              BreakIdx = 0
+              NumberDofsInSequence = 0
+              PreviousLineGlobalNo = -1
+
+              ! loop over internal and boundary lines
+              DO LineLocalNo = 1,LINES_MAPPING%NUMBER_OF_LOCAL
+                LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": line global ",LineGlobalNo
+
+                ! if there is a jump in global line no. count break
+                IF (LineGlobalNo /= PreviousLineGlobalNo+1 .AND. PreviousLineGlobalNo /= -1) THEN
+
+                  DofTableIndex = RowOffsetLine(MyComputationalNodeNumber) + BreakIdx*2
+                  BreakIdx = BreakIdx + 1
+
+                  ! set first entry of pair in lookup table: global line no. end
+                  DofTable(DofTableIndex+0) = PreviousLineGlobalNo
+
+                  ! set second entry of pair in lookup table: number of dofs in break-free sequence
+                  DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": jump, (",PreviousLineGlobalNo,NumberDofsInSequence,")"
+
+                  ! reset dof counter
+                  NumberDofsInSequence = 0
+                ENDIF
+
+                !! advance local dof no by number of dofs on current line
+                !DO DerivativeIdx=1,TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives
+                !  NumberDofsInSequence = NumberDofsInSequence + &
+                !    & TOPOLOGY%LINES%LINES(LineGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions
+                !ENDDO
+                NumberDofsInSequence = NumberDofsInSequence + 1 !Currently lines don't have derivatives so only one dof on line
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDofsInSequence: ", NumberDofsInSequence
+                PreviousLineGlobalNo = LineGlobalNo
+
+              ENDDO   ! LineLocalNo
+
+              ! add last line also as break
+              DofTableIndex = RowOffsetLine(MyComputationalNodeNumber) + BreakIdx*2
+              DofTable(DofTableIndex+0) = PreviousLineGlobalNo
+              DofTable(DofTableIndex+1) = NumberDofsInSequence
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": last: (",PreviousLineGlobalNo,NumberDofsInSequence,")"
+
+              ! create auxiliary arrays for allgatherv
+              NumberBreaksDoubleLine = 2*NumberBreaksLine
+              RowOffsetZeroBasedLine = RowOffsetLine-1
+
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberBreaksDoubleLine:",NumberBreaksDoubleLine, &
+              !  & ", RowOffsetLine:",RowOffsetLine, ", RowOffsetZeroBasedLine:",RowOffsetZeroBasedLine
+              !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": pre DofTable:",DofTable
+
+              ! merge information from every rank
+              CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_INTEGER, &
+                & DofTable,NumberBreaksDoubleLine,RowOffsetZeroBasedLine,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+
+              IF (DIAGNOSTICS2) THEN
+                PRINT *, MyComputationalNodeNumber, ": DofTable: "
+                DO I = 0,NumberComputationalNodes-1
+                  WRITE (*,'(2(I0,A))',ADVANCE='NO') MyComputationalNodeNumber, ": rank ",I," "
+                  DO BreakIdx=0,NumberBreaksLine(I)-1
+                    WRITE (*,'(2(A,I0),A)',ADVANCE='NO') "(",DofTable(RowOffsetLine(I)+BreakIdx*2), &
+                      & ",",DofTable(RowOffsetLine(I)+BreakIdx*2+1),")"
+                  ENDDO
+                  PRINT *, ""
+                ENDDO
+              ENDIF
+
+              !        break no. ->
+              ! rank   (glob.line,dof)  (4,13) (12,24) ...
+              !  |
+              !  v
+              ! find out global dof no. of first local dof
+              LineLocalNo = 1
+              LocalInternalLineIdx = 1
+
+              CurrentRank = 0
+              LineStartGlobalNo = 1
+              LineStopGlobalNo = -1
+              NumberDofsCurrentSequence = 0
+              LocalLineIdx = LINES_MAPPING%INTERNAL_START
+
+              ! loop over all break-free sequences
+              DO
+
+                ! determine rank that has the lowest global line no. above the current start line
+                ! loop over ranks
+                DO I = 0,NumberComputationalNodes-1
+                  ! determine the first global no. above the current on rank I (LineOnCurrentComputationalNodeGlobalNo)
+                  LineOnCurrentComputationalNodeGlobalNo = 0
+                  NumberDofsOnCurrentComputationalNode = 0
+
+                  ! loop over breaks
+                  DO BreakIdx = 0,NumberBreaksLine(I)-1
+
+                    ! get global number of break
+                    LineGlobalNo = DofTable(RowOffsetLine(I)+BreakIdx*2)
+                    NumberDofs = DofTable(RowOffsetLine(I)+BreakIdx*2+1)
+
+                    ! store it if it is the first after start line
+                    IF (LineGlobalNo >= LineStartGlobalNo) THEN
+                      LineOnCurrentComputationalNodeGlobalNo = LineGlobalNo
+                      NumberDofsOnCurrentComputationalNode = NumberDofs
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":   rank ", I, &
+                    & ", line global ", LineOnCurrentComputationalNodeGlobalNo, ", ndofs: ", NumberDofsOnCurrentComputationalNode
+
+                  ! if a line was found on rank I
+                  IF (LineOnCurrentComputationalNodeGlobalNo /= 0) THEN
+                    ! store LineOnCurrentComputationalNodeGlobalNo if it is the lowest line so far
+                    IF (LineStopGlobalNo == -1 .OR. LineOnCurrentComputationalNodeGlobalNo < LineStopGlobalNo) THEN
+                      LineStopGlobalNo = LineOnCurrentComputationalNodeGlobalNo
+                      CurrentRank = I
+                      NumberDofsCurrentSequence = NumberDofsOnCurrentComputationalNode
+                    ENDIF
+                  ENDIF
+                ENDDO  ! I
+
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": range [", LineStartGlobalNo, ",", LineStopGlobalNo, "]", &
+                    & " on rank", CurrentRank
+
+
+                ! the current range of lines [LineStartGlobalNo,LineStopGlobalNo] is on rank CurrentRank
+                ! and has number of dofs NumberDofsCurrentSequence, starting from CurrentDofGlobalNo
+
+                ! add up dof no.s
+                IF (CurrentRank == MyComputationalNodeNumber) THEN
+                  ! loop over lines of current break-free sequences
+                  DO
+                    LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                    IF (DIAGNOSTICS2) WRITE(*,'(5(I0,A))',ADVANCE='no') MyComputationalNodeNumber, ": on this rank, line global ", &
+                      & LineGlobalNo,", local ",LineLocalNo,", (line idx",LocalInternalLineIdx,&
+                      & ", local ",LINES_MAPPING%DOMAIN_LIST(LocalInternalLineIdx),"),  is internal: "
+
+                    ! check if current line is internal or boundary
+                    CurrentLineIsInternal = .FALSE.
+                    IF (LineLocalNo == LINES_MAPPING%DOMAIN_LIST(LocalInternalLineIdx) &
+                      & .AND. LocalInternalLineIdx <= LINES_MAPPING%INTERNAL_FINISH) THEN
+                      CurrentLineIsInternal = .TRUE.
+                      LocalInternalLineIdx = LocalInternalLineIdx + 1
+                    ENDIF
+
+                    IF (DIAGNOSTICS2) WRITE(*,*) CurrentLineIsInternal
+
+                    !NumberDerivatives = TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives
+                    NumberDerivatives = 1 !For lines we assume there is only one derivative for now
+
+
+                    ! allocate parameter to dof map for lines
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
+                      & NumberDerivatives),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map for line local "//&
+                      & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                    ! loop over dofs for current line, derivatives
+                    DO DerivativeIdx=1,NumberDerivatives
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": derivative ", DerivativeIdx, "/", NumberDerivatives
+
+                      NumberVersions = 1 !TOPOLOGY%LINES%LINES(LineGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions !For lines we assume there is only one version for now
+
+                      ! allocate parameter to dof map for line, derivative, versions
+                      ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(DerivativeIdx)%&
+                        & VERSIONS(NumberVersions),&
+                        & STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative versions map for line local "//&
+                        & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR))//", derivative index "//&
+                        & TRIM(NUMBER_TO_VSTRING(DerivativeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                      DO VersionIdx=1,NumberVersions
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": version ", VersionIdx, "/", NumberVersions
+
+                        ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                        FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                        ! if internal line, add dof index to DOMAIN_LIST
+                        IF (CurrentLineIsInternal) THEN
+                          FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                          InternalDofIdx = InternalDofIdx + 1
+                        ELSE
+                          ! if line is not internal, save boundary dofs
+                          CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, CurrentDofLocalNo, ERR, ERROR, *999)
+                        ENDIF
+
+                        IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    d",DerivativeIdx,"v",VersionIdx,&
+                          & "dof idx ",InternalDofIdx-1,", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo
+
+                        ! setup dof to parameter map
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_LINE_DOF_TYPE
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=lineDofIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=VersionIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=DerivativeIdx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(3,lineDofIdx)=LineLocalNo
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(4,lineDofIdx)=component_idx
+                        lineDofIdx = lineDofIdx + 1   ! this is the index when iterating over all line dofs of this field variable
+
+                        ! setup reverse parameter to dof map
+                        FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                          & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                        !IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": set dof(",LineLocalNo,",",&
+                        !  & DerivativeIdx, &
+                        !  & ",",VersionIdx,")=",CurrentDofLocalNo
+
+                        ! set NUMBER_OF_SEND_GHOSTS
+
+                        ! find out on which domains (if any) the corresponding ghost lines reside from lines mapping
+                        ! loop over the adjacent domains of the lines mapping which are the same as for the dofs mapping
+                        DO AdjacentDomainIdx = 1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                          LineIsOnCurrentAdjacentDomain = .FALSE.
+                          ! check if line is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                          ! loop over send ghost local numbers
+                          DO GhostSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                            ! if line was found on adjacent domain AdjacentDomainIdx
+                            IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                              & == LineLocalNo) THEN
+                              LineIsOnCurrentAdjacentDomain = .TRUE.
+                              EXIT
+                            ENDIF
+                          ENDDO
+
+                          ! if the current line is on the current adjacent domain as ghost line
+                          IF (LineIsOnCurrentAdjacentDomain) THEN
+
+                            ! add current dof to LOCAL_GHOST_SEND_INDICES
+                            FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS &
+                              = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS + 1
+
+                            ! add CurrentDofLocalNo to LOCAL_GHOST_SEND_INDICES
+                            IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                              ! array does not yet exist, allocate with size 1
+                              ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)% &
+                                & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                              IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1) &
+                                & = CurrentDofLocalNo
+                            ELSE
+                              ! array already exists, increase size by 1
+                              FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                                & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES, &
+                                & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS], &
+                                & [CurrentDofLocalNo])
+                            ENDIF
+
+                          ENDIF
+                        ENDDO  ! AdjacentDomainIdx
+
+                        ! advance local and global dof no
+                        CurrentDofLocalNo = CurrentDofLocalNo + 1
+                        CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+                      ENDDO  ! VersionIdx
+                    ENDDO  ! DerivativeIdx
+
+                    LineLocalNo = LineLocalNo + 1
+
+                    IF (LineGlobalNo == LineStopGlobalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": Line global ", LineGlobalNo, " is stop line, exit"
+                      EXIT
+                    ENDIF
+                  ENDDO   ! loop over lines in break-free sequence
+                ELSE
+                  ! line range is not on own rank
+
+                  ! advance global dof no by number of dofs on foreign rank
+                  CurrentDofGlobalNo = CurrentDofGlobalNo + NumberDofsCurrentSequence
+                ENDIF
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": LineStopGlobalNo=",LineStopGlobalNo,&
+                  & ", end:",LINES_MAPPING%NUMBER_OF_GLOBAL
+                IF (LineStopGlobalNo == LINES_MAPPING%NUMBER_OF_GLOBAL) EXIT
+
+                ! advance start and stop line to next sequence
+                LineStartGlobalNo = LineStopGlobalNo+1
+                LineStopGlobalNo = -1     ! unknown
+
+              ENDDO   ! loop over break-free sequences
+
+              IF(ALLOCATED(DofTable)) DEALLOCATE(DofTable)
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+
+              !This is the same as for element_based_interpolation, another loop over component_idx is done after this loop to include external line dofs
+
+              Element1LocalNo = 1
+              FirstDofLocalNo(component_idx) = CurrentDofLocalNo
+
+              Element1GlobalNo(component_idx) = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(Element1LocalNo)
+              FirstDofGlobalNo(component_idx) = CurrentDofGlobalNo
+
+              FirstElementDofIdx(component_idx) = CurrentElementDofIdx
+
+              IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": component ", component_idx, ", Element1GlobalNo: ", &
+                & Element1GlobalNo(component_idx), ", FirstDofGlobalNo: ", FirstDofGlobalNo(component_idx)
+
+              ! loop over interior and boundary elements
+              DO ElementIdx = ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
+                ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+                ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+
+                ! compute the dof global no from the element global no
+                DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - 1
+                !DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - Element1GlobalNo(component_idx)
+                DofLocalNo = FirstDofLocalNo(component_idx) + ElementLocalNo - Element1LocalNo
+                ElementDofIdx = FirstElementDofIdx(component_idx) + ElementLocalNo - Element1LocalNo
+
+                ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
+
+                CurrentElementIsInternal = ElementIdx <= ELEMENTS_MAPPING%INTERNAL_FINISH
+
+                ! if internal element, add dof index to DOMAIN_LIST
+                IF (CurrentElementIsInternal) THEN
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = DofLocalNo
+                  InternalDofIdx = InternalDofIdx + 1
+                ELSE
+                  ! if element is not internal, save boundary dofs
+                  CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, DofLocalNo, ERR, ERROR, *999)
+                ENDIF
+
+                IF (DIAGNOSTICS2) THEN
+                  PRINT *, MyComputationalNodeNumber, ":    element idx ",ElementIdx," local ",ElementLocalNo, &
+                    & " global ",ElementGlobalNo,", dof idx ",InternalDofIdx-1, &
+                    & ", local",DofLocalNo,", global",DofGlobalNo
+                  PRINT *, MyComputationalNodeNumber, ":    ElementDofIdx=",ElementDofIdx," (first: ", &
+                    & FirstElementDofIdx(component_idx),")"
+                ENDIF
+
+                ! setup dof to parameter map
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_ELEMENT_DOF_TYPE
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=ElementDofIdx
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,ElementDofIdx)=ElementLocalNo
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,ElementDofIdx)=component_idx
+                CurrentElementDofIdx = CurrentElementDofIdx + 1   ! counter of number of ElementDofIdx used
+
+                ! setup reverse parameter to dof map
+                FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ElementLocalNo) = &
+                  & DofLocalNo
+
+                ! set NUMBER_OF_SEND_GHOSTS
+
+                ! find out on which domains (if any) the corresponding ghost elements reside from elements mapping
+                ! loop over the adjacent domains of the elements mapping which are the same as for the dofs mapping
+                DO AdjacentDomainIdx = 1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ElementIsOnCurrentAdjacentDomain = .FALSE.
+                  ! check if element is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                  ! loop over send ghost local numbers
+                  DO GhostSendIdx = 1,ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    ! if element was found on adjacent domain AdjacentDomainIdx
+                    IF (ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                      & == ElementLocalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    adjacent domain idx ", AdjacentDomainIdx,&
+                        & " no ", ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                        & " is send current element, add SEND_GHOST"
+
+                      AdjacentDomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                      ElementIsOnCurrentAdjacentDomain = .TRUE.
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  ! if the current element is on the current adjacent domain as ghost element
+                  IF (ElementIsOnCurrentAdjacentDomain) THEN
+
+                    ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                    DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                        EXIT
+                      ENDIF
+                    ENDDO
+
+                    ! add current dof to LOCAL_GHOST_SEND_INDICES
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS &
+                      = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS + 1
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    add local dof no",DofLocalNo, &
+                      & " to ADJACENT_DOMAINS(",AdjacentDomainIdx2,") (domain ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx2)%DOMAIN_NUMBER,"), now has ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS &
+                      & (AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS," SEND_GHOSTS"
+
+                    ! add DofLocalNo to LOCAL_GHOST_SEND_INDICES
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                      ! array does not yet exist, allocate with size 1
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)% &
+                        & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES(1) &
+                        & = DofLocalNo
+                    ELSE
+                      ! array already exists, increase size by 1
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                        & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES, &
+                        & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS], &
+                        & [DofLocalNo])
+                    ENDIF
+
+                  ENDIF
+                ENDDO  ! AdjacentDomainIdx
+
+                ! advance local dof no, this is not the dof local no counter that is used but it is increased the right number of times
+                CurrentDofLocalNo = CurrentDofLocalNo + 1
+
+
+              ENDDO ! ElementIdx
+              CurrentDofGlobalNo = CurrentDofGlobalNo + ELEMENTS_MAPPING%NUMBER_OF_GLOBAL
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
 
               Element1LocalNo = 1
@@ -11960,7 +13188,7 @@ CONTAINS
               !
               ! FirstFaceDofIdx(component_idx) = faceDofIdx
 
-              DofGlobalNo=CurrentDofGlobalNo+globalDofStartNumber-2
+              DofGlobalNo=CurrentDofGlobalNo+globalDofStartNumberFace-2
               DofLocalNo=CurrentDofLocalNo-1
 
 
@@ -12100,6 +13328,167 @@ CONTAINS
 
 
             ENDDO !component_idx
+
+          !Here we loop over components again for lines IF the interpolation type is ELEMENTS_AND_EXT_LINES
+          ELSE IF(FIELD_COMPONENT%INTERPOLATION_TYPE==FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION) THEN
+            DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+              FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+              TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+              !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
+              domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+              LINES_MAPPING=>domainMappings%LINES
+
+
+
+
+              ! Line1LocalNo = 1
+              ! FirstDofLocalNo(component_idx) = CurrentDofLocalNo
+              !
+              ! Line1GlobalNo(component_idx) = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(Line1LocalNo)
+              ! FirstDofGlobalNo(component_idx) = CurrentDofGlobalNo
+              !
+              ! FirstLineDofIdx(component_idx) = lineDofIdx
+
+              DofGlobalNo=CurrentDofGlobalNo+globalDofStartNumberLine-2
+              DofLocalNo=CurrentDofLocalNo-1
+
+
+
+
+              ! loop over interior and boundary lines
+              DO LineIdx = LINES_MAPPING%INTERNAL_START,LINES_MAPPING%BOUNDARY_FINISH
+                LineLocalNo = LINES_MAPPING%DOMAIN_LIST(LineIdx)
+                LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                !If this line isn't an external line then we exit the do loop.
+                IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(LineLocalNo)%BOUNDARY_LINE==.FALSE.) CYCLE
+
+                ! compute the dof global no from the line global no
+                DofGlobalNo = DofGlobalNo+1
+                DofLocalNo = DofLocalNo+1
+
+                ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
+
+                CurrentLineIsInternal = LineIdx <= LINES_MAPPING%INTERNAL_FINISH
+
+                ! if internal line, add dof index to DOMAIN_LIST
+                IF (CurrentLineIsInternal) THEN
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = DofLocalNo
+                  InternalDofIdx = InternalDofIdx + 1
+                ELSE
+                  ! if line is not internal, save boundary dofs
+                  CALL LIST_ITEM_ADD(BoundaryDofLocalNosList, DofLocalNo, ERR, ERROR, *999)
+                ENDIF
+
+                IF (DIAGNOSTICS2) THEN
+                  PRINT *, MyComputationalNodeNumber, ":    line idx ",LineIdx," local ",LineLocalNo, &
+                    & " global ",LineGlobalNo,", dof idx ",InternalDofIdx-1, &
+                    & ", local",DofLocalNo,", global",DofGlobalNo
+                ENDIF
+
+                ! setup dof to parameter map
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_LINE_DOF_TYPE
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=lineDofIdx
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
+
+
+                ! setup reverse parameter to dof map
+                !Lines atm have just one derivative and one version
+                !When/if Lines have more than one derivative
+                NumberDerivatives=1
+                NumberVersions=1
+
+
+                !Not sure if we want this to be componentLineDofIdx or lineLocalNo, id it is lineLocal Number we would have to allocate a lot more LINES for line_param2dof_map
+                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
+                  & NumberDerivatives),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map for LineLocalNo "//&
+                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
+                  & DERIVATIVES(NumberDerivatives)%VERSIONS(NumberVersions),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative versions map for LineLocalNo"//&
+                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+
+
+                FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(1)%VERSIONS(1) =  &
+                  & DofLocalNo
+                lineDofIdx = lineDofIdx + 1   ! counter of number of lineDofIdx used
+                ! set NUMBER_OF_SEND_GHOSTS
+
+                ! find out on which domains (if any) the corresponding ghost lines reside from lines mapping
+                ! loop over the adjacent domains of the lines mapping which are the same as for the dofs mapping
+                DO AdjacentDomainIdx = 1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  LineIsOnCurrentAdjacentDomain = .FALSE.
+                  ! check if line is a ghost on the adjacent domain with index AdjacentDomainIdx
+
+                  ! loop over send ghost local numbers
+                  DO GhostSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    ! if line was found on adjacent domain AdjacentDomainIdx
+                    IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(GhostSendIdx) &
+                      & == LineLocalNo) THEN
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    adjacent domain idx ", AdjacentDomainIdx,&
+                        & " no ", LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                        & " is send current line, add SEND_GHOST"
+
+                      AdjacentDomainNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                      LineIsOnCurrentAdjacentDomain = .TRUE.
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  ! if the current line is on the current adjacent domain as ghost line
+                  IF (LineIsOnCurrentAdjacentDomain) THEN
+
+                    ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                    DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                        EXIT
+                      ENDIF
+                    ENDDO
+
+                    ! add current dof to LOCAL_GHOST_SEND_INDICES
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS &
+                      = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS + 1
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    add local dof no",DofLocalNo, &
+                      & " to ADJACENT_DOMAINS(",AdjacentDomainIdx2,") (domain ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx2)%DOMAIN_NUMBER,"), now has ",FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS &
+                      & (AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS," SEND_GHOSTS"
+
+                    ! add DofLocalNo to LOCAL_GHOST_SEND_INDICES
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS == 1) THEN
+                      ! array does not yet exist, allocate with size 1
+                      ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)% &
+                        & LOCAL_GHOST_SEND_INDICES(1),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_SEND_INDICES.",ERR,ERROR,*999)
+
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES(1) &
+                        & = DofLocalNo
+                    ELSE
+                      ! array already exists, increase size by 1
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES = RESHAPE(&
+                        & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_SEND_INDICES, &
+                        & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_SEND_GHOSTS], &
+                        & [DofLocalNo])
+                    ENDIF
+
+                  ENDIF
+                ENDDO  ! AdjacentDomainIdx
+
+                ! advance local dof no, this is not the dof local no counter that is used but it is increased the right number of times
+                CurrentDofLocalNo = CurrentDofLocalNo + 1
+
+
+              ENDDO ! LineIdx
+              CurrentDofGlobalNo = CurrentDofGlobalNo + numberOfGlobalExternalLines
+
+
+            ENDDO !component_idx
           ENDIF
 
 
@@ -12139,6 +13528,7 @@ CONTAINS
               ELEMENTS_MAPPING=>domainMappings%ELEMENTS
               NODES_MAPPING=>domainMappings%NODES
               FACES_MAPPING=>domainMappings%FACES
+              LINES_MAPPING=>domainMappings%LINES
 
               ! handle ghosts for node based interpolation dofs
               SELECT CASE(FIELD_COMPONENT%INTERPOLATION_TYPE)
@@ -12872,6 +14262,8 @@ CONTAINS
 
               CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
 
+                !Again this part is the same as the elements and the face part is done after this do-select loop
+
                 ! loop over ghost elements
                 DO ElementIdx = ELEMENTS_MAPPING%GHOST_START,ELEMENTS_MAPPING%GHOST_FINISH
                   ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
@@ -12951,6 +14343,456 @@ CONTAINS
                   CurrentDofLocalNo = CurrentDofLocalNo + 1
                 ENDDO  ! ElementIdx
 
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+
+                ! set ghost dofs, use lines boundary/ghost information and communicate global dof no.s
+
+                ! determine maximum number of lines to send and receive for all adjacent domains
+                MaximumNumberLinesSend = 0
+                MaximumNumberLinesReceive = 0
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  MaximumNumberLinesSend = MAX(MaximumNumberLinesSend, &
+                    & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
+                  MaximumNumberLinesReceive = MAX(MaximumNumberLinesReceive, &
+                    & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+                ENDDO
+                MaximumNumberLinesCommunicate = MAX(MaximumNumberLinesSend,MaximumNumberLinesReceive)
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberLinesCommunicate,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": MaximumNumberLinesSend=",MaximumNumberLinesSend, &
+                  & ", MaximumNumberLinesReceive=",MaximumNumberLinesReceive, &
+                  & ", MaximumNumberLinesCommunicate=",MaximumNumberLinesCommunicate
+
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer2(MaximumNumberLinesCommunicate,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer2",ERR,ERROR,*999)
+
+                SendBuffer2=0 !FIXTHIS: temporary for debugging
+
+                ALLOCATE(ReceiveBuffer2(MaximumNumberLinesCommunicate,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer2",ERR,ERROR,*999)
+
+                ReceiveBuffer2=0 !FIXTHIS: temporary for debugging
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! exchange number of derivatives
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(LineSendIdx)
+                    LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send to adj domain ",LINES_MAPPING%ADJACENT_DOMAINS(&
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,"idx ", AdjacentDomainIdx, &
+                      & " (LineSendIdx=",LineSendIdx,"), line global ",LineGlobalNo,&
+                      & ", n derivatives: ",1!TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives
+                    SendBuffer2(LineSendIdx,AdjacentDomainIdx) = 1  !TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives (lines currently don't have derivatives so leave this as 1)
+                  ENDDO
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberLinesCommunicate,MPI_INTEGER, &
+                    & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberLinesCommunicate,MPI_INTEGER, &
+                    & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO   ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received number of derivatives at lines to unified array, which collects all values for ghost lines
+                FirstGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_START)
+                LastGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_FINISH)
+
+                ! allocate array for number of derivatives at every ghost line, index is the local line no.
+                ALLOCATE(NumberDerivativesAtGhostLine(FirstGhostLineLocalNo:LastGhostLineLocalNo),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate NumberDerivativesAtGhostLine",ERR,ERROR,*999)
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO LineReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(LineReceiveIdx)
+
+
+                    IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv from adj domain ", &
+                      & LINES_MAPPING%ADJACENT_DOMAINS( &
+                      & AdjacentDomainIdx)%DOMAIN_NUMBER,", idx", AdjacentDomainIdx, &
+                      & ", line local ",LineLocalNo,", n derivatives: ",ReceiveBuffer2(LineReceiveIdx,AdjacentDomainIdx)
+
+                    ! get entry in receive buffer
+                    NumberDerivativesAtGhostLine(LineLocalNo) = ReceiveBuffer2(LineReceiveIdx,AdjacentDomainIdx)
+                  ENDDO  ! LineReceiveIdx
+                ENDDO   ! AdjacentDomainIdx
+
+                ! find out maximum number of derivatives at a line
+                MaxNumberDerivativesAtGhostLine = 0
+                DO GhostLineNo = FirstGhostLineLocalNo,LastGhostLineLocalNo
+                  MaxNumberDerivativesAtGhostLine = MAX(MaxNumberDerivativesAtGhostLine, NumberDerivativesAtGhostLine(GhostLineNo))
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": NumberDerivativesAtGhostLine(local ",GhostLineNo,")=",&
+                    & NumberDerivativesAtGhostLine(GhostLineNo)
+
+                ENDDO  ! GhostLineNo
+
+                ! reduce over all processes
+                CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxNumberDerivativesAtGhostLine,1,MPI_INT,MPI_MAX, &
+                  & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+                ! transfer information that reproduces all global ghost numbers at ghost lines to the domains where it is a boundary line, each
+                ! allocate send and receive buffers
+                ALLOCATE(SendBuffer3(0:MaxNumberDerivativesAtGhostLine, MaximumNumberLinesCommunicate,&
+                  & LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer",ERR,ERROR,*999)
+
+                IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": allocate send buffer for ", &
+                  & MaxNumberDerivativesAtGhostLine, " derivatives"
+                ! SendBuffer(0,LineSendIdx,AdjacentDomainIdx) = global dof no of first dof at this line
+                ! SendBuffer(1:DerivativeIdx,LineSendIdx,AdjacentDomainIdx) = for each derivative the number of versions
+
+                ALLOCATE(ReceiveBuffer3(0:MaxNumberDerivativesAtGhostLine,MaximumNumberLinesCommunicate,&
+                  & LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer",ERR,ERROR,*999)
+
+                ! allocate request handles
+                ALLOCATE(ReceiveRequestHandle(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+                ALLOCATE(SendRequestHandle(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+                ! prepare send buffer and start send commands
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                    LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(LineSendIdx)
+                    LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                    DerivativeIdx = 1
+                    VersionIdx = 1
+
+                    ! get first dof at this line
+                    DofLocalNo = FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
+                      & DERIVATIVES(DerivativeIdx)%VERSIONS(VersionIdx)
+
+                    IF (DIAGNOSTICS2) PRINT "(4(I0,A),I0)", MyComputationalNodeNumber, ": line local ",LineLocalNo, &
+                      ", global ",LineGlobalNo, " first dof at this line local: ", DofLocalNo
+
+                    DofGlobalNo = FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo)
+
+                    IF (DIAGNOSTICS2) PRINT "(5(I0,A),I0)", MyComputationalNodeNumber, ": get dof(",LineLocalNo,",",DerivativeIdx, &
+                      & ",",VersionIdx,")=local ",DofLocalNo, " global ",DofGlobalNo
+
+                    ! store in send buffer
+                    SendBuffer3(0,LineSendIdx,AdjacentDomainIdx) = DofGlobalNo
+
+                    ! fill send buffer with number of versions for each derivative
+                    DO DerivativeIdx=1,1 !TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives (lines currently don't have derivatives so leave this as 1)
+                      NumberVersions = 1 !TOPOLOGY%LINES%LINES(LineGlobalNo)%DERIVATIVES(DerivativeIdx)%numberOfVersions (lines currently don't have derivatives so leave this as 1)
+
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": line global ",LineGlobalNo," has ", 1, !&TOPOLOGY%LINES%LINES(LineGlobalNo)%numberOfDerivatives,
+                      !  & " derivatives, sendbuffer ",AdjacentDomainIdx, &
+                      !  & " DerivativeIdx=",DerivativeIdx, &
+                      !  & " NumberVersions=",NumberVersions
+
+                      SendBuffer3(DerivativeIdx,LineSendIdx,AdjacentDomainIdx) = NumberVersions
+                    ENDDO  ! DerivativeIdx
+                  ENDDO  ! LineSendIdx
+
+                  !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send buffer to adj idx ", AdjacentDomainIdx,": ", &
+                  !  & SendBuffer3(:,:,AdjacentDomainIdx)
+
+                  ! post receive calls
+                  CALL MPI_IRECV(ReceiveBuffer3(:,:,AdjacentDomainIdx),MaximumNumberLinesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostLine+1), &
+                    & MPI_INTEGER,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                  ! post send calls
+                  CALL MPI_ISEND(SendBuffer3(:,:,AdjacentDomainIdx),MaximumNumberLinesCommunicate* &
+                    & (MaxNumberDerivativesAtGhostLine+1), &
+                    & MPI_INTEGER,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                    & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle(AdjacentDomainIdx),MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+                ENDDO  ! AdjacentDomainIdx
+
+                ! wait for all communication to finish
+                CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+                ! deallocate request handles
+                IF(ALLOCATED(ReceiveRequestHandle)) DEALLOCATE(ReceiveRequestHandle)
+                IF(ALLOCATED(SendRequestHandle)) DEALLOCATE(SendRequestHandle)
+
+                ! copy received ghost line value sets received from different adjacent domains to unified array, which collects all values for ghost lines
+                ! allocate LineDofSpecification
+                ALLOCATE(LineDofSpecification(0:MaxNumberDerivativesAtGhostLine,FirstGhostLineLocalNo:LastGhostLineLocalNo), &
+                 & STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate LineDofSpecification",ERR,ERROR,*999)
+                ! LineDofSpecification(0,LineLocalNo) = first dof global no at this line
+                ! LineDofSpecification(1:MaxNumberDerivativesAtGhostLine,LineLocalNo) = number of versions for derivatives at this line
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information from receive buffer
+                  DO LineReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(LineReceiveIdx)
+
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": recv buffer from adj idx ", AdjacentDomainIdx,": ", &
+                    !  & ReceiveBuffer3(:,:,AdjacentDomainIdx)
+
+                    ! copy entry in receive buffer to entry of line
+                    DO I = 0,MaxNumberDerivativesAtGhostLine
+                      LineDofSpecification(I,LineLocalNo) = ReceiveBuffer3(I,LineReceiveIdx,AdjacentDomainIdx)
+                      !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local line ",LineLocalNo, &
+                      !  & ", I=",I,", LineReceiveIdx=",LineReceiveIdx,", value=",LineDofSpecification(I,LineLocalNo)
+                    ENDDO
+                    !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": local line ",LineLocalNo, &
+                    !  & ", received (first dof,n versions): ", LineDofSpecification(:,LineLocalNo)
+
+
+                    ! LineDofSpecification(0,LineLocalNo) = first dof global no at this line
+                    ! LineDofSpecification(1:MaxNumberDerivativesAtGhostLine,LineLocalNo) = number of versions for derivatives at this line
+
+                  ENDDO  ! LineReceiveIdx
+                ENDDO  ! AdjacentDomainIdx
+
+                ! set dof indices at ghost lines from LineDofSpecification
+                ! loop over ghost lines
+                DO LocalLineIdx = LINES_MAPPING%GHOST_START,LINES_MAPPING%GHOST_FINISH
+                  lineLocalNo=LINES_MAPPING%DOMAIN_LIST(LocalLineIdx)
+                  ! find adjacent domain where current line resides
+                  AdjacentDomainFound = .FALSE.
+                  DO AdjacentDomainIdx = 1, LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                    ! check if line is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == LineLocalNo) THEN
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+                    ENDDO
+                    !exit if adjacent domain was found so adjacentDomainIdx is correct
+                    IF(AdjacentDomainFound) EXIT
+                  ENDDO  ! DO WHILE
+
+                  IF (.NOT. AdjacentDomainFound) THEN
+                    localError="line local number "//TRIM(NumberToVString(LineLocalNo,"*",err,error))// &
+                    & " was not found an the local ghost recieve indices of adjacent domains. For rank number" &
+                    & //TRIM(NumberToVString(myComputationalNodeNumber,"*",err,error))
+                    CALL FlagError(localError,err,error,*999)
+                  ENDIF
+
+                  ! get dof information for current ghost line
+                  StartDofGlobalNo = LineDofSpecification(0,LineLocalNo)
+                  CurrentDofGlobalNo = StartDofGlobalNo
+
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": ghost line local",LineLocalNo,", start dof global",&
+                    & StartDofGlobalNo, ", n versions for ",NumberDerivativesAtGhostLine(LineLocalNo),"derivatives: ", &
+                    & LineDofSpecification(1:NumberDerivativesAtGhostLine(LineLocalNo),LineLocalNo)
+
+                  ! allocate parameter to dof map for lines
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
+                    & NumberDerivativesAtGhostLine(LineLocalNo)),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map.",ERR,ERROR,*999)
+
+                  ! loop over derivatives at ghost line
+                  DO DerivativeIdx = 1, NumberDerivativesAtGhostLine(LineLocalNo)
+
+                    NumberVersions = LineDofSpecification(DerivativeIdx,LineLocalNo)
+
+                    ! allocate parameter to dof map for line, derivative, versions
+                    ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                      & VERSIONS(NumberVersions),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map.",ERR,ERROR,*999)
+
+                    ! loop over versions of derivatives
+                    DO VersionIdx = 1,NumberVersions
+
+                      ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                      FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = CurrentDofGlobalNo
+
+                      FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                      InternalDofIdx = InternalDofIdx + 1
+
+                      IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    dof idx",InternalDofIdx-1,&
+                        & ", local",CurrentDofLocalNo,", global",CurrentDofGlobalNo, ", lineDofIdx=",lineDofIdx
+
+                      ! setup dof to parameter map
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_LINE_DOF_TYPE
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=lineDofIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=VersionIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=DerivativeIdx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(3,lineDofIdx)=LineLocalNo
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(4,lineDofIdx)=component_idx
+                      lineDofIdx = lineDofIdx + 1   ! this is the index when iterating over all line dofs of this field variable
+
+                      ! setup reverse parameter to dof map
+                      FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(DerivativeIdx)% &
+                        & VERSIONS(VersionIdx) = CurrentDofLocalNo
+
+                      ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                      FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS &
+                        = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                      ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                      IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                        ! array does not yet exist, allocate with size 1
+                        ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                          & = CurrentDofLocalNo
+                      ELSE
+                        ! array already exists, increase size by 1
+                        FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                          & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES, &
+                          & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS], &
+                          & [CurrentDofLocalNo])
+                      ENDIF
+
+                      CurrentDofLocalNo = CurrentDofLocalNo + 1
+                      CurrentDofGlobalNo = CurrentDofGlobalNo + 1
+
+                    ENDDO  ! VersionIdx
+                  ENDDO ! DerivativeIdx
+
+                ENDDO  ! LineLocalNo
+
+
+                ! deallocate send and receive buffers
+                IF(ALLOCATED(LineDofSpecification)) DEALLOCATE(LineDofSpecification)
+                IF(ALLOCATED(SendBuffer2)) DEALLOCATE(SendBuffer2)
+                IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
+
+                IF(ALLOCATED(SendBuffer3)) DEALLOCATE(SendBuffer3)
+                IF(ALLOCATED(ReceiveBuffer3)) DEALLOCATE(ReceiveBuffer3)
+                IF(ALLOCATED(NumberDerivativesAtGhostLine)) DEALLOCATE(NumberDerivativesAtGhostLine)
+
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !Again this part is the same as the elements and the line part is done after this do-select loop
+
+                ! loop over ghost elements
+                DO ElementIdx = ELEMENTS_MAPPING%GHOST_START,ELEMENTS_MAPPING%GHOST_FINISH
+                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
+                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
+
+                  ! compute the dof global no from the element global no
+                  DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - 1
+                  !DofGlobalNo = FirstDofGlobalNo(component_idx) + ElementGlobalNo - Element1GlobalNo(component_idx)
+
+                  ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                  FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(CurrentDofLocalNo) = DofGlobalNo
+
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+                  InternalDofIdx = InternalDofIdx + 1
+
+                  IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ":    dof idx",InternalDofIdx-1,&
+                    & ", local",CurrentDofLocalNo,", global",DofGlobalNo, ", CurrentElementDofIdx=",CurrentElementDofIdx
+
+                  ! setup dof to parameter map
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_ELEMENT_DOF_TYPE
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=CurrentElementDofIdx
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(1,CurrentElementDofIdx)=ElementLocalNo
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%ELEMENT_DOF2PARAM_MAP(2,CurrentElementDofIdx)=component_idx
+                  CurrentElementDofIdx = CurrentElementDofIdx + 1   ! this is the index when iterating over all element dofs of this field variable
+
+                  ! setup reverse parameter to dof map
+                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ElementLocalNo) = CurrentDofLocalNo
+
+                  ! find the adjacent domain that has the boundary element for this ghost element
+                  AdjacentDomainIdx = 1
+                  AdjacentDomainFound = .FALSE.
+                  DO WHILE(.NOT. AdjacentDomainFound)
+
+                    ! check if node is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == ElementLocalNo) THEN
+                        AdjacentDomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+
+                    ENDDO
+                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                  ENDDO
+
+                  ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                  DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                      EXIT
+                    ENDIF
+                  ENDDO
+
+                  ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS &
+                    = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                  ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                  IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                    ! array does not yet exist, allocate with size 1
+                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                      & STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                      & = CurrentDofLocalNo
+                  ELSE
+                    ! array already exists, increase size by 1
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                      & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES, &
+                      & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS], &
+                      & [CurrentDofLocalNo])
+                  ENDIF
+
+                  CurrentDofLocalNo = CurrentDofLocalNo + 1
+                ENDDO  ! ElementIdx
 
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
 
@@ -13056,7 +14898,7 @@ CONTAINS
           ENDIF  ! IF (NumberComputationalNodes /= 1)
 
 
-          !Here we loop over components again for faces IF the interpolation type is ELEMENTS_AND_EXT_FACES to assign ghost external faces
+          !Here we loop over components again for faces or lines IF the interpolation type is ELEMENTS_AND_EXT_FACES or _LINES to assign ghost external faces or lines
           IF(FIELD_COMPONENT%INTERPOLATION_TYPE==FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION) THEN
             DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
               FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
@@ -13284,9 +15126,235 @@ CONTAINS
               IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
               IF(ALLOCATED(dofGlobalNumberFromFaceLocalNumber)) DEALLOCATE(dofGlobalNumberFromFaceLocalNumber)
             ENDDO !component_idx
+
+          ELSE IF(FIELD_COMPONENT%INTERPOLATION_TYPE==FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION) THEN
+            DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
+              FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
+              TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+              !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
+              domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+              ELEMENTS_MAPPING=>domainMappings%ELEMENTS
+              LINES_MAPPING=>domainMappings%LINES
+
+
+              ! set ghost dofs, use lines boundary/ghost information and communicate global dof no.s
+
+              ! determine maximum number of lines to send and receive for all adjacent domains
+              MaximumNumberLinesSend = 0
+              MaximumNumberLinesReceive = 0
+
+              ! loop over adjacent domains
+              DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                MaximumNumberLinesSend = MAX(MaximumNumberLinesSend, &
+                  & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
+                MaximumNumberLinesReceive = MAX(MaximumNumberLinesReceive, &
+                  & LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+              ENDDO
+              MaximumNumberLinesCommunicate = MAX(MaximumNumberLinesSend,MaximumNumberLinesReceive)
+
+              ! reduce over all processes
+              CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaximumNumberLinesCommunicate,1,MPI_INT,MPI_MAX, &
+                & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+
+
+              ! transfer information that reproduces all global dof numbers at ghost lines to the domains where it is a boundary line, each
+              ! allocate send and receive buffers
+              ALLOCATE(SendBuffer2(MaximumNumberLinesCommunicate, LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate SendBuffer",ERR,ERROR,*999)
+
+              !FIXTHIS MaxNumberOfLinesCommunicate can be reduced from knowledge that only some lines are boundary lines, atm assumes all lines could be transferred.
+              ALLOCATE(ReceiveBuffer2(MaximumNumberLinesCommunicate,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate ReceiveBuffer",ERR,ERROR,*999)
+
+              ! allocate request handles
+              ALLOCATE(ReceiveRequestHandle2(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate ReceiveRequest",ERR,ERROR,*999)
+
+              ALLOCATE(SendRequestHandle2(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate SendRequest",ERR,ERROR,*999)
+
+              ! prepare send buffer and start send commands
+              ! loop over adjacent domains
+              DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                ! copy information to send buffer
+                DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+                  LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(LineSendIdx)
+                  LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                  IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(LineLocalNo)%BOUNDARY_LINE==.TRUE.) THEN
+                    ! get first dof at this line
+                    DofLocalNo = FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
+                      & DERIVATIVES(1)%VERSIONS(1)
+
+                    DofGlobalNo = FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo)
+
+                    ! store in send buffer
+                    SendBuffer2(LineSendIdx,AdjacentDomainIdx) = DofGlobalNo
+                  ELSE
+                    SendBuffer2(LineSendIdx,AdjacentDomainIdx) =-1
+                  ENDIF
+                ENDDO  ! LineSendIdx
+
+                !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": send buffer to adj idx ", AdjacentDomainIdx,": ", &
+                !  & SendBuffer3(:,:,AdjacentDomainIdx)
+
+                ! post receive calls
+                CALL MPI_IRECV(ReceiveBuffer2(:,AdjacentDomainIdx),MaximumNumberLinesCommunicate, &
+                  & MPI_INTEGER,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                  & 0,computationalEnvironment%mpiCommunicator,ReceiveRequestHandle2(AdjacentDomainIdx),MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+
+                ! post send calls
+                CALL MPI_ISEND(SendBuffer2(:,AdjacentDomainIdx),MaximumNumberLinesCommunicate, &
+                  & MPI_INTEGER,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER, &
+                  & 0,computationalEnvironment%mpiCommunicator,SendRequestHandle2(AdjacentDomainIdx),MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
+
+              ENDDO  ! AdjacentDomainIdx
+
+              ! wait for all communication to finish
+              CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, SendRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+              CALL MPI_WAITALL(LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS, ReceiveRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+              CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,ERR,ERROR,*999)
+
+              ! deallocate request handles
+              IF(ALLOCATED(ReceiveRequestHandle2)) DEALLOCATE(ReceiveRequestHandle2)
+              IF(ALLOCATED(SendRequestHandle2)) DEALLOCATE(SendRequestHandle2)
+
+
+
+              !get the first and last ghost line local numbers, these will be in order
+              FirstGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_START)
+              LastGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_FINISH)
+
+
+              DofLocalNo=CurrentDofLocalNo-1
+
+
+              ALLOCATE(dofGlobalNumberFromLineLocalNumber(FirstGhostLineLocalNo:LastGhostLineLocalNo))
+
+              ! loop over adjacent domains
+              DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                ! copy information to send buffer
+                DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                  LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(LineSendIdx)
+                  LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+
+                  dofGlobalNumberFromLineLocalNumber(LineLocalNo)=ReceiveBuffer2(LineSendIdx,AdjacentDomainIdx)
+
+                ENDDO !LineSendIdx
+              ENDDO !AdjacentDomainIdx
+
+
+              DO lineIdx=LINES_MAPPING%GHOST_START,LINES_MAPPING%GHOST_FINISH
+                LineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
+                LineGlobalNo=LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                !If this line isn't an external line then we exit the do loop.
+                IF(FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(LineLocalNo)%BOUNDARY_LINE==.FALSE.) CYCLE
+
+
+                !DofGlobalNo = FirstDofGlobalNo(component_idx) + LineGlobalNo - Line1GlobalNo(component_idx)
+                DofLocalNo = DofLocalNo+1
+
+                DofGlobalNo = dofGlobalNumberFromLineLocalNumber(LineLocalNo)
+                ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
+                FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+
+                InternalDofIdx = InternalDofIdx + 1
+
+                ! setup dof to parameter map
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_LINE_DOF_TYPE
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=lineDofIdx
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
+                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
+
+
+                ! setup reverse parameter to dof map
+
+
+                !Not sure if we want this to be componentLineDofIdx or lineLocalNo, id it is lineLocal Number we would have to allocate a lot more LINES for line_param2dof_map
+                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
+                  & NumberDerivatives),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map for LineLocalNo "//&
+                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
+                  & DERIVATIVES(NumberDerivatives)%VERSIONS(NumberVersions),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative versions map for LineLocalNo"//&
+                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+
+
+                FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(1)%VERSIONS(1) =  &
+                  & DofLocalNo
+                lineDofIdx = lineDofIdx + 1   ! counter of number of lineDofIdx used
+
+
+                ! find the adjacent domain that has the boundary line for this ghost line
+                AdjacentDomainIdx = 1
+                AdjacentDomainFound = .FALSE.
+                DO WHILE(.NOT. AdjacentDomainFound)
+
+                  ! check if line is in current adjacent domain
+                  ! loop over receive ghost local numbers
+                  DO GhostReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                    IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                      & == LineLocalNo) THEN
+                      AdjacentDomainNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                      AdjacentDomainFound = .TRUE.
+                      EXIT
+                    ENDIF
+
+                  ENDDO
+                  IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                ENDDO
+
+                ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
+                    EXIT
+                  ENDIF
+                ENDDO
+
+                ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS &
+                  = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                  ! array does not yet exist, allocate with size 1
+                  ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                    & STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                    & = CurrentDofLocalNo
+                ELSE
+                  ! array already exists, increase size by 1
+                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                    & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES, &
+                    & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS], &
+                    & [CurrentDofLocalNo])
+                ENDIF
+
+                CurrentDofLocalNo=CurrentDofLocalNo+1
+
+
+              ENDDO !lineIdx
+              IF(ALLOCATED(SendBuffer2)) DEALLOCATE(SendBuffer2)
+              IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
+              IF(ALLOCATED(dofGlobalNumberFromLineLocalNumber)) DEALLOCATE(dofGlobalNumberFromLineLocalNumber)
+            ENDDO !component_idx
           ENDIF
-
-
 
 
           ! compute ghost_finish and number of ghost dofs
@@ -13344,6 +15412,10 @@ CONTAINS
           IF(ALLOCATED(NumberBreaksDoubleFace)) DEALLOCATE(NumberBreaksDoubleFace)
           IF(ALLOCATED(RowOffsetFace)) DEALLOCATE(RowOffsetFace)
           IF(ALLOCATED(RowOffsetZeroBasedFace)) DEALLOCATE(RowOffsetZeroBasedFace)
+          IF(ALLOCATED(NumberBreaksLine)) DEALLOCATE(NumberBreaksLine)
+          IF(ALLOCATED(NumberBreaksDoubleLine)) DEALLOCATE(NumberBreaksDoubleLine)
+          IF(ALLOCATED(RowOffsetLine)) DEALLOCATE(RowOffsetLine)
+          IF(ALLOCATED(RowOffsetZeroBasedLine)) DEALLOCATE(RowOffsetZeroBasedLine)
           IF(ALLOCATED(FirstDofGlobalNo)) DEALLOCATE(FirstDofGlobalNo)
           IF(ALLOCATED(Element1GlobalNo)) DEALLOCATE(Element1GlobalNo)
           IF(ALLOCATED(FirstDofLocalNo)) DEALLOCATE(FirstDofLocalNo)
@@ -13400,6 +15472,14 @@ CONTAINS
             CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
               !!!!!FIXTHIS
               CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+              !!!!!
+            CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+              !!!!!
+              CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
               !!!!!
             CASE(FIELD_NODE_BASED_INTERPOLATION)
               DOMAIN=>FIELD_COMPONENT%DOMAIN
@@ -13686,6 +15766,14 @@ CONTAINS
                 CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                   !!!!!
                   CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                  !!!!!
+                CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                  !!!!!
+                  CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                   !!!!!
                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                   DOMAIN=>FIELD_COMPONENT%DOMAIN
@@ -14215,6 +16303,14 @@ CONTAINS
                 !!!!!
                 CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                 !!!!!
+              CASE(FIELD_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
+              CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                !!!!!
+                CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                !!!!!
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
                   FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
@@ -14495,11 +16591,21 @@ CONTAINS
               & DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS,ERR,ERROR,*999)
             IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS>0) THEN
               CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Face DOFs:",ERR,ERROR,*999)
-              DO face_nyy=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Face DOF : ",face_nyy,ERR,ERROR,*999)
+              DO faceIdx=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Face DOF : ",faceIdx,ERR,ERROR,*999)
                 CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
-                  & FACE_DOF2PARAM_MAP(:,face_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
-              ENDDO !face_nyy
+                  & FACE_DOF2PARAM_MAP(:,faceIdx),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
+              ENDDO !faceIdx
+            ENDIF
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of line DOFs = ",FIELD%VARIABLES(variable_idx)% &
+              & DOF_TO_PARAM_MAP%NUMBER_OF_LINE_DOFS,ERR,ERROR,*999)
+            IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_LINE_DOFS>0) THEN
+              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Face DOFs:",ERR,ERROR,*999)
+              DO lineIdx=1,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_LINE_DOFS
+                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Line DOF : ",lineIdx,ERR,ERROR,*999)
+                CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
+                  & LINE_DOF2PARAM_MAP(:,lineIdx),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
+              ENDDO !lineIdx
             ENDIF
             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of nodal DOFs = ",FIELD%VARIABLES(variable_idx)% &
               & DOF_TO_PARAM_MAP%NUMBER_OF_NODE_DOFS,ERR,ERROR,*999)
@@ -14569,18 +16675,34 @@ CONTAINS
               CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of face parameters = ", &
                 & FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS,ERR,ERROR,*999)
               IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS>0) THEN
-                DO face_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS
-                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Face : ",face_idx,ERR,ERROR,*999)
+                DO faceIdx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Face : ",faceIdx,ERR,ERROR,*999)
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of Derivatives = ", &
-                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
-                  DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%NUMBER_OF_DERIVATIVES
+                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(faceIdx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
+                  DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(faceIdx)%NUMBER_OF_DERIVATIVES
                     CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Derivative : ",derivative_idx,ERR,ERROR,*999)
                     CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,FIELD_COMPONENT%PARAM_TO_DOF_MAP% &
-                      & FACE_PARAM2DOF_MAP%FACES(face_idx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
-                      & PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(face_idx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
+                      & FACE_PARAM2DOF_MAP%FACES(faceIdx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
+                      & PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(faceIdx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
                       & '("              Version DOFs :",8(X,I8))','(23X,8(X,I8))',ERR,ERROR,*999)
                   ENDDO !derivative_idx
-                ENDDO !face_idx
+                ENDDO !faceIdx
+              ENDIF
+              CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of line parameters = ", &
+                & FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS,ERR,ERROR,*999)
+              IF(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS>0) THEN
+                DO lineIdx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Line : ",lineIdx,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of Derivatives = ", &
+                    & FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(lineIdx)%NUMBER_OF_DERIVATIVES,ERR,ERROR,*999)
+                  DO derivative_idx=1,FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(lineIdx)%NUMBER_OF_DERIVATIVES
+                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Derivative : ",derivative_idx,ERR,ERROR,*999)
+                    CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,FIELD_COMPONENT%PARAM_TO_DOF_MAP% &
+                      & LINE_PARAM2DOF_MAP%LINES(lineIdx)%DERIVATIVES(derivative_idx)%NUMBER_OF_VERSIONS,8,8,FIELD_COMPONENT% &
+                      & PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(lineIdx)%DERIVATIVES(derivative_idx)%VERSIONS(:), &
+                      & '("              Version DOFs :",8(X,I8))','(23X,8(X,I8))',ERR,ERROR,*999)
+                  ENDDO !derivative_idx
+                ENDDO !lineIdx
               ENDIF
               CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Number of node parameters = ", &
                 & FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS,ERR,ERROR,*999)
@@ -17417,6 +19539,15 @@ CONTAINS
                                   CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here", &
                                     & ERR,ERROR,*999)
                                   !!!!!
+                                CASE(FIELD_LINE_BASED_INTERPOLATION)
+                                  !!!!!
+                                  CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                                  !!!!!
+                                CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                                  !!!!!
+                                  CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here", &
+                                    & ERR,ERROR,*999)
+                                  !!!!!
                                 CASE(FIELD_NODE_BASED_INTERPOLATION)
                                   FROM_DOMAIN_TOPOLOGY=>FROM_DOMAIN%TOPOLOGY
                                   IF(ASSOCIATED(FROM_DOMAIN_TOPOLOGY)) THEN
@@ -17755,6 +19886,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -17895,6 +20034,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
@@ -18037,6 +20184,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -18177,6 +20332,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add constant for component number "// &
@@ -18717,6 +20880,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -18879,6 +21050,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
@@ -19044,6 +21223,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19207,6 +21394,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -19348,6 +21543,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -19521,6 +21724,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -19693,6 +21904,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -19864,6 +22083,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -20042,6 +22269,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -20188,6 +22423,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
@@ -20336,6 +22579,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -20483,6 +22734,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not add element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -20626,6 +22885,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -20829,6 +23096,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -21030,6 +23305,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -21233,6 +23516,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -21432,6 +23723,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -21610,6 +23909,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -21790,6 +24097,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -21968,6 +24283,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -23135,6 +25458,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -23275,6 +25606,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
@@ -23418,6 +25757,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -23558,6 +25905,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by constant for component number "// &
@@ -23700,6 +26055,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
@@ -23860,6 +26223,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -24019,6 +26390,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -24177,6 +26556,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by data point for component number "// &
@@ -24354,6 +26741,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24512,6 +26907,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24668,6 +27071,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -24823,6 +27234,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not get by element for component number "// &
@@ -25299,6 +27718,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -25494,6 +27921,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -25691,6 +28126,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -25886,6 +28329,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -26085,6 +28536,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -26282,6 +28741,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
@@ -26481,6 +28948,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
@@ -26678,6 +29153,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
@@ -26900,6 +29383,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -27065,6 +29556,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -27232,6 +29731,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -27398,6 +29905,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
@@ -27539,6 +30054,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
@@ -27704,6 +30227,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by gauss point for component number "// &
@@ -27876,6 +30407,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by data point for component number "// &
@@ -28155,6 +30694,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -28297,6 +30844,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -28437,6 +30992,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
@@ -28579,6 +31142,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by constant for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -28719,6 +31290,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
@@ -28880,6 +31459,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29040,6 +31627,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29199,6 +31794,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not Update by data point for component number "// &
@@ -29363,6 +31966,14 @@ CONTAINS
       !!!!!
       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
+    CASE(FIELD_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29470,6 +32081,14 @@ CONTAINS
     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
       !!!!!
       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
@@ -29579,6 +32198,14 @@ CONTAINS
       !!!!!
       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
+    CASE(FIELD_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -29686,6 +32313,14 @@ CONTAINS
     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
       !!!!!
       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+      !!!!!
+    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+      !!!!!
+      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
       !!!!!
     CASE(FIELD_NODE_BASED_INTERPOLATION)
       localError="Can not Update by data point for component number "// &
@@ -30236,6 +32871,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -30399,6 +33042,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -30560,6 +33211,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -30723,6 +33382,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -30868,6 +33535,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -31017,6 +33692,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -31163,6 +33846,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
                         & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -31308,6 +33999,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       LOCAL_ERROR="Can not update by element for component number "// &
@@ -31522,6 +34221,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -31723,6 +34430,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
@@ -31926,6 +34641,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                             IF(ASSOCIATED(DOMAIN)) THEN
@@ -32128,6 +34851,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(DOMAIN)) THEN
@@ -32327,6 +35058,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -32505,6 +35244,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -32685,6 +35432,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
                       IF(LOCAL_NODE_NUMBER>0.AND.LOCAL_NODE_NUMBER<=FIELD_NODES%NUMBER_OF_NODE_PARAMETERS) THEN
@@ -32863,6 +35618,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       FIELD_NODES=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP
@@ -33046,6 +35809,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -33219,6 +35990,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
@@ -33394,6 +36173,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -33568,6 +36355,14 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &
                         & TRIM(NumberToVString(componentNumber,"*",err,error))//" of variable type "// &
@@ -33738,6 +36533,14 @@ CONTAINS
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not update by Gauss point for component number "// &

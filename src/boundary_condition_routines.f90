@@ -202,6 +202,10 @@ MODULE BOUNDARY_CONDITIONS_ROUTINES
     MODULE PROCEDURE BOUNDARY_CONDITIONS_SET_FACE
   END INTERFACE BoundaryConditions_SetFace
 
+  INTERFACE BoundaryConditions_SetLine
+    MODULE PROCEDURE BOUNDARY_CONDITIONS_SET_LINE
+  END INTERFACE BoundaryConditions_SetLine
+
   INTERFACE BoundaryConditions_SetNode
     MODULE PROCEDURE BOUNDARY_CONDITIONS_SET_NODE
   END INTERFACE BoundaryConditions_SetNode
@@ -262,7 +266,11 @@ MODULE BOUNDARY_CONDITIONS_ROUTINES
 
   PUBLIC BoundaryConditions_SetFace
 
+  PUBLIC BoundaryConditions_SetLine
+
   PUBLIC BOUNDARY_CONDITIONS_SET_FACE
+
+  PUBLIC BOUNDARY_CONDITIONS_SET_LINE
 
   PUBLIC BOUNDARY_CONDITIONS_SET_NODE
 
@@ -1841,7 +1849,9 @@ CONTAINS
       ! Valid for all interpolation types
     CASE(BOUNDARY_CONDITION_FIXED_INLET)
       IF(interpolationType /= FIELD_NODE_BASED_INTERPOLATION .AND. interpolationType /= &
-        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION) THEN
+        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION .AND. interpolationType /= &
+        & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION .AND. interpolationType /= FIELD_FACE_BASED_INTERPOLATION .AND. &
+        & interpolationType /= FIELD_LINE_BASED_INTERPOLATION) THEN
         validCondition=.FALSE.
       END IF
     CASE(BOUNDARY_CONDITION_FIXED_OUTLET)
@@ -1850,7 +1860,9 @@ CONTAINS
       END IF
     CASE(BOUNDARY_CONDITION_FIXED_WALL)
       IF(interpolationType /= FIELD_NODE_BASED_INTERPOLATION .AND. interpolationType /= &
-        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION) THEN
+        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION .AND. interpolationType /= &
+        & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION .AND. interpolationType /= FIELD_FACE_BASED_INTERPOLATION .AND. &
+        & interpolationType /= FIELD_LINE_BASED_INTERPOLATION) THEN
         validCondition=.FALSE.
       END IF
     CASE(BOUNDARY_CONDITION_MOVED_WALL, &
@@ -1861,7 +1873,9 @@ CONTAINS
       END IF
     CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
       IF(interpolationType /= FIELD_NODE_BASED_INTERPOLATION .AND. interpolationType /= &
-        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION) THEN
+        & FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION .AND. interpolationType /= &
+        & FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION .AND. interpolationType /= FIELD_FACE_BASED_INTERPOLATION .AND. &
+        & interpolationType /= FIELD_LINE_BASED_INTERPOLATION) THEN
         validCondition=.FALSE.
       END IF
     CASE(BOUNDARY_CONDITION_PRESSURE, &
@@ -3111,6 +3125,76 @@ CONTAINS
 999 ERRORSEXITS("BOUNDARY_CONDITIONS_SET_FACE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE BOUNDARY_CONDITIONS_SET_FACE
+
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets a boundary condition on the specified user node. \see OPENCMISS_CMISSBoundaryConditionsSetNode
+  SUBROUTINE BOUNDARY_CONDITIONS_SET_LINE(BOUNDARY_CONDITIONS,FIELD,VARIABLE_TYPE,VERSION_NUMBER,DERIVATIVE_NUMBER, &
+    & userElementNumber,userXiDir,COMPONENT_NUMBER,CONDITION,VALUE,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS !<A pointer to the boundary conditions to set the boundary condition for
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The variable type to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: VERSION_NUMBER !<The derivative version to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: DERIVATIVE_NUMBER !<The derivative to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<The user xi direction to set the line boundary condition at
+    INTEGER(INTG), INTENT(IN) :: COMPONENT_NUMBER !<The component number to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: CONDITION !<The boundary condition type to set \see BOUNDARY_CONDITIONS_ROUTINES_BoundaryConditions,BOUNDARY_CONDITIONS_ROUTINES
+    REAL(DP), INTENT(IN) :: VALUE !<The value of the boundary condition to set
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: local_ny,global_ny
+    TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: BOUNDARY_CONDITIONS_VARIABLE
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("BOUNDARY_CONDITIONS_SET_LINE",ERR,ERROR,*999)
+
+    NULLIFY(BOUNDARY_CONDITIONS_VARIABLE)
+    NULLIFY(FIELD_VARIABLE)
+
+    IF(ASSOCIATED(BOUNDARY_CONDITIONS)) THEN
+      IF(BOUNDARY_CONDITIONS%BOUNDARY_CONDITIONS_FINISHED) THEN
+        CALL FlagError("Boundary conditions have been finished.",ERR,ERROR,*999)
+      ELSE
+        IF(ASSOCIATED(FIELD)) THEN
+          CALL FIELD_COMPONENT_DOF_GET_USER_LINE(FIELD,VARIABLE_TYPE,VERSION_NUMBER,DERIVATIVE_NUMBER, &
+            & userElementNumber, userXiDir,COMPONENT_NUMBER,local_ny,global_ny,ERR,ERROR,*999)
+          CALL Field_VariableGet(FIELD,VARIABLE_TYPE,FIELD_VARIABLE,ERR,ERROR,*999)
+          IF(ASSOCIATED(FIELD_VARIABLE)) THEN
+            CALL BOUNDARY_CONDITIONS_VARIABLE_GET(BOUNDARY_CONDITIONS,FIELD_VARIABLE,BOUNDARY_CONDITIONS_VARIABLE, &
+              & ERR,ERROR,*999)
+            IF(ASSOCIATED(BOUNDARY_CONDITIONS_VARIABLE)) THEN
+              CALL BoundaryConditions_CheckInterpolationType(CONDITION,FIELD,VARIABLE_TYPE,COMPONENT_NUMBER,ERR,ERROR,*999)
+              CALL BOUNDARY_CONDITIONS_SET_LOCAL_DOF(BOUNDARY_CONDITIONS,FIELD,VARIABLE_TYPE, &
+                & local_ny,CONDITION,VALUE,ERR,ERROR,*999)
+            ELSE
+              LOCAL_ERROR="The boundary conditions for variable type "//TRIM(NUMBER_TO_VSTRING(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                & " has not been created."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            CALL FlagError("The dependent field variable is not associated",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("The dependent field is not associated",ERR,ERROR,*999)
+        ENDIF
+      ENDIF
+    ELSE
+      CALL FlagError("Boundary conditions is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("BOUNDARY_CONDITIONS_SET_LINE")
+    RETURN
+999 ERRORSEXITS("BOUNDARY_CONDITIONS_SET_LINE",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE BOUNDARY_CONDITIONS_SET_LINE
 
   !
   !================================================================================================================================
