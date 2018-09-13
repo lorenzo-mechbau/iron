@@ -229,6 +229,7 @@ MODULE MESH_ROUTINES
 
   PUBLIC MESHES_INITIALISE,MESHES_FINALISE
 
+  ! original (Benjamin): old true, new true
   LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
   LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code 
 

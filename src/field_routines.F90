@@ -10000,8 +10000,9 @@ CONTAINS
     
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
-    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
-    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code
+    ! original (Benjamin): old true, new false
+    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
+    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! new code
     
     LOGICAL :: DIAGNOSTICS2 = .FALSE.
     
