@@ -1,8 +1,8 @@
-!> \file 
+!> \file
 !> \author Chris Bradley
 !> \brief This module handles all solver routines.
 !>
-!> \section LICENSE 
+!> \section LICENSE
 !>
 !> Version: MPL 1.1/GPL 2.0/LGPL 2.1
 !>
@@ -75,14 +75,14 @@ MODULE SOLVER_ROUTINES
   USE Timer
   USE Types
 
-#include "macros.h"  
+#include "macros.h"
 
   IMPLICIT NONE
 
   PRIVATE
 
 #include "petscversion.h"
- 
+
   !Module parameters
 
   !> \addtogroup SOLVER_ROUTINES_SolverTypes SOLVER_ROUTINES::SolverTypes
@@ -134,7 +134,7 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DIRECT_CHOLESKY=2 !<Cholesky direct linear solver \see SOLVER_ROUTINES_DirectLinearSolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DIRECT_SVD=3 !<SVD direct linear solver \see SOLVER_ROUTINES_DirectLinearSolverTypes,SOLVER_ROUTINES
   !>@}
-  
+
   !> \addtogroup SOLVER_ROUTINES_IterativeLinearSolverTypes SOLVER_ROUTINES::IterativeLinearSolverTypes
   !> \brief The types of iterative linear solvers
   !> \see SOLVER_ROUTINES
@@ -233,18 +233,18 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_QUADRATIC=3 !<Quadratic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_CUBIC=4!<Cubic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
   !>@}
-  
+
   !> \addtogroup SOLVER_ROUTINES_JacobianCalculationTypes SOLVER_ROUTINES::JacobianCalculationTypes
-  !> \brief The Jacobian calculation types for a nonlinear solver 
+  !> \brief The Jacobian calculation types for a nonlinear solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_JACOBIAN_NOT_CALCULATED=1 !<The Jacobian values will not be calculated for the nonlinear equations set \see SOLVER_ROUTINES_JacobianCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_JACOBIAN_EQUATIONS_CALCULATED=2 !<The Jacobian values will be calculated analytically for the nonlinear equations set \see SOLVER_ROUTINES_JacobianCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_JACOBIAN_FD_CALCULATED=3 !<The Jacobian values will be calculated using finite differences for the nonlinear equations set \see SOLVER_ROUTINES_JacobianCalculationTypes,SOLVER_ROUTINES
-  !>@} 
-  
+  !>@}
+
   !> \addtogroup SOLVER_ROUTINES_NewtonConvergenceTestTypes SOLVER_ROUTINES::NewtonConvergenceTestTypes
-  !> \brief The convergence test types for a nonlinear solver 
+  !> \brief The convergence test types for a nonlinear solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_CONVERGENCE_PETSC_DEFAULT=1 !<Petsc default convergence test \see SOLVER_ROUTINES_NewtonConvergenceTestTypes,SOLVER_ROUTINES
@@ -253,7 +253,7 @@ MODULE SOLVER_ROUTINES
   !>@}
 
   !> \addtogroup SOLVER_ROUTINES_DynamicOrderTypes SOLVER_ROUTINES::DynamicOrderTypes
-  !> \brief The order types for a dynamic solver 
+  !> \brief The order types for a dynamic solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_FIRST_ORDER=1 !<Dynamic solver has first order terms \see SOLVER_ROUTINES_DynamicOrderTypes,SOLVER_ROUTINES
@@ -261,7 +261,7 @@ MODULE SOLVER_ROUTINES
   !>@}
 
   !> \addtogroup SOLVER_ROUTINES_DynamicLinearityTypes SOLVER_ROUTINES::DynamicLinearityTypes
-  !> \brief The time linearity types for a dynamic solver 
+  !> \brief The time linearity types for a dynamic solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_LINEAR=1 !<Dynamic solver has linear terms \see SOLVER_ROUTINES_DynamicLinearityTypes,SOLVER_ROUTINES
@@ -269,14 +269,14 @@ MODULE SOLVER_ROUTINES
   !>@}
 
   !> \addtogroup SOLVER_ROUTINES_DynamicDegreeTypes SOLVER_ROUTINES::DynamicDegreeTypes
-  !> \brief The time interpolation polynomial degree types for a dynamic solver 
+  !> \brief The time interpolation polynomial degree types for a dynamic solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_FIRST_DEGREE=1 !<Dynamic solver uses a first degree polynomial for time interpolation \see SOLVER_ROUTINES_DynamicDegreeTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_SECOND_DEGREE=2 !<Dynamic solver uses a second degree polynomial for time interpolation \see SOLVER_ROUTINES_DynamicDegreeTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_THIRD_DEGREE=3 !<Dynamic solver uses a third degree polynomial for time interpolation \see SOLVER_ROUTINES_DynamicDegreeTypes,SOLVER_ROUTINES
-  !>@}    
-  
+  !>@}
+
   !> \addtogroup SOLVER_ROUTINES_DynamicSchemeTypes SOLVER_ROUTINES::DynamicSchemeTypes
   !> \brief The types of dynamic solver scheme
   !> \see SOLVER_ROUTINES
@@ -303,7 +303,7 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_HILBERT_HUGHES_TAYLOR2_SCHEME=20 !<1st Hilbert-Hughes-Taylor dynamic solver \see SOLVER_ROUTINES_DynamicSchemeTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DYNAMIC_USER_DEFINED_SCHEME=21 !<User specified degree and theta dynamic solver \see SOLVER_ROUTINES_DynamicSchemeTypes,SOLVER_ROUTINES
   !>@}
-  
+
   !> \addtogroup SOLVER_ROUTINES_DAETypes SOLVER_ROUTINES::DAETypes
   !> \brief The type of differential-algebraic equation
   !> \see SOLVER_ROUTINES
@@ -315,7 +315,7 @@ MODULE SOLVER_ROUTINES
   !>@}
 
   !> \addtogroup SOLVER_ROUTINES_DAESolverTypes SOLVER_ROUTINES::DAESolverTypes
-  !> \brief The differential-algebraic equation solver types for a differential-algebraic equation solver 
+  !> \brief The differential-algebraic equation solver types for a differential-algebraic equation solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_DAE_EULER=1 !<Euler differential-algebraic equation solver \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES
@@ -325,11 +325,11 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DAE_BDF=5 !<General BDF differential-algebraic equation solver \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DAE_RUSH_LARSON=6 !<Rush-Larson differential-algebraic equation solver \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_DAE_EXTERNAL=7 !<External (e.g., CellML generated) differential-algebraic equation solver \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES
-  
+
   !>@}
 
   !> \addtogroup SOLVER_ROUTINES_EulerDAESolverTypes SOLVER_ROUTINES::EulerDAESolverTypes
-  !> \brief The Euler solver types for a differential-algebriac equation solver 
+  !> \brief The Euler solver types for a differential-algebriac equation solver
   !> \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_DAE_EULER_FORWARD=1 !<Forward Euler differential equation solver \see SOLVER_ROUTINES_EulerDAESolverTypes,SOLVER_ROUTINES
@@ -384,25 +384,25 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_LINEAR_COMPLEMENTARITY=1 !<Linear complementarity optimisation problem \see SOLVER_ROUTINES_OptimiserSolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_NONLINEAR_COMPLEMENTARITY=1 !<Nonlinear complementarity optimisation problem \see SOLVER_ROUTINES_OptimiserSolverTypes,SOLVER_ROUTINES
   !>@}
-  
+
   !> \addtogroup SOLVER_ROUTINES_OptimiserGradientCalculationTypes SOLVER_ROUTINES::OptimiserGradientCalculationTypes
-  !> \brief The gradient calculation types for an optimiser solver 
+  !> \brief The gradient calculation types for an optimiser solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_GRADIENT_NOT_CALCULATED=1 !<The gradient values will not be calculated for the optimiser equations set \see SOLVER_ROUTINES_OptimiserGradientCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_GRADIENT_EQUATIONS_CALCULATED=2 !<The gradient values will be calculated analytically for the optimiser equations set \see SOLVER_ROUTINES_OptimiserGradientCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_GRADIENT_FD_CALCULATED=3 !<The gradient values will be calculated using finite differences for the optimiser equations set \see SOLVER_ROUTINES_OptimiserGradientCalculationTypes,SOLVER_ROUTINES
-  !>@} 
-  
+  !>@}
+
   !> \addtogroup SOLVER_ROUTINES_OptimiserHessianCalculationTypes SOLVER_ROUTINES::OptimiserHessianCalculationTypes
-  !> \brief The Hessian calculation types for an optimiser solver 
+  !> \brief The Hessian calculation types for an optimiser solver
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_HESSIAN_NOT_CALCULATED=1 !<The Hessian values will not be calculated for the optimiser equations set \see SOLVER_ROUTINES_OptimiserHessianCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_HESSIAN_EQUATIONS_CALCULATED=2 !<The Hessian values will be calculated analytically for the optimiser equations set \see SOLVER_ROUTINES_OptimiserHessianCalculationTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_OPTIMISER_HESSIAN_FD_CALCULATED=3 !<The Hessian values will be calculated using finite differences for the optimiser equations set \see SOLVER_ROUTINES_OptimiserHessianCalculationTypes,SOLVER_ROUTINES
-  !>@} 
-  
+  !>@}
+
   !> \addtogroup SOLVER_ROUTINES_SolutionInitialiseTypes SOLVER_ROUTINES::SolutionInitialiseTypes
   !> \brief The types of solution initialisation
   !> \see SOLVER_ROUTINES
@@ -432,7 +432,7 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_FULL_MATRICES=2 !<Use fully populated solver matrices \see SOLVER_ROUTINES_SparsityTypes,SOLVER_ROUTINES
   !>@}
 
-  
+
   !> \addtogroup SOLVER_ROUTINES_SymmetryTypes SOLVER_ROUTINES::SymmetryTypes
   !> \brief The types of symmetry in the solver matrices
   !> \see SOLVER_ROUTINES
@@ -441,7 +441,7 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_UNSYMMETRIC_MATRICES=2 !<Use unsymmetric solver matrices \see SOLVER_ROUTINES_SymmetryTypes,SOLVER_ROUTINES
   !>@}
 
-  
+
   !Module types
 
   !Module variables
@@ -453,7 +453,7 @@ MODULE SOLVER_ROUTINES
     SUBROUTINE SOLVER_DAE_EXTERNAL_INTEGRATE(NUMBER_OF_DOFS,START_TIME,END_TIME,INITIAL_STEP, &
       & ONLY_ONE_MODEL_INDEX,MODELS_DATA,NUMBER_OF_STATE,STATE_DATA,NUMBER_OF_PARAMETERS, &
       & PARAMETERS_DATA,NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR) BIND(C, NAME="SolverDAEExternalIntegrate")
-      
+
       USE ISO_C_BINDING
 
       INTEGER(C_INT), VALUE, INTENT(IN) :: NUMBER_OF_DOFS
@@ -469,15 +469,15 @@ MODULE SOLVER_ROUTINES
       INTEGER(C_INT), VALUE, INTENT(IN) :: NUMBER_OF_INTERMEDIATE
       REAL(C_DOUBLE), INTENT(OUT) :: INTERMEDIATE_DATA(*)
       INTEGER(C_INT), INTENT(OUT) :: ERR
-      
+
     END SUBROUTINE SOLVER_DAE_EXTERNAL_INTEGRATE
-    
+
   END INTERFACE
 
   INTERFACE CellMLEquations_CreateFinish
     MODULE PROCEDURE CELLML_EQUATIONS_CREATE_FINISH
   END INTERFACE CellMLEquations_CreateFinish
-  
+
   INTERFACE CellMLEquations_CreateStart
     MODULE PROCEDURE CELLML_EQUATIONS_CREATE_START
   END INTERFACE CellMLEquations_CreateStart
@@ -520,17 +520,17 @@ MODULE SOLVER_ROUTINES
     MODULE PROCEDURE SOLVER_LABEL_GET_C
     MODULE PROCEDURE SOLVER_LABEL_GET_VS
   END INTERFACE SOLVER_LABEL_GET
-  
+
   INTERFACE Solver_LabelGet
     MODULE PROCEDURE SOLVER_LABEL_GET_C
     MODULE PROCEDURE SOLVER_LABEL_GET_VS
   END INTERFACE Solver_LabelGet
-  
+
   INTERFACE SOLVER_LABEL_SET
     MODULE PROCEDURE SOLVER_LABEL_SET_C
     MODULE PROCEDURE SOLVER_LABEL_SET_VS
   END INTERFACE SOLVER_LABEL_SET
-  
+
   INTERFACE Solver_LabelSet
     MODULE PROCEDURE SOLVER_LABEL_SET_C
     MODULE PROCEDURE SOLVER_LABEL_SET_VS
@@ -555,7 +555,7 @@ MODULE SOLVER_ROUTINES
   INTERFACE SolverEquations_CreateFinish
     MODULE PROCEDURE SOLVER_EQUATIONS_CREATE_FINISH
   END INTERFACE SolverEquations_CreateFinish
-  
+
   INTERFACE SolverEquations_CreateStart
     MODULE PROCEDURE SOLVER_EQUATIONS_CREATE_START
   END INTERFACE SolverEquations_CreateStart
@@ -563,41 +563,41 @@ MODULE SOLVER_ROUTINES
   INTERFACE SolverEquations_Destroy
     MODULE PROCEDURE SOLVER_EQUATIONS_DESTROY
   END INTERFACE SolverEquations_Destroy
-  
+
   INTERFACE SolverEquations_EquationsSetAdd
     MODULE PROCEDURE SOLVER_EQUATIONS_EQUATIONS_SET_ADD
   END INTERFACE SolverEquations_EquationsSetAdd
-  
+
   INTERFACE SolverEquations_InterfaceConditionAdd
     MODULE PROCEDURE SOLVER_EQUATIONS_INTERFACE_CONDITION_ADD
   END INTERFACE SolverEquations_InterfaceConditionAdd
-  
+
   INTERFACE SolverEquations_LinearityTypeSet
     MODULE PROCEDURE SOLVER_EQUATIONS_LINEARITY_TYPE_SET
   END INTERFACE SolverEquations_LinearityTypeSet
-  
+
   INTERFACE SolverEquations_SparsityTypeSet
     MODULE PROCEDURE SOLVER_EQUATIONS_SPARSITY_TYPE_SET
   END INTERFACE SolverEquations_SparsityTypeSet
-  
+
   INTERFACE SolverEquations_TimeDependenceTypeSet
     MODULE PROCEDURE SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET
   END INTERFACE SolverEquations_TimeDependenceTypeSet
-  
+
   INTERFACE Solvers_CreateStart
     MODULE PROCEDURE SOLVERS_CREATE_START
   END INTERFACE Solvers_CreateStart
-  
+
   INTERFACE Solvers_CreateFinish
     MODULE PROCEDURE SOLVERS_CREATE_FINISH
   END INTERFACE Solvers_CreateFinish
-  
+
   INTERFACE Solvers_NumberSet
     MODULE PROCEDURE SOLVERS_NUMBER_SET
   END INTERFACE Solvers_NumberSet
-  
+
   PUBLIC SOLVER_NUMBER_OF_SOLVER_TYPES
-  
+
   PUBLIC SOLVER_LINEAR_TYPE,SOLVER_NONLINEAR_TYPE,SOLVER_DYNAMIC_TYPE,SOLVER_DAE_TYPE,SOLVER_EIGENPROBLEM_TYPE, &
     & SOLVER_OPTIMISER_TYPE,SOLVER_CELLML_EVALUATOR_TYPE,SOLVER_GEOMETRIC_TRANSFORMATION_TYPE
 
@@ -606,12 +606,12 @@ MODULE SOLVER_ROUTINES
     & SOLVER_PASTIX_LIBRARY
 
   PUBLIC SOLVER_LINEAR_DIRECT_SOLVE_TYPE,SOLVER_LINEAR_ITERATIVE_SOLVE_TYPE
- 
+
   PUBLIC SOLVER_DIRECT_LU,SOLVER_DIRECT_CHOLESKY,SOLVER_DIRECT_SVD
 
   PUBLIC SOLVER_ITERATIVE_RICHARDSON,SOLVER_ITERATIVE_CONJUGATE_GRADIENT,SOLVER_ITERATIVE_CHEBYSHEV, &
     & SOLVER_ITERATIVE_BICONJUGATE_GRADIENT,SOLVER_ITERATIVE_GMRES,SOLVER_ITERATIVE_BiCGSTAB,SOLVER_ITERATIVE_CONJGRAD_SQUARED
-  
+
   PUBLIC SOLVER_ITERATIVE_NO_PRECONDITIONER,SOLVER_ITERATIVE_JACOBI_PRECONDITIONER,SOLVER_ITERATIVE_BLOCK_JACOBI_PRECONDITIONER, &
     & SOLVER_ITERATIVE_SOR_PRECONDITIONER,SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER, &
     & SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER,SOLVER_ITERATIVE_ADDITIVE_SCHWARZ_PRECONDITIONER
@@ -624,7 +624,7 @@ MODULE SOLVER_ROUTINES
     SOLVER_QUASI_NEWTON_BADBROYDEN
 
   PUBLIC SOLVER_QUASI_NEWTON_LINESEARCH,SOLVER_QUASI_NEWTON_TRUSTREGION
-  
+
   PUBLIC SOLVER_QUASI_NEWTON_LINESEARCH_BASIC,SOLVER_QUASI_NEWTON_LINESEARCH_L2, &
     & SOLVER_QUASI_NEWTON_LINESEARCH_CP
 
@@ -642,7 +642,7 @@ MODULE SOLVER_ROUTINES
 
   PUBLIC SOLVER_NEWTON_CONVERGENCE_PETSC_DEFAULT,SOLVER_NEWTON_CONVERGENCE_ENERGY_NORM, &
     & SOLVER_NEWTON_CONVERGENCE_DIFFERENTIATED_RATIO
-  
+
   PUBLIC SOLVER_DYNAMIC_LINEAR,SOLVER_DYNAMIC_NONLINEAR,SOLVER_DYNAMIC_LINEARITY_TYPE_SET
 
   PUBLIC SOLVER_DYNAMIC_FIRST_ORDER,SOLVER_DYNAMIC_SECOND_ORDER
@@ -671,7 +671,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_OPTIMISER_CONTINUOUS_VARIABLES,SOLVER_OPTIMISER_DISCRETE_VARIABLES
 
   PUBLIC SOLVER_OPTIMISER_DETERMINISTIC_CERTAINTY,SOLVER_OPTIMISER_STOCHASTIC_CERTAINTY
-  
+
   PUBLIC SOLVER_OPTIMISER_UNCONSTRAINED,SOLVER_OPTIMISER_BOUND_CONSTRAINED,SOLVER_OPTIMISER_LINEAR_CONSTRAINTS, &
     & SOLVER_OPTIMISER_NONLINEAR_CONSTRAINTS,SOLVER_OPTIMISER_PDE_CONSTRAINTS
 
@@ -682,10 +682,10 @@ MODULE SOLVER_ROUTINES
     & SOLVER_OPTIMISER_HESSIAN_FD_CALCULATED
 
   PUBLIC SOLVER_SOLUTION_INITIALISE_ZERO,SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD,SOLVER_SOLUTION_INITIALISE_NO_CHANGE
-  
+
   PUBLIC SOLVER_NO_OUTPUT,SOLVER_MONITOR_OUTPUT,SOLVER_PROGRESS_OUTPUT,SOLVER_TIMING_OUTPUT,SOLVER_SOLVER_OUTPUT, &
     & SOLVER_MATRIX_OUTPUT
-  
+
   PUBLIC SOLVER_SPARSE_MATRICES,SOLVER_FULL_MATRICES
 
   PUBLIC SOLVER_SYMMETRIC_MATRICES,SOLVER_UNSYMMETRIC_MATRICES
@@ -702,25 +702,25 @@ MODULE SOLVER_ROUTINES
   PUBLIC CellMLEquations_CreateStart,CellMLEquations_CreateFinish
 
   PUBLIC CELLML_EQUATIONS_DESTROY
-  
+
   PUBLIC CellMLEquations_LinearityTypeGet,CellMLEquations_LinearityTypeSet
 
   PUBLIC CellMLEquations_TimeDependenceTypeGet,CellMLEquations_TimeDependenceTypeSet
 
   PUBLIC CellMLEquations_TimeGet,CellMLEquations_TimeSet
-  
+
   PUBLIC SOLVER_DAE_SOLVER_TYPE_GET,SOLVER_DAE_SOLVER_TYPE_SET
 
   PUBLIC Solver_DAETimesSet,Solver_DAETimeStepSet
 
   PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET
-  
+
   PUBLIC SOLVER_DAE_EULER_SOLVER_TYPE_GET,SOLVER_DAE_EULER_SOLVER_TYPE_SET
 
   PUBLIC Solver_DAECellMLRHSEvaluate
-  
+
   PUBLIC Solver_Destroy
-  
+
   PUBLIC SOLVER_DYNAMIC_DEGREE_GET,SOLVER_DYNAMIC_DEGREE_SET
 
   PUBLIC Solver_DynamicDegreeSet
@@ -730,7 +730,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_DYNAMIC_LINEARITY_TYPE_GET
 
   PUBLIC Solver_DynamicLinearityTypeSet
-  
+
   PUBLIC SOLVER_DYNAMIC_ORDER_SET
 
   PUBLIC Solver_DynamicOrderSet
@@ -760,7 +760,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_EQUATIONS_DESTROY
 
   PUBLIC SolverEquations_Destroy
-  
+
   PUBLIC SOLVER_EQUATIONS_EQUATIONS_SET_ADD
 
   PUBLIC SolverEquations_EquationsSetAdd
@@ -798,13 +798,13 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_LABEL_GET,SOLVER_LABEL_SET
 
   PUBLIC Solver_LabelGet,Solver_LabelSet
-  
+
   PUBLIC SOLVER_LIBRARY_TYPE_GET,SOLVER_LIBRARY_TYPE_SET
 
   PUBLIC Solver_LibraryTypeGet,Solver_LibraryTypeSet
 
   PUBLIC SOLVER_LINEAR_TYPE_SET
-  
+
   PUBLIC SOLVER_LINEAR_DIRECT_TYPE_SET
 
   PUBLIC Solver_MumpsSetIcntl,Solver_MumpsSetCntl
@@ -812,7 +812,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC Solver_LinearIterativeAbsoluteToleranceSet
 
   PUBLIC Solver_LinearIterativeDivergenceToleranceSet
-  
+
   PUBLIC SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET
 
   PUBLIC Solver_LinearIterativeMaximumIterationsSet
@@ -820,21 +820,21 @@ MODULE SOLVER_ROUTINES
   PUBLIC Solver_LinearIterativePreconditionerTypeSet
 
   PUBLIC Solver_LinearIterativeRelativeToleranceSet
-  
+
   PUBLIC Solver_LinearIterativeSolutionInitTypeSet
 
   PUBLIC SOLVER_LINEAR_ITERATIVE_TYPE_SET
-  
+
   PUBLIC Solver_GeometricTransformationArbitraryPathSet,Solver_GeometricTransformationClear
-  
+
   PUBLIC Solver_GeometricTransformationNumberOfLoadIncrementsSet
-  
+
   PUBLIC Solver_GeometricTransformationScalingsSet
-  
+
   PUBLIC Solver_GeometricTransformationFieldSet
-  
+
   PUBLIC Solver_GeometricTransformationMatrixSet
-  
+
   PUBLIC Solver_GeometricTransformationRotationSet,Solver_GeometricTransformationTranslationSet
 
   PUBLIC SOLVER_MATRICES_DYNAMIC_ASSEMBLE,SOLVER_MATRICES_STATIC_ASSEMBLE
@@ -846,7 +846,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_QUASI_NEWTON_LINESEARCH_TYPE_SET
 
   PUBLIC Solver_QuasiNewtonJacobianCalculationTypeSet
-  
+
   PUBLIC SOLVER_QUASI_NEWTON_LINEAR_SOLVER_GET
 
   PUBLIC SOLVER_QUASI_NEWTON_CELLML_SOLVER_GET
@@ -864,7 +864,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_QUASI_NEWTON_SOLUTION_INIT_TYPE_SET
 
   PUBLIC SOLVER_QUASI_NEWTON_SOLUTION_TOLERANCE_SET
-  
+
   PUBLIC SOLVER_QUASI_NEWTON_RELATIVE_TOLERANCE_SET
 
   PUBLIC SOLVER_QUASI_NEWTON_TRUSTREGION_DELTA0_SET
@@ -890,7 +890,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_NEWTON_LINESEARCH_TYPE_SET
 
   PUBLIC SOLVER_NEWTON_JACOBIAN_CALCULATION_TYPE_SET
-  
+
   PUBLIC SOLVER_NEWTON_LINEAR_SOLVER_GET
 
   PUBLIC SOLVER_NEWTON_CELLML_SOLVER_GET
@@ -908,7 +908,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_NEWTON_SOLUTION_INIT_TYPE_SET
 
   PUBLIC SOLVER_NEWTON_SOLUTION_TOLERANCE_SET
-  
+
   PUBLIC SOLVER_NEWTON_RELATIVE_TOLERANCE_SET
 
   PUBLIC SOLVER_NEWTON_TRUSTREGION_DELTA0_SET
@@ -924,17 +924,17 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_NONLINEAR_TYPE_SET
 
   PUBLIC Solver_OptimiserMonitor
-  
+
   PUBLIC SOLVER_OUTPUT_TYPE_SET
-  
+
   PUBLIC Solver_Solve
-  
+
   PUBLIC SOLVER_SOLVER_EQUATIONS_GET
 
   PUBLIC Solver_SolverEquationsGet
 
   PUBLIC SOLVER_TIME_STEPPING_MONITOR
-  
+
   PUBLIC SOLVER_TYPE_SET
 
   PUBLIC Solver_TypeSet
@@ -960,7 +960,7 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_NEWTON_CELLML_EVALUATOR_CREATE,SOLVER_CELLML_EVALUATOR_FINALISE
 
   PUBLIC SOLVER_LINKED_SOLVER_ADD,SOLVER_LINKED_SOLVER_REMOVE
-  
+
   PUBLIC SOLVER_SOLUTION_UPDATE
 
 CONTAINS
@@ -982,7 +982,7 @@ CONTAINS
     INTEGER(INTG) :: cellml_idx
     TYPE(CELLML_PTR_TYPE), ALLOCATABLE :: NEW_CELLML_ENVIRONMENTS(:)
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    
+
     ENTERS("CELLML_EQUATIONS_CELLML_ADD",ERR,ERROR,*999)
 
     IF(ASSOCIATED(CELLML_EQUATIONS)) THEN
@@ -1015,15 +1015,15 @@ CONTAINS
     ELSE
       CALL FlagError("CellML equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_CELLML_ADD")
     RETURN
 999 IF(ALLOCATED(NEW_CELLML_ENVIRONMENTS)) DEALLOCATE(NEW_CELLML_ENVIRONMENTS)
     ERRORSEXITS("CELLML_EQUATIONS_CELLML_ADD",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE CELLML_EQUATIONS_CELLML_ADD
-        
+
   !
   !================================================================================================================================
   !
@@ -1054,14 +1054,14 @@ CONTAINS
     ELSE
       CALL FlagError("CellML equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("CELLML_EQUATIONS_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE CELLML_EQUATIONS_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -1089,14 +1089,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_CREATE_START")
     RETURN
 999 ERRORSEXITS("CELLML_EQUATIONS_CREATE_START",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE CELLML_EQUATIONS_CREATE_START
-        
+
   !
   !================================================================================================================================
   !
@@ -1117,14 +1117,14 @@ CONTAINS
     ELSE
       CALL FlagError("CellML equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_DESTROY")
     RETURN
 999 ERRORSEXITS("CELLML_EQUATIONS_DESTROY",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE CELLML_EQUATIONS_DESTROY
-        
+
   !
   !================================================================================================================================
   !
@@ -1144,14 +1144,14 @@ CONTAINS
       IF(ALLOCATED(CELLML_EQUATIONS%CELLML_ENVIRONMENTS)) DEALLOCATE(CELLML_EQUATIONS%CELLML_ENVIRONMENTS)
       DEALLOCATE(CELLML_EQUATIONS)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_FINALISE")
     RETURN
 999 ERRORSEXITS("CELLML_EQUATIONS_FINALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE CELLML_EQUATIONS_FINALISE
-        
+
   !
   !================================================================================================================================
   !
@@ -1185,15 +1185,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("CELLML_EQUATIONS_INITIALISE")
     RETURN
 999 CALL CELLML_EQUATIONS_FINALISE(SOLVER%CELLML_EQUATIONS,dummyErr,dummyError,*998)
 998 ERRORSEXITS("CELLML_EQUATIONS_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE CELLML_EQUATIONS_INITIALISE
-        
+
   !
   !================================================================================================================================
   !
@@ -1207,21 +1207,21 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    
+
     ENTERS("CellMLEquations_LinearityTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is not associated.",err,error,*999)
     IF(.NOT.cellMLEquations%CELLML_EQUATIONS_FINISHED) CALL FlagError("CellML equations have not been finished.",err,error,*999)
-   
+
     linearityType=cellMLEquations%linearity
-   
+
     EXITS("CellMLEquations_LinearityTypeGet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_LinearityTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_LinearityTypeGet
-        
+
   !
   !================================================================================================================================
   !
@@ -1236,12 +1236,12 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("CellMLEquations_LinearityTypeSet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is not associated.",err,error,*999)
     IF(cellMLEquations%CELLML_EQUATIONS_FINISHED) CALL FlagError("CellML equations has already been finished.",err,error,*999)
-   
+
     SELECT CASE(linearityType)
     CASE(CELLML_EQUATIONS_LINEAR)
       cellMLEquations%linearity=CELLML_EQUATIONS_LINEAR
@@ -1252,14 +1252,14 @@ CONTAINS
         & TRIM(NumberToVString(linearityType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-   
+
     EXITS("CellMLEquations_LinearityTypeSet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_LinearityTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_LinearityTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -1273,21 +1273,21 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    
+
     ENTERS("CellMLEquations_TimeDependenceTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is not associated.",err,error,*999)
     IF(.NOT.cellMLEquations%CELLML_EQUATIONS_FINISHED) CALL FlagError("CellML equations has not been finished.",err,error,*999)
-   
+
     timeDependenceType=cellMLEquations%timeDependence
-   
+
     EXITS("CellMLEquations_TimeDependenceTypeGet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_TimeDependenceTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_TimeDependenceTypeGet
-        
+
   !
   !================================================================================================================================
   !
@@ -1302,12 +1302,12 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("CellMLEquations_TimeDependenceTypeSet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML equations is not associated.",err,error,*999)
     IF(cellMLEquations%CELLML_EQUATIONS_FINISHED) CALL FlagError("CellML equations has already been finished.",err,error,*999)
-   
+
     SELECT CASE(timeDependenceType)
     CASE(CELLML_EQUATIONS_STATIC)
       cellMLEquations%timeDependence=CELLML_EQUATIONS_STATIC
@@ -1320,14 +1320,14 @@ CONTAINS
         & TRIM(NumberToVString(timeDependenceType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-   
+
     EXITS("CellMLEquations_TimeDependenceTypeSet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_TimeDependenceTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_TimeDependenceTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -1341,18 +1341,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("CellMLEquations_TimeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML evaluator solver is not associated.",err,error,*999)
-    
+
     time=cellMLEquations%currentTime
-   
+
     EXITS("CellMLEquations_TimeGet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_TimeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_TimeGet
 
   !
@@ -1369,23 +1369,23 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
 
     ENTERS("CellMLEquations_TimeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("CellML evaluator solver is not associated.",err,error,*999)
 
     cellMLEquations%currentTime=time
-         
+
     EXITS("CellMLEquations_TimeSet")
     RETURN
 999 ERRORSEXITS("CellMLEquations_TimeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE CellMLEquations_TimeSet
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a CellML evaluator solver 
+  !>Finishes the process of creating a CellML evaluator solver
   SUBROUTINE SOLVER_CELLML_EVALUATOR_CREATE_FINISH(CELLML_EVALUATOR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -1401,14 +1401,14 @@ CONTAINS
     ELSE
       CALL FlagError("CellML evaluastor solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_CELLML_EVALUATOR_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -1424,15 +1424,15 @@ CONTAINS
 
     ENTERS("SOLVER_CELLML_EVALUATOR_FINALISE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN        
+    IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN
       DEALLOCATE(CELLML_EVALUATOR_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_CELLML_EVALUATOR_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_FINALISE
 
   !
@@ -1464,13 +1464,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_CELLML_EVALUATOR_INITIALISE")
     RETURN
 999 CALL SOLVER_CELLML_EVALUATOR_FINALISE(SOLVER%CELLML_EVALUATOR_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_INITIALISE
 
   !
@@ -1486,7 +1486,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN
@@ -1494,12 +1494,12 @@ CONTAINS
     ELSE
       CALL FlagError("CellML evaluator solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_GET
 
   !
@@ -1518,7 +1518,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN
       SELECT CASE(SOLVER_LIBRARY_TYPE)
       CASE(SOLVER_CMISS_LIBRARY)
@@ -1531,12 +1531,12 @@ CONTAINS
     ELSE
       CALL FlagError("CellML evaluator solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET
 
   !
@@ -1575,7 +1575,7 @@ CONTAINS
     NULLIFY(PARAMETERS_FIELD)
     NULLIFY(INTERMEDIATE_FIELD)
 
-    IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN        
+    IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN
       SOLVER=>CELLML_EVALUATOR_SOLVER%SOLVER
       IF(ASSOCIATED(SOLVER)) THEN
         CELLML_EQUATIONS=>SOLVER%CELLML_EQUATIONS
@@ -1583,21 +1583,21 @@ CONTAINS
           time=CELLML_EQUATIONS%currentTime
           DO cellml_idx=1,CELLML_EQUATIONS%NUMBER_OF_CELLML_ENVIRONMENTS
             CELLML_ENVIRONMENT=>CELLML_EQUATIONS%CELLML_ENVIRONMENTS(cellml_idx)%ptr
-            IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN                  
+            IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN
               CELLML_MODELS_FIELD=>CELLML_ENVIRONMENT%MODELS_FIELD
               IF(ASSOCIATED(CELLML_MODELS_FIELD)) THEN
                 MODELS_FIELD=>CELLML_MODELS_FIELD%MODELS_FIELD
                 IF(ASSOCIATED(MODELS_FIELD)) THEN
 
 !!TODO: Maybe move this getting of fields earlier up the DAE solver chain? For now keep here.
-                      
+
                   !Make sure CellML fields have been updated to the current value of any mapped fields
                   CALL CELLML_FIELD_TO_CELLML_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
                   CALL Field_VariableGet(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
                   CALL FIELD_PARAMETER_SET_DATA_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                     & MODELS_DATA,ERR,ERROR,*999)
-                      
+
                   !Get the state information if this environment has any.
                   IF(ASSOCIATED(CELLML_ENVIRONMENT%STATE_FIELD)) THEN
                     STATE_FIELD=>CELLML_ENVIRONMENT%STATE_FIELD%STATE_FIELD
@@ -1606,7 +1606,7 @@ CONTAINS
                         & STATE_DATA,ERR,ERROR,*999)
                     ENDIF
                   ENDIF
-                      
+
                   !Get the parameters information if this environment has any.
                   IF(ASSOCIATED(CELLML_ENVIRONMENT%PARAMETERS_FIELD)) THEN
                     PARAMETERS_FIELD=>CELLML_ENVIRONMENT%PARAMETERS_FIELD%PARAMETERS_FIELD
@@ -1615,13 +1615,13 @@ CONTAINS
                         & PARAMETERS_DATA,ERR,ERROR,*999)
                     ENDIF
                   ENDIF
-                      
+
                   !Get the intermediate information if this environment has any.
                   IF(ASSOCIATED(CELLML_ENVIRONMENT%INTERMEDIATE_FIELD)) THEN
                     INTERMEDIATE_FIELD=>CELLML_ENVIRONMENT%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD
                     IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                       CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                        & INTERMEDIATE_DATA,ERR,ERROR,*999)                            
+                        & INTERMEDIATE_DATA,ERR,ERROR,*999)
                     ENDIF
                   ENDIF
 
@@ -1635,20 +1635,20 @@ CONTAINS
                   CASE DEFAULT
                     CALL FlagError("Solver library not implemented.",ERR,ERROR,*999)
                   END SELECT
-                   
+
                   !Restore field data
                   CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                     & MODELS_DATA,ERR,ERROR,*999)
                   IF(ASSOCIATED(STATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(STATE_FIELD,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)                    
+                    & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)
                   IF(ASSOCIATED(PARAMETERS_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(PARAMETERS_FIELD, &
-                    & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)                    
+                    & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)
                   IF(ASSOCIATED(INTERMEDIATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(INTERMEDIATE_FIELD, &
                     & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)
-                   
+
                   !Make sure fields have been updated to the current value of any mapped CellML fields
                   CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
-                    
+
                 ELSE
                   LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                     & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."
@@ -1674,19 +1674,19 @@ CONTAINS
     ELSE
       CALL FlagError("CellML evaluator solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_CELLML_EVALUATOR_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATOR_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATOR_SOLVE
 
   !
   !================================================================================================================================
   !
-  
-  !>Evaluate the CellML equations. 
+
+  !>Evaluate the CellML equations.
   SUBROUTINE SOLVER_CELLML_EVALUATE(CELLML_EVALUATOR_SOLVER,time,CELLML,N, ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES, &
     & STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA,MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
 
@@ -1713,7 +1713,7 @@ CONTAINS
       & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES))
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_CELLML_EVALUATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(CELLML_EVALUATOR_SOLVER)) THEN
@@ -1734,7 +1734,7 @@ CONTAINS
                       NUMBER_STATES=MODEL%NUMBER_OF_STATE
                       NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                       NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
-                    
+
                       !Copy CellML data to temporary arrays
                       DO state_idx=1,NUMBER_STATES
                         STATES(state_idx)=STATE_DATA((dof_idx-1)*N+state_idx)
@@ -1742,8 +1742,8 @@ CONTAINS
                       DO parameter_idx=1,NUMBER_PARAMETERS
                         PARAMETERS(parameter_idx)=PARAMETERS_DATA((dof_idx-1)*N+parameter_idx)
                       ENDDO !parameter_idx
-                  
-#ifdef WITH_CELLML                    
+
+#ifdef WITH_CELLML
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES,INTERMEDIATES, &
                         & PARAMETERS)
 #else
@@ -1757,17 +1757,17 @@ CONTAINS
                       DO state_idx=1,NUMBER_STATES
                         STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)
                       ENDDO !state_idx
-                    
+
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
                         & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//" belonging to dof index "// &
                         & TRIM(NumberToVString(dof_idx,"*",ERR,ERROR))//"."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
-                  ENDIF !model_idx                  
+                  ENDIF !model_idx
                 ENDDO !dof_idx
               ELSE
-                !One one model is used.          
+                !One one model is used.
                 MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%ptr
                 IF(ASSOCIATED(MODEL)) THEN
                   NUMBER_STATES=MODEL%NUMBER_OF_STATE
@@ -1776,7 +1776,7 @@ CONTAINS
                   DO dof_idx=1,N
                     model_idx=MODELS_DATA(dof_idx)
                     IF(model_idx.GT.0) THEN
-                      
+
                       !Copy CellML data to temporary arrays
                       DO state_idx=1,NUMBER_STATES
                         STATES(state_idx)=STATE_DATA((dof_idx-1)*N+state_idx)
@@ -1784,14 +1784,14 @@ CONTAINS
                       DO parameter_idx=1,NUMBER_PARAMETERS
                         PARAMETERS(parameter_idx)=PARAMETERS_DATA((dof_idx-1)*N+parameter_idx)
                       ENDDO !parameter_idx
-                      
-#ifdef WITH_CELLML                    
+
+#ifdef WITH_CELLML
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES,INTERMEDIATES, &
                         & PARAMETERS)
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
-                      
+
                       !Copy temporary data back to CellML arrays
                       DO intermediate_idx=1,NUMBER_INTERMEDIATES
                         INTERMEDIATE_DATA((dof_idx-1)*N+intermediate_idx)=INTERMEDIATES(intermediate_idx)
@@ -1815,7 +1815,7 @@ CONTAINS
               IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
                 !Mulitple models
 
-#ifdef WITH_CELLML                    
+#ifdef WITH_CELLML
 
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
@@ -1836,24 +1836,24 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1         
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
-                            
+
                           ELSE
                             !We do not have parameters in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                    
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
-                        
+
                           ENDIF
                         ELSE
                           IF(NUMBER_PARAMETERS>0) THEN
@@ -1861,21 +1861,21 @@ CONTAINS
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1         
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
-                            
+
                           ELSE
                             !We do not have intermediates or parameters in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS)
-                            
+
                           ENDIF
                         ENDIF
                       ELSE
@@ -1885,8 +1885,8 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1         
-                            
+                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES, &
                               & INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
@@ -1894,35 +1894,35 @@ CONTAINS
                             !We do not have any states or parameters in the model
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                            
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES, &
                               & INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
-                            
+
                           ENDIF
                         ELSE
                           CALL FlagError("Invalid CellML model - there are no states or intermediates.",ERR,ERROR,*999)
                         ENDIF
                       ENDIF
-                                          
+
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
                         & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//" belonging to dof index "// &
                         & TRIM(NumberToVString(dof_idx,"*",ERR,ERROR))//"."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
-                  ENDIF  !model_idx                
+                  ENDIF  !model_idx
                 ENDDO !dof_idx
 #else
                 CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
-                
+
               ELSE
                 !One model is used.
                 MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%ptr
                 IF(ASSOCIATED(MODEL)) THEN
                   NUMBER_STATES=MODEL%NUMBER_OF_STATE
                   NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
-                  NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS                
+                  NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
 #ifdef WITH_CELLML
                   !Call RHS. Note some models might not have state, rates, intermediate or parameter data so call accordingly
                   !to avoid referencing null pointers
@@ -1939,8 +1939,8 @@ CONTAINS
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
@@ -1955,13 +1955,13 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
                           ENDIF !model_idx
                         ENDDO !dof_idx
-                        
+
                       ENDIF
                     ELSE
                       IF(NUMBER_PARAMETERS>0) THEN
@@ -1969,13 +1969,13 @@ CONTAINS
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
-                            
+
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                           ENDIF !model_idx
@@ -1988,8 +1988,8 @@ CONTAINS
 
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                            
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,& 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,&
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS)
                           ENDIF !model_idx
@@ -2003,12 +2003,12 @@ CONTAINS
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
-                            
+
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-                            
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES, &
                               & INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
@@ -2019,13 +2019,13 @@ CONTAINS
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
-                            
+
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                            
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,time,STATES,RATES, &
                               & INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
-                          ENDIF !model_idx           
+                          ENDIF !model_idx
                         ENDDO !dof_idx
                       ENDIF
                     ELSE
@@ -2048,23 +2048,23 @@ CONTAINS
         ENDIF
       ELSE
         CALL FlagError("CellML environment is not associated.",ERR,ERROR,*999)
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("CellML evaluator solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_CELLML_EVALUATE")
     RETURN
 999 ERRORSEXITS("SOLVER_CELLML_EVALUATE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CELLML_EVALUATE
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a solver 
+  !>Finishes the process of creating a solver
   SUBROUTINE SOLVER_CREATE_FINISH(SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -2090,14 +2090,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -2110,18 +2110,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_ADAMS_MOULTON_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(ADAMS_MOULTON_SOLVER)) THEN
       DEALLOCATE(ADAMS_MOULTON_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_ADAMS_MOULTON_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_ADAMS_MOULTON_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_ADAMS_MOULTON_FINALISE
 
   !
@@ -2138,7 +2138,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_ADAMS_MOULTON_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -2153,17 +2153,17 @@ CONTAINS
         DAE_SOLVER%ADAMS_MOULTON_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%ADAMS_MOULTON_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_ADAMS_MOULTON_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_ADAMS_MOULTON_FINALISE(DAE_SOLVER%ADAMS_MOULTON_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_ADAMS_MOULTON_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_ADAMS_MOULTON_INITIALISE
 
   !
@@ -2186,19 +2186,19 @@ CONTAINS
     ELSE
       CALL FlagError("Adams-Moulton differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_ADAMS_MOULTON_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_ADAMS_MOULTON_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_ADAMS_MOULTON_SOLVE
 
  !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a differential-algebraic equation solver 
+  !>Finishes the process of creating a differential-algebraic equation solver
   SUBROUTINE SOLVER_DAE_CREATE_FINISH(DAE_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -2214,14 +2214,14 @@ CONTAINS
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DAE_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -2234,18 +2234,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_EULER_BACKWARD_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(BACKWARD_EULER_SOLVER)) THEN
       DEALLOCATE(BACKWARD_EULER_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_BACKWARD_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_BACKWARD_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_BACKWARD_FINALISE
 
   !
@@ -2262,7 +2262,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_EULER_BACKWARD_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(EULER_DAE_SOLVER)) THEN
@@ -2277,17 +2277,17 @@ CONTAINS
         EULER_DAE_SOLVER%BACKWARD_EULER_SOLVER%EULER_DAE_SOLVER=>EULER_DAE_SOLVER
         EULER_DAE_SOLVER%BACKWARD_EULER_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_BACKWARD_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_EULER_BACKWARD_FINALISE(EULER_DAE_SOLVER%BACKWARD_EULER_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_EULER_BACKWARD_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_BACKWARD_INITIALISE
 
   !
@@ -2310,12 +2310,12 @@ CONTAINS
     ELSE
       CALL FlagError("Backward Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_BACKWARD_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_BACKWARD_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_BACKWARD_SOLVE
 
   !
@@ -2330,21 +2330,21 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_EULER_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(EULER_SOLVER)) THEN
       CALL SOLVER_DAE_EULER_FORWARD_FINALISE(EULER_SOLVER%FORWARD_EULER_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_DAE_EULER_BACKWARD_FINALISE(EULER_SOLVER%BACKWARD_EULER_SOLVER,ERR,ERROR,*999)
-      CALL SOLVER_DAE_EULER_IMPROVED_FINALISE(EULER_SOLVER%IMPROVED_EULER_SOLVER,ERR,ERROR,*999)      
+      CALL SOLVER_DAE_EULER_IMPROVED_FINALISE(EULER_SOLVER%IMPROVED_EULER_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(EULER_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_FINALISE
 
   !
@@ -2359,18 +2359,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_EULER_FORWARD_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FORWARD_EULER_SOLVER)) THEN
       DEALLOCATE(FORWARD_EULER_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_FORWARD_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_FORWARD_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_FORWARD_FINALISE
 
   !
@@ -2387,7 +2387,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_EULER_FORWARD_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(EULER_DAE_SOLVER)) THEN
@@ -2402,17 +2402,17 @@ CONTAINS
         EULER_DAE_SOLVER%FORWARD_EULER_SOLVER%EULER_DAE_SOLVER=>EULER_DAE_SOLVER
         EULER_DAE_SOLVER%FORWARD_EULER_SOLVER%SOLVER_LIBRARY=SOLVER_CMISS_LIBRARY
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_FORWARD_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_EULER_FORWARD_FINALISE(EULER_DAE_SOLVER%FORWARD_EULER_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_EULER_FORWARD_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_FORWARD_INITIALISE
 
   !
@@ -2438,7 +2438,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_PARAMETERS !<The maximum number of parameter variables per dof.
     REAL(DP), POINTER :: PARAMETERS_DATA(:) !<PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !<The maximum number of intermediate variables per dof.
-    REAL(DP), POINTER :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE    
+    REAL(DP), POINTER :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -2449,7 +2449,7 @@ CONTAINS
       & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),TIME
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FORWARD_EULER_SOLVER)) THEN
@@ -2477,8 +2477,8 @@ CONTAINS
                       DO parameter_idx=1,NUMBER_PARAMETERS
                         PARAMETERS(parameter_idx)=PARAMETERS_DATA((dof_idx-1)*N+parameter_idx)
                       ENDDO !parameter_idx
-                    
-#ifdef WITH_CELLML                    
+
+#ifdef WITH_CELLML
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATES,RATES,INTERMEDIATES, &
                         & PARAMETERS)
 #else
@@ -2492,19 +2492,19 @@ CONTAINS
                       DO state_idx=1,NUMBER_STATES
                         STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)+TIME_INCREMENT*RATES(state_idx)
                       ENDDO !state_idx
-                   
+
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
                         & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//" belonging to dof index "// &
                         & TRIM(NumberToVString(dof_idx,"*",ERR,ERROR))//"."
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
-                  ENDIF !model_idx                  
+                  ENDIF !model_idx
                 ENDDO !dof_idx
                 TIME=TIME+TIME_INCREMENT
-              ENDDO !time              
+              ENDDO !time
             ELSE
-              !One one model is used.          
+              !One one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%ptr
               IF(ASSOCIATED(MODEL)) THEN
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
@@ -2524,13 +2524,13 @@ CONTAINS
                         PARAMETERS(parameter_idx)=PARAMETERS_DATA((dof_idx-1)*N+parameter_idx)
                       ENDDO !parameter_idx
 
-#ifdef WITH_CELLML                    
+#ifdef WITH_CELLML
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATES,RATES,INTERMEDIATES, &
                         & PARAMETERS)
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
-                    
+
                       !Copy temporary data back to CellML arrays
                       DO intermediate_idx=1,NUMBER_INTERMEDIATES
                         INTERMEDIATE_DATA((dof_idx-1)*N+intermediate_idx)=INTERMEDIATES(intermediate_idx)
@@ -2565,33 +2565,33 @@ CONTAINS
                       NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                       NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
 
-#ifdef WITH_CELLML                    
+#ifdef WITH_CELLML
                       !Call RHS. Note some models might not have state, rates, intermediate or parameter data so call accordingly
                       !to avoid referencing null pointers
                       IF(NUMBER_STATES>0) THEN
                         IF(NUMBER_INTERMEDIATES>0) THEN
                           IF(NUMBER_PARAMETERS>0) THEN
                             !We have states, intermediate and parameters for the model
-                     
+
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1         
-                            
+                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATE_DATA(STATE_START_DOF: &
                               & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
                               & PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 
                           ELSE
                             !We do not have parameters in the model
-                     
+
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                            
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATE_DATA(STATE_START_DOF: &
                               & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
                               & PARAMETERS)
@@ -2603,8 +2603,8 @@ CONTAINS
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1         
-                            
+                            PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATE_DATA(STATE_START_DOF: &
                               & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 
@@ -2612,7 +2612,7 @@ CONTAINS
                             !We do not have intermediates or parameters in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                          
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME,STATE_DATA(STATE_START_DOF: &
                               & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
 
@@ -2621,7 +2621,7 @@ CONTAINS
                       ELSE
                         CALL FlagError("Invalid CellML model for integration - there are no states.",ERR,ERROR,*999)
                       ENDIF
-                        
+
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
@@ -2641,7 +2641,7 @@ CONTAINS
                   ENDIF
                 ENDDO !dof_idx
                 TIME=TIME+TIME_INCREMENT
-              ENDDO !time              
+              ENDDO !time
             ELSE
               !One one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%ptr
@@ -2649,7 +2649,7 @@ CONTAINS
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
-#ifdef WITH_CELLML                    
+#ifdef WITH_CELLML
 
                 !Call RHS. Note some models might not have state, rates, intermediate or parameter data so call accordingly
                 !to avoid referencing null pointers
@@ -2657,7 +2657,7 @@ CONTAINS
                   IF(NUMBER_INTERMEDIATES>0) THEN
                     IF(NUMBER_PARAMETERS>0) THEN
                       !We have states, intermediate and parameters for the model
-                      
+
                       TIME=START_TIME
                       DO WHILE(TIME<=END_TIME)
                         DO dof_idx=1,N
@@ -2670,12 +2670,12 @@ CONTAINS
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-                    
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
-                            
+
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
@@ -2694,22 +2694,22 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
-                    
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
-                             
+
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
                         ENDDO !dof_idx
                         TIME=TIME+TIME_INCREMENT
                       ENDDO !time
-                    ENDIF                      
+                    ENDIF
                   ELSE
                     IF(NUMBER_PARAMETERS>0) THEN
                       !We do not have intermediates in the model
-                      
+
                       TIME=START_TIME
                       DO WHILE(TIME<=END_TIME)
                         DO dof_idx=1,N
@@ -2720,11 +2720,11 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-                    
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
-                            
+
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
@@ -2741,11 +2741,11 @@ CONTAINS
 
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                     
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, & 
+
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%ptr,TIME, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS)
-                            
+
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
@@ -2761,7 +2761,7 @@ CONTAINS
 #else
                 CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
-                    
+
               ELSE
                 LOCAL_ERROR="CellML environment model is not associated for model index "// &
                   & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//"."
@@ -2774,16 +2774,16 @@ CONTAINS
         ENDIF
       ELSE
         CALL FlagError("CellML environment is not associated.",ERR,ERROR,*999)
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Forward Euler solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DAE_EULER_FORWARD_INTEGRATE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE
 
   !
@@ -2810,7 +2810,7 @@ CONTAINS
     TYPE(FIELD_TYPE), POINTER :: MODELS_FIELD,STATE_FIELD,PARAMETERS_FIELD,INTERMEDIATE_FIELD
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DAE_EULER_FORWARD_SOLVE",ERR,ERROR,*999)
 
     NULLIFY(MODELS_DATA)
@@ -2834,21 +2834,21 @@ CONTAINS
             IF(ASSOCIATED(CELLML_EQUATIONS)) THEN
               DO cellml_idx=1,CELLML_EQUATIONS%NUMBER_OF_CELLML_ENVIRONMENTS
                 CELLML_ENVIRONMENT=>CELLML_EQUATIONS%CELLML_ENVIRONMENTS(cellml_idx)%ptr
-                IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN                  
+                IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN
                   CELLML_MODELS_FIELD=>CELLML_ENVIRONMENT%MODELS_FIELD
                   IF(ASSOCIATED(CELLML_MODELS_FIELD)) THEN
                     MODELS_FIELD=>CELLML_MODELS_FIELD%MODELS_FIELD
                     IF(ASSOCIATED(MODELS_FIELD)) THEN
 
 !!TODO: Maybe move this getting of fields earlier up the DAE solver chain? For now keep here.
-                      
+
                       !Make sure CellML fields have been updated to the current value of any mapped fields
                       CALL CELLML_FIELD_TO_CELLML_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
                       CALL Field_VariableGet(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
                       CALL FIELD_PARAMETER_SET_DATA_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                         & MODELS_DATA,ERR,ERROR,*999)
-                      
+
                       !Get the state information if this environment has any.
                       IF(ASSOCIATED(CELLML_ENVIRONMENT%STATE_FIELD)) THEN
                         STATE_FIELD=>CELLML_ENVIRONMENT%STATE_FIELD%STATE_FIELD
@@ -2857,7 +2857,7 @@ CONTAINS
                             & STATE_DATA,ERR,ERROR,*999)
                         ENDIF
                       ENDIF
-                      
+
                       !Get the parameters information if this environment has any.
                       IF(ASSOCIATED(CELLML_ENVIRONMENT%PARAMETERS_FIELD)) THEN
                         PARAMETERS_FIELD=>CELLML_ENVIRONMENT%PARAMETERS_FIELD%PARAMETERS_FIELD
@@ -2866,13 +2866,13 @@ CONTAINS
                             & PARAMETERS_DATA,ERR,ERROR,*999)
                         ENDIF
                       ENDIF
-                      
+
                       !Get the intermediate information if this environment has any.
                       IF(ASSOCIATED(CELLML_ENVIRONMENT%INTERMEDIATE_FIELD)) THEN
                         INTERMEDIATE_FIELD=>CELLML_ENVIRONMENT%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD
                         IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                           CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                            & INTERMEDIATE_DATA,ERR,ERROR,*999)                            
+                            & INTERMEDIATE_DATA,ERR,ERROR,*999)
                         ENDIF
                       ENDIF
 
@@ -2882,20 +2882,20 @@ CONTAINS
                         & CELLML_ENVIRONMENT%MODELS_FIELD%ONLY_ONE_MODEL_INDEX,MODELS_DATA,CELLML_ENVIRONMENT% &
                         & MAXIMUM_NUMBER_OF_STATE,STATE_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_PARAMETERS, &
                         & PARAMETERS_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR,ERROR,*999)
-                      
+
                       !Restore field data
                       CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                         & MODELS_DATA,ERR,ERROR,*999)
                       IF(ASSOCIATED(STATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(STATE_FIELD,FIELD_U_VARIABLE_TYPE, &
-                        & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)                    
+                        & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)
                       IF(ASSOCIATED(PARAMETERS_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(PARAMETERS_FIELD, &
-                        & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)                    
+                        & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(INTERMEDIATE_FIELD, &
                         & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)
-                      
+
                       !Make sure fields have been updated to the current value of any mapped CellML fields
                       CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
-                      
+
                     ELSE
                       LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                         & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."
@@ -2927,12 +2927,12 @@ CONTAINS
     ELSE
       CALL FlagError("Forward Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_FORWARD_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_FORWARD_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_FORWARD_SOLVE
 
   !
@@ -2947,18 +2947,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_EULER_IMPROVED_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(IMPROVED_EULER_SOLVER)) THEN
       DEALLOCATE(IMPROVED_EULER_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_IMPROVED_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_IMPROVED_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_IMPROVED_FINALISE
 
   !
@@ -2975,7 +2975,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_EULER_IMPROVED_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(EULER_DAE_SOLVER)) THEN
@@ -2990,17 +2990,17 @@ CONTAINS
         EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER=>EULER_DAE_SOLVER
         EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_IMPROVED_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_EULER_IMPROVED_FINALISE(EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_EULER_IMPROVED_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_IMPROVED_INITIALISE
 
   !
@@ -3023,12 +3023,12 @@ CONTAINS
     ELSE
       CALL FlagError("Improved Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_IMPROVED_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_IMPROVED_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_IMPROVED_SOLVE
 
   !
@@ -3045,7 +3045,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_EULER_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -3067,13 +3067,13 @@ CONTAINS
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_EULER_FINALISE(DAE_SOLVER%EULER_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_EULER_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_INITIALISE
 
   !
@@ -3127,12 +3127,12 @@ CONTAINS
     ELSE
       CALL FlagError("Euler DAE solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DAE_EULER_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_LIBRARY_TYPE_GET
 
   !
@@ -3213,12 +3213,12 @@ CONTAINS
     ELSE
       CALL FlagError("The Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DAE_EULER_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_LIBRARY_TYPE_SET
 
   !
@@ -3253,30 +3253,30 @@ CONTAINS
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_SOLVE
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns the solve type for an Euler differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_EULER_SOLVER_TYPE_GET(SOLVER,DAE_EULER_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the Euler differential equation solver to get type for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the Euler differential equation solver to get type for
     INTEGER(INTG), INTENT(OUT) :: DAE_EULER_TYPE !<On return, the type of Euler solver for the Euler differential-algebraic equation to set \see SOLVER_ROUTINES_EulerDAESolverTypes,SOLVER_ROUTINES.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER
-     
+
     ENTERS("SOLVER_DAE_EULER_SOLVER_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -3307,23 +3307,23 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_SOLVER_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_SOLVER_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_SOLVER_TYPE_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Sets/changes the solve type for an Euler differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_EULER_SOLVER_TYPE_SET(SOLVER,DAE_EULER_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the Euler differential equation solver to set type for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the Euler differential equation solver to set type for
     INTEGER(INTG), INTENT(IN) :: DAE_EULER_TYPE !<The type of Euler solver for the Euler differential-algebraic equation to set \see SOLVER_ROUTINES_EulerDAESolverTypes,SOLVER_ROUTINES.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -3331,7 +3331,7 @@ CONTAINS
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-     
+
     ENTERS("SOLVER_DAE_EULER_SOLVER_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -3390,12 +3390,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EULER_SOLVER_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EULER_SOLVER_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EULER_SOLVER_TYPE_SET
 
   !
@@ -3423,12 +3423,12 @@ CONTAINS
       CALL SOLVER_DAE_EXTERNAL_FINALISE(DAE_SOLVER%EXTERNAL_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(DAE_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_FINALISE
 
   !
@@ -3476,13 +3476,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_DAE_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_FINALISE(SOLVER%DAE_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_INITIALISE
 
   !
@@ -3562,12 +3562,12 @@ CONTAINS
     ELSE
       CALL FlagError("DAE solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DAE_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_LIBRARY_TYPE_GET
 
   !
@@ -3749,12 +3749,12 @@ CONTAINS
     ELSE
       CALL FlagError("DAE solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DAE_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_LIBRARY_TYPE_SET
 
   !
@@ -3769,18 +3769,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_BDF_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(BDF_SOLVER)) THEN
       DEALLOCATE(BDF_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_BDF_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_BDF_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_BDF_FINALISE
 
   !
@@ -3797,7 +3797,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_BDF_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -3811,17 +3811,17 @@ CONTAINS
         DAE_SOLVER%BDF_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%BDF_SOLVER%SOLVER_LIBRARY=SOLVER_PETSC_LIBRARY
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_BDF_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_BDF_FINALISE(DAE_SOLVER%BDF_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_BDF_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_BDF_INITIALISE
   !
   !================================================================================================================================
@@ -3843,12 +3843,12 @@ CONTAINS
       IF(ALLOCATED(ctx%ratesIndices)) DEALLOCATE(ctx%ratesIndices)
       DEALLOCATE(ctx)
     ENDIF
-         
+
     EXITS("Solver_DAECellMLPETScContextFinalise")
     RETURN
 999 ERRORSEXITS("Solver_DAECellMLPETScContextFinalise",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_DAECellMLPETScContextFinalise
 
 
@@ -3866,7 +3866,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("Solver_DAECellMLPETScContextInitialise",err,error,*998)
 
     IF(ASSOCIATED(ctx)) THEN
@@ -3881,13 +3881,13 @@ CONTAINS
       NULLIFY(ctx%rates)
       ctx%dofIdx=0
     ENDIF
-         
+
     EXITS("Solver_DAECellMLPETScContextInitialise")
     RETURN
 999 CALL Solver_DAECellMLPETScContextFinalise(ctx,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Solver_DAECellMLPETScContextInitialise",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_DAECellMLPETScContextInitialise
   !
   !================================================================================================================================
@@ -3906,7 +3906,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: arrayIdx,dummyErr
     TYPE(VARYING_STRING) :: dummyError
-   
+
     ENTERS("Solver_DAECellMLPETScContextSet",ERR,ERROR,*998)
 
     IF(ASSOCIATED(ctx)) THEN
@@ -3926,17 +3926,17 @@ CONTAINS
         ENDIF
       ELSE
         CALL FlagError("Solver is not associated.",err,error,*998)
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("ctx is not associated.",err,error,*998)
     ENDIF
-         
+
     EXITS("Solver_DAECellMLPETScContextSet")
     RETURN
 999 CALL Solver_DAECellMLPETScContextFinalise(ctx,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Solver_DAECellMLPETScContextSet",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE Solver_DAECellMLPETScContextSet
 
   !
@@ -3961,7 +3961,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_PARAMETERS !<The maximum number of parameter variables per dof.
     REAL(DP), POINTER, INTENT(INOUT) :: PARAMETERS_DATA(:) !<PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !<The maximum number of intermediate variables per dof.
-    REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE    
+    REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -3976,8 +3976,8 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(PetscVecType) :: PETSC_RATES
     EXTERNAL :: Problem_SolverDAECellMLRHSPetsc
-  
-    
+
+
     ENTERS("SOLVER_DAE_BDF_INTEGRATE",ERR,ERROR,*999)
 
     NULLIFY(CTX)
@@ -3985,15 +3985,15 @@ CONTAINS
     IF(ASSOCIATED(BDF_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
         IF(ASSOCIATED(CELLML%MODELS_FIELD)) THEN
-          SELECT CASE(BDF_SOLVER%SOLVER_LIBRARY)   
+          SELECT CASE(BDF_SOLVER%SOLVER_LIBRARY)
           CASE(SOLVER_PETSC_LIBRARY)
-            CALL FIELD_DOF_ORDER_TYPE_GET(CELLML%MODELS_FIELD%MODELS_FIELD, & 
+            CALL FIELD_DOF_ORDER_TYPE_GET(CELLML%MODELS_FIELD%MODELS_FIELD, &
               & FIELD_U_VARIABLE_TYPE,DOF_ORDER_TYPE,ERR,ERROR,*999)
             IF(DOF_ORDER_TYPE==FIELD_SEPARATED_COMPONENT_DOF_ORDER) THEN
-              
+
             ELSE !dof component order is contiguous
               IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
-                
+
               ELSE !only one model
                 MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%ptr
                 IF(ASSOCIATED(MODEL)) THEN
@@ -4003,11 +4003,11 @@ CONTAINS
                   ALLOCATE(RATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
                   ALLOCATE(ARRAY_INDICES(0:NUMBER_STATES-1),STAT=ERR)
                   ARRAY_INDICES = [(array_idx,array_idx=0,(NUMBER_STATES-1))]
-                  
-                  
+
+
                   !initialize context for petsc solving.
                   CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999)
-                  DO dof_idx=1,N     
+                  DO dof_idx=1,N
                     model_idx = MODELS_DATA(dof_idx)
                     IF(model_idx>0) THEN !if model is assigned to dof
                       !access the state field data
@@ -4016,21 +4016,21 @@ CONTAINS
                       DO state_idx=1,NUMBER_STATES
                         STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
                       ENDDO
-                      
+
                       !create PETSC states vector to initialize solver
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
                         & NUMBER_STATES,PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       !CALL Petsc_VecSetSizes(PETSC_CURRENT_STATES, &
                       !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
                       !CALL Petsc_VecSetFromOptions(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      
+
                       !create PETSC rates vector to return values from evaluating rhs routine
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
                         & NUMBER_STATES,PETSC_RATES,ERR,ERROR,*999)
                       !CALL Petsc_VecSetSizes(PETSC_RATES, &
                       !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
                       !CALL Petsc_VecSetFromOptions(PETSC_RATES,ERR,ERROR,*999)
-                      
+
                       !Set up PETSC TS context for sundials BDF solver
                       CALL Petsc_TSCreate(PETSC_COMM_SELF,ts,ERR,ERROR,*999)
                       CALL Petsc_TSSetProblemType(ts,PETSC_TS_NONLINEAR,ERR,ERROR,*999)
@@ -4045,28 +4045,28 @@ CONTAINS
                       CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       CALL Petsc_TSSetSolution(TS,PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      
+
                       !set up the time data
                       CALL Petsc_TSSetInitialTimeStep(ts,START_TIME,TIME_INCREMENT,ERR,ERROR,*999)
                       CALL Petsc_TSSetDuration(ts,5000,END_TIME,ERR,ERROR,*999)
                       CALL Petsc_TSSetExactFinalTime(ts,.TRUE.,ERR,ERROR,*999)
-                      
+
                       IF(DIAGNOSTICS1) THEN
                         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  DAE START TIME = ",START_TIME,ERR,ERROR,*999)
                         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  DAE END TIME = ",END_TIME,ERR,ERROR,*999)
                       ENDIF
-                      
-                      !set rhs function and pass through the cellml model context 
+
+                      !set rhs function and pass through the cellml model context
                       CALL Solver_DAECellMLPETScContextSet(ctx,BDF_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
                       CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
-                      
-                      CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999) 
+
+                      CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999)
                       IF(DIAGNOSTICS1) THEN
                         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  FINAL SOLVED TIME = ", &
                           & FINALSOLVEDTIME,ERR,ERROR,*999)
                       ENDIF
-                      
-                      
+
+
                       !update the states to new integrated values
                       CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
@@ -4074,17 +4074,17 @@ CONTAINS
                         & NUMBER_STATES, ARRAY_INDICES, &
                         & STATES_TEMP, &
                         & ERR,ERROR,*999)
-                      
-                      DO state_idx=1,NUMBER_STATES                      
-                        STATE_DATA(STATE_START_DOF+state_idx-1)=  & 
+
+                      DO state_idx=1,NUMBER_STATES
+                        STATE_DATA(STATE_START_DOF+state_idx-1)=  &
                           & STATES_TEMP(state_idx-1)
                       ENDDO
-                      CALL Petsc_TSFinalise(TS,ERR,ERROR,*999) 
+                      CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
                     ENDIF !model_idx
                     CALL Petsc_VecDestroy(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                     CALL Petsc_VecDestroy(PETSC_RATES,ERR,ERROR,*999)
                   ENDDO !dof_idx
-                  
+
                 ELSE
                   CALL FlagError("Cellml model is not associated.",ERR,ERROR,*999)
                 ENDIF
@@ -4104,9 +4104,9 @@ CONTAINS
     ELSE
       CALL FlagError("BDF solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DAE_BDF_INTEGRATE")
-    RETURN 
+    RETURN
 999 ERRORSEXITS("SOLVER_DAE_BDF_INTEGRATE",ERR,ERROR)
     RETURN 1
 
@@ -4152,21 +4152,21 @@ CONTAINS
           IF(ASSOCIATED(CELLML_EQUATIONS)) THEN
             DO cellml_idx=1,CELLML_EQUATIONS%NUMBER_OF_CELLML_ENVIRONMENTS
               CELLML_ENVIRONMENT=>CELLML_EQUATIONS%CELLML_ENVIRONMENTS(cellml_idx)%ptr
-              IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN                  
+              IF(ASSOCIATED(CELLML_ENVIRONMENT)) THEN
                 CELLML_MODELS_FIELD=>CELLML_ENVIRONMENT%MODELS_FIELD
                 IF(ASSOCIATED(CELLML_MODELS_FIELD)) THEN
                   MODELS_FIELD=>CELLML_MODELS_FIELD%MODELS_FIELD
                   IF(ASSOCIATED(MODELS_FIELD)) THEN
 
 !!TODO: Maybe move this getting of fields earlier up the DAE solver chain? For now keep here.
-                      
+
                       !Make sure CellML fields have been updated to the current value of any mapped fields
                     CALL CELLML_FIELD_TO_CELLML_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
                     CALL Field_VariableGet(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
                     CALL FIELD_PARAMETER_SET_DATA_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                       & MODELS_DATA,ERR,ERROR,*999)
-                      
+
                       !Get the state information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%STATE_FIELD)) THEN
                       STATE_FIELD=>CELLML_ENVIRONMENT%STATE_FIELD%STATE_FIELD
@@ -4175,7 +4175,7 @@ CONTAINS
                           & STATE_DATA,ERR,ERROR,*999)
                       ENDIF
                     ENDIF
-                      
+
                     !Get the parameters information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%PARAMETERS_FIELD)) THEN
                       PARAMETERS_FIELD=>CELLML_ENVIRONMENT%PARAMETERS_FIELD%PARAMETERS_FIELD
@@ -4184,16 +4184,16 @@ CONTAINS
                           & PARAMETERS_DATA,ERR,ERROR,*999)
                       ENDIF
                     ENDIF
-                      
+
                     !Get the intermediate information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%INTERMEDIATE_FIELD)) THEN
                       INTERMEDIATE_FIELD=>CELLML_ENVIRONMENT%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                         CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                          & INTERMEDIATE_DATA,ERR,ERROR,*999)                            
+                          & INTERMEDIATE_DATA,ERR,ERROR,*999)
                       ENDIF
                     ENDIF
-                    
+
                     !Integrate these CellML equations
 
                     CALL SOLVER_DAE_BDF_INTEGRATE(BDF_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
@@ -4201,20 +4201,20 @@ CONTAINS
                       & CELLML_ENVIRONMENT%MODELS_FIELD%ONLY_ONE_MODEL_INDEX,MODELS_DATA,CELLML_ENVIRONMENT% &
                       & MAXIMUM_NUMBER_OF_STATE,STATE_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_PARAMETERS, &
                       & PARAMETERS_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR,ERROR,*999)
-                      
+
                     !Restore field data
                     CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                       & MODELS_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(STATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(STATE_FIELD,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)                    
+                      & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(PARAMETERS_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(PARAMETERS_FIELD, &
-                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)                    
+                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(INTERMEDIATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(INTERMEDIATE_FIELD, &
                       & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)
-                      
+
                     !Make sure fields have been updated to the current value of any mapped CellML fields
                     CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
-                                        
+
                   ELSE
                     LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                       & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."
@@ -4243,14 +4243,14 @@ CONTAINS
     ELSE
       CALL FlagError("BDF differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_BDF_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_BDF_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_BDF_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -4263,18 +4263,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_CRANK_NICOLSON_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(CRANK_NICOLSON_SOLVER)) THEN
       DEALLOCATE(CRANK_NICOLSON_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_CRANK_NICOLSON_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_CRANK_NICOLSON_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_CRANK_NICOLSON_FINALISE
 
   !
@@ -4291,7 +4291,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_CRANK_NICOLSON_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -4306,17 +4306,17 @@ CONTAINS
         DAE_SOLVER%CRANK_NICOLSON_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%CRANK_NICOLSON_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_CRANK_NICOLSON_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_CRANK_NICOLSON_FINALISE(DAE_SOLVER%CRANK_NICOLSON_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_CRANK_NICOLSON_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_CRANK_NICOLSON_INITIALISE
 
   !
@@ -4339,14 +4339,14 @@ CONTAINS
     ELSE
       CALL FlagError("Crank-Nicolson differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_CRANK_NICOLSON_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_CRANK_NICOLSON_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_CRANK_NICOLSON_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -4359,18 +4359,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_EXTERNAL_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(EXTERNAL_SOLVER)) THEN
       DEALLOCATE(EXTERNAL_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EXTERNAL_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EXTERNAL_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EXTERNAL_FINALISE
 
   !
@@ -4387,7 +4387,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_EXTERNAL_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -4401,17 +4401,17 @@ CONTAINS
         !Initialise
         DAE_SOLVER%EXTERNAL_SOLVER%DAE_SOLVER=>DAE_SOLVER
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EXTERNAL_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_EXTERNAL_FINALISE(DAE_SOLVER%EXTERNAL_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_EXTERNAL_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_EXTERNAL_INITIALISE
 
   !
@@ -4457,7 +4457,7 @@ CONTAINS
                 IF(ASSOCIATED(CELLML_ENVIRONMENT%MODELS_FIELD)) THEN
                   MODELS_FIELD=>CELLML_ENVIRONMENT%MODELS_FIELD%MODELS_FIELD
                   IF(ASSOCIATED(MODELS_FIELD)) THEN
-                                           
+
                     !Make sure CellML fields have been updated to the current value of any mapped fields
                     CALL CELLML_FIELD_TO_CELLML_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
@@ -4465,7 +4465,7 @@ CONTAINS
                     CALL Field_VariableGet(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
                     CALL FIELD_PARAMETER_SET_DATA_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                       & MODELS_DATA,ERR,ERROR,*999)
-                    
+
                     !Get the state information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%STATE_FIELD)) THEN
                       STATE_FIELD=>CELLML_ENVIRONMENT%STATE_FIELD%STATE_FIELD
@@ -4478,7 +4478,7 @@ CONTAINS
                     ELSE
                       NULLIFY(STATE_DATA)
                     ENDIF
-                    
+
                     !Get the parameters information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%PARAMETERS_FIELD)) THEN
                       PARAMETERS_FIELD=>CELLML_ENVIRONMENT%PARAMETERS_FIELD%PARAMETERS_FIELD
@@ -4491,13 +4491,13 @@ CONTAINS
                     ELSE
                       NULLIFY(PARAMETERS_DATA)
                     ENDIF
-                    
+
                     !Get the intermediate information if this environment has any.
                     IF(ASSOCIATED(CELLML_ENVIRONMENT%INTERMEDIATE_FIELD)) THEN
                       INTERMEDIATE_FIELD=>CELLML_ENVIRONMENT%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                         CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                          & INTERMEDIATE_DATA,ERR,ERROR,*999)                            
+                          & INTERMEDIATE_DATA,ERR,ERROR,*999)
                       ELSE
                         NULLIFY(INTERMEDIATE_DATA)
                       ENDIF
@@ -4515,20 +4515,20 @@ CONTAINS
                       ERROR="Error from external solver integrate."
                       GOTO 999
                     ENDIF
-                      
+
                     !Restore field data
                     CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                      & MODELS_DATA,ERR,ERROR,*999)                    
+                      & MODELS_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(STATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(STATE_FIELD,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)                    
+                      & FIELD_VALUES_SET_TYPE,STATE_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(PARAMETERS_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(PARAMETERS_FIELD, &
-                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)                    
+                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,PARAMETERS_DATA,ERR,ERROR,*999)
                     IF(ASSOCIATED(INTERMEDIATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(INTERMEDIATE_FIELD, &
-                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)                    
-                    
+                      & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)
+
                     !Make sure fields have been updated to the current value of any mapped CellML fields
                     CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
-                    
+
                   ELSE
                     LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                       & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."
@@ -4557,14 +4557,14 @@ CONTAINS
     ELSE
       CALL FlagError("External Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_EXTERNAL_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_EXTERNAL_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_EXTERNAL_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -4596,10 +4596,10 @@ CONTAINS
       & stateStartDOF
     REAL(DP) :: intermediates(MAX(1,intermediateDataOffset)),parameters(MAX(1,parameterDataOffset)),rates(MAX(1,rateDataOffset)), &
       & states(MAX(1,stateDataOffset))
-    
+
     ENTERS("Solver_DAECellMLRHSEvaluate",err,error,*999)
 
-#ifdef WITH_CELLML                    
+#ifdef WITH_CELLML
 
     IF(ASSOCIATED(model)) THEN
       numberOfStates=model%NUMBER_OF_STATE
@@ -4617,301 +4617,301 @@ CONTAINS
       ENDIF
       IF(stateDataOffset>1.OR.numberOfStates==0) THEN
         !State data is not contiguous or there are no states
-        
+
         !Copy state data to temporary array
         DO stateIdx=1,numberOfStates
           states(stateIdx)=stateData((stateStartIdx-1)*stateDataOffset+stateIdx)
         ENDDO !stateIdx
-        
+
         IF(parameterDataOffset>1.OR.numberOfParameters==0) THEN
           !Parameter data is not contiguous or there are no parameters
-          
+
           !Copy parameter data to temporary array
           DO parameterIdx=1,numberOfParameters
             parameters(parameterIdx)=parameterData((parameterStartIdx-1)*parameterDataOffset+parameterIdx)
           ENDDO !parameterIdx
-          
+
           IF(intermediateDataOffset>1.OR.numberOfIntermediates==0) THEN
             !Intermediate data is not contiguous or there are no intermediates
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-                
-              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rates,intermediates,parameters)          
-              
+
+              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rates,intermediates,parameters)
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-                
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rateData(rateStartDOF:rateEndDOF), &
-                & intermediates,parameters)          
-              
+                & intermediates,parameters)
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
             ENDIF
-            
+
           ELSE
             !Intermediate data is contiguous
-            
+
             intermediateStartDOF=(intermediateStartIdx-1)*intermediateDataOffset+1
             intermediateEndDOF=intermediateStartDOF+numberOfIntermediates-1
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-                
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rates, &
-                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)          
-              
+                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rateData(rateStartDOF:rateEndDOF), &
-                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)          
-              
+                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)
+
             ENDIF
           ENDIF
         ELSE
           !Parameters data is contiguous
-          
+
           parameterStartDOF=(parameterStartIdx-1)*parameterDataOffset+1
           parameterEndDOF=parameterStartDOF+numberOfParameters-1
-          
+
           IF(intermediateDataOffset>1.OR.numberOfIntermediates==0) THEN
             !Intermediate data is not contiguous or there are no intermediates
-              
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rates,intermediates, &
-                & parameters(parameterStartDOF:parameterEndDOF))     
-              
+                & parameters(parameterStartDOF:parameterEndDOF))
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-                
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-                
+
             ELSE
               !Rates data is contiguous
-                
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rateData(rateStartDOF:rateEndDOF), &
-                & intermediates,parameters(parameterStartDOF:parameterEndDOF))          
-              
+                & intermediates,parameters(parameterStartDOF:parameterEndDOF))
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
             ENDIF
-                
+
           ELSE
             !Intermediate data is contiguous
-            
+
             intermediateStartDOF=(intermediateStartIdx-1)*intermediateDataOffset+1
             intermediateEndDOF=intermediateStartDOF+numberOfIntermediates-1
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rates, &
                 & intermediateData(intermediateStartDOF:intermediateEndDOF), &
                 & parameters(parameterStartDOF:parameterEndDOF))
-              
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states,rateData(rateStartDOF:rateEndDOF), &
                 & intermediateData(intermediateStartDOF:intermediateEndDOF), &
                 & parameters(parameterStartDOF:parameterEndDOF))
-              
+
             ENDIF
           ENDIF
         ENDIF
       ELSE
         !State data is contiguous
-        
+
         stateStartDOF=(stateStartIdx-1)*stateDataOffset+1
         stateEndDOF=stateStartDOF+numberOfStates-1
-        
+
         IF(parameterDataOffset>1.OR.numberOfParameters==0) THEN
           !Parameter data is not contiguous or there are no parameters
-          
+
           !Copy parameter data to temporary array
           DO parameterIdx=1,numberOfParameters
             parameters(parameterIdx)=parameterData((parameterStartIdx-1)*parameterDataOffset+parameterIdx)
           ENDDO !parameterIdx
-          
+
           IF(intermediateDataOffset>1.OR.numberOfIntermediates==0) THEN
             !Intermediate data is not contiguous or there are no intermediates
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
-                & rates,intermediates,parameters)          
-              
+                & rates,intermediates,parameters)
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
-                & rateData(rateStartDOF:rateEndDOF),intermediates,parameters)          
-              
+                & rateData(rateStartDOF:rateEndDOF),intermediates,parameters)
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
             ENDIF
-            
+
           ELSE
             !Intermediate data is contiguous
-            
+
             intermediateStartDOF=(intermediateStartIdx-1)*intermediateDataOffset+1
             intermediateEndDOF=intermediateStartDOF+numberOfIntermediates-1
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF),rates, &
-                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)          
-              
+                & intermediateData(intermediateStartDOF:intermediateEndDOF),parameters)
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
                 & rateData(rateStartDOF:rateEndDOF),intermediateData(intermediateStartDOF:intermediateEndDOF), &
                 & parameters)
-              
+
             ENDIF
           ENDIF
         ELSE
           !Parameters data is contiguous
-          
+
           parameterStartDOF=(parameterStartIdx-1)*parameterDataOffset+1
           parameterEndDOF=parameterStartDOF+numberOfParameters-1
-          
+
           IF(intermediateDataOffset>1.OR.numberOfIntermediates==0) THEN
             !Intermediate data is not contiguous or there are no intermediates
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
-                & rates,intermediates,parameters(parameterStartDOF:parameterEndDOF))     
-              
+                & rates,intermediates,parameters(parameterStartDOF:parameterEndDOF))
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-                
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-              
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
-                & rateData(rateStartDOF:rateEndDOF),intermediates,parameters(parameterStartDOF:parameterEndDOF))          
-              
+                & rateData(rateStartDOF:rateEndDOF),intermediates,parameters(parameterStartDOF:parameterEndDOF))
+
               !Copy intermediate data from temporary array
               DO intermediateIdx=1,numberOfIntermediates
                 intermediateData((intermediateStartIdx-1)*intermediateDataOffset+intermediateIdx)=intermediates(intermediateIdx)
               ENDDO !intermediateIdx
-              
+
             ENDIF
-            
+
           ELSE
             !Intermediate data is contiguous
-            
+
             intermediateStartDOF=(intermediateStartIdx-1)*intermediateDataOffset+1
             intermediateEndDOF=intermediateStartDOF+numberOfIntermediates-1
-            
+
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
-                
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
                 & rates,intermediateData(intermediateStartDOF:intermediateEndDOF), &
                 & parameters(parameterStartDOF:parameterEndDOF))
-              
+
               !Copy rate data from temporary array
               DO rateIdx=1,numberOfStates
                 rateData((rateStartIdx-1)*rateDataOffset+rateIdx)=rates(rateIdx)
               ENDDO !rateIdx
-              
+
             ELSE
               !Rates data is contiguous
-                
+
               rateStartDOF=(rateStartIdx-1)*rateDataOffset+1
               rateEndDOF=rateStartDOF+numberOfStates-1
-              
+
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
                 & rateData(rateStartDOF:rateEndDOF),intermediateData(intermediateStartDOF:intermediateEndDOF), &
                 & parameters(parameterStartDOF:parameterEndDOF))
-              
+
             ENDIF
           ENDIF
         ENDIF
@@ -4919,16 +4919,16 @@ CONTAINS
     ELSE
       CALL FlagError("Model is not associated.",err,error,*999)
     ENDIF
-    
+
 #else
     CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",err,error,*999)
-#endif 
-        
+#endif
+
     EXITS("Solver_DAECellMLRHSEvaluate")
     RETURN
 999 ERRORSEXITS("Solver_DAECellMLRHSEvaluate",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_DAECellMLRHSEvaluate
 
   !
@@ -4943,18 +4943,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_RUNGE_KUTTA_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(RUNGE_KUTTA_SOLVER)) THEN
       DEALLOCATE(RUNGE_KUTTA_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUNGE_KUTTA_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_RUNGE_KUTTA_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_RUNGE_KUTTA_FINALISE
 
   !
@@ -4971,7 +4971,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_RUNGE_KUTTA_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -4985,17 +4985,17 @@ CONTAINS
         DAE_SOLVER%RUNGE_KUTTA_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%RUNGE_KUTTA_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUNGE_KUTTA_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_RUNGE_KUTTA_FINALISE(DAE_SOLVER%RUNGE_KUTTA_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_RUNGE_KUTTA_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_RUNGE_KUTTA_INITIALISE
 
   !
@@ -5018,14 +5018,14 @@ CONTAINS
     ELSE
       CALL FlagError("Runge-Kutta differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUNGE_KUTTA_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_RUNGE_KUTTA_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_RUNGE_KUTTA_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -5038,18 +5038,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("SOLVER_DAE_RUSH_LARSON_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(RUSH_LARSON_SOLVER)) THEN
       DEALLOCATE(RUSH_LARSON_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUSH_LARSON_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_RUSH_LARSON_FINALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_RUSH_LARSON_FINALISE
 
   !
@@ -5066,7 +5066,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_DAE_RUSH_LARSON_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -5080,17 +5080,17 @@ CONTAINS
         DAE_SOLVER%RUSH_LARSON_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%RUSH_LARSON_SOLVER%SOLVER_LIBRARY=0
         !Defaults
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUSH_LARSON_INITIALISE")
     RETURN
 999 CALL SOLVER_DAE_RUSH_LARSON_FINALISE(DAE_SOLVER%RUSH_LARSON_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_DAE_RUSH_LARSON_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DAE_RUSH_LARSON_INITIALISE
 
   !
@@ -5113,12 +5113,12 @@ CONTAINS
     ELSE
       CALL FlagError("Rush-Larson differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_RUSH_LARSON_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_RUSH_LARSON_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_RUSH_LARSON_SOLVE
 
   !
@@ -5153,7 +5153,7 @@ CONTAINS
         CASE(SOLVER_DAE_RUNGE_KUTTA)
           CALL SOLVER_DAE_RUNGE_KUTTA_SOLVE(DAE_SOLVER%RUNGE_KUTTA_SOLVER,ERR,ERROR,*999)
         CASE(SOLVER_DAE_ADAMS_MOULTON)
-          CALL SOLVER_DAE_ADAMS_MOULTON_SOLVE(DAE_SOLVER%ADAMS_MOULTON_SOLVER,ERR,ERROR,*999)        
+          CALL SOLVER_DAE_ADAMS_MOULTON_SOLVE(DAE_SOLVER%ADAMS_MOULTON_SOLVER,ERR,ERROR,*999)
         CASE(SOLVER_DAE_BDF)
           CALL SOLVER_DAE_BDF_SOLVE(DAE_SOLVER%BDF_SOLVER,ERR,ERROR,*999)
         CASE(SOLVER_DAE_RUSH_LARSON)
@@ -5192,7 +5192,7 @@ CONTAINS
                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                ENDIF
              ENDDO !cellml_idx
-              
+
            ELSE
              CALL FlagError("Solver CellML equations is not associated.",ERR,ERROR,*999)
            ENDIF
@@ -5202,33 +5202,33 @@ CONTAINS
          ENDIF
      ELSE
         CALL FlagError("Differential-algebraic solver solver is not associated.",ERR,ERROR,*999)
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_SOLVE
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns the solve type for an differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_SOLVER_TYPE_GET(SOLVER,DAE_SOLVE_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to get the differential-algebraic equation solver type for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to get the differential-algebraic equation solver type for
     INTEGER(INTG), INTENT(OUT) :: DAE_SOLVE_TYPE !<On return, the type of solver for the differential-algebraic equation to set \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
-     
+
     ENTERS("SOLVER_DAE_SOLVER_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -5249,30 +5249,30 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_SOLVER_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_SOLVER_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_SOLVER_TYPE_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Sets/changes the solve type for an differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_SOLVER_TYPE_SET(SOLVER,DAE_SOLVE_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set the differential-algebraic equation solver type for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set the differential-algebraic equation solver type for
     INTEGER(INTG), INTENT(IN) :: DAE_SOLVE_TYPE !<The type of solver for the differential-algebraic equation to set \see SOLVER_ROUTINES_DAESolverTypes,SOLVER_ROUTINES.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-     
+
     ENTERS("SOLVER_DAE_SOLVER_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -5337,12 +5337,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_SOLVER_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_SOLVER_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_SOLVER_TYPE_SET
 
   !
@@ -5385,12 +5385,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_TIMES_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_TIMES_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_TIMES_SET
 
   !
@@ -5402,7 +5402,7 @@ CONTAINS
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the differential-algebraic equation solver to set the times for
-    REAL(DP), INTENT(IN) :: TIME_STEP !<The (initial) time step for the differential-algebraic equation solver    
+    REAL(DP), INTENT(IN) :: TIME_STEP !<The (initial) time step for the differential-algebraic equation solver
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -5431,12 +5431,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DAE_TIME_STEP_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DAE_TIME_STEP_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DAE_TIME_STEP_SET
 
   !
@@ -5459,19 +5459,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_DESTROY")
     RETURN
 999 ERRORSEXITS("SOLVER_DESTROY",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DESTROY
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a dynamic solver 
+  !>Finishes the process of creating a dynamic solver
   SUBROUTINE SOLVER_DYNAMIC_CREATE_FINISH(DYNAMIC_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -5535,8 +5535,8 @@ CONTAINS
                           IF(ASSOCIATED(DYNAMIC_VARIABLE)) THEN
                             !Set up the parameter sets to hold the required solver parameters
                             !1st degree or higher so set up displacement parameter sets
-                            
-                                                        
+
+
                             IF(DYNAMIC_SOLVER%DEGREE>=SOLVER_DYNAMIC_SECOND_DEGREE) THEN
                               !2nd degree or higher so set up velocity parameter sets
                               CALL Field_ParameterSetEnsureCreated(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
@@ -5556,9 +5556,9 @@ CONTAINS
                                   & ERR,ERROR,*999)
                               ENDIF
                             ENDIF
-                                                        
-                            
-                            !Create the dynamic matrices temporary vector for matrix-vector products                           
+
+
+                            !Create the dynamic matrices temporary vector for matrix-vector products
                             vectorMatrices=>vectorEquations%vectorMatrices
                             IF(ASSOCIATED(vectorMatrices)) THEN
                               dynamicMatrices=>vectorMatrices%dynamicMatrices
@@ -5600,8 +5600,8 @@ CONTAINS
                             CALL FlagError("Dynamic mapping dynamic variable is not associated.",ERR,ERROR,*999)
                           ENDIF
                         ENDIF
-                        
-                        
+
+
                         IF(VariableType==0) THEN
                           !We now allow for static equation sets for dynamic solvers to be able to couple static eqs - dynamic eqs
                           NonlinearMapping=>vectorMapping%nonlinearMapping
@@ -5626,7 +5626,7 @@ CONTAINS
                           & FIELD_PREVIOUS_VALUES_SET_TYPE,ERR,ERROR,*999)
                         CALL Field_ParameterSetEnsureCreated(DEPENDENT_FIELD,VariableType, &
                           & FIELD_MEAN_PREDICTED_DISPLACEMENT_SET_TYPE,ERR,ERROR,*999)
-                        
+
                         CALL Field_ParameterSetEnsureCreated(DEPENDENT_FIELD,VariableType, &
                           & FIELD_INCREMENTAL_VALUES_SET_TYPE,ERR,ERROR,*999)
                         CALL Field_ParameterSetEnsureCreated(DEPENDENT_FIELD,VariableType, &
@@ -5635,8 +5635,8 @@ CONTAINS
                           & FIELD_RESIDUAL_SET_TYPE,ERR,ERROR,*999)
                         CALL Field_ParameterSetEnsureCreated(DEPENDENT_FIELD,VariableType, &
                           & FIELD_PREVIOUS_RESIDUAL_SET_TYPE,ERR,ERROR,*999)
-                        
-                        
+
+
                         !Check if there are any linear mappings
                         linearMapping=>vectorMapping%linearMapping
                         IF(ASSOCIATED(linearMapping)) THEN
@@ -5799,14 +5799,14 @@ CONTAINS
     ELSE
       CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -5821,7 +5821,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
-    
+
     ENTERS("SOLVER_DYNAMIC_DEGREE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -5842,12 +5842,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_DEGREE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_DEGREE_GET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DYNAMIC_DEGREE_GET
 
   !
@@ -5867,7 +5867,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: OLD_THETA(:)
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_DEGREE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -5922,7 +5922,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_DEGREE_SET")
     RETURN
 999 IF(ALLOCATED(OLD_THETA)) DEALLOCATE(OLD_THETA)
@@ -5954,14 +5954,14 @@ CONTAINS
       CALL SOLVER_FINALISE(DYNAMIC_SOLVER%NONLINEAR_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(DYNAMIC_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_FINALISE
- 
+
   !
   !================================================================================================================================
   !
@@ -5974,7 +5974,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER 
+    TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
 
 
     ENTERS("SOLVER_DYNAMIC_INITIALISE",ERR,ERROR,*999)
@@ -6011,12 +6011,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_INITIALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_INITIALISE
 
   !
@@ -6032,7 +6032,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("SOLVER_DYNAMIC_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN
@@ -6040,12 +6040,12 @@ CONTAINS
     ELSE
       CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_LIBRARY_TYPE_GET
 
   !
@@ -6064,7 +6064,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_DYNAMIC_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN
       SELECT CASE(SOLVER_LIBRARY_TYPE)
       CASE(SOLVER_CMISS_LIBRARY)
@@ -6077,12 +6077,12 @@ CONTAINS
     ELSE
       CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_LIBRARY_TYPE_SET
 
   !
@@ -6093,15 +6093,15 @@ CONTAINS
   SUBROUTINE SOLVER_DYNAMIC_LINEARITY_TYPE_GET(SOLVER,LINEARITY_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to get the dynamic linearity type for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to get the dynamic linearity type for
     INTEGER(INTG), INTENT(OUT) :: LINEARITY_TYPE !<On return, the type of linearity \see SOLVER_ROUTINES_EquationLinearityTypes,SOLVER_ROUTINES
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER !<A pointer the dynamic solver to finalise
-  
+
     ENTERS("SOLVER_DYNAMIC_LINEARITY_TYPE_GET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         DYNAMIC_SOLVER=>SOLVER%DYNAMIC_SOLVER
@@ -6116,12 +6116,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     END IF
-    
+
     EXITS("SOLVER_DYNAMIC_LINEARITY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_LINEARITY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_LINEARITY_TYPE_GET
 
   !
@@ -6139,9 +6139,9 @@ CONTAINS
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER !<A pointer the dynamic solver to finalise
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-  
+
     ENTERS("SOLVER_DYNAMIC_LINEARITY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
@@ -6197,12 +6197,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     END IF
-    
+
     EXITS("SOLVER_DYNAMIC_LINEARITY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_LINEARITY_TYPE_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DYNAMIC_LINEARITY_TYPE_SET
 
   !
@@ -6231,7 +6231,7 @@ CONTAINS
           DYNAMIC_SOLVER=>SOLVER%DYNAMIC_SOLVER
           IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN
             NONLINEAR_SOLVER=>DYNAMIC_SOLVER%NONLINEAR_SOLVER
-            IF(.NOT.ASSOCIATED(NONLINEAR_SOLVER)) CALL FlagError("Dynamic solver nonlinear solver is not associated.", & 
+            IF(.NOT.ASSOCIATED(NONLINEAR_SOLVER)) CALL FlagError("Dynamic solver nonlinear solver is not associated.", &
               & ERR,ERROR,*999)
           ELSE
             CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
@@ -6243,12 +6243,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_NONLINEAR_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_NONLINEAR_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_NONLINEAR_SOLVER_GET
 
   !
@@ -6288,17 +6288,17 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_DYNAMIC_LINEAR_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_LINEAR_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_DYNAMIC_LINEAR_SOLVER_GET
 
   !
   !================================================================================================================================
-  ! 
+  !
 
   !>Copies the current to previous time-step, calculates mean predicted values, predicted values and previous residual values.
   SUBROUTINE SOLVER_DYNAMIC_MEAN_PREDICTED_CALCULATE(SOLVER,ERR,ERROR,*)
@@ -6324,7 +6324,7 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-   
+
     ENTERS("SOLVER_DYNAMIC_MEAN_PREDICTED_CALCULATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -6374,7 +6374,7 @@ CONTAINS
                       NULLIFY(vectorEquations)
                       CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
                       vectorMatrices=>vectorEquations%vectorMatrices
-                      IF(ASSOCIATED(vectorMatrices)) THEN                        
+                      IF(ASSOCIATED(vectorMatrices)) THEN
                         vectorMapping=>vectorEquations%vectorMapping
                         IF(ASSOCIATED(vectorMapping)) THEN
                           dynamicMapping=>vectorMapping%dynamicMapping
@@ -6383,7 +6383,7 @@ CONTAINS
                             IF(DYNAMIC_SOLVER%SOLVER_INITIALISED) THEN
                               !As the dynamic solver may be part of a workflow of solvers within a control loop it is possible
                               !that the current dependent field values are not equal to the current previous values that were set
-                              !at the beginning of the control loop. 
+                              !at the beginning of the control loop.
                               !Copy the current field values to the previous values
                               CALL FIELD_PARAMETER_SETS_COPY(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                                 & FIELD_PREVIOUS_VALUES_SET_TYPE,1.0_DP,ERR,ERROR,*999)
@@ -6397,7 +6397,7 @@ CONTAINS
                               CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                 !The mean predicited displacement is the current displacement
                                 CALL FIELD_PARAMETER_SETS_COPY(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
-                                  & FIELD_PREVIOUS_VALUES_SET_TYPE,FIELD_MEAN_PREDICTED_DISPLACEMENT_SET_TYPE,1.0_DP, & 
+                                  & FIELD_PREVIOUS_VALUES_SET_TYPE,FIELD_MEAN_PREDICTED_DISPLACEMENT_SET_TYPE,1.0_DP, &
                                   & ERR,ERROR,*999)
                                 IF(DYNAMIC_SOLVER%linearity==SOLVER_DYNAMIC_NONLINEAR) THEN
                                   !The predicted displacement is just the current displacement
@@ -6450,18 +6450,18 @@ CONTAINS
                               CASE DEFAULT
                                 LOCAL_ERROR="The dynamic solver degree of "// &
                                   & TRIM(NumberToVString(DYNAMIC_SOLVER%DEGREE,"*",ERR,ERROR))//" is invalid."
-                                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)                        
+                                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                               END SELECT
                             ENDIF
                           ELSE
-                          
+
                             nonlinearMapping=>vectorMapping%nonlinearMapping
                             IF(ASSOCIATED(nonlinearMapping)) THEN
                               DYNAMIC_VARIABLE_TYPE=FIELD_U_VARIABLE_TYPE
                               IF(DYNAMIC_SOLVER%SOLVER_INITIALISED) THEN
                                 !As the dynamic solver may be part of a workflow of solvers within a control loop it is possible
                                 !that the current dependent field values are not equal to the current previous values that were set
-                                !at the beginning of the control loop. 
+                                !at the beginning of the control loop.
                                 !Copy the current field values to the previous values
                                 CALL FIELD_PARAMETER_SETS_COPY(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                                   & FIELD_PREVIOUS_VALUES_SET_TYPE,1.0_DP,ERR,ERROR,*999)
@@ -6475,7 +6475,7 @@ CONTAINS
                                 CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                   !The mean predicited displacement is the current displacement
                                   CALL FIELD_PARAMETER_SETS_COPY(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
-                                    & FIELD_PREVIOUS_VALUES_SET_TYPE,FIELD_MEAN_PREDICTED_DISPLACEMENT_SET_TYPE,1.0_DP, & 
+                                    & FIELD_PREVIOUS_VALUES_SET_TYPE,FIELD_MEAN_PREDICTED_DISPLACEMENT_SET_TYPE,1.0_DP, &
                                     & ERR,ERROR,*999)
                                   IF(DYNAMIC_SOLVER%linearity==SOLVER_DYNAMIC_NONLINEAR) THEN
                                     !The predicted displacement is just the current displacement
@@ -6528,7 +6528,7 @@ CONTAINS
                                 CASE DEFAULT
                                   LOCAL_ERROR="The dynamic solver degree of "// &
                                     & TRIM(NumberToVString(DYNAMIC_SOLVER%DEGREE,"*",ERR,ERROR))//" is invalid."
-                                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)                        
+                                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                                 END SELECT
                               ENDIF!initialised
                               NULLIFY(nonlinearMapping)
@@ -6589,7 +6589,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
-    
+
     ENTERS("SOLVER_DYNAMIC_RESTART_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -6610,12 +6610,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_RESTART_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_RESTART_GET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DYNAMIC_RESTART_GET
 
   !
@@ -6632,7 +6632,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
-    
+
     ENTERS("SOLVER_DYNAMIC_RESTART_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -6653,12 +6653,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_RESTART_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_RESTART_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DYNAMIC_RESTART_SET
 
   !
@@ -6675,21 +6675,21 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("SOLVER_TIME_STEPPING_MONITOR",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DAE_SOLVER)) THEN
-        
+
       CALL WriteString(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
       CALL WriteString(GENERAL_OUTPUT_TYPE,"Differential-algebraic equations solve monitor: ",ERR,ERROR,*999)
       CALL WriteString(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
       CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"  Number of steps = ",STEPS,ERR,ERROR,*999)
       CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"  Current time    = ",TIME,ERR,ERROR,*999)
-        
+
     ELSE
       CALL FlagError("Differential-algebraic equations solver is not associated.",ERR,ERROR,*999)
     ENDIF
-     
+
     EXITS("SOLVER_TIME_STEPPING_MONITOR")
     RETURN
 999 ERRORSEXITS("SOLVER_TIME_STEPPING_MONITOR",ERR,ERROR)
@@ -6711,7 +6711,7 @@ CONTAINS
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_ORDER_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -6746,7 +6746,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_ORDER_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_ORDER_SET",ERR,ERROR)
@@ -6769,7 +6769,7 @@ CONTAINS
     REAL(DP) :: ALPHA,BETA,GAMMA,THETA
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_SCHEME_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -6917,7 +6917,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_SCHEME_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_SCHEME_SET",ERR,ERROR)
@@ -6926,9 +6926,9 @@ CONTAINS
 
   !
   !================================================================================================================================
-  ! 
+  !
 
-  !>Solve a dynamic solver 
+  !>Solve a dynamic solver
   SUBROUTINE SOLVER_DYNAMIC_SOLVE(DYNAMIC_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -6948,7 +6948,7 @@ CONTAINS
       SELECT CASE(DYNAMIC_SOLVER%SOLVER_LIBRARY)
       CASE(SOLVER_CMISS_LIBRARY)
         SOLVER=>DYNAMIC_SOLVER%SOLVER
-        IF(ASSOCIATED(SOLVER)) THEN          
+        IF(ASSOCIATED(SOLVER)) THEN
           SELECT CASE(DYNAMIC_SOLVER%LINEARITY)
           CASE(SOLVER_DYNAMIC_LINEAR)
             !Solve the linear dynamic problem
@@ -6980,7 +6980,7 @@ CONTAINS
             ELSE
               CALL FlagError("Dynamic solver linear solver is not associated.",ERR,ERROR,*999)
             ENDIF
-          CASE(SOLVER_DYNAMIC_NONLINEAR) 
+          CASE(SOLVER_DYNAMIC_NONLINEAR)
             !Solve the nonlinear dynamic problem
             NONLINEAR_SOLVER=>DYNAMIC_SOLVER%NONLINEAR_SOLVER
             IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
@@ -7008,9 +7008,9 @@ CONTAINS
               & TRIM(NumberToVString(DYNAMIC_SOLVER%LINEARITY,"*",ERR,ERROR))//" is invalid."
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
-          
+
           IF(SOLVER%outputType>=SOLVER_SOLVER_OUTPUT) THEN
-            
+
 #ifdef TAUPROF
             CALL TAU_STATIC_PHASE_START("Solution Output Phase")
 #endif
@@ -7034,7 +7034,7 @@ CONTAINS
             ELSE
               CALL FlagError("Solver solver equations is not associated.",ERR,ERROR,*999)
             ENDIF
-            
+
 #ifdef TAUPROF
             CALL TAU_STATIC_PHASE_STOP("Solution Output Phase")
 #endif
@@ -7052,14 +7052,14 @@ CONTAINS
     ELSE
       CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_DYNAMIC_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -7073,11 +7073,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-   
+
     ENTERS("SOLVER_DYNAMIC_THETA_SET_DP1",ERR,ERROR,*999)
 
     CALL SOLVER_DYNAMIC_THETA_SET_DP(SOLVER,[THETA],ERR,ERROR,*999)
-    
+
     EXITS("SOLVER_DYNAMIC_THETA_SET_DP1")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_THETA_SET_DP1",ERR,ERROR)
@@ -7100,7 +7100,7 @@ CONTAINS
     INTEGER(INTG) :: degree_idx
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_THETA_SET_DP",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -7137,7 +7137,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_THETA_SET_DP")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_THETA_SET_DP",ERR,ERROR)
@@ -7160,7 +7160,7 @@ CONTAINS
 !     INTEGER(INTG) :: degree_idx
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
 !     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_ALE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -7181,7 +7181,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_ALE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_ALE_SET",ERR,ERROR)
@@ -7204,7 +7204,7 @@ CONTAINS
 !     INTEGER(INTG) :: degree_idx
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
 !     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_UPDATE_BC_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -7225,7 +7225,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_DYNAMIC_UPDATE_BC_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_UPDATE_BC_SET",ERR,ERROR)
@@ -7248,7 +7248,7 @@ CONTAINS
     !Local Variables
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_DYNAMIC_TIMES_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -7273,7 +7273,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-     
+
     EXITS("SOLVER_DYNAMIC_TIMES_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_DYNAMIC_TIMES_SET",ERR,ERROR)
@@ -7284,7 +7284,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a eigenproblem solver 
+  !>Finishes the process of creating a eigenproblem solver
   SUBROUTINE SOLVER_EIGENPROBLEM_CREATE_FINISH(EIGENPROBLEM_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -7300,14 +7300,14 @@ CONTAINS
     ELSE
       CALL FlagError("Eigenproblem solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EIGENPROBLEM_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_EIGENPROBLEM_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -7323,15 +7323,15 @@ CONTAINS
 
     ENTERS("SOLVER_EIGENPROBLEM_FINALISE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN        
+    IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN
       DEALLOCATE(EIGENPROBLEM_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_EIGENPROBLEM_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_EIGENPROBLEM_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_FINALISE
 
   !
@@ -7363,13 +7363,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_EIGENPROBLEM_INITIALISE")
     RETURN
 999 CALL SOLVER_EIGENPROBLEM_FINALISE(SOLVER%EIGENPROBLEM_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_EIGENPROBLEM_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_INITIALISE
 
   !
@@ -7385,7 +7385,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN
@@ -7393,12 +7393,12 @@ CONTAINS
     ELSE
       CALL FlagError("Eigenproblem solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_LIBRARY_TYPE_GET
 
   !
@@ -7417,7 +7417,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN
       SELECT CASE(SOLVER_LIBRARY_TYPE)
       CASE(SOLVER_CMISS_LIBRARY)
@@ -7430,12 +7430,12 @@ CONTAINS
     ELSE
       CALL FlagError("Dynamic solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_EIGENPROBLEM_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_LIBRARY_TYPE_SET
 
   !
@@ -7453,17 +7453,17 @@ CONTAINS
 
     ENTERS("SOLVER_EIGENPROBLEM_SOLVE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN        
+    IF(ASSOCIATED(EIGENPROBLEM_SOLVER)) THEN
       CALL FlagError("Not implemented.",ERR,ERROR,*999)
     ELSE
       CALL FlagError("Eigenproblem solver is not associated.",ERR,ERROR,*999)
     ENDIF
-         
+
     EXITS("SOLVER_EIGENPROBLEM_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_EIGENPROBLEM_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EIGENPROBLEM_SOLVE
 
   !
@@ -7500,15 +7500,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_CREATE_FINISH")
     RETURN
 999 CONTINUE
 998 ERRORSEXITS("SOLVER_EQUATIONS_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -7563,14 +7563,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_CREATE_START")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_CREATE_START",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_CREATE_START
-        
+
   !
   !================================================================================================================================
   !
@@ -7591,14 +7591,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_DESTROY")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_DESTROY",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_DESTROY
-        
+
   !
   !================================================================================================================================
   !
@@ -7618,7 +7618,7 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     LOGICAL :: TIME_COMPATIBLE,LINEARITY_COMPATIBLE
-    
+
     ENTERS("SOLVER_EQUATIONS_EQUATIONS_SET_ADD",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -7648,7 +7648,7 @@ CONTAINS
                     END SELECT
                   CASE(SOLVER_EQUATIONS_FIRST_ORDER_DYNAMIC)
                     SELECT CASE(EQUATIONS%timeDependence)
-!                    
+!
                     CASE(EQUATIONS_STATIC)
                       !OK for now, just to test!!!
 !                    CASE(EQUATIONS_STATIC,EQUATIONS_QUASISTATIC)
@@ -7737,14 +7737,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_EQUATIONS_SET_ADD")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_EQUATIONS_SET_ADD",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_EQUATIONS_SET_ADD
-        
+
   !
   !================================================================================================================================
   !
@@ -7771,9 +7771,9 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_FINALISE
-        
+
   !
   !================================================================================================================================
   !
@@ -7808,15 +7808,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_INITIALISE")
     RETURN
 999 CALL SOLVER_EQUATIONS_FINALISE(SOLVER%SOLVER_EQUATIONS,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_EQUATIONS_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_INITIALISE
-        
+
   !
   !================================================================================================================================
   !
@@ -7834,7 +7834,7 @@ CONTAINS
     TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
-   
+
     ENTERS("SOLVER_EQUATIONS_INTERFACE_CONDITION_ADD",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -7847,7 +7847,7 @@ CONTAINS
             CALL FlagError("Can not add an equations set for a solver that has been linked.",ERR,ERROR,*999)
           ELSE
             SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-            IF(ASSOCIATED(SOLVER_MAPPING)) THEN          
+            IF(ASSOCIATED(SOLVER_MAPPING)) THEN
               IF(ASSOCIATED(INTERFACE_CONDITION)) THEN
                 INTERFACE_EQUATIONS=>INTERFACE_CONDITION%INTERFACE_EQUATIONS
                 IF(ASSOCIATED(INTERFACE_EQUATIONS)) THEN
@@ -7870,14 +7870,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_EQUATIONS_INTERFACE_CONDITION_ADD")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_INTERFACE_CONDITION_ADD",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_INTERFACE_CONDITION_ADD
-        
+
   !
   !================================================================================================================================
   !
@@ -7893,7 +7893,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_EQUATIONS_LINEARITY_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -7923,14 +7923,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-   
+
     EXITS("SOLVER_EQUATIONS_LINEARITY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_LINEARITY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_LINEARITY_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -8050,7 +8050,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_EQUATIONS_SPARSITY_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -8081,14 +8081,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_EQUATIONS_SPARSITY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_SPARSITY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_SPARSITY_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -8103,7 +8103,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: solver
-    
+
     ENTERS("SolverEquations_SymmetryTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(solverEquations)) CALL FlagError("Solver equations is not associated.",err,error,*999)
@@ -8112,16 +8112,16 @@ CONTAINS
     CALL SolverEquations_SolverGet(solverEquations,solver,err,error,*999)
     IF(ASSOCIATED(solver%LINKING_SOLVER)) CALL FlagError("Can not get equations sparsity for a solver that has been linked.", &
       & err,error,*999)
-    
+
     symmetryType=solverEquations%symmetryType
-    
+
     EXITS("SolverEquations_SymmetryTypeGet")
     RETURN
 999 ERRORSEXITS("SolverEquations_SymmetryTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE SolverEquations_SymmetryTypeGet
-        
+
   !
   !================================================================================================================================
   !
@@ -8137,7 +8137,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: solver
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("SolverEquations_SymmetryTypeSet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(solverEquations)) CALL FlagError("Solver equations is not associated.",err,error,*999)
@@ -8147,7 +8147,7 @@ CONTAINS
     CALL SolverEquations_SolverGet(solverEquations,solver,err,error,*999)
     IF(ASSOCIATED(solver%LINKING_SOLVER)) CALL FlagError("Can not set equations symmetry for a solver that has been linked.", &
       & err,error,*999)
-    
+
     SELECT CASE(symmetryType)
     CASE(SOLVER_SYMMETRIC_MATRICES)
       solverEquations%symmetryType=SOLVER_SYMMETRIC_MATRICES
@@ -8158,14 +8158,14 @@ CONTAINS
         & TRIM(NumberToVString(symmetryType,"*",ERR,ERROR))//" is invalid."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-    
+
     EXITS("SolverEquations_SymmetryTypeSet")
     RETURN
 999 ERRORSEXITS("SolverEquations_SymmetryTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE SolverEquations_SymmetryTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -8181,7 +8181,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -8215,14 +8215,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
     ENDIF
-   
+
     EXITS("SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -8505,8 +8505,8 @@ CONTAINS
       SOLVER%LABEL=""
       CALL SOLVER_LINEAR_FINALISE(SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_NONLINEAR_FINALISE(SOLVER%NONLINEAR_SOLVER,ERR,ERROR,*999)
-      CALL SOLVER_DYNAMIC_FINALISE(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)        
-      CALL SOLVER_DAE_FINALISE(SOLVER%DAE_SOLVER,ERR,ERROR,*999)        
+      CALL SOLVER_DYNAMIC_FINALISE(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)
+      CALL SOLVER_DAE_FINALISE(SOLVER%DAE_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_EIGENPROBLEM_FINALISE(SOLVER%EIGENPROBLEM_SOLVER,ERR,ERROR,*999)
       CALL Solver_OptimiserFinalise(solver%optimiserSolver,err,error,*999)
       CALL SOLVER_CELLML_EVALUATOR_FINALISE(SOLVER%CELLML_EVALUATOR_SOLVER,ERR,ERROR,*999)
@@ -8516,20 +8516,20 @@ CONTAINS
       IF(ALLOCATED(SOLVER%LINKED_SOLVER_TYPE_MAP)) DEALLOCATE(SOLVER%LINKED_SOLVER_TYPE_MAP)
       IF(ALLOCATED(SOLVER%LINKED_SOLVERS)) DEALLOCATE(SOLVER%LINKED_SOLVERS)
       DEALLOCATE(SOLVER)
-    ENDIF 
-        
+    ENDIF
+
     EXITS("SOLVER_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_FINALISE
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the arbitrary path logical for geometric transformation solver 
+  !>Set the arbitrary path logical for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationArbitraryPathSet(solver,arbitraryPath,err,error,*)
 
     !Argument variables
@@ -8540,7 +8540,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationArbitraryPathSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         solver%geometricTransformationSolver%arbitraryPath=arbitraryPath
@@ -8550,20 +8550,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationArbitraryPathSet")
     RETURN
 999 ERRORS("Solver_GeometricTransformationArbitraryPathSet",err,error)
     EXITS("Solver_GeometricTransformationArbitraryPathSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationArbitraryPathSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Clear transformation for a geometric transformation solver 
+  !>Clear transformation for a geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationClear(solver,err,error,*)
 
     !Argument variables
@@ -8572,9 +8572,9 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     INTEGER(INTG) :: incrementIdx,i
-    
+
     ENTERS("Solver_GeometricTransformationClear",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         solver%geometricTransformationSolver%transformationMatrices=0.0_DP
@@ -8590,20 +8590,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationClear")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationClear",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationClear
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the field and field variable type for geometric transformation solver 
+  !>Set the field and field variable type for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationFieldSet(solver,field,variableType,err,error,*)
 
     !Argument variables
@@ -8617,7 +8617,7 @@ CONTAINS
     INTEGER(INTG) :: numberOfGeoemtricComponents,i,j
 
     ENTERS("Solver_GeometricTransformationFieldSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         IF(ASSOCIATED(field)) THEN
@@ -8665,20 +8665,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationFieldSet")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationFieldSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationFieldSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the full transformation matrix for a geometric transformation at a load increment 
+  !>Set the full transformation matrix for a geometric transformation at a load increment
   SUBROUTINE Solver_GeometricTransformationMatrixSet(solver,matrix,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8690,10 +8690,10 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationMatrixSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             IF(SIZE(matrix)==SIZE(solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx))) THEN
               solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx)=matrix
@@ -8713,20 +8713,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationMatrixSet")
     RETURN
 
 999 ERRORSEXITS("Solver_GeometricTransformationMatrixSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationMatrixSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the number of load increments for geometric transformation solver 
+  !>Set the number of load increments for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationNumberOfLoadIncrementsSet(solver,numberOfIncrements,err,error,*)
 
     !Argument variables
@@ -8737,7 +8737,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationNumberOfLoadIncrementsSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         solver%geometricTransformationSolver%numberOfIncrements=numberOfIncrements
@@ -8747,21 +8747,21 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationNumberOfLoadIncrementsSet")
     RETURN
-    
+
 999 ERRORS("Solver_GeometricTransformationNumberOfLoadIncrementsSet",err,error)
     EXITS("Solver_GeometricTransformationNumberOfLoadIncrementsSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationNumberOfLoadIncrementsSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the rotation for a geometric transformation 
+  !>Set the rotation for a geometric transformation
   SUBROUTINE Solver_GeometricTransformationRotationSet(solver,pt,axis,theta,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8777,10 +8777,10 @@ CONTAINS
     REAL(DP) :: u,v,w,vectorLength,rotationMatrix(4,4),transformationMatrix(4,4)
 
     ENTERS("Solver_GeometricTransformationRotationSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             IF(incrementIdx>1 .AND. .NOT.solver%geometricTransformationSolver%arbitraryPath) &
               & CALL FlagError("Rotating a field through multiple load increments must be specified through arbitrary path.", &
@@ -8816,7 +8816,7 @@ CONTAINS
                   CALL FlagError("Number of geometric components out of range.",err,error,*999)
                 END SELECT
                 ! Calculate new transformation matrix by multiplying the old matrix stored with the new rotation matrix
-                transformationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1)=MATMUL(solver%geometricTransformationSolver% & 
+                transformationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1)=MATMUL(solver%geometricTransformationSolver% &
                   & transformationMatrices(:,:,incrementIdx),rotationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1))
                 ! Store the new transformation matrix
                 solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx)= &
@@ -8824,7 +8824,7 @@ CONTAINS
               ELSE
                 CALL FlagError("Dimension of the rotation axis does not match no. field geometric components.", &
                   & err,error,*999)
-              ENDIF    
+              ENDIF
             ELSE
               CALL FlagError("Dimension of the pivot point does not match no. field geometric components.", &
                 & err,error,*999)
@@ -8841,20 +8841,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationRotationSet")
     RETURN
 
 999 ERRORSEXITS("Solver_GeometricTransformationRotationSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationRotationSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the scalings for geometric transformation solver 
+  !>Set the scalings for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationScalingsSet(solver,scalings,err,error,*)
 
     !Argument variables
@@ -8865,7 +8865,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationScalingsSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         IF(solver%geometricTransformationSolver%arbitraryPath) THEN
@@ -8887,20 +8887,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationScalingsSet")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationScalingsSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationScalingsSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the translation for a geometric transformation 
+  !>Set the translation for a geometric transformation
   SUBROUTINE Solver_GeometricTransformationTranslationSet(solver,translation,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8914,10 +8914,10 @@ CONTAINS
     REAL(DP) :: transformationMatrix(4,4),translationMatrix(4,4)
 
     ENTERS("Solver_GeometricTransformationTranslationSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             numberOfGeomComp=SIZE(solver%geometricTransformationSolver%transformationMatrices,incrementIdx)-1
             !Add translation to matrix at a specific step
@@ -8950,15 +8950,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationTranslationSet")
     RETURN
 999 ERRORS("Solver_GeometricTransformationTranslationSet",err,error)
     EXITS("Solver_GeometricTransformationTranslationSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationTranslationSet
-  
+
   !
   !================================================================================================================================
   !
@@ -8974,7 +8974,7 @@ CONTAINS
 
     ENTERS("Solver_GeometricTransformationFinalise",err,error,*999)
 
-    IF(ASSOCIATED(geometricTransformationSolver)) THEN   
+    IF(ASSOCIATED(geometricTransformationSolver)) THEN
       NULLIFY(geometricTransformationSolver%solver)
       IF(ASSOCIATED(geometricTransformationSolver%field)) NULLIFY(geometricTransformationSolver%field)
       geometricTransformationSolver%arbitraryPath=.FALSE.
@@ -8985,14 +8985,14 @@ CONTAINS
       geometricTransformationSolver%fieldVariableType=0
       DEALLOCATE(geometricTransformationSolver)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationFinalise")
     RETURN
 999 ERRORSEXITS("Solver_GeometricTransformationFinalise",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationFinalise
-  
+
   !
   !================================================================================================================================
   !
@@ -9058,19 +9058,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*998)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationInitialise")
     RETURN
 999 CALL Solver_GeometricTransformationFinalise(solver%geometricTransformationSolver,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Solver_GeometricTransformationInitialise",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationInitialise
 
   !
   !================================================================================================================================
   !
-  
+
   !>Create a CellML evaluator solver for the Newton solver
   SUBROUTINE SOLVER_NEWTON_CELLML_EVALUATOR_CREATE(SOLVER,CELLML_SOLVER,ERR,ERROR,*)
 
@@ -9082,9 +9082,9 @@ CONTAINS
     !Local Variables
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
-            
+
     NULLIFY(CELLML_SOLVER)
-    
+
     ENTERS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -9113,12 +9113,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_CELLML_EVALUATOR_CREATE
 
   !
@@ -9136,7 +9136,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVERS)) THEN
@@ -9166,20 +9166,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solvers is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_INITIALISE")
     RETURN
 999 CALL SOLVER_FINALISE(SOLVERS%SOLVERS(SOLVER_INDEX)%ptr,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !>Initialise a solver 
+  !>Initialise a solver
   SUBROUTINE SOLVER_INITIALISE_PTR(SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -9188,7 +9188,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: solver_idx
-    
+
     ENTERS("SOLVER_INITIALISE_PTR",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -9215,12 +9215,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_INITIALISE_PTR")
     RETURN
 999 ERRORSEXITS("SOLVER_INITIALISE_PTR",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_INITIALISE_PTR
 
   !
@@ -9251,12 +9251,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_GET_C")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_GET_C",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_GET_C
 
    !
@@ -9280,12 +9280,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_GET_VS")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_GET_VS",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_GET_VS
 
   !
@@ -9296,7 +9296,7 @@ CONTAINS
   SUBROUTINE SOLVER_LABEL_SET_C(SOLVER,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for
     CHARACTER(LEN=*), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -9313,12 +9313,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_SET_C")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_SET_C",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_SET_C
 
   !
@@ -9329,7 +9329,7 @@ CONTAINS
   SUBROUTINE SOLVER_LABEL_SET_VS(SOLVER,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for
     TYPE(VARYING_STRING), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -9346,7 +9346,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_SET_VS")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_SET_VS",ERR,ERROR)
@@ -9395,7 +9395,7 @@ CONTAINS
         ENDIF
       CASE(SOLVER_DYNAMIC_TYPE)
         DYNAMIC_SOLVER=>SOLVER%DYNAMIC_SOLVER
-        IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN         
+        IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN
           CALL SOLVER_DYNAMIC_LIBRARY_TYPE_GET(DYNAMIC_SOLVER,SOLVER_LIBRARY_TYPE,ERR,ERROR,*999)
           SOLVER_LIBRARY_TYPE=DYNAMIC_SOLVER%SOLVER_LIBRARY
         ELSE
@@ -9437,14 +9437,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LIBRARY_TYPE_GET
-  
+
   !
   !================================================================================================================================
   !
@@ -9531,7 +9531,7 @@ CONTAINS
             CALL SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET(CELLML_EVALUATOR_SOLVER,SOLVER_LIBRARY_TYPE,ERR,ERROR,*999)
           ELSE
             CALL FlagError("Solver CellML evaluator solver is not associated.",ERR,ERROR,*999)
-          ENDIF          
+          ENDIF
         CASE DEFAULT
           LOCAL_ERROR="The solver type of "//TRIM(NumberToVString(SOLVER%SOLVE_TYPE,"*",ERR,ERROR))//" is invalid."
           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
@@ -9540,19 +9540,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LIBRARY_TYPE_SET
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear solver 
+  !>Finishes the process of creating a linear solver
   SUBROUTINE SOLVER_LINEAR_CREATE_FINISH(LINEAR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -9657,14 +9657,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -9688,7 +9688,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CHOLESKY_FINALISE
 
   !
@@ -9703,7 +9703,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -9711,19 +9711,19 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear direct solver 
+  !>Finishes the process of creating a linear direct solver
   SUBROUTINE SOLVER_LINEAR_DIRECT_CREATE_FINISH(LINEAR_DIRECT_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -9897,14 +9897,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -9935,7 +9935,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_FINALISE
 
   !
@@ -9952,7 +9952,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(LINEAR_SOLVER)) THEN
@@ -9969,13 +9969,13 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_DIRECT_FINALISE(LINEAR_SOLVER%DIRECT_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_DIRECT_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_INITIALISE
 
   !
@@ -9992,7 +9992,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -10011,12 +10011,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET
 
   !
@@ -10035,7 +10035,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
       SELECT CASE(DIRECT_SOLVER%DIRECT_SOLVER_TYPE)
       CASE(SOLVER_DIRECT_LU)
@@ -10074,12 +10074,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET
 
   !
@@ -10138,7 +10138,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LU_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LU_FINALISE
 
   !
@@ -10155,7 +10155,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_LU_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -10167,13 +10167,13 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_LU_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_DIRECT_LU_FINALISE(DIRECT_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LU_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LU_INITIALISE
 
   !
@@ -10181,13 +10181,13 @@ CONTAINS
   !
 
 !!\todo Allow for the mumps parameters to be set during the solver creation (i.e., cache and defer setting until we have PETSc matrix)
-  
+
   !>Sets MUMPS ICNTL(icntl)=ivalue through PETSc Mat API (see MUMPS user guide for more info). Must be called after the boundary conditions have been set up.
   SUBROUTINE Solver_MumpsSetIcntl(solver,icntl,ivalue,err,error,*)
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: solver
-    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter 
+    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter
     INTEGER(INTG), INTENT(IN) :: ivalue !<The MUMPS ICNTL integer value to set: ICNTL(icntl)=ivalue
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -10198,7 +10198,7 @@ CONTAINS
     TYPE(SOLVER_TYPE), POINTER :: linkingSolver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: linkingSolverEquations,solverEquations
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
-    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface 
+    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_MumpsSetIcntl",err,error,*999)
@@ -10287,12 +10287,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_MumpsSetIcntl")
     RETURN
-999 ERRORSEXITS("Solver_MumpsSetIcntl",err,error)    
+999 ERRORSEXITS("Solver_MumpsSetIcntl",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_MumpsSetIcntl
 
   !
@@ -10306,7 +10306,7 @@ CONTAINS
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: solver
-    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter 
+    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter
     REAL(DP), INTENT(IN) :: val !<The MUMPS CNTL real value to set: CNTL(icntl)=val
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -10317,7 +10317,7 @@ CONTAINS
     TYPE(SOLVER_TYPE), POINTER :: linkingSolver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: linkingSolverEquations,solverEquations
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
-    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface 
+    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_MumpsSetCntl",err,error,*999)
@@ -10398,19 +10398,19 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_MumpsSetCntl")
     RETURN
-999 ERRORSEXITS("Solver_MumpsSetCntl",err,error)    
+999 ERRORSEXITS("Solver_MumpsSetCntl",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_MumpsSetCntl
 
   !
   !================================================================================================================================
   !
 
-  !>Solve a linear direct solver 
+  !>Solve a linear direct solver
   SUBROUTINE SOLVER_LINEAR_DIRECT_SOLVE(LINEAR_DIRECT_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -10495,7 +10495,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,rhsVector%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10522,7 +10522,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,rhsVector%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10557,7 +10557,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,rhsVector%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10584,7 +10584,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,rhsVector%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10644,14 +10644,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -10675,7 +10675,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SVD_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SVD_FINALISE
 
   !
@@ -10690,7 +10690,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -10698,12 +10698,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SVD_INITIALISE
 
   !
@@ -10720,7 +10720,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -10775,14 +10775,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -10803,12 +10803,12 @@ CONTAINS
       CALL SOLVER_LINEAR_ITERATIVE_FINALISE(LINEAR_SOLVER%ITERATIVE_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(LINEAR_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_FINALISE
 
   !
@@ -10846,13 +10846,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_FINALISE(SOLVER%LINEAR_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_INITIALISE
 
   !
@@ -10863,13 +10863,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeAbsoluteToleranceSet(SOLVER,ABSOLUTE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: ABSOLUTE_TOLERANCE !<The absolute tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeAbsoluteToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -10903,19 +10903,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeAbsoluteToleranceSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeAbsoluteToleranceSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeAbsoluteToleranceSet
-        
+
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear iterative solver 
+  !>Finishes the process of creating a linear iterative solver
   SUBROUTINE SOLVER_LINEAR_ITERATIVE_CREATE_FINISH(LINEAR_ITERATIVE_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -11146,14 +11146,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear iterative solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -11162,13 +11162,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeDivergenceToleranceSet(SOLVER,DIVERGENCE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: DIVERGENCE_TOLERANCE !<The divergence tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeDivergenceToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11203,15 +11203,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeDivergenceToleranceSet")
     RETURN
 999 ERRORS("Solver_LinearIterativeDivergenceToleranceSet",ERR,ERROR)
     EXITS("Solver_LinearIterativeDivergenceToleranceSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeDivergenceToleranceSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11238,12 +11238,12 @@ CONTAINS
       ENDIF
       DEALLOCATE(LINEAR_ITERATIVE_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_FINALISE
 
   !
@@ -11262,7 +11262,7 @@ CONTAINS
     TYPE(LINEAR_SOLVER_TYPE), POINTER :: LINEAR_SOLVER
     TYPE(LINEAR_ITERATIVE_SOLVER_TYPE), POINTER :: ITERATIVE_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11302,14 +11302,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -11350,13 +11350,13 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_ITERATIVE_FINALISE(LINEAR_SOLVER%ITERATIVE_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_INITIALISE
 
   !
@@ -11373,7 +11373,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(ITERATIVE_SOLVER)) THEN
@@ -11398,12 +11398,12 @@ CONTAINS
     ELSE
       CALL FlagError("Iterative linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET
 
   !
@@ -11420,9 +11420,9 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(ITERATIVE_SOLVER)) THEN
       SELECT CASE(ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE)
       CASE(SOLVER_ITERATIVE_RICHARDSON)
@@ -11499,12 +11499,12 @@ CONTAINS
     ELSE
       CALL FlagError("Iterative linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET
 
   !
@@ -11521,7 +11521,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeMaximumIterationsSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11555,14 +11555,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeMaximumIterationsSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeMaximumIterationsSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeMaximumIterationsSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11577,7 +11577,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativePreconditionerTypeSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11605,7 +11605,7 @@ CONTAINS
                         & SOLVER_ITERATIVE_SOR_PRECONDITIONER
                     CASE(SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_PRECONDITIONER_TYPE= &
-                        & SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER 
+                        & SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER
                     CASE(SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_PRECONDITIONER_TYPE= &
                         & SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER
@@ -11622,7 +11622,7 @@ CONTAINS
                       & TRIM(NumberToVString(SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))// &
                       & " is invalid."
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                  END SELECT                  
+                  END SELECT
                 ENDIF
               ELSE
                 CALL FlagError("The solver linear solver iterative solver is not associated.",ERR,ERROR,*999)
@@ -11640,14 +11640,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativePreconditionerTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativePreconditionerTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativePreconditionerTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11656,13 +11656,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeRelativeToleranceSet(SOLVER,RELATIVE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: RELATIVE_TOLERANCE !<The relative tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeRelativeToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11696,14 +11696,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeRelativeToleranceSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeRelativeToleranceSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeRelativeToleranceSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11712,13 +11712,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeSolutionInitTypeSet(SOLVER,SOLUTION_INITIALISE_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     INTEGER(INTG), INTENT(IN) :: SOLUTION_INITIALISE_TYPE !<The solution initialise type to set \see SOLVER_ROUTINES_SolutionInitialiseTypes,SOLVER_ROUTINES
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeSolutionInitTypeSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11757,14 +11757,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeSolutionInitTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeSolutionInitTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeSolutionInitTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11789,7 +11789,7 @@ CONTAINS
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_SOLVE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINEAR_ITERATIVE_SOLVER)) THEN
@@ -11969,18 +11969,18 @@ CONTAINS
         ENDIF
       ELSE
         CALL FlagError("Linear itreative solver linear solver is not associated.",ERR,ERROR,*999)
-      ENDIF      
+      ENDIF
     ELSE
       CALL FlagError("Linear iterative solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -11995,7 +11995,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -12035,7 +12035,7 @@ CONTAINS
                       & TRIM(NumberToVString(SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))// &
                       & " is invalid."
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                  END SELECT                  
+                  END SELECT
                 ENDIF
               ELSE
                 CALL FlagError("The solver linear solver iterative solver is not associated.",ERR,ERROR,*999)
@@ -12053,14 +12053,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -12104,12 +12104,12 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_LIBRARY_TYPE_GET
 
   !
@@ -12130,7 +12130,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_LINEAR_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(LINEAR_SOLVER)) THEN
       SELECT CASE(LINEAR_SOLVER%LINEAR_SOLVE_TYPE)
       CASE(SOLVER_LINEAR_DIRECT_SOLVE_TYPE)
@@ -12155,19 +12155,19 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_LIBRARY_TYPE_SET
 
   !
   !================================================================================================================================
   !
 
-  !>Solve a linear solver 
+  !>Solve a linear solver
   SUBROUTINE SOLVER_LINEAR_SOLVE(LINEAR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -12215,13 +12215,13 @@ CONTAINS
 #ifdef TAUPROF
         CALL TAU_STATIC_PHASE_STOP("Solve Phase")
 #endif
-        
+
         IF(SOLVER%outputType>=SOLVER_SOLVER_OUTPUT) THEN
 
 #ifdef TAUPROF
           CALL TAU_STATIC_PHASE_START("Solution Output Phase")
 #endif
-          
+
           SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
           IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
             SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
@@ -12241,12 +12241,12 @@ CONTAINS
           ELSE
             CALL FlagError("Solver solver equations is not associated.",ERR,ERROR,*999)
           ENDIF
-          
+
 #ifdef TAUPROF
         CALL TAU_STATIC_PHASE_STOP("Solution Output Phase")
 #endif
         ENDIF
-        
+
         IF(.NOT.ASSOCIATED(SOLVER%LINKING_SOLVER)) THEN
           !Update depenent field with solution
 #ifdef TAUPROF
@@ -12263,14 +12263,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -12286,7 +12286,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_TYPE_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -12329,7 +12329,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_TYPE_SET")
     RETURN
 999 SELECT CASE(LINEAR_SOLVE_TYPE)
@@ -12340,16 +12340,16 @@ CONTAINS
     END SELECT
 998 ERRORSEXITS("SOLVER_LINEAR_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
 
   !>Assembles the solver matrices and rhs from the dynamic equations.
   SUBROUTINE SOLVER_MATRICES_DYNAMIC_ASSEMBLE(SOLVER,SELECTION_TYPE,ERR,ERROR,*)
-    
+
     !Argument variable
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver
     INTEGER(INTG), INTENT(IN) :: SELECTION_TYPE !<The type of matrix selection \see SOLVER_MATRICES_ROUTINES_SelectMatricesTypes,SOLVER_MATRICES_ROUTINES
@@ -12408,7 +12408,7 @@ CONTAINS
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(BOUNDARY_CONDITIONS_SPARSITY_INDICES_TYPE), POINTER :: SPARSITY_INDICES
-    
+
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
     TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS
     TYPE(INTERFACE_LAGRANGE_TYPE), POINTER :: INTERFACE_LAGRANGE
@@ -12426,7 +12426,7 @@ CONTAINS
     !.TRUE. weights mean predicted field rather than the whole NL contribution
     !-> to be removed later
     STABILITY_TEST=.FALSE.
-   
+
     ENTERS("SOLVER_MATRICES_DYNAMIC_ASSEMBLE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -12494,11 +12494,11 @@ CONTAINS
       NULLIFY(CHECK_DATA)
       NULLIFY(PREVIOUS_RESIDUAL_PARAMETERS)
       NULLIFY(CHECK_DATA2)
-      
+
       !Determine which dynamic solver needs to be used
       IF(SOLVER%SOLVE_TYPE==SOLVER_DYNAMIC_TYPE) THEN
         DYNAMIC_SOLVER=>SOLVER%DYNAMIC_SOLVER
-      ELSE IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN 
+      ELSE IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN
         DYNAMIC_SOLVER=>SOLVER%LINKING_SOLVER%DYNAMIC_SOLVER
       ELSE
         CALL FlagError("Dynamic solver solve type is not associated.",ERR,ERROR,*999)
@@ -12577,7 +12577,7 @@ CONTAINS
                   IF(SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES==solver_matrix_idx) THEN
                     SOLVER_MATRIX=>SOLVER_MATRICES%matrices(1)%ptr
                     IF(ASSOCIATED(SOLVER_MATRIX)) THEN
-                      IF(SOLVER_MATRIX%UPDATE_MATRIX) THEN      
+                      IF(SOLVER_MATRIX%UPDATE_MATRIX) THEN
                         SOLVER_DISTRIBUTED_MATRIX=>SOLVER_MATRIX%MATRIX
                         IF(ASSOCIATED(SOLVER_DISTRIBUTED_MATRIX)) THEN
                           !Initialise matrix to zero
@@ -12698,7 +12698,7 @@ CONTAINS
                                   IF(ASSOCIATED(JACOBIAN_TO_SOLVER_MAP)) THEN
                                     JACOBIAN_MATRIX=>JACOBIAN_TO_SOLVER_MAP%JACOBIAN_MATRIX
                                     IF(ASSOCIATED(JACOBIAN_MATRIX)) THEN
-                                      CALL SOLVER_MATRIX_JACOBIAN_MATRIX_ADD(SOLVER_MATRIX,equations_set_idx, & 
+                                      CALL SOLVER_MATRIX_JACOBIAN_MATRIX_ADD(SOLVER_MATRIX,equations_set_idx, &
                                         & JACOBIAN_MATRIX_COEFFICIENT,JACOBIAN_MATRIX,ERR,ERROR,*999)
                                     ELSE
                                       CALL FlagError("Jacobian matrix is not associated.",ERR,ERROR,*999)
@@ -12766,7 +12766,7 @@ CONTAINS
 
                         IF(SOLVER%SOLVE_TYPE==SOLVER_DYNAMIC_TYPE) THEN
                           IF(DYNAMIC_SOLVER%SOLVER_INITIALISED) SOLVER_MATRIX%UPDATE_MATRIX=.FALSE.
-                        ELSE IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN 
+                        ELSE IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN
                           IF(DYNAMIC_SOLVER%SOLVER_INITIALISED) SOLVER_MATRIX%UPDATE_MATRIX=.TRUE.
                         ELSE
                           CALL FlagError("Dynamic solver solve type is not associated.",ERR,ERROR,*999)
@@ -12814,15 +12814,15 @@ CONTAINS
                     SOLVER_RHS_VECTOR=>SOLVER_MATRICES%RHS_VECTOR
                     IF(ASSOCIATED(SOLVER_RHS_VECTOR)) THEN
                       !Initialise the RHS to zero
-                      CALL DISTRIBUTED_VECTOR_ALL_VALUES_SET(SOLVER_RHS_VECTOR,0.0_DP,ERR,ERROR,*999)          
-                      !Get the solver variables data                  
+                      CALL DISTRIBUTED_VECTOR_ALL_VALUES_SET(SOLVER_RHS_VECTOR,0.0_DP,ERR,ERROR,*999)
+                      !Get the solver variables data
                       NULLIFY(CHECK_DATA)
-                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)             
+                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)
                       !Loop over the equations sets
                       DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
                         EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%ptr
                         IF(ASSOCIATED(EQUATIONS_SET)) THEN
-                          NULLIFY(DEPENDENT_FIELD) 
+                          NULLIFY(DEPENDENT_FIELD)
                           DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
                           EQUATIONS=>EQUATIONS_SET%EQUATIONS
                           IF(ASSOCIATED(DEPENDENT_FIELD)) THEN
@@ -12904,7 +12904,7 @@ CONTAINS
                                     ENDIF
                                     !CALL FlagError("Equations mapping dynamic mapping is not associated.",ERR,ERROR,*999)
                                   ENDIF
-                                  !Calculate the contributions from any linear matrices 
+                                  !Calculate the contributions from any linear matrices
                                   linearMapping=>vectorMapping%linearMapping
                                   IF(ASSOCIATED(linearMapping)) THEN
                                     linearMatrices=>vectorMatrices%linearMatrices
@@ -13001,19 +13001,19 @@ CONTAINS
                                               DYNAMIC_VALUE=DYNAMIC_VALUE+SOURCE_VALUE
                                             ENDIF
                                             !Get the nonlinear vector contribute to the RHS values if nonlinear solve
-                                            IF(.NOT.STABILITY_TEST) THEN 
-                                              IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN 
+                                            IF(.NOT.STABILITY_TEST) THEN
+                                              IF(SOLVER%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN
                                                 nonlinearMapping=>vectorMapping%nonlinearMapping
                                                   IF(ASSOCIATED(nonlinearMapping)) THEN
                                                    NULLIFY(PREVIOUS_RESIDUAL_PARAMETERS)
                                                    CALL FIELD_PARAMETER_SET_DATA_GET(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                                      & FIELD_PREVIOUS_RESIDUAL_SET_TYPE,PREVIOUS_RESIDUAL_PARAMETERS,ERR,ERROR, &
-                                                     & *999)  
-                                                   residual_variable_dof=nonlinearMapping% & 
+                                                     & *999)
+                                                   residual_variable_dof=nonlinearMapping% &
                                                      & equationsRowToResidualDOFMap(equations_row_number)
-                                                   PREVIOUS_RESIDUAL_VALUE=-1.0_DP*PREVIOUS_RESIDUAL_PARAMETERS & 
+                                                   PREVIOUS_RESIDUAL_VALUE=-1.0_DP*PREVIOUS_RESIDUAL_PARAMETERS &
                                                      & (residual_variable_dof)
-                                                   DYNAMIC_VALUE=DYNAMIC_VALUE+PREVIOUS_RESIDUAL_VALUE*(1.0_DP-DYNAMIC_SOLVER% & 
+                                                   DYNAMIC_VALUE=DYNAMIC_VALUE+PREVIOUS_RESIDUAL_VALUE*(1.0_DP-DYNAMIC_SOLVER% &
                                                      & THETA(1))
                                                   ENDIF
                                               END IF
@@ -13032,7 +13032,7 @@ CONTAINS
                                                 & ERR,ERROR,*999)
                                             ENDDO !solver_row_idx
                                           ENDDO !equations_row_number
-                                          
+
                                           SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                                           CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                             NULLIFY(FIELD_VALUES_VECTOR)
@@ -13108,8 +13108,8 @@ CONTAINS
                                               !
                                               !This is only true for nonlinear cases and linear cases with fixed values at the boundaries
                                               !
-                                              !For changing linear boundary conditions the following needs to be added 
-                                              !             
+                                              !For changing linear boundary conditions the following needs to be added
+                                              !
                                               IF(DYNAMIC_SOLVER%UPDATE_BC)THEN
                                                 !Set Dirichlet boundary conditions
                                                 IF(SOLVER%SOLVE_TYPE==SOLVER_DYNAMIC_TYPE) THEN
@@ -13155,23 +13155,23 @@ CONTAINS
                                                           & " is invalid."
                                                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                                                       END SELECT
-                                                         
+
 
                                                       IF(ABS(ALPHA_VALUE)>=ZERO_TOLERANCE) THEN
                                                         DO equations_matrix_idx=1,dynamicMapping%varToEquationsMatricesMaps( &
                                                           & variable_type)%numberOfEquationsMatrices
                                                           equations_matrix_number=dynamicMapping%varToEquationsMatricesMaps( &
                                                             & variable_type)%equationsMatrixNumbers(equations_matrix_idx)
-                                                          IF(equations_matrix_number==dynamicMapping%stiffnessMatrixNumber) & 
-                                                            & THEN 
+                                                          IF(equations_matrix_number==dynamicMapping%stiffnessMatrixNumber) &
+                                                            & THEN
                                                              ALPHA_VALUE=ALPHA_VALUE*STIFFNESS_MATRIX_COEFFICIENT
                                                           ENDIF
                                                           IF(equations_matrix_number==dynamicMapping%dampingMatrixNumber) &
-                                                            & THEN 
+                                                            & THEN
                                                              ALPHA_VALUE=ALPHA_VALUE*DAMPING_MATRIX_COEFFICIENT
                                                           ENDIF
                                                           IF(equations_matrix_number==dynamicMapping%massMatrixNumber) &
-                                                            & THEN 
+                                                            & THEN
                                                              ALPHA_VALUE=ALPHA_VALUE*MASS_MATRIX_COEFFICIENT
                                                           ENDIF
                                                           equationsMatrix=>dynamicMatrices% &
@@ -13199,7 +13199,7 @@ CONTAINS
                                                                     & MATRIX_VALUE,ERR,ERROR,*999)
                                                                   IF(ABS(MATRIX_VALUE)>=ZERO_TOLERANCE) THEN
                                                                     DO solver_row_idx=1,SOLVER_MAPPING% &
-                                                                      & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% & 
+                                                                      & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
                                                                       & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
                                                                       & dirichlet_row)%NUMBER_OF_SOLVER_ROWS
                                                                       solver_row_number=SOLVER_MAPPING% &
@@ -13228,7 +13228,7 @@ CONTAINS
                                                                   & MATRIX_VALUE,ERR,ERROR,*999)
                                                                 IF(ABS(MATRIX_VALUE)>=ZERO_TOLERANCE) THEN
                                                                   DO solver_row_idx=1,SOLVER_MAPPING% &
-                                                                    & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% & 
+                                                                    & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
                                                                     & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
                                                                     & dirichlet_row)%NUMBER_OF_SOLVER_ROWS
                                                                     solver_row_number=SOLVER_MAPPING% &
@@ -13259,7 +13259,7 @@ CONTAINS
                                                                   & DIRICHLET_BOUNDARY_CONDITIONS%DYNAMIC_SPARSITY_INDICES( &
                                                                   & equations_set_idx,equations_matrix_idx)%ptr
                                                                 IF(ASSOCIATED(SPARSITY_INDICES)) THEN
-                                                                  DO equations_row_number2=SPARSITY_INDICES% & 
+                                                                  DO equations_row_number2=SPARSITY_INDICES% &
                                                                     & SPARSE_COLUMN_INDICES(dirichlet_idx), &
                                                                     & SPARSITY_INDICES%SPARSE_COLUMN_INDICES( &
                                                                     & dirichlet_idx+1)-1
@@ -13270,7 +13270,7 @@ CONTAINS
                                                                       & MATRIX_VALUE,ERR,ERROR,*999)
                                                                     IF(ABS(MATRIX_VALUE)>=ZERO_TOLERANCE) THEN
                                                                       DO solver_row_idx=1,SOLVER_MAPPING% &
-                                                                        & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% & 
+                                                                        & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
                                                                         & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
                                                                         & dirichlet_row)%NUMBER_OF_SOLVER_ROWS
                                                                         solver_row_number=SOLVER_MAPPING% &
@@ -13456,7 +13456,7 @@ CONTAINS
                           CALL FlagError("Interface condition is not associated.",ERR,ERROR,*999)
                         ENDIF
                       ENDDO !interface_condition_idx
-              !        
+              !
                       !Start the update the solver RHS vector values
                       CALL DISTRIBUTED_VECTOR_UPDATE_START(SOLVER_RHS_VECTOR,ERR,ERROR,*999)
 
@@ -13488,7 +13488,7 @@ CONTAINS
                 & SELECTION_TYPE==SOLVER_MATRICES_RESIDUAL_ONLY.OR. &
                 & SELECTION_TYPE==SOLVER_MATRICES_RHS_RESIDUAL_ONLY) THEN
                 IF(DYNAMIC_SOLVER%SOLVER_INITIALISED.OR.(.NOT.DYNAMIC_SOLVER%SOLVER_INITIALISED.AND. &
-                  & ((DYNAMIC_SOLVER%ORDER==SOLVER_DYNAMIC_FIRST_ORDER.AND.DYNAMIC_SOLVER%DEGREE>SOLVER_DYNAMIC_FIRST_DEGREE).OR. & 
+                  & ((DYNAMIC_SOLVER%ORDER==SOLVER_DYNAMIC_FIRST_ORDER.AND.DYNAMIC_SOLVER%DEGREE>SOLVER_DYNAMIC_FIRST_DEGREE).OR. &
                   & (DYNAMIC_SOLVER%ORDER==SOLVER_DYNAMIC_SECOND_ORDER.AND.DYNAMIC_SOLVER%DEGREE>SOLVER_DYNAMIC_SECOND_DEGREE)))) &
                   & THEN
                   !Assemble residual vector
@@ -13536,8 +13536,8 @@ CONTAINS
                                         IF(dynamicMapping%stiffnessMatrixNumber/=0) THEN
                                           STIFFNESS_MATRIX=>dynamicMatrices%matrices(dynamicMapping%stiffnessMatrixNumber)%ptr
                                           IF(ASSOCIATED(STIFFNESS_MATRIX)) THEN
-                                            CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, & 
-                                              & STIFFNESS_MATRIX_COEFFICIENT,STIFFNESS_MATRIX%MATRIX,INCREMENTAL_VECTOR, & 
+                                            CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, &
+                                              & STIFFNESS_MATRIX_COEFFICIENT,STIFFNESS_MATRIX%MATRIX,INCREMENTAL_VECTOR, &
                                               & DYNAMIC_TEMP_VECTOR,ERR,ERROR,*999)
                                           ELSE
                                             CALL FlagError("Dynamic stiffness matrix is not associated.",ERR,ERROR,*999)
@@ -13548,7 +13548,7 @@ CONTAINS
                                           DAMPING_MATRIX=>dynamicMatrices%matrices(dynamicMapping%dampingMatrixNumber)%ptr
                                           IF(ASSOCIATED(DAMPING_MATRIX)) THEN
                                             CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, &
-                                              & DAMPING_MATRIX_COEFFICIENT,DAMPING_MATRIX%MATRIX,INCREMENTAL_VECTOR, & 
+                                              & DAMPING_MATRIX_COEFFICIENT,DAMPING_MATRIX%MATRIX,INCREMENTAL_VECTOR, &
                                               & DYNAMIC_TEMP_VECTOR,ERR,ERROR,*999)
                                           ELSE
                                             CALL FlagError("Dynamic damping matrix is not associated.",ERR,ERROR,*999)
@@ -13559,7 +13559,7 @@ CONTAINS
                                           MASS_MATRIX=>dynamicMatrices%matrices(dynamicMapping%massMatrixNumber)%ptr
                                           IF(ASSOCIATED(MASS_MATRIX)) THEN
                                             CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, &
-                                              & MASS_MATRIX_COEFFICIENT,MASS_MATRIX%MATRIX,INCREMENTAL_VECTOR, & 
+                                              & MASS_MATRIX_COEFFICIENT,MASS_MATRIX%MATRIX,INCREMENTAL_VECTOR, &
                                               & DYNAMIC_TEMP_VECTOR,ERR,ERROR,*999)
                                           ELSE
                                             CALL FlagError("Dynamic mass matrix is not associated.",ERR,ERROR,*999)
@@ -13572,7 +13572,7 @@ CONTAINS
                                       CALL FlagError("Equations matrices dynamic matrices is not associated.",ERR,ERROR,*999)
                                     ENDIF
                                   ENDIF
-                                  !Calculate the contributions from any linear matrices 
+                                  !Calculate the contributions from any linear matrices
                                   linearMapping=>vectorMapping%linearMapping
                                   IF(ASSOCIATED(linearMapping)) THEN
                                     linearMatrices=>vectorMatrices%linearMatrices
@@ -13714,7 +13714,7 @@ CONTAINS
                                         NULLIFY(LAGRANGE_VECTOR)
                                         CALL FIELD_PARAMETER_SET_VECTOR_GET(LAGRANGE_FIELD,interface_variable_type, &
                                           & FIELD_VALUES_SET_TYPE,LAGRANGE_VECTOR,ERR,ERROR,*999)
-                                        
+
                                     !
                                         SELECT CASE(INTERFACE_MATRIX%INTERFACE_MATRIX_TIME_DEPENDENCE_TYPE)
                                         CASE(INTERFACE_MATRIX_STATIC)
@@ -13738,14 +13738,14 @@ CONTAINS
                                           MatrixCoefficients(2)=0.0_DP
                                         ENDIF
                                     !
-                                        
-                                        
+
+
                                        ! CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE,1.0_DP, &
                                        !   & INTERFACE_MATRIX%MATRIX,LAGRANGE_VECTOR,INTERFACE_TEMP_VECTOR,ERR,ERROR,*999)
                                         CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, &
                                           & MatrixCoefficients(1),INTERFACE_MATRIX%MATRIX,LAGRANGE_VECTOR,INTERFACE_TEMP_VECTOR, &
                                           & ERR,ERROR,*999)
-                                        
+
                                         !Add interface matrix residual contribution to the solver residual
                                         DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                                           IF(SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
@@ -13753,7 +13753,7 @@ CONTAINS
                                             & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS>0) THEN
                                             !Loop over the solver rows associated with this interface residual row
                                             !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                            solver_row_number=SOLVER_MAPPING% & 
+                                            solver_row_number=SOLVER_MAPPING% &
                                               & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                               & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)% &
                                               & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
@@ -13798,7 +13798,7 @@ CONTAINS
                                         CALL DISTRIBUTED_MATRIX_BY_VECTOR_ADD(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE, &
                                           & MatrixCoefficients(2),INTERFACE_MATRIX%MATRIX_TRANSPOSE,DEPENDENT_VECTOR, &
                                           & INTERFACE_TEMP_VECTOR,ERR,ERROR,*999)
-                                        
+
                                         !Add interface matrix residual contribution to the solver residual.
                                         !The number of columns in the interface matrix is equivalent to the number of rows of the transposed interface matrices
                                         DO interface_row_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
@@ -13807,10 +13807,10 @@ CONTAINS
                                             & NUMBER_OF_SOLVER_ROWS>0) THEN
                                             !Loop over the solver rows associated with this interface residual row
                                             !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                            solver_row_number=SOLVER_MAPPING% & 
+                                            solver_row_number=SOLVER_MAPPING% &
                                               & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                               & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_row_number)%SOLVER_ROW
-                                            row_coupling_coefficient=SOLVER_MAPPING% & 
+                                            row_coupling_coefficient=SOLVER_MAPPING% &
                                               & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                               & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_row_number)%COUPLING_COEFFICIENT
                                             CALL DISTRIBUTED_VECTOR_VALUES_GET(INTERFACE_TEMP_VECTOR,interface_row_number, &
@@ -13858,7 +13858,7 @@ CONTAINS
                                             & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS>0) THEN
                                             !Loop over the solver rows associated with this interface residual row
                                             !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                            solver_row_number=SOLVER_MAPPING% & 
+                                            solver_row_number=SOLVER_MAPPING% &
                                               & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                               & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)% &
                                               & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
@@ -14008,7 +14008,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_MATRICES_DYNAMIC_ASSEMBLE")
     RETURN
 999 ERRORSEXITS("SOLVER_MATRICES_DYNAMIC_ASSEMBLE",ERR,ERROR)
@@ -14029,7 +14029,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: dependent_variable_type,interface_variable_type,equations_column_number,equations_matrix_idx, &
-      & equations_matrix_number,interface_row_number,equations_row_number,equations_row_number2,equations_set_idx, & 
+      & equations_matrix_number,interface_row_number,equations_row_number,equations_row_number2,equations_set_idx, &
       & interface_column_number,interface_condition_idx,interface_matrix_idx,LINEAR_VARIABLE_TYPE,rhs_boundary_condition, &
       & rhs_global_dof,equations_matrix_idx2,rhs_variable_dof,rhs_variable_type,variable_boundary_condition,solver_matrix_idx, &
       & solver_row_idx,solver_row_number,variable_dof,variable_global_dof,variable_idx,variable_type,&
@@ -14080,9 +14080,9 @@ CONTAINS
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(BOUNDARY_CONDITIONS_SPARSITY_INDICES_TYPE), POINTER :: SPARSITY_INDICES
-  
+
     ENTERS("SOLVER_MATRICES_STATIC_ASSEMBLE",ERR,ERROR,*999)
-  
+
     IF(ASSOCIATED(SOLVER)) THEN
       SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
       IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -14135,7 +14135,7 @@ CONTAINS
                           & SELECTION_TYPE==SOLVER_MATRICES_JACOBIAN_ONLY) THEN
                           !Now set the values from the equations Jacobian
                           DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                              & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_EQUATIONS_JACOBIANS 
+                              & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_EQUATIONS_JACOBIANS
                             JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
                               & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%JACOBIAN_TO_SOLVER_MATRIX_MAPS( &
                               & equations_matrix_idx)%ptr
@@ -14403,7 +14403,7 @@ CONTAINS
                                         & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS>0) THEN
                                         !Loop over the solver rows associated with this interface residual row
                                         !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                        solver_row_number=SOLVER_MAPPING% & 
+                                        solver_row_number=SOLVER_MAPPING% &
                                           & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                           & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)% &
                                           & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
@@ -14444,10 +14444,10 @@ CONTAINS
                                         & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_row_number)%NUMBER_OF_SOLVER_ROWS>0) THEN
                                         !Loop over the solver rows associated with this interface residual row
                                         !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                        solver_row_number=SOLVER_MAPPING% & 
+                                        solver_row_number=SOLVER_MAPPING% &
                                           & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                           & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_row_number)%SOLVER_ROW
-                                        row_coupling_coefficient=SOLVER_MAPPING% & 
+                                        row_coupling_coefficient=SOLVER_MAPPING% &
                                           & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                           & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_row_number)%COUPLING_COEFFICIENT
                                         CALL DISTRIBUTED_VECTOR_VALUES_GET(INTERFACE_TEMP_VECTOR,interface_row_number, &
@@ -14491,7 +14491,7 @@ CONTAINS
                                         & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS>0) THEN
                                         !Loop over the solver rows associated with this interface residual row
                                         !Currently earch interface matrix row has only one corresponding solver row number & coupling coefficient
-                                        solver_row_number=SOLVER_MAPPING% & 
+                                        solver_row_number=SOLVER_MAPPING% &
                                           & INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
                                           & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)% &
                                           & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
@@ -14611,7 +14611,7 @@ CONTAINS
                                 CALL FIELD_PARAMETER_SET_DATA_GET(DEPENDENT_FIELD,RHS_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                                   & RHS_PARAMETERS,ERR,ERROR,*999)
                                 NULLIFY(CHECK_DATA)
-                                CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)    
+                                CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)
                                 rhsVector=>vectorMatrices%rhsVector
                                 IF(ASSOCIATED(rhsVector)) THEN
                                   linearMapping=>vectorMapping%linearMapping
@@ -14887,11 +14887,11 @@ CONTAINS
                                         CALL DISTRIBUTED_VECTOR_UPDATE_FINISH(SOLVER_RESIDUAL_VECTOR,ERR,ERROR,*999)
                                       ENDIF
                                       NULLIFY(CHECK_DATA2)
-                                      CALL DISTRIBUTED_VECTOR_DATA_GET(EQUATIONS_RHS_VECTOR,CHECK_DATA2,ERR,ERROR,*999)    
+                                      CALL DISTRIBUTED_VECTOR_DATA_GET(EQUATIONS_RHS_VECTOR,CHECK_DATA2,ERR,ERROR,*999)
                                       NULLIFY(CHECK_DATA3)
-                                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA3,ERR,ERROR,*999)    
+                                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA3,ERR,ERROR,*999)
                                       NULLIFY(CHECK_DATA4)
-                                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA4,ERR,ERROR,*999)    
+                                      CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA4,ERR,ERROR,*999)
                                     ELSE
                                       CALL FlagError("RHS boundary conditions variable is not associated.",ERR,ERROR,*999)
                                     ENDIF
@@ -15005,7 +15005,7 @@ CONTAINS
                   !Start the update the solver RHS vector values
                   CALL DISTRIBUTED_VECTOR_UPDATE_START(SOLVER_RHS_VECTOR,ERR,ERROR,*999)
                   NULLIFY(CHECK_DATA)
-                  CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)   
+                  CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_RHS_VECTOR,CHECK_DATA,ERR,ERROR,*999)
                 ELSE
                   CALL FlagError("The solver RHS vector is not associated.",ERR,ERROR,*999)
                 ENDIF
@@ -15042,7 +15042,7 @@ CONTAINS
 
     EXITS("SOLVER_MATRICES_STATIC_ASSEMBLE")
     RETURN
-999 IF(ALLOCATED(DEPENDENT_PARAMETERS)) DEALLOCATE(DEPENDENT_PARAMETERS)    
+999 IF(ALLOCATED(DEPENDENT_PARAMETERS)) DEALLOCATE(DEPENDENT_PARAMETERS)
     ERRORSEXITS("SOLVER_MATRICES_STATIC_ASSEMBLE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE SOLVER_MATRICES_STATIC_ASSEMBLE
@@ -15063,7 +15063,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_ABSOLUTE_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -15099,12 +15099,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_ABSOLUTE_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_ABSOLUTE_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_ABSOLUTE_TOLERANCE_SET
 
   !
@@ -15123,7 +15123,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: linesearchSolver
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: nonlinearSolver
-    
+
     ENTERS("Solver_QuasiNewtonLineSearchMonitorOutputSet",err,error,*999)
 
     IF(ASSOCIATED(solver)) THEN
@@ -15162,20 +15162,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonLineSearchMonitorOutputSet")
     RETURN
-999 ERRORS("Solver_QuasiNewtonLineSearchMonitorOutputSet",err,error)    
-    EXITS("Solver_QuasiNewtonLineSearchMonitorOutputSet")    
+999 ERRORS("Solver_QuasiNewtonLineSearchMonitorOutputSet",err,error)
+    EXITS("Solver_QuasiNewtonLineSearchMonitorOutputSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_QuasiNewtonLineSearchMonitorOutputSet
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a Quasi-Newton solver 
+  !>Finishes the process of creating a Quasi-Newton solver
   SUBROUTINE SOLVER_QUASI_NEWTON_CREATE_FINISH(QUASI_NEWTON_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -15203,14 +15203,14 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -15232,12 +15232,12 @@ CONTAINS
       CALL SOLVER_FINALISE(QUASI_NEWTON_SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(QUASI_NEWTON_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_QUASI_NEWTON_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_FINALISE
 
   !
@@ -15255,13 +15255,13 @@ CONTAINS
     INTEGER(INTG) :: dummyErr
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: dummyError
- 
+
     ENTERS("SOLVER_QUASI_NEWTON_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
       IF(ASSOCIATED(NONLINEAR_SOLVER%QUASI_NEWTON_SOLVER)) THEN
         CALL FlagError("Quasi-Newton solver is already associated for this nonlinear solver.",ERR,ERROR,*998)
-      ELSE        
+      ELSE
         SOLVER=>NONLINEAR_SOLVER%SOLVER
         IF(ASSOCIATED(SOLVER)) THEN
           !Allocate and initialise a Quasi-Newton solver
@@ -15308,13 +15308,13 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_INITIALISE")
     RETURN
 999 CALL SOLVER_QUASI_NEWTON_FINALISE(NONLINEAR_SOLVER%QUASI_NEWTON_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_QUASI_NEWTON_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_INITIALISE
 
   !
@@ -15333,7 +15333,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_QuasiNewtonJacobianCalculationTypeSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -15376,15 +15376,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonJacobianCalculationTypeSet")
     RETURN
 999 ERRORS("Solver_QuasiNewtonJacobianCalculationTypeSet",ERR,ERROR)
     EXITS("Solver_QuasiNewtonJacobianCalculationTypeSet")
     RETURN 1
-    
+
   END SUBROUTINE Solver_QuasiNewtonJacobianCalculationTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -15401,7 +15401,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN
@@ -15428,12 +15428,12 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LIBRARY_TYPE_GET
 
   !
@@ -15454,7 +15454,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN
       SELECT CASE(QUASI_NEWTON_SOLVER%QUASI_NEWTON_SOLVE_TYPE)
       CASE(SOLVER_QUASI_NEWTON_LINESEARCH)
@@ -15497,12 +15497,12 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LIBRARY_TYPE_SET
 
   !
@@ -15553,18 +15553,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LINEAR_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINEAR_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINEAR_SOLVER_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns the CellML solver associated with a Quasi-Newton solver  \see OpenCMISS::Iron::cmfe_SolverQuasiNewtonCellMLSolverGetSet
   SUBROUTINE SOLVER_QUASI_NEWTON_CELLML_SOLVER_GET(SOLVER,CELLML_SOLVER,ERR,ERROR,*)
 
@@ -15627,18 +15627,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_CELLML_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_CELLML_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_CELLML_SOLVER_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Sets/changes the convergence test for a Quasi-Newton nonlinear solver \see OpenCMISS::Iron::cmfe_SolverQuasiNewtonConvergenceTestSet
   SUBROUTINE Solver_QuasiNewtonConvergenceTestTypeSet(solver,convergenceTestType,err,error,*)
 
@@ -15648,10 +15648,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: quasiNewtonSolver 
+    TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: quasiNewtonSolver
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: nonlinearSolver
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("Solver_QuasiNewtonConvergenceTestTypeSet",err,error,*999)
 
     IF(ASSOCIATED(solver)) THEN
@@ -15692,14 +15692,14 @@ CONTAINS
     ELSE
     CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonConvergenceTestTypeSet")
     RETURN
-999 ERRORSEXITS("Solver_QuasiNewtonConvergenceTestTypeSet",ERR,ERROR)    
+999 ERRORSEXITS("Solver_QuasiNewtonConvergenceTestTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_QuasiNewtonConvergenceTestTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -15744,7 +15744,7 @@ CONTAINS
     TYPE(INTERFACE_MATRIX_TYPE), POINTER :: INTERFACE_MATRIX
 
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-  
+
     ENTERS("Solver_QuasiNewtonLinesearchCreateFinish",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
@@ -16010,7 +16010,7 @@ CONTAINS
                     ELSE
                       CALL FlagError("Solver matrices residual vector is not associated.",ERR,ERROR,*999)
                     ENDIF
-                  
+
                     !Set the Jacobian
                     IF(SOLVER_MATRICES%NUMBER_OF_MATRICES==1) THEN
                       SOLVER_JACOBIAN=>SOLVER_MATRICES%matrices(1)%ptr
@@ -16143,12 +16143,12 @@ CONTAINS
     ELSE
       CALL FlagError("Line search solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonLinesearchCreateFinish")
     RETURN
 999 ERRORSEXITS("Solver_QuasiNewtonLinesearchCreateFinish",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE Solver_QuasiNewtonLinesearchCreateFinish
 
   !
@@ -16163,7 +16163,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-  
+
     ENTERS("Solver_QuasiNewtonLinesearchFinalise",err,error,*999)
 
     IF(ASSOCIATED(linesearchSolver)) THEN
@@ -16174,12 +16174,12 @@ CONTAINS
       CALL Petsc_SnesFinalise(linesearchSolver%snes,err,error,*999)
       DEALLOCATE(linesearchSolver)
     ENDIF
-        
+
     EXITS("Solver_QuasiNewtonLinesearchFinalise")
     RETURN
 999 ERRORSEXITS("Solver_QuasiNewtonLinesearchFinalise",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_QuasiNewtonLinesearchFinalise
 
   !
@@ -16196,7 +16196,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-  
+
     ENTERS("SOLVER_QUASI_NEWTON_LINESEARCH_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN
@@ -16221,13 +16221,13 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_LINESEARCH_INITIALISE")
     RETURN
 999 CALL Solver_QuasiNewtonLinesearchFinalise(QUASI_NEWTON_SOLVER%LINESEARCH_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINESEARCH_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_INITIALISE
 
   !
@@ -16247,7 +16247,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_LINESEARCH_MAXSTEP_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16293,19 +16293,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LINESEARCH_MAXSTEP_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINESEARCH_MAXSTEP_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_MAXSTEP_SET
-        
+
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Quasi-Newton line search solver 
+  !Solves a nonlinear Quasi-Newton line search solver
   SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_SOLVE(LINESEARCH_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -16446,14 +16446,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linesearch solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LINESEARCH_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINESEARCH_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -16471,9 +16471,9 @@ CONTAINS
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_LINESEARCH_STEPTOL_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
@@ -16517,14 +16517,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LINESEARCH_STEPTOL_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINESEARCH_STEPTOL_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_STEPTOL_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -16542,7 +16542,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_LINESEARCH_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16592,14 +16592,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_LINESEARCH_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_LINESEARCH_TYPE_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_LINESEARCH_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -16616,9 +16616,9 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_QuasiNewtonMaximumFunctionEvaluationsSet",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
@@ -16653,15 +16653,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonMaximumFunctionEvaluationsSet")
     RETURN
 999 ERRORS("Solver_QuasiNewtonMaximumFunctionEvaluationsSet",ERR,ERROR)
     EXITS("Solver_QuasiNewtonMaximumFunctionEvaluationsSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_QuasiNewtonMaximumFunctionEvaluationsSet
-        
+
   !
   !================================================================================================================================
   !
@@ -16678,7 +16678,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_MAXIMUM_ITERATIONS_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16714,14 +16714,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_MAXIMUM_ITERATIONS_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_MAXIMUM_ITERATIONS_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_MAXIMUM_ITERATIONS_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -16738,7 +16738,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_RELATIVE_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16774,14 +16774,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_RELATIVE_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_RELATIVE_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_RELATIVE_TOLERANCE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -16798,7 +16798,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_SOLUTION_INIT_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16828,7 +16828,7 @@ CONTAINS
               ENDIF
             ELSE
               CALL FlagError("The nonlinear solver is not a Quasi-Newton solver.",ERR,ERROR,*999)
-            ENDIF            
+            ENDIF
           ELSE
             CALL FlagError("The solver nonlinear solver is not associated.",ERR,ERROR,*999)
           ENDIF
@@ -16839,14 +16839,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_SOLUTION_INIT_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_SOLUTION_INIT_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_SOLUTION_INIT_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -16863,7 +16863,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_SOLUTION_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -16888,7 +16888,7 @@ CONTAINS
               ENDIF
             ELSE
               CALL FlagError("The nonlinear solver is not a Quasi-Newton solver.",ERR,ERROR,*999)
-            ENDIF            
+            ENDIF
           ELSE
             CALL FlagError("The solver nonlinear solver is not associated.",ERR,ERROR,*999)
           ENDIF
@@ -16899,19 +16899,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_SOLUTION_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_SOLUTION_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_SOLUTION_TOLERANCE_SET
-        
+
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Quasi-Newton solver 
+  !Solves a nonlinear Quasi-Newton solver
   SUBROUTINE SOLVER_QUASI_NEWTON_SOLVE(QUASI_NEWTON_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -16937,14 +16937,14 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -16977,7 +16977,7 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-  
+
     ENTERS("Solver_QuasiNewtonTrustRegionCreateFinish",ERR,ERROR,*999)
 
     IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
@@ -17059,7 +17059,7 @@ CONTAINS
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
                   ENDDO !equations_set_idx
-                  
+
                   !Create the solver matrices and vectors
                   CALL SOLVER_MATRICES_CREATE_START(SOLVER_EQUATIONS,SOLVER_MATRICES,ERR,ERROR,*999)
                   CALL SolverMatrices_LibraryTypeSet(SOLVER_MATRICES,SOLVER_PETSC_LIBRARY,ERR,ERROR,*999)
@@ -17093,7 +17093,7 @@ CONTAINS
                   ENDIF
                   !Set the Jacobian if necessary
                   !Set the trust region delta ???
-                  
+
                   !Set the trust region tolerance
                   CALL Petsc_SnesSetTrustRegionTolerance(TRUSTREGION_SOLVER%snes,TRUSTREGION_SOLVER%TRUSTREGION_TOLERANCE, &
                     & ERR,ERROR,*999)
@@ -17127,12 +17127,12 @@ CONTAINS
     ELSE
       CALL FlagError("Trust region solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("Solver_QuasiNewtonTrustRegionCreateFinish")
     RETURN
 999 ERRORSEXITS("Solver_QuasiNewtonTrustRegionCreateFinish",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE Solver_QuasiNewtonTrustRegionCreateFinish
 
   !
@@ -17152,7 +17152,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_TRUSTREGION_DELTA0_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17198,18 +17198,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_DELTA0_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_DELTA0_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_DELTA0_SET
-        
+
   !
   !================================================================================================================================
   !
-  
+
   !>Finalise a nonlinear Quasi-Newton trust region solver and deallocate all memory
   SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE(TRUSTREGION_SOLVER,ERR,ERROR,*)
 
@@ -17218,19 +17218,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-  
+
     ENTERS("SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN      
+    IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
       CALL Petsc_SnesFinalise(TRUSTREGION_SOLVER%snes,ERR,ERROR,*999)
       DEALLOCATE(TRUSTREGION_SOLVER)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE
 
   !
@@ -17247,7 +17247,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-  
+
     ENTERS("SOLVER_QUASI_NEWTON_TRUSTREGION_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN
@@ -17265,20 +17265,20 @@ CONTAINS
     ELSE
       CALL FlagError("Quasi-Newton solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_INITIALISE")
     RETURN
 999 CALL SOLVER_QUASI_NEWTON_TRUSTREGION_FINALISE(QUASI_NEWTON_SOLVER%TRUSTREGION_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Quasi-Newton trust region solver 
+  !Solves a nonlinear Quasi-Newton trust region solver
   SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_SOLVE(TRUSTREGION_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -17297,7 +17297,7 @@ CONTAINS
 
     IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
       QUASI_NEWTON_SOLVER=>TRUSTREGION_SOLVER%QUASI_NEWTON_SOLVER
-      IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN        
+      IF(ASSOCIATED(QUASI_NEWTON_SOLVER)) THEN
         NONLINEAR_SOLVER=>QUASI_NEWTON_SOLVER%NONLINEAR_SOLVER
         IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
           SOLVER=>NONLINEAR_SOLVER%SOLVER
@@ -17334,14 +17334,14 @@ CONTAINS
     ELSE
       CALL FlagError("Trust region solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_TRUSTREGION_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_TRUSTREGION_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -17359,7 +17359,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_QuasiNewtonTrustRegionToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17405,14 +17405,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_QuasiNewtonTrustRegionToleranceSet")
     RETURN
 999 ERRORSEXITS("Solver_QuasiNewtonTrustRegionToleranceSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_QuasiNewtonTrustRegionToleranceSet
-        
+
   !
   !================================================================================================================================
   !
@@ -17422,13 +17422,13 @@ CONTAINS
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set the nonlinear Quasi-Newton solver type
-    INTEGER(INTG), INTENT(IN) :: RESTART !<Sets the number of stored updates and the restart period for periodic restart type 
+    INTEGER(INTG), INTENT(IN) :: RESTART !<Sets the number of stored updates and the restart period for periodic restart type
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_RESTART_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17458,14 +17458,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_RESTART_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_RESTART_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_RESTART_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -17482,7 +17482,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_RESTART_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17527,14 +17527,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_RESTART_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_RESTART_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_RESTART_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -17551,7 +17551,7 @@ CONTAINS
    TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_SCALE_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17598,14 +17598,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_SCALE_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_SCALE_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_SCALE_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -17622,7 +17622,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17666,14 +17666,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_QUASI_NEWTON_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -17691,7 +17691,7 @@ CONTAINS
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_QUASI_NEWTON_SOLVE_TYPE_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17746,7 +17746,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_QUASI_NEWTON_SOLVE_TYPE_SET")
     RETURN
 999 SELECT CASE(QUASI_NEWTON_SOLVE_TYPE)
@@ -17757,7 +17757,7 @@ CONTAINS
     END SELECT
 998 ERRORSEXITS("SOLVER_QUASI_NEWTON_SOLVE_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_QUASI_NEWTON_SOLVE_TYPE_SET
 
   !
@@ -17776,7 +17776,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_ABSOLUTE_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -17812,12 +17812,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_ABSOLUTE_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_ABSOLUTE_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_ABSOLUTE_TOLERANCE_SET
 
   !
@@ -17836,7 +17836,7 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: linesearchSolver
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: newtonSolver
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: nonlinearSolver
-    
+
     ENTERS("Solver_NewtonLineSearchMonitorOutputSet",err,error,*999)
 
     IF(ASSOCIATED(solver)) THEN
@@ -17875,19 +17875,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_NewtonLineSearchMonitorOutputSet")
     RETURN
-999 ERRORSEXITS("Solver_NewtonLineSearchMonitorOutputSet",err,error)    
+999 ERRORSEXITS("Solver_NewtonLineSearchMonitorOutputSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_NewtonLineSearchMonitorOutputSet
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a Newton solver 
+  !>Finishes the process of creating a Newton solver
   SUBROUTINE SOLVER_NEWTON_CREATE_FINISH(NEWTON_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -17913,14 +17913,14 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -17942,12 +17942,12 @@ CONTAINS
       CALL SOLVER_FINALISE(NEWTON_SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(NEWTON_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_NEWTON_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_FINALISE
 
   !
@@ -17965,13 +17965,13 @@ CONTAINS
     INTEGER(INTG) :: dummyErr
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: dummyError
- 
+
     ENTERS("SOLVER_NEWTON_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
       IF(ASSOCIATED(NONLINEAR_SOLVER%NEWTON_SOLVER)) THEN
         CALL FlagError("Newton solver is already associated for this nonlinear solver.",ERR,ERROR,*998)
-      ELSE        
+      ELSE
         SOLVER=>NONLINEAR_SOLVER%SOLVER
         IF(ASSOCIATED(SOLVER)) THEN
           !Allocate and initialise a Newton solver
@@ -18013,13 +18013,13 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_INITIALISE")
     RETURN
 999 CALL SOLVER_NEWTON_FINALISE(NONLINEAR_SOLVER%NEWTON_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_NEWTON_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_INITIALISE
 
   !
@@ -18038,7 +18038,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_JACOBIAN_CALCULATION_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -18081,14 +18081,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_JACOBIAN_CALCULATION_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_JACOBIAN_CALCULATION_TYPE_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_JACOBIAN_CALCULATION_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -18105,7 +18105,7 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_NEWTON_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(NEWTON_SOLVER)) THEN
@@ -18132,12 +18132,12 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LIBRARY_TYPE_GET
 
   !
@@ -18158,7 +18158,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_NEWTON_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(NEWTON_SOLVER)) THEN
       SELECT CASE(NEWTON_SOLVER%NEWTON_SOLVE_TYPE)
       CASE(SOLVER_NEWTON_LINESEARCH)
@@ -18201,12 +18201,12 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LIBRARY_TYPE_SET
 
   !
@@ -18257,18 +18257,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINEAR_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINEAR_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LINEAR_SOLVER_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns the CellML solver associated with a Newton solver \todo should this be SOLVER_NONLINEAR_NEWTON_CELLML_SOLVER_GET??? \see OpenCMISS::Iron::cmfe_SolverNewtonCellMLSolverGetSet
   SUBROUTINE SOLVER_NEWTON_CELLML_SOLVER_GET(SOLVER,CELLML_SOLVER,ERR,ERROR,*)
 
@@ -18331,18 +18331,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_CELLML_SOLVER_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_CELLML_SOLVER_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_CELLML_SOLVER_GET
 
   !
   !================================================================================================================================
   !
-  
+
   !>Sets/changes the convergence test for a Newton nonlinear solver \see OpenCMISS::Iron::cmfe_SolverNewtonConvergenceTestSet
   SUBROUTINE Solver_NewtonConvergenceTestTypeSet(solver,convergenceTestType,err,error,*)
 
@@ -18352,10 +18352,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(NEWTON_SOLVER_TYPE), POINTER :: newtonSolver 
+    TYPE(NEWTON_SOLVER_TYPE), POINTER :: newtonSolver
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: nonlinearSolver
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("Solver_NewtonConvergenceTestTypeSet",err,error,*999)
 
     IF(ASSOCIATED(solver)) THEN
@@ -18396,12 +18396,12 @@ CONTAINS
     ELSE
     CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_NewtonConvergenceTestTypeSet")
     RETURN
-999 ERRORSEXITS("Solver_NewtonConvergenceTestTypeSet",ERR,ERROR)    
+999 ERRORSEXITS("Solver_NewtonConvergenceTestTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_NewtonConvergenceTestTypeSet
 
   !
@@ -18410,7 +18410,7 @@ CONTAINS
 
   !>Sets/changes the line search alpha for a Newton linesearch solver \todo should this be SOLVER_NONLINEAR_NEWTON_LINESEARCH_ALPHA_SET??? \see OpenCMISS::Iron::cmfe_SolverNewtonLineSearchAlphaSet
   SUBROUTINE SOLVER_NEWTON_LINESEARCH_ALPHA_SET(SOLVER,LINESEARCH_ALPHA,ERR,ERROR,*)
-    
+
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set the line search alpha for
     REAL(DP), INTENT(IN) :: LINESEARCH_ALPHA !<The line search alpha to set
@@ -18421,7 +18421,7 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_ALPHA_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -18466,14 +18466,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_ALPHA_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_ALPHA_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_ALPHA_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -18518,7 +18518,7 @@ CONTAINS
     TYPE(INTERFACE_MATRIX_TYPE), POINTER :: INTERFACE_MATRIX
 
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-  
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
@@ -18672,7 +18672,7 @@ CONTAINS
                   CALL Petsc_SnesCreate(computationalEnvironment%mpiCommunicator,LINESEARCH_SOLVER%snes,ERR,ERROR,*999)
                   !Set the nonlinear solver type to be a Newton line search solver
                   CALL Petsc_SnesSetType(LINESEARCH_SOLVER%snes,PETSC_SNESNEWTONLS,ERR,ERROR,*999)
-                  
+
                   !Create the solver matrices and vectors
                   LINEAR_SOLVER=>NEWTON_SOLVER%LINEAR_SOLVER
                   IF(ASSOCIATED(LINEAR_SOLVER)) THEN
@@ -18743,7 +18743,7 @@ CONTAINS
                     ELSE
                       CALL FlagError("Solver matrices residual vector is not associated.",ERR,ERROR,*999)
                     ENDIF
-                  
+
                     !Set the Jacobian
                     IF(SOLVER_MATRICES%NUMBER_OF_MATRICES==1) THEN
                       SOLVER_JACOBIAN=>SOLVER_MATRICES%matrices(1)%ptr
@@ -18864,7 +18864,7 @@ CONTAINS
                     CALL Petsc_SnesSetTolerances(LINESEARCH_SOLVER%snes,NEWTON_SOLVER%ABSOLUTE_TOLERANCE, &
                       & NEWTON_SOLVER%RELATIVE_TOLERANCE,NEWTON_SOLVER%SOLUTION_TOLERANCE, &
                       & NEWTON_SOLVER%MAXIMUM_NUMBER_OF_ITERATIONS, &
-                      & NEWTON_SOLVER%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS,ERR,ERROR,*999)            
+                      & NEWTON_SOLVER%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS,ERR,ERROR,*999)
                     !Set any further SNES options from the command line options
                     CALL Petsc_SnesSetFromOptions(LINESEARCH_SOLVER%snes,ERR,ERROR,*999)
                   ELSE
@@ -18893,12 +18893,12 @@ CONTAINS
     ELSE
       CALL FlagError("Line search solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_CREATE_FINISH
 
   !
@@ -18913,7 +18913,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-  
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
@@ -18924,12 +18924,12 @@ CONTAINS
       CALL Petsc_SnesFinalise(LINESEARCH_SOLVER%snes,ERR,ERROR,*999)
       DEALLOCATE(LINESEARCH_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_LINESEARCH_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_FINALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_FINALISE
 
   !
@@ -18946,7 +18946,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-  
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(NEWTON_SOLVER)) THEN
@@ -18972,13 +18972,13 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_LINESEARCH_INITIALISE")
     RETURN
 999 CALL SOLVER_NEWTON_LINESEARCH_FINALISE(NEWTON_SOLVER%LINESEARCH_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_INITIALISE
 
   !
@@ -18998,7 +18998,7 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_MAXSTEP_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19044,19 +19044,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_MAXSTEP_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_MAXSTEP_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_MAXSTEP_SET
-        
+
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Newton line search solver 
+  !Solves a nonlinear Newton line search solver
   SUBROUTINE SOLVER_NEWTON_LINESEARCH_SOLVE(LINESEARCH_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -19202,14 +19202,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linesearch solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -19227,9 +19227,9 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_STEPTOL_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
@@ -19273,14 +19273,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_STEPTOL_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_STEPTOL_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_STEPTOL_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -19298,7 +19298,7 @@ CONTAINS
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19350,14 +19350,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_LINESEARCH_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_LINESEARCH_TYPE_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_LINESEARCH_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -19374,9 +19374,9 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_NewtonMaximumFunctionEvaluationsSet",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
@@ -19411,14 +19411,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_NewtonMaximumFunctionEvaluationsSet")
     RETURN
 999 ERRORSEXITS("Solver_NewtonMaximumFunctionEvaluationsSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_NewtonMaximumFunctionEvaluationsSet
-        
+
   !
   !================================================================================================================================
   !
@@ -19435,7 +19435,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_MAXIMUM_ITERATIONS_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19471,14 +19471,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_MAXIMUM_ITERATIONS_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_MAXIMUM_ITERATIONS_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_MAXIMUM_ITERATIONS_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -19495,7 +19495,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_RELATIVE_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19531,14 +19531,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_RELATIVE_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_RELATIVE_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_RELATIVE_TOLERANCE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -19555,7 +19555,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_SOLUTION_INIT_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19585,7 +19585,7 @@ CONTAINS
               ENDIF
             ELSE
               CALL FlagError("The nonlinear solver is not a Newton solver.",ERR,ERROR,*999)
-            ENDIF            
+            ENDIF
           ELSE
             CALL FlagError("The solver nonlinear solver is not associated.",ERR,ERROR,*999)
           ENDIF
@@ -19596,14 +19596,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_SOLUTION_INIT_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_SOLUTION_INIT_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_SOLUTION_INIT_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -19620,7 +19620,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_SOLUTION_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19645,7 +19645,7 @@ CONTAINS
               ENDIF
             ELSE
               CALL FlagError("The nonlinear solver is not a Newton solver.",ERR,ERROR,*999)
-            ENDIF            
+            ENDIF
           ELSE
             CALL FlagError("The solver nonlinear solver is not associated.",ERR,ERROR,*999)
           ENDIF
@@ -19656,19 +19656,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_SOLUTION_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_SOLUTION_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_SOLUTION_TOLERANCE_SET
-        
+
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Newton solver 
+  !Solves a nonlinear Newton solver
   SUBROUTINE SOLVER_NEWTON_SOLVE(NEWTON_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -19694,14 +19694,14 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -19734,7 +19734,7 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-  
+
     ENTERS("SOLVER_NEWTON_TRUSTREGION_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
@@ -19761,7 +19761,7 @@ CONTAINS
                         DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
                         IF(ASSOCIATED(DEPENDENT_FIELD)) THEN
                           NULLIFY(vectorEquations)
-                          CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)                         
+                          CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
                           vectorMapping=>vectorEquations%vectorMapping
                           IF(ASSOCIATED(vectorMapping)) THEN
                             linearMapping=>vectorMapping%linearMapping
@@ -19816,7 +19816,7 @@ CONTAINS
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
                   ENDDO !equations_set_idx
-                  
+
                   !Create the solver matrices and vectors
                   CALL SOLVER_MATRICES_CREATE_START(SOLVER_EQUATIONS,SOLVER_MATRICES,ERR,ERROR,*999)
                   CALL SolverMatrices_LibraryTypeSet(SOLVER_MATRICES,SOLVER_PETSC_LIBRARY,ERR,ERROR,*999)
@@ -19852,7 +19852,7 @@ CONTAINS
                   ENDIF
                   !Set the Jacobian if necessary
                   !Set the trust region delta ???
-                  
+
                   !Set the trust region tolerance
                   CALL Petsc_SnesSetTrustRegionTolerance(TRUSTREGION_SOLVER%snes,TRUSTREGION_SOLVER%TRUSTREGION_TOLERANCE, &
                     & ERR,ERROR,*999)
@@ -19886,12 +19886,12 @@ CONTAINS
     ELSE
       CALL FlagError("Trust region solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_CREATE_FINISH
 
   !
@@ -19911,7 +19911,7 @@ CONTAINS
     TYPE(NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_TRUSTREGION_DELTA0_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -19957,18 +19957,18 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_DELTA0_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_DELTA0_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_DELTA0_SET
-        
+
   !
   !================================================================================================================================
   !
-  
+
   !>Finalise a nonlinear Newton trust region solver and deallocate all memory
   SUBROUTINE SOLVER_NEWTON_TRUSTREGION_FINALISE(TRUSTREGION_SOLVER,ERR,ERROR,*)
 
@@ -19977,19 +19977,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-  
+
     ENTERS("SOLVER_NEWTON_TRUSTREGION_FINALISE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN      
+    IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
       CALL Petsc_SnesFinalise(TRUSTREGION_SOLVER%snes,ERR,ERROR,*999)
       DEALLOCATE(TRUSTREGION_SOLVER)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_FINALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_FINALISE
 
   !
@@ -20006,7 +20006,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-  
+
     ENTERS("SOLVER_NEWTON_TRUSTREGION_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(NEWTON_SOLVER)) THEN
@@ -20024,20 +20024,20 @@ CONTAINS
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_INITIALISE")
     RETURN
 999 CALL SOLVER_NEWTON_TRUSTREGION_FINALISE(NEWTON_SOLVER%TRUSTREGION_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !Solves a nonlinear Newton trust region solver 
+  !Solves a nonlinear Newton trust region solver
   SUBROUTINE SOLVER_NEWTON_TRUSTREGION_SOLVE(TRUSTREGION_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -20056,7 +20056,7 @@ CONTAINS
 
     IF(ASSOCIATED(TRUSTREGION_SOLVER)) THEN
       NEWTON_SOLVER=>TRUSTREGION_SOLVER%NEWTON_SOLVER
-      IF(ASSOCIATED(NEWTON_SOLVER)) THEN        
+      IF(ASSOCIATED(NEWTON_SOLVER)) THEN
         NONLINEAR_SOLVER=>NEWTON_SOLVER%NONLINEAR_SOLVER
         IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
           SOLVER=>NONLINEAR_SOLVER%SOLVER
@@ -20093,14 +20093,14 @@ CONTAINS
     ELSE
       CALL FlagError("Trust region solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_SOLVE
-  
+
   !
   !================================================================================================================================
   !
@@ -20118,7 +20118,7 @@ CONTAINS
     TYPE(NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_TRUSTREGION_TOLERANCE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -20164,14 +20164,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_TRUSTREGION_TOLERANCE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_TRUSTREGION_TOLERANCE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_TRUSTREGION_TOLERANCE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -20189,7 +20189,7 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NEWTON_TYPE_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -20243,7 +20243,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_NEWTON_TYPE_SET")
     RETURN
 999 SELECT CASE(NEWTON_SOLVE_TYPE)
@@ -20254,19 +20254,19 @@ CONTAINS
     END SELECT
 998 ERRORSEXITS("SOLVER_NEWTON_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
 
-        
+
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a nonlinear solver 
+  !>Finishes the process of creating a nonlinear solver
   SUBROUTINE SOLVER_NONLINEAR_CREATE_FINISH(NONLINEAR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -20296,12 +20296,12 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NONLINEAR_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_CREATE_FINISH
 
   !
@@ -20445,12 +20445,12 @@ CONTAINS
       END SELECT
       DEALLOCATE(NONLINEAR_SOLVER)
     ENDIF
-         
+
     EXITS("SOLVER_NONLINEAR_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_FINALISE
 
   !
@@ -20467,7 +20467,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
-    
+
     ENTERS("SOLVER_NONLINEAR_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -20486,13 +20486,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_NONLINEAR_INITIALISE")
     RETURN
 999 CALL SOLVER_NONLINEAR_FINALISE(SOLVER%NONLINEAR_SOLVER,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_NONLINEAR_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_INITIALISE
 
   !
@@ -20543,12 +20543,12 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NONLINEAR_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_LIBRARY_TYPE_GET
 
   !
@@ -20567,9 +20567,9 @@ CONTAINS
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_NONLINEAR_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(NONLINEAR_SOLVER)) THEN
       SELECT CASE(NONLINEAR_SOLVER%NONLINEAR_SOLVE_TYPE)
       CASE(SOLVER_NONLINEAR_NEWTON)
@@ -20599,12 +20599,12 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_NONLINEAR_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_LIBRARY_TYPE_SET
 
   !
@@ -20621,19 +20621,19 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    REAL(DP) :: xnorm !<The norm of the current solution 
-    REAL(DP) :: fnorm !<The norm of the current function 
+    REAL(DP) :: xnorm !<The norm of the current solution
+    REAL(DP) :: fnorm !<The norm of the current function
     REAL(DP) :: ynorm !<The norm of the current update
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: newtonLinesearchSolver
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: newtonSolver
     TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: quasiNewtonlinesearchSolver
     TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: QUASI_NEWTON_SOLVER
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("SOLVER_NONLINEAR_MONITOR",err,error,*999)
 
     IF(ASSOCIATED(nonlinearSolver)) THEN
-        
+
       CALL WriteString(GENERAL_OUTPUT_TYPE,"",err,error,*999)
       CALL WriteString(GENERAL_OUTPUT_TYPE,"Nonlinear solve monitor: ",err,error,*999)
       CALL WriteString(GENERAL_OUTPUT_TYPE,"",err,ERROR,*999)
@@ -20670,11 +20670,11 @@ CONTAINS
               CALL FlagError("The Sum of differentiated ratios of unconstrained to constrained residuals"// &
                 &  "convergence test type is not implemented.",err,error,*999)
             END SELECT
-          CALL WriteString(GENERAL_OUTPUT_TYPE,"  Newton solver information: ",err,error,*999)          
+          CALL WriteString(GENERAL_OUTPUT_TYPE,"  Newton solver information: ",err,error,*999)
           CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"    Number of function evaluations = ",newtonSolver% &
             & TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS,err,error,*999)
           CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"    Number of Jacobian evaluations = ",newtonSolver% &
-            & TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS,err,error,*999)            
+            & TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS,err,error,*999)
         ELSE
           CALL FlagError("Nonlinear solver Newton solver is not associated.",err,error,*999)
         ENDIF
@@ -20705,11 +20705,11 @@ CONTAINS
               CALL FlagError("The Sum of differentiated ratios of unconstrained to constrained residuals"// &
                 &  "convergence test type is not implemented.",err,error,*999)
             END SELECT
-          CALL WriteString(GENERAL_OUTPUT_TYPE,"  Quasi-Newton solver information: ",err,error,*999)          
+          CALL WriteString(GENERAL_OUTPUT_TYPE,"  Quasi-Newton solver information: ",err,error,*999)
           CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"    Number of function evaluations = ",QUASI_NEWTON_SOLVER% &
             & TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS,err,error,*999)
           CALL WriteStringValue(GENERAL_OUTPUT_TYPE,"    Number of Jacobian evaluations = ",QUASI_NEWTON_SOLVER% &
-            & TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS,err,error,*999)            
+            & TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS,err,error,*999)
         ELSE
           CALL FlagError("Nonlinear solver Quasi-Newton solver is not associated.",err,error,*999)
         ENDIF
@@ -20722,7 +20722,7 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",err,error,*999)
     ENDIF
-     
+
     EXITS("SOLVER_NONLINEAR_MONITOR")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_MONITOR",err,error)
@@ -20733,7 +20733,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !Solves a nonlinear solver 
+  !Solves a nonlinear solver
   SUBROUTINE SOLVER_NONLINEAR_SOLVE(NONLINEAR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -20766,13 +20766,13 @@ CONTAINS
             & TRIM(NumberToVString(NONLINEAR_SOLVER%NONLINEAR_SOLVE_TYPE,"*",ERR,ERROR))//" is invalid."
           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
         END SELECT
-        
+
         IF(SOLVER%outputType>=SOLVER_SOLVER_OUTPUT) THEN
-          
+
 #ifdef TAUPROF
           CALL TAU_STATIC_PHASE_START("Solution Output Phase")
 #endif
-          
+
           SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
           IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
             SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
@@ -20793,7 +20793,7 @@ CONTAINS
           ELSE
             CALL FlagError("Solver solver equations is not associated.",ERR,ERROR,*999)
           ENDIF
-          
+
 #ifdef TAUPROF
           CALL TAU_STATIC_PHASE_STOP("Solution Output Phase")
 #endif
@@ -20804,14 +20804,14 @@ CONTAINS
     ELSE
       CALL FlagError("Nonlinear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NONLINEAR_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_NONLINEAR_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -20828,7 +20828,7 @@ CONTAINS
     INTEGER(INTG) :: dummyErr
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_NONLINEAR_TYPE_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -20845,7 +20845,7 @@ CONTAINS
               CASE(SOLVER_NONLINEAR_NEWTON)
                 CALL SOLVER_NEWTON_FINALISE(NONLINEAR_SOLVER%NEWTON_SOLVER,ERR,ERROR,*999)
               CASE(SOLVER_NONLINEAR_BFGS_INVERSE)
-                CALL FlagError("Not implemented.",ERR,ERROR,*999)                
+                CALL FlagError("Not implemented.",ERR,ERROR,*999)
               CASE(SOLVER_NONLINEAR_SQP)
                 CALL FlagError("Not implemented.",ERR,ERROR,*999)
               CASE(SOLVER_NONLINEAR_QUASI_NEWTON)
@@ -20884,24 +20884,24 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_NONLINEAR_TYPE_SET")
     RETURN
 999 SELECT CASE(NONLINEAR_SOLVE_TYPE)
     CASE(SOLVER_NONLINEAR_NEWTON)
       CALL SOLVER_NEWTON_FINALISE(NONLINEAR_SOLVER%NEWTON_SOLVER,dummyErr,dummyError,*998)
     CASE(SOLVER_NONLINEAR_BFGS_INVERSE)
-      CALL FlagError("Not implemented.",ERR,ERROR,*998)                
+      CALL FlagError("Not implemented.",ERR,ERROR,*998)
     CASE(SOLVER_NONLINEAR_SQP)
-      CALL FlagError("Not implemented.",ERR,ERROR,*998)      
+      CALL FlagError("Not implemented.",ERR,ERROR,*998)
     CASE(SOLVER_NONLINEAR_QUASI_NEWTON)
       CALL SOLVER_QUASI_NEWTON_FINALISE(NONLINEAR_SOLVER%QUASI_NEWTON_SOLVER,dummyErr,dummyError,*998)
     END SELECT
 998 ERRORSEXITS("SOLVER_NONLINEAR_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NONLINEAR_TYPE_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -20915,18 +20915,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_OptimiserCertaintyTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     solverCertaintyType=optimiserSolver%certaintyType
-    
+
     EXITS("Solver_OptimiserCertaintyTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserCertaintyTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserCertaintyTypeGet
 
   !
@@ -20945,9 +20945,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_OptimiserCertaintyTypeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     SELECT CASE(solverCertaintyType)
     CASE(SOLVER_OPTIMISER_DETERMINISTIC_CERTAINTY)
       optimiserSolver%certaintyType=SOLVER_OPTIMISER_DETERMINISTIC_CERTAINTY
@@ -20958,12 +20958,12 @@ CONTAINS
         & " is invalid for an optimiser solver."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-        
+
     EXITS("Solver_OptimiserCertaintyTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserCertaintyTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserCertaintyTypeSet
 
   !
@@ -20979,18 +20979,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_OptimiserConstraintTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     solverConstraintType=optimiserSolver%constraintType
-    
+
     EXITS("Solver_OptimiserConstraintTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserConstraintTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserConstraintTypeGet
 
   !
@@ -21009,9 +21009,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_OptimiserConstraintTypeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     SELECT CASE(solverConstraintType)
     CASE(SOLVER_OPTIMISER_UNCONSTRAINED)
       CALL FlagError("Not implemented.",err,error,*999)
@@ -21028,19 +21028,19 @@ CONTAINS
         & " is invalid for an optimiser solver."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-        
+
     EXITS("Solver_OptimiserConstraintTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserConstraintTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserConstraintTypeSet
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating an optimiser solver 
+  !>Finishes the process of creating an optimiser solver
   SUBROUTINE Solver_OptimiserCreateFinish(optimiserSolver,err,error,*)
 
     !Argument variables
@@ -21052,16 +21052,16 @@ CONTAINS
     ENTERS("Solver_OptimiserCreateFinish",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     CALL FlagError("Not implemented.",err,error,*999)
-         
+
     EXITS("Solver_OptimiserCreateFinish")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserCreateFinish",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserCreateFinish
-        
+
   !
   !================================================================================================================================
   !
@@ -21077,15 +21077,15 @@ CONTAINS
 
     ENTERS("Solver_OptimiserFinalise",err,error,*999)
 
-    IF(ASSOCIATED(optimiserSolver)) THEN        
+    IF(ASSOCIATED(optimiserSolver)) THEN
       DEALLOCATE(optimiserSolver)
     ENDIF
-         
+
     EXITS("Solver_OptimiserFinalise")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserFinalise",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserFinalise
 
   !
@@ -21103,7 +21103,7 @@ CONTAINS
     !Local Variables
     TYPE(OptimiserSolverType), POINTER :: optimiserSolver
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("Solver_OptimiserGradientCalculationTypeSet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated",err,error,*999)
@@ -21125,14 +21125,14 @@ CONTAINS
         CALL FlagError(localError,err,error,*999)
       END SELECT
     ENDIF
-    
+
     EXITS("Solver_OptimiserGradientCalculationTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserGradientCalculationTypeSet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_OptimiserGradientCalculationTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -21148,7 +21148,7 @@ CONTAINS
     !Local Variables
     TYPE(OptimiserSolverType), POINTER :: optimiserSolver
     TYPE(VARYING_STRING) :: localError
-    
+
     ENTERS("Solver_OptimiserHessianCalculationTypeSet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated",err,error,*999)
@@ -21170,14 +21170,14 @@ CONTAINS
         CALL FlagError(localError,err,error,*999)
       END SELECT
     ENDIF
-    
+
     EXITS("Solver_OptimiserHessianCalculationTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserHessianCalculationTypeSet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_OptimiserHessianCalculationTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -21197,7 +21197,7 @@ CONTAINS
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated.",err,error,*998)
     IF(ASSOCIATED(solver%optimiserSolver)) CALL FlagError("Optimiser solver is already associated for this solver.",err,error,*998)
-     
+
     ALLOCATE(solver%optimiserSolver,STAT=err)
     IF(ERR/=0) CALL FlagError("Could not allocate solver optimiser solver.",err,error,*999)
     solver%optimiserSolver%solver=>solver
@@ -21208,13 +21208,13 @@ CONTAINS
     solver%optimiserSolver%certaintyType=SOLVER_OPTIMISER_DETERMINISTIC_CERTAINTY
     solver%optimiserSolver%gradientCalculationType=SOLVER_OPTIMISER_GRADIENT_FD_CALCULATED
     solver%optimiserSolver%hessianCalculationType=SOLVER_OPTIMISER_HESSIAN_FD_CALCULATED
-        
+
     EXITS("Solver_OptimiserInitialise")
     RETURN
 999 CALL Solver_OptimiserFinalise(solver%optimiserSolver,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Solver_OptimiserInitialise",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserInitialise
 
   !
@@ -21230,18 +21230,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_OptimiserLibraryTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     solverLibraryType=optimiserSolver%solverLibrary
-    
+
     EXITS("Solver_OptimiserLibraryTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserLibraryTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserLibraryTypeGet
 
   !
@@ -21260,9 +21260,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_OptimiserLibraryTypeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     SELECT CASE(solverLibraryType)
     CASE(SOLVER_CMISS_LIBRARY)
       CALL FlagError("Not implemented.",err,error,*999)
@@ -21273,12 +21273,12 @@ CONTAINS
         & " is invalid for an optimiser solver."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-        
+
     EXITS("Solver_OptimiserLibraryTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserLibraryTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserLibraryTypeSet
 
   !
@@ -21293,20 +21293,20 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    
+
     ENTERS("Solver_OptimiserSolver",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-        
+
     CALL WriteString(GENERAL_OUTPUT_TYPE,"",err,error,*999)
     CALL WriteString(GENERAL_OUTPUT_TYPE,"Optimiser solve monitor: ",err,error,*999)
     CALL WriteString(GENERAL_OUTPUT_TYPE,"",err,error,*999)
-     
+
     EXITS("Solver_OptimiserMonitor")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserMonitor",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_OptimiserMonitor
 
   !
@@ -21322,18 +21322,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_OptimiserObjectiveTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     solverObjectiveType=optimiserSolver%objectiveType
-    
+
     EXITS("Solver_OptimiserObjectiveTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserObjectiveTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserObjectiveTypeGet
 
   !
@@ -21352,9 +21352,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_OptimiserObjectiveTypeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     SELECT CASE(solverObjectiveType)
     CASE(SOLVER_OPTIMISER_NO_OBJECTIVE)
       optimiserSolver%objectiveType=SOLVER_OPTIMISER_NO_OBJECTIVE
@@ -21367,12 +21367,12 @@ CONTAINS
         & " is invalid for an optimiser solver."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-        
+
     EXITS("Solver_OptimiserObjectiveTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserObjectiveTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserObjectiveTypeSet
 
   !
@@ -21391,14 +21391,14 @@ CONTAINS
     ENTERS("Solver_OptimiserSolve",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     CALL FlagError("Not implemented.",err,error,*999)
-         
+
     EXITS("Solver_OptimiserSolve")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserSolve",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserSolve
 
   !
@@ -21414,18 +21414,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_OptimiserVariableTypeGet",err,error,*999)
 
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     solverVariableType=optimiserSolver%variableType
-    
+
     EXITS("Solver_OptimiserVariableTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserVariableTypeGet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserVariableTypeGet
 
   !
@@ -21444,9 +21444,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_OptimiserVariableTypeSet",err,error,*999)
-    
+
     IF(.NOT.ASSOCIATED(optimiserSolver)) CALL FlagError("Optimiser solver is not associated.",err,error,*999)
-    
+
     SELECT CASE(solverVariableType)
     CASE(SOLVER_OPTIMISER_CONTINUOUS_VARIABLES)
       optimiserSolver%variableType=SOLVER_OPTIMISER_CONTINUOUS_VARIABLES
@@ -21457,12 +21457,12 @@ CONTAINS
         & " is invalid for an optimiser solver."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-        
+
     EXITS("Solver_OptimiserVariableTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_OptimiserVariableTypeSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_OptimiserVariableTypeSet
 
   !
@@ -21479,13 +21479,13 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_OUTPUT_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FlagError("Solver has already been finished.",ERR,ERROR,*999)
-      ELSE        
+      ELSE
         SELECT CASE(OUTPUT_TYPE)
         CASE(SOLVER_NO_OUTPUT)
           SOLVER%outputType=SOLVER_NO_OUTPUT
@@ -21498,7 +21498,7 @@ CONTAINS
         CASE(SOLVER_SOLVER_OUTPUT)
           SOLVER%outputType=SOLVER_SOLVER_OUTPUT
         CASE(SOLVER_MATRIX_OUTPUT)
-          SOLVER%outputType=SOLVER_MATRIX_OUTPUT         
+          SOLVER%outputType=SOLVER_MATRIX_OUTPUT
         CASE DEFAULT
           LOCAL_ERROR="The specified solver output type of "// &
             & TRIM(NumberToVString(OUTPUT_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -21508,14 +21508,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_OUTPUT_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_OUTPUT_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_OUTPUT_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -21540,9 +21540,9 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
- 
+
     NULLIFY(VARIABLE_DATA)
-    
+
     ENTERS("SOLVER_SOLUTION_UPDATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -21652,19 +21652,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_SOLUTION_UPDATE")
     RETURN
 999 ERRORSEXITS("SOLVER_SOLUTION_UPDATE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_SOLUTION_UPDATE
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Solve the problem. 
+  !>Solve the problem.
   RECURSIVE SUBROUTINE SOLVER_SOLVE(SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -21681,7 +21681,7 @@ CONTAINS
       IF(SOLVER%SOLVER_FINISHED) THEN
         IF(SOLVER%outputType>=SOLVER_TIMING_OUTPUT) THEN
           CALL CPUTimer(USER_CPU,USER_TIME1,ERR,ERROR,*999)
-          CALL CPUTimer(SYSTEM_CPU,SYSTEM_TIME1,ERR,ERROR,*999)          
+          CALL CPUTimer(SYSTEM_CPU,SYSTEM_TIME1,ERR,ERROR,*999)
         ENDIF
         !Solve the system depending on the solver type
         SELECT CASE(SOLVER%SOLVE_TYPE)
@@ -21726,12 +21726,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_SOLVE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_SOLVE
 
   !
@@ -21749,7 +21749,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_TYPE_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -21760,7 +21760,7 @@ CONTAINS
           CALL FlagError("Can not changed the solver type for a solve that has been linked.",ERR,ERROR,*998)
         ELSE
           IF(SOLVE_TYPE/=SOLVER%SOLVE_TYPE) THEN
-            !Initialise the new solver type 
+            !Initialise the new solver type
             SELECT CASE(SOLVE_TYPE)
             CASE(SOLVER_LINEAR_TYPE)
               CALL SOLVER_LINEAR_INITIALISE(SOLVER,ERR,ERROR,*999)
@@ -21812,7 +21812,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_TYPE_SET")
     RETURN
 999 SELECT CASE(SOLVE_TYPE)
@@ -21833,9 +21833,9 @@ CONTAINS
     END SELECT
 998 ERRORSEXITS("SOLVER_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -21869,7 +21869,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
 
     NULLIFY(SOLVER_DATA)
-    
+
     ENTERS("SOLVER_VARIABLES_DYNAMIC_FIELD_UPDATE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -21919,12 +21919,12 @@ CONTAINS
                                   CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                     !If we are nonlinear then use the previously calculated predicted displacement
                                     IF(DYNAMIC_SOLVER%LINEARITY==SOLVER_DYNAMIC_NONLINEAR) THEN
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREDICTED_DISPLACEMENT_SET_TYPE,variable_dof,PREDICTED_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREDICTED_DISPLACEMENT+DELTA_T*SOLVER_VALUE
                                     ELSE
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_VALUES_SET_TYPE,variable_dof,PREVIOUS_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREVIOUS_DISPLACEMENT+DELTA_T*SOLVER_VALUE
@@ -21934,25 +21934,25 @@ CONTAINS
                                   CASE(SOLVER_DYNAMIC_SECOND_DEGREE)
                                     !If we are nonlinear then use the previously calculated predicted displacement
                                     IF(DYNAMIC_SOLVER%LINEARITY==SOLVER_DYNAMIC_NONLINEAR) THEN
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREDICTED_DISPLACEMENT_SET_TYPE,variable_dof,PREDICTED_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREDICTED_DISPLACEMENT+DELTA_T*PREVIOUS_VELOCITY+ &
                                         & (DELTA_T*DELTA_T/2.0_DP)*SOLVER_VALUE
                                     ELSE
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_VALUES_SET_TYPE,variable_dof,PREVIOUS_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREVIOUS_DISPLACEMENT+DELTA_T*PREVIOUS_VELOCITY+ &
                                         & (DELTA_T*DELTA_T/2.0_DP)*SOLVER_VALUE
                                     ENDIF
-                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                       & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                       & ERR,ERROR,*999)
                                     VELOCITY_VALUE=PREVIOUS_VELOCITY+DELTA_T*SOLVER_VALUE
@@ -21963,38 +21963,38 @@ CONTAINS
                                   CASE(SOLVER_DYNAMIC_THIRD_DEGREE)
                                     !If we are nonlinear then use the previously calculated predicted displacement
                                     IF(DYNAMIC_SOLVER%LINEARITY==SOLVER_DYNAMIC_NONLINEAR) THEN
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREDICTED_DISPLACEMENT_SET_TYPE,variable_dof,PREDICTED_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_ACCELERATION_SET_TYPE,variable_dof,PREVIOUS_ACCELERATION, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREDICTED_DISPLACEMENT+DELTA_T*PREVIOUS_VELOCITY+ &
                                         & (DELTA_T*DELTA_T/2.0_DP)*PREVIOUS_ACCELERATION+ &
                                         & (DELTA_T*DELTA_T*DELTA_T/6.0_DP)*SOLVER_VALUE
                                     ELSE
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_VALUES_SET_TYPE,variable_dof,PREVIOUS_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                         & ERR,ERROR,*999)
-                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREVIOUS_ACCELERATION_SET_TYPE,variable_dof,PREVIOUS_ACCELERATION, &
                                         & ERR,ERROR,*999)
                                       DISPLACEMENT_VALUE=PREVIOUS_DISPLACEMENT+DELTA_T*PREVIOUS_VELOCITY+ &
                                         & (DELTA_T*DELTA_T/2.0_DP)*PREVIOUS_ACCELERATION+ &
                                         & (DELTA_T*DELTA_T*DELTA_T/6.0_DP)*SOLVER_VALUE
                                     ENDIF
-                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                       & FIELD_PREVIOUS_VELOCITY_SET_TYPE,variable_dof,PREVIOUS_VELOCITY, &
                                       & ERR,ERROR,*999)
                                     VELOCITY_VALUE=PREVIOUS_VELOCITY+DELTA_T*PREVIOUS_ACCELERATION+ &
                                       & (DELTA_T*DELTA_T/2.0_DP)*SOLVER_VALUE
-                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, & 
+                                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                       & FIELD_PREVIOUS_ACCELERATION_SET_TYPE,variable_dof,PREVIOUS_ACCELERATION, &
                                       & ERR,ERROR,*999)
                                     ACCELERATION_VALUE=PREVIOUS_ACCELERATION+DELTA_T*SOLVER_VALUE
@@ -22092,7 +22092,7 @@ CONTAINS
                                       SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                                       CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                         !Do nothing
-                                      CASE(SOLVER_DYNAMIC_SECOND_DEGREE)                                  
+                                      CASE(SOLVER_DYNAMIC_SECOND_DEGREE)
                                         CALL FIELD_PARAMETER_SET_UPDATE_START(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                           & FIELD_INITIAL_VELOCITY_SET_TYPE,ERR,ERROR,*999)
                                       CASE(SOLVER_DYNAMIC_THIRD_DEGREE)
@@ -22138,7 +22138,7 @@ CONTAINS
                                         SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                                         CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                           !Do nothing
-                                        CASE(SOLVER_DYNAMIC_SECOND_DEGREE)                                  
+                                        CASE(SOLVER_DYNAMIC_SECOND_DEGREE)
                                           CALL FIELD_PARAMETER_SET_UPDATE_START(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                             & FIELD_INITIAL_VELOCITY_SET_TYPE,ERR,ERROR,*999)
                                         CASE(SOLVER_DYNAMIC_THIRD_DEGREE)
@@ -22220,7 +22220,7 @@ CONTAINS
                               SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                               CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                 !Do nothing
-                              CASE(SOLVER_DYNAMIC_SECOND_DEGREE)                                  
+                              CASE(SOLVER_DYNAMIC_SECOND_DEGREE)
                                 CALL FIELD_PARAMETER_SET_UPDATE_FINISH(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                   & FIELD_INITIAL_VELOCITY_SET_TYPE,ERR,ERROR,*999)
                               CASE(SOLVER_DYNAMIC_THIRD_DEGREE)
@@ -22266,7 +22266,7 @@ CONTAINS
                                 SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                                 CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
                                   !Do nothing
-                                CASE(SOLVER_DYNAMIC_SECOND_DEGREE)                                  
+                                CASE(SOLVER_DYNAMIC_SECOND_DEGREE)
                                   CALL FIELD_PARAMETER_SET_UPDATE_FINISH(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                     & FIELD_INITIAL_VELOCITY_SET_TYPE,ERR,ERROR,*999)
                                 CASE(SOLVER_DYNAMIC_THIRD_DEGREE)
@@ -22321,13 +22321,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_VARIABLES_DYNAMIC_FIELD_UPDATE")
     RETURN
 999 IF(ASSOCIATED(SOLVER_DATA)) CALL DISTRIBUTED_VECTOR_DATA_RESTORE(SOLVER_VECTOR,SOLVER_DATA,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_VARIABLES_DYNAMIC_FIELD_UPDATE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_VARIABLES_DYNAMIC_FIELD_UPDATE
 
   !
@@ -22513,9 +22513,9 @@ CONTAINS
     STABILITY_TEST=.FALSE.
 
     NULLIFY(SOLVER_DATA)
-    
+
     ENTERS("SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE",ERR,ERROR,*998)
-    
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
@@ -22556,7 +22556,7 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_MATRIX)) THEN
                   SOLVER_VECTOR=>SOLVER_MATRIX%SOLVER_VECTOR
                   IF(ASSOCIATED(SOLVER_VECTOR)) THEN
-                    !Get the solver variables data                  
+                    !Get the solver variables data
                     CALL DISTRIBUTED_VECTOR_DATA_GET(SOLVER_VECTOR,SOLVER_DATA,ERR,ERROR,*999)
                     !Loop over the solver variable dofs
                     DO solver_dof_idx=1,SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(solver_matrix_idx)%NUMBER_OF_DOFS
@@ -22569,14 +22569,14 @@ CONTAINS
                           !Equations set dof.
                           DEPENDENT_VARIABLE=>SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(solver_matrix_idx)% &
                             & SOLVER_DOF_TO_VARIABLE_MAPS(solver_dof_idx)%VARIABLE(equations_idx)%ptr
-                          
-                          
+
+
                           !EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_idx)%ptr .!Wrong indexing!. replaced by:
                           EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(SOLVER_MAPPING% &
                             & SOLVER_COL_TO_EQUATIONS_COLS_MAP(solver_matrix_idx)% &
                             & SOLVER_DOF_TO_VARIABLE_MAPS(solver_dof_idx)%EQUATIONS_INDICES(equations_idx))%ptr
-                          
-                          
+
+
                           IF(ASSOCIATED(EQUATIONS_SET)) THEN
                             DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
                             EQUATIONS=>EQUATIONS_SET%EQUATIONS
@@ -22602,7 +22602,7 @@ CONTAINS
                                       ALPHA_VALUE=SOLVER_DATA(solver_dof_idx)
                                       CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(DEPENDENT_FIELD,VARIABLE_TYPE, &
                                         & FIELD_INCREMENTAL_VALUES_SET_TYPE,variable_dof,ALPHA_VALUE,ERR,ERROR,*999)
-                                       !Get the predicted displacement data       
+                                       !Get the predicted displacement data
                                       CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                         & FIELD_PREDICTED_DISPLACEMENT_SET_TYPE,variable_dof,PREDICTED_DISPLACEMENT, &
                                         & ERR,ERROR,*999)
@@ -22632,7 +22632,7 @@ CONTAINS
                                         ALPHA_VALUE=SOLVER_DATA(solver_dof_idx)
                                         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(DEPENDENT_FIELD,VARIABLE_TYPE, &
                                           & FIELD_INCREMENTAL_VALUES_SET_TYPE,variable_dof,ALPHA_VALUE,ERR,ERROR,*999)
-                                         !Get the predicted displacement data       
+                                         !Get the predicted displacement data
                                         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,DYNAMIC_VARIABLE_TYPE, &
                                           & FIELD_PREDICTED_DISPLACEMENT_SET_TYPE,variable_dof,PREDICTED_DISPLACEMENT, &
                                           & ERR,ERROR,*999)
@@ -22695,7 +22695,7 @@ CONTAINS
                                       & SOLVER_DOF_TO_VARIABLE_MAPS(solver_dof_idx)%ADDITIVE_CONSTANT(equations_idx)
                                     PREDICTED_DISPLACEMENT=0.0_DP
                                     !Store the alpha increment
-                                    ALPHA_VALUE=SOLVER_DATA(solver_dof_idx)  
+                                    ALPHA_VALUE=SOLVER_DATA(solver_dof_idx)
                                     !Calculate solver data only
                                     VALUE=ALPHA_VALUE*variable_coefficient+additive_constant
                                     !Calculate modified input values for residual and Jacobian calculation
@@ -22762,8 +22762,8 @@ CONTAINS
                           & ERR,ERROR,*999)
                        ENDDO !variable_idx
                     ENDDO !equations_set_idx
-                    
-                    
+
+
                     !TODO Generalize
                     DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
                       INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%ptr
@@ -22795,13 +22795,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE")
     RETURN
 999 IF(ASSOCIATED(SOLVER_DATA)) CALL DISTRIBUTED_VECTOR_DATA_RESTORE(SOLVER_VECTOR,SOLVER_DATA,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE",ERR,ERROR)
     RETURN 1
-  END SUBROUTINE SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE 
+  END SUBROUTINE SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE
 
 
   !
@@ -22831,7 +22831,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: dummyError,LOCAL_ERROR
 
     NULLIFY(SOLVER_DATA)
-    
+
     ENTERS("SOLVER_VARIABLES_FIELD_UPDATE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -22989,15 +22989,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-    
+
     EXITS("SOLVER_VARIABLES_FIELD_UPDATE")
     RETURN
 999 IF(ASSOCIATED(SOLVER_DATA)) CALL DISTRIBUTED_VECTOR_DATA_RESTORE(SOLVER_VECTOR,SOLVER_DATA,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVER_VARIABLES_FIELD_UPDATE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_VARIABLES_FIELD_UPDATE
-  
+
   !
   !================================================================================================================================
   !
@@ -23013,15 +23013,15 @@ CONTAINS
     INTEGER(INTG) :: solver_idx
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-   
+
     ENTERS("SOLVERS_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVERS)) THEN
       IF(SOLVERS%SOLVERS_FINISHED) THEN
         CALL FlagError("Solvers has already been finished.",ERR,ERROR,*999)
-      ELSE        
+      ELSE
         CONTROL_LOOP=>SOLVERS%CONTROL_LOOP
-        IF(ASSOCIATED(CONTROL_LOOP)) THEN          
+        IF(ASSOCIATED(CONTROL_LOOP)) THEN
           !Finish the solver creation
           IF(ALLOCATED(SOLVERS%SOLVERS)) THEN
             DO solver_idx=1,SOLVERS%NUMBER_OF_SOLVERS
@@ -23031,7 +23031,7 @@ CONTAINS
               ELSE
                 CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
               ENDIF
-            ENDDO !solver_idx            
+            ENDDO !solver_idx
             SOLVERS%SOLVERS_FINISHED=.TRUE.
           ELSE
             CALL FlagError("Solvers solvers is not allocated.",ERR,ERROR,*999)
@@ -23043,19 +23043,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solvers is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVERS_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVERS_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVERS_CREATE_FINISH
 
   !
   !================================================================================================================================
   !
 
-  !>Start the creation of a solvers for the control loop. 
+  !>Start the creation of a solvers for the control loop.
   SUBROUTINE SOLVERS_CREATE_START(CONTROL_LOOP,SOLVERS,ERR,ERROR,*)
 
     !Argument variables
@@ -23067,7 +23067,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVERS_CREATE_START",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(CONTROL_LOOP)) THEN
       IF(CONTROL_LOOP%CONTROL_LOOP_FINISHED) THEN
         IF(CONTROL_LOOP%NUMBER_OF_SUB_LOOPS==0) THEN
@@ -23083,7 +23083,7 @@ CONTAINS
         ELSE
           LOCAL_ERROR="Invalid control loop setup. The specified control loop has "// &
             & TRIM(NumberToVString(CONTROL_LOOP%NUMBER_OF_SUB_LOOPS,"*",ERR,ERROR))// &
-            & " sub loops. To create solvers the control loop must have 0 sub loops."          
+            & " sub loops. To create solvers the control loop must have 0 sub loops."
           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
         ENDIF
       ELSE
@@ -23092,13 +23092,13 @@ CONTAINS
     ELSE
       CALL FlagError("Control loop is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVERS_CREATE_START")
     RETURN
 999 ERRORSEXITS("SOLVERS_CREATE_START",ERR,ERROR)
     RETURN 1
   END SUBROUTINE SOLVERS_CREATE_START
-  
+
   !
   !================================================================================================================================
   !
@@ -23119,12 +23119,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solvers is not associated.",ERR,ERROR,*999)
     ENDIF
-       
+
     EXITS("SOLVERS_DESTROY")
     RETURN
 999 ERRORSEXITS("SOLVERS_DESTROY",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVERS_DESTROY
 
   !
@@ -23140,7 +23140,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: solver_idx
- 
+
     ENTERS("SOLVERS_FINALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVERS)) THEN
@@ -23152,13 +23152,13 @@ CONTAINS
       ENDIF
       DEALLOCATE(SOLVERS)
     ENDIF
-       
+
     EXITS("SOLVERS_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVERS_FINALISE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE SOLVERS_FINALISE
-  
+
   !
   !================================================================================================================================
   !
@@ -23195,16 +23195,16 @@ CONTAINS
     ELSE
       CALL FlagError("Control loop is not associated.",ERR,ERROR,*998)
     ENDIF
-       
+
     EXITS("SOLVERS_INITIALISE")
     RETURN
 999 CALL SOLVERS_FINALISE(CONTROL_LOOP%SOLVERS,dummyErr,dummyError,*998)
 998 ERRORSEXITS("SOLVERS_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVERS_INITIALISE
-  
- 
+
+
   !
   !================================================================================================================================
   !
@@ -23221,7 +23221,7 @@ CONTAINS
     INTEGER(INTG) :: solver_idx, OLD_NUMBER_OF_SOLVERS
     TYPE(SOLVER_PTR_TYPE), ALLOCATABLE :: OLD_SOLVERS(:)
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVERS_NUMBER_SET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVERS)) THEN
@@ -23267,15 +23267,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solvers is not associated.",ERR,ERROR,*998)
     ENDIF
-       
+
     EXITS("SOLVERS_NUMBER_SET")
     RETURN
 999 IF(ALLOCATED(OLD_SOLVERS)) DEALLOCATE(OLD_SOLVERS)
 998 ERRORSEXITS("SOLVERS_NUMBER_SET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVERS_NUMBER_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -23285,7 +23285,7 @@ CONTAINS
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to add the linked solver to.
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER_TO_LINK !<A pointer the the solver to be linked. 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER_TO_LINK !<A pointer the the solver to be linked.
     INTEGER(INTG), INTENT(IN) :: SOLV_TYPE !<The solver type of the solver to be linked.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -23405,7 +23405,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINKED_SOLVER_REMOVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINKED_SOLVER_REMOVE
 
 
@@ -23463,7 +23463,7 @@ SUBROUTINE SOLVER_TIME_STEPPING_MONITOR_PETSC(ts,STEPS,TIME,X,CTX,ERR)
 999 CALL WriteError(ERR,ERROR,*998)
 998 CALL FlagWarning("Error monitoring differential-algebraic equations solve.",ERR,ERROR,*997)
 997 RETURN
-  
+
 END SUBROUTINE SOLVER_TIME_STEPPING_MONITOR_PETSC
 
 
@@ -23512,5 +23512,5 @@ SUBROUTINE SOLVER_NONLINEAR_MONITOR_PETSC(snes,ITS,NORM,CTX,ERR)
 999 CALL WriteError(ERR,ERROR,*998)
 998 CALL FlagWarning("Error monitoring nonlinear solve.",ERR,ERROR,*997)
 997 RETURN
-  
+
 END SUBROUTINE SOLVER_NONLINEAR_MONITOR_PETSC

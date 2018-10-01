@@ -96,6 +96,7 @@ MODULE MESH_ROUTINES
   INTEGER(INTG), PARAMETER :: DECOMPOSITION_USER_DEFINED_TYPE=3 !<The user will set the element decomposition. \see MESH_ROUTINES_DecompositionTypes,MESH_ROUTINES
   !>@}
 
+
   !Module types
 
   !Module variables
@@ -297,6 +298,7 @@ CONTAINS
     ENTERS("DECOMPOSITION_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DECOMPOSITION)) THEN
+
       !Calculate which elements belong to which domain
       CALL DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
       !Initialise the topology information for this decomposition
@@ -386,6 +388,22 @@ CONTAINS
                 !By default, the process of decompostion was done on the first mesh components. But the decomposition is the
                 !same for all mesh components, since the decomposition is element-based.
                 newDecomposition%MESH_COMPONENT_NUMBER=1
+
+
+                !Set calculate_faces and calculate_lines depending on the dimension
+                ! calculate faces should be false for 1D and 2D
+                SELECT CASE(newDecomposition%numberOfDimensions)
+                CASE(1)
+                  newDecomposition%CALCULATE_LINES=.True.
+                  newDecomposition%CALCULATE_FACES=.False.
+                CASE(2)
+                  newDecomposition%CALCULATE_LINES=.True.
+                  newDecomposition%CALCULATE_FACES=.False.
+                CASE(3)
+                  !\todo calculate lines in 3D when needed
+                  newDecomposition%CALCULATE_LINES=.False.
+                  newDecomposition%CALCULATE_FACES=.True.
+                ENDSELECT
                 !Default decomposition is all the mesh with one domain.
                 newDecomposition%DECOMPOSITION_TYPE=DECOMPOSITION_ALL_TYPE
                 newDecomposition%NUMBER_OF_DOMAINS=1
@@ -521,14 +539,13 @@ CONTAINS
   SUBROUTINE DECOMPOSITION_DESTROY(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITON !<The decomposition to destroy.
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<The decomposition to destroy.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: decomposition_idx,decomposition_position
     LOGICAL :: FOUND
     TYPE(MESH_TYPE), POINTER :: MESH !
-    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(DECOMPOSITION_PTR_TYPE), ALLOCATABLE :: newDecompositions(:)
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: decompositions
 
@@ -1023,8 +1040,6 @@ CONTAINS
       decomposition%numberOfElements=0
       NULLIFY(decomposition%topology)
       NULLIFY(decomposition%domain)
-      decomposition%CALCULATE_LINES=.TRUE.
-      decomposition%CALCULATE_FACES=.TRUE.
     ENDIF
 
     EXITS("Decomposition_Initialise")
@@ -2465,11 +2480,10 @@ CONTAINS
     INTEGER(INTG) :: component_idx,element_idx,surroundingElementLocalNo,basis_local_line_idx, &
       & surrounding_element_basis_local_line_idx,element_local_node_idx,basis_local_line_node_idx,derivative_idx,version_idx, &
       & local_line_idx,surrounding_element_local_line_idx,node_idx,local_node_idx,elem_idx,line_end_node_idx,basis_node_idx, &
-      & NODES_IN_LINE(4),NUMBER_OF_LINES,LINE_NUMBER,COUNT, xicIdx,elementLocalNo, &
+      & NODES_IN_LINE(4),LINE_NUMBER,COUNT, xicIdx,elementLocalNo, &
       & elementGlobalNo, componentIdx, startNic, lineBasisLocalNo, lineGlobalNo, lineGlobalNo2, lineIdx, lineLocalNo
     INTEGER(INTG), ALLOCATABLE :: NODES_NUMBER_OF_LINES(:)
     INTEGER(INTG), POINTER :: TEMP_LINES(:,:),NEW_TEMP_LINES(:,:)
-    REAL(DP) :: APPROX_DIMENSION
     LOGICAL :: FOUND
     TYPE(BASIS_TYPE), POINTER :: BASIS,BASIS2
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -2509,7 +2523,7 @@ CONTAINS
     DOMAIN_MAPPINGS=>DOMAIN%MAPPINGS
     IF(.NOT.ASSOCIATED(DOMAIN_MAPPINGS)) CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
     ELEMENTS_MAPPING=>DOMAIN_MAPPINGS%ELEMENTS
-    IF(.NOT.ASSOCIATED(ELEMENTS_MAPPING)) CALL FlagError("Lines mapping is not associated.",ERR,ERROR,*999)
+    IF(.NOT.ASSOCIATED(ELEMENTS_MAPPING)) CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
     LINES_MAPPING=>DOMAIN_MAPPINGS%LINES
     IF(.NOT.ASSOCIATED(LINES_MAPPING)) CALL FlagError("Lines mapping is not associated.",ERR,ERROR,*999)
     DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
@@ -2524,11 +2538,15 @@ CONTAINS
 
 
     !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
-    SELECT CASE(MESH_TOPOLOGY%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    SELECT CASE(MESH_TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
     CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-      startNic=-MESH_TOPOLOGY%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+      IF(DECOMPOSITION%numberOfDimensions == 1) THEN
+        startNic=1
+      ELSE
+        startNic=-MESH_TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+      ENDIF
     CASE DEFAULT
       CALL FlagError("The basis type is not yet implemented",ERR,ERROR,*999)
     END SELECT
@@ -2554,7 +2572,13 @@ CONTAINS
       DO xicIdx = startNic,MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
         IF(xicIdx ==0) CYCLE
 
-        lineBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,1)
+        SELECT CASE(DECOMPOSITION%numberOfDimensions)
+        CASE(1)
+          lineBasisLocalNo=1
+        CASE(2)
+          lineBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,1)
+        ENDSELECT
+
         NODES_IN_LINE=0
         DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo)
           NODES_IN_LINE(basis_local_line_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
@@ -2695,7 +2719,7 @@ CONTAINS
       ! IF(DECOMPOSITION_LINE%NUMBER_OF_SURROUNDING_ELEMENTS==1) THEN
       ! This has been changed so that lines on boundary plane between two domains isn't counted as a boundary line
       lineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(local_line_idx)
-      IF(MESH_TOPOLOGY%lines%lines(lineGlobalNo)%externalLine ==.TRUE.) THEN
+      IF(MESH_TOPOLOGY%lines%lines(lineGlobalNo)%externalLine) THEN
         DECOMPOSITION_LINE%BOUNDARY_LINE=.TRUE.
         DOMAIN_LINE%BOUNDARY_LINE=.TRUE.
       ENDIF
@@ -3111,9 +3135,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,ne,surrounding_element_idx,basis_local_face_idx,surrounding_element_basis_local_face_idx, &
+    INTEGER(INTG) :: component_idx,ne, basis_local_face_idx,surrounding_element_basis_local_face_idx, &
       & element_local_node_idx,basis_local_face_node_idx,basis_local_face_derivative_idx,derivative_idx,version_idx,face_idx, &
-      & node_idx,elem_idx,NODES_IN_FACE(16),NUMBER_OF_FACES,MAX_NUMBER_OF_FACES,NEW_MAX_NUMBER_OF_FACES,FACE_NUMBER
+      & node_idx,elem_idx,NODES_IN_FACE(16),FACE_NUMBER, startNic, xicIdx,elementLocalNo, surroundingElementLocalNo, &
+      & elementGlobalNo, componentIdx, faceBasisLocalNo, faceGlobalNo, faceGlobalNo2, faceIdx, faceLocalNo, local_face_idx, &
+      & element_idx
     INTEGER(INTG), ALLOCATABLE :: NODES_NUMBER_OF_FACES(:)
     INTEGER(INTG), POINTER :: TEMP_FACES(:,:),NEW_TEMP_FACES(:,:)
     LOGICAL :: FOUND
@@ -3131,433 +3157,436 @@ CONTAINS
     TYPE(DOMAIN_NODE_TYPE), POINTER :: DOMAIN_NODE
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
+    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING, FACES_MAPPING
     TYPE(MESH_TYPE), POINTER :: MESH
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
 
     NULLIFY(TEMP_FACES)
     NULLIFY(NEW_TEMP_FACES)
 
     ENTERS("DECOMPOSITION_TOPOLOGY_FACES_CALCULATE",ERR,ERROR,*999)
 
-    IF(ASSOCIATED(TOPOLOGY)) THEN
-      DECOMPOSITION_FACES=>TOPOLOGY%FACES
-      IF(ASSOCIATED(DECOMPOSITION_FACES)) THEN
-        DECOMPOSITION_ELEMENTS=>TOPOLOGY%ELEMENTS
-        IF(ASSOCIATED(DECOMPOSITION_ELEMENTS)) THEN
-          DECOMPOSITION=>TOPOLOGY%DECOMPOSITION
-          IF(ASSOCIATED(DECOMPOSITION)) THEN
-            !Process the mesh component number (component number the decomposition was calculated from) first to establish face
-            !topology then process the other mesh components.
-            DOMAIN=>DECOMPOSITION%DOMAIN(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
-            IF(ASSOCIATED(DOMAIN)) THEN
-              DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-              IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
-                DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
-                IF(ASSOCIATED(DOMAIN_NODES)) THEN
-                  DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
-                  IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
-                    !Estimate the number of faces
-                    SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
-                    CASE(1)
-                      ! Faces not calculated in 1D
-                    CASE(2)
-                      ! Faces not calculated in 2D
-                    CASE(3)
-                      !This should give the maximum and will over estimate the number of faces for a "cube mesh" by approx 33%
-                      MAX_NUMBER_OF_FACES= &
-                        & NINT(((REAL(DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS,DP)*5.0_DP)+1.0_DP)*(4.0_DP/3.0_DP),INTG)
 
-                      DOMAIN_FACES=>DOMAIN_TOPOLOGY%FACES
-                      IF(ASSOCIATED(DOMAIN_FACES)) THEN
-                        ALLOCATE(TEMP_FACES(16,MAX_NUMBER_OF_FACES),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate temporary faces array",ERR,ERROR,*999)
-                        ALLOCATE(NODES_NUMBER_OF_FACES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate nodes number of faces array",ERR,ERROR,*999)
-                        NODES_NUMBER_OF_FACES=0
-                        NUMBER_OF_FACES=0
-                        TEMP_FACES=0
-                        !Loop over the elements in the topology and fill temp_faces with node numbers for each element
-                        DO ne=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                          DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
-                          DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(ne)
-                          BASIS=>DOMAIN_ELEMENT%BASIS
-                          ALLOCATE(DECOMPOSITION_ELEMENT%ELEMENT_FACES(BASIS%NUMBER_OF_LOCAL_FACES),STAT=ERR)
-                          IF(ERR/=0) CALL FlagError("Could not allocate element faces of element",ERR,ERROR,*999)
-                          !Loop over the local faces of the element
-                          DO basis_local_face_idx=1,BASIS%NUMBER_OF_LOCAL_FACES
-                            !Calculate the topology node numbers that make up the face
-                            NODES_IN_FACE=0
-                            !Check whether face has already been read out
-                            DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)
-                              !Read out node numbers of local face from ELEMENT_NODES
-                              NODES_IN_FACE(basis_local_face_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
-                                & BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx,basis_local_face_idx))
-                            ENDDO !basis_local_face_node_idx
-                            !Try and find a previously created face that matches in the adjacent elements
-                            FOUND=.FALSE.
-                            node_idx=NODES_IN_FACE(1)
-                            DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
-                              surrounding_element_idx=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
-                              IF(surrounding_element_idx/=ne) THEN
-                                IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surrounding_element_idx)%ELEMENT_FACES)) THEN
-                                  BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surrounding_element_idx)%BASIS
-                                  DO surrounding_element_basis_local_face_idx=1,BASIS2%NUMBER_OF_LOCAL_FACES
-                                    face_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surrounding_element_idx)%ELEMENT_FACES( &
-                                      & surrounding_element_basis_local_face_idx)
-                                    IF(ALL(NODES_IN_FACE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx))== &
-                                      & TEMP_FACES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx),face_idx))) THEN
-                                      FOUND=.TRUE.
-                                      EXIT
-                                    ENDIF
-                                  ENDDO !surrounding_element_basis_local_face_idx
-                                  IF(FOUND) EXIT
-                                ENDIF
-                              ENDIF
-                            ENDDO !elem_idx
-                            IF(FOUND) THEN
-                              !Face has already been created
-                              DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)=face_idx
-                            ELSE
-                              !Face has not been created
-                              IF(NUMBER_OF_FACES==MAX_NUMBER_OF_FACES) THEN
-                                !We are at maximum. Reallocate the FACES array to be 20% bigger and try again.
-                                NEW_MAX_NUMBER_OF_FACES=NINT(1.20_DP*REAL(MAX_NUMBER_OF_FACES,DP),INTG)
-                                !\todo: Change 16 to a variable and above for NODES_IN_FACE
-                                ALLOCATE(NEW_TEMP_FACES(16,NEW_MAX_NUMBER_OF_FACES),STAT=ERR)
-                                IF(ERR/=0) CALL FlagError("Could not allocate new number of faces",ERR,ERROR,*999)
-                                NEW_TEMP_FACES(:,1:NUMBER_OF_FACES)=TEMP_FACES(:,1:NUMBER_OF_FACES)
-                                NEW_TEMP_FACES(:,NUMBER_OF_FACES+1:NEW_MAX_NUMBER_OF_FACES)=0
-                                DEALLOCATE(TEMP_FACES)
-                                TEMP_FACES=>NEW_TEMP_FACES
-                                NULLIFY(NEW_TEMP_FACES)
-                                MAX_NUMBER_OF_FACES=NEW_MAX_NUMBER_OF_FACES
-                              ENDIF
-                              NUMBER_OF_FACES=NUMBER_OF_FACES+1
-                              TEMP_FACES(:,NUMBER_OF_FACES)=NODES_IN_FACE(:)
-                              DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)=NUMBER_OF_FACES
-                              DO basis_local_face_node_idx=1,SIZE(NODES_IN_FACE,1)
-                                IF(NODES_IN_FACE(basis_local_face_node_idx)/=0) &
-                                  & NODES_NUMBER_OF_FACES(NODES_IN_FACE(basis_local_face_node_idx))= &
-                                  & NODES_NUMBER_OF_FACES(NODES_IN_FACE(basis_local_face_node_idx))+1
-                              ENDDO !basis_local_face_node_idx
-                            ENDIF
-                          ENDDO !basis_local_face_idx
-                        ENDDO !ne
+    IF(.NOT.ASSOCIATED(TOPOLOGY)) CALL FlagError("Topology is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION_FACES=>TOPOLOGY%FACES
+    IF(.NOT.ASSOCIATED(DECOMPOSITION_FACES)) CALL FlagError("decomposition faces is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION_ELEMENTS=>TOPOLOGY%ELEMENTS
+    IF(.NOT.ASSOCIATED(DECOMPOSITION_ELEMENTS)) CALL FlagError("decomposition elements is not associated.",ERR,ERROR,*999)
+    DECOMPOSITION=>TOPOLOGY%DECOMPOSITION
+    IF(.NOT.ASSOCIATED(DECOMPOSITION)) CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
+    DOMAIN=>DECOMPOSITION%DOMAIN(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+    IF(.NOT.ASSOCIATED(DOMAIN)) CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+    DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+    IF(.NOT.ASSOCIATED(DOMAIN_TOPOLOGY)) CALL FlagError("Domain Topology is not associated.",ERR,ERROR,*999)
+    DOMAIN_MAPPINGS=>DOMAIN%MAPPINGS
+    IF(.NOT.ASSOCIATED(DOMAIN_MAPPINGS)) CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
+    ELEMENTS_MAPPING=>DOMAIN_MAPPINGS%ELEMENTS
+    IF(.NOT.ASSOCIATED(ELEMENTS_MAPPING)) CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
+    FACES_MAPPING=>DOMAIN_MAPPINGS%FACES
+    IF(.NOT.ASSOCIATED(FACES_MAPPING)) CALL FlagError("Faces mapping is not associated.",ERR,ERROR,*999)
+    DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
+    IF(.NOT.ASSOCIATED(DOMAIN_NODES)) CALL FlagError("domain nodes is not associated.",ERR,ERROR,*999)
+    DOMAIN_FACES=>DOMAIN_TOPOLOGY%FACES
+    IF(.NOT.ASSOCIATED(DOMAIN_FACES)) CALL FlagError("domain faces is not associated.",ERR,ERROR,*999)
+    DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+    IF(.NOT.ASSOCIATED(DOMAIN_ELEMENTS)) CALL FlagError("domain elements is not associated.",ERR,ERROR,*999)
+    componentIdx=domain%MESH_COMPONENT_NUMBER
+    MESH_TOPOLOGY=>DOMAIN%MESH%topology(componentIdx)%PTR
+    IF(.NOT.ASSOCIATED(MESH_TOPOLOGY)) CALL FlagError("mesh topology is not associated.",ERR,ERROR,*999)
 
-                        !Allocate the face arrays and set them from the FACES and NODE_FACES arrays
-                        DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
-                          ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_FACES(NODES_NUMBER_OF_FACES(node_idx)),STAT=ERR)
-                          IF(ERR/=0) CALL FlagError("Could not allocate node faces array",ERR,ERROR,*999)
-                          DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=0
-                        ENDDO !node_idx
-                        DEALLOCATE(NODES_NUMBER_OF_FACES)
-                        ALLOCATE(DECOMPOSITION_FACES%FACES(NUMBER_OF_FACES),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate decomposition topology faces",ERR,ERROR,*999)
-                        DECOMPOSITION_FACES%NUMBER_OF_FACES=NUMBER_OF_FACES
-                        ALLOCATE(DOMAIN_FACES%FACES(NUMBER_OF_FACES),STAT=ERR)
-                        IF(ERR/=0) CALL FlagError("Could not allocate domain topology faces",ERR,ERROR,*999)
-                        DOMAIN_FACES%NUMBER_OF_FACES=NUMBER_OF_FACES
-                        DO face_idx=1,DOMAIN_FACES%NUMBER_OF_FACES
-                          CALL DECOMPOSITION_TOPOLOGY_FACE_INITIALISE(DECOMPOSITION_FACES%FACES(face_idx),ERR,ERROR,*999)
-                          CALL DOMAIN_TOPOLOGY_FACE_INITIALISE(DOMAIN_FACES%FACES(face_idx),ERR,ERROR,*999)
-                          DO basis_local_face_node_idx=1,SIZE(TEMP_FACES,1)
-                            IF(TEMP_FACES(basis_local_face_node_idx,face_idx)/=0) THEN
-                              node_idx=TEMP_FACES(basis_local_face_node_idx,face_idx)
-                              DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES+1
-                              DOMAIN_NODES%NODES(node_idx)%NODE_FACES(DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES)=face_idx
-                            ENDIF
-                          ENDDO !basis_local_face_node_idx
-                        ENDDO !face_idx
 
-                        !Set nodes in face and derivatives of nodes in face for domain faces
-                        DO ne=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                          DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(ne)
-                          DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
-                          BASIS=>DOMAIN_ELEMENT%BASIS
-                          !Loop over local faces of element
-                          DO basis_local_face_idx=1,BASIS%NUMBER_OF_LOCAL_FACES
-                            FACE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
-                            DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(FACE_NUMBER)
-                            DOMAIN_FACE=>DOMAIN_FACES%FACES(FACE_NUMBER)
-                            DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS+1
-                            IF(.NOT.ASSOCIATED(DOMAIN_FACE%BASIS)) THEN
-                              DECOMPOSITION_FACE%NUMBER=FACE_NUMBER
-                              DOMAIN_FACE%NUMBER=FACE_NUMBER
-                              DOMAIN_FACE%ELEMENT_NUMBER=ne !! Needs checking
-!                              DECOMPOSITION_FACE%ELEMENT_NUMBER=DECOMPOSITION_ELEMENT%NUMBER
-!                              DOMAIN_FACE%ELEMENT_NUMBER=DOMAIN_ELEMENT%NUMBER
-                              DECOMPOSITION_FACE%XI_DIRECTION=BASIS%localFaceXiNormal(basis_local_face_idx)
-                              IF(ALLOCATED(BASIS%localFaceBasis)) THEN
-                                DOMAIN_FACE%BASIS=>BASIS%localFaceBasis(basis_local_face_idx)%PTR
-                              ELSE
-                                !Basis is only 2D
-                                DOMAIN_FACE%BASIS=>BASIS
-                              ENDIF
-                              ALLOCATE(DOMAIN_FACE%NODES_IN_FACE(BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)), &
-                                & STAT=ERR)
-                              IF(ERR/=0) CALL FlagError("Could not allocate face nodes in face",ERR,ERROR,*999)
-                              ALLOCATE(DOMAIN_FACE%DERIVATIVES_IN_FACE(2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
-                                & BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)),STAT=ERR)
-                              IF(ERR/=0) CALL FlagError("Could not allocate face derivatives in face",ERR,ERROR,*999)
-                              DOMAIN_FACE%DERIVATIVES_IN_FACE=0
-                              !Set nodes in face based upon face number
-                              DOMAIN_FACE%NODES_IN_FACE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx))= &
-                                & TEMP_FACES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx),FACE_NUMBER)
-                              !Set derivatives of nodes in domain face from derivatives of nodes in element
-                              DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)
-                                element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx, &
-                                  & basis_local_face_idx)
-                                !Set derivative number of u (NO_GLOBAL_DERIV) for the domain face
-                                DOMAIN_FACE%DERIVATIVES_IN_FACE(1,1,basis_local_face_node_idx)=NO_GLOBAL_DERIV
-                                !Set version number of u (NO_GLOBAL_DERIV) for the domain face
-                                version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_FACE( &
-                                  & basis_local_face_node_idx,basis_local_face_idx))
-                                DOMAIN_FACE%DERIVATIVES_IN_FACE(2,1,basis_local_face_node_idx)=version_idx
-                                IF(DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
-                                  DO basis_local_face_derivative_idx=2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES
-                                    derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
-                                      & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
-                                      & element_local_node_idx)
-                                    DOMAIN_FACE%DERIVATIVES_IN_FACE(1,basis_local_face_derivative_idx, &
-                                      & basis_local_face_node_idx)=derivative_idx
-                                    version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
-                                      & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
-                                      & element_local_node_idx)
-                                    DOMAIN_FACE%DERIVATIVES_IN_FACE(2,basis_local_face_derivative_idx, &
-                                      & basis_local_face_node_idx)=version_idx
-                                  ENDDO !basis_local_face_derivative_idx
-                                ENDIF
-                              ENDDO !basis_local_face_node_idx
-                            ENDIF
-                          ENDDO !basis_local_face_idx
-                        ENDDO !ne
+    !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+    SELECT CASE(MESH_TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
+    CASE(BASIS_SIMPLEX_TYPE)
+      startNic=1
+    CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+      IF(DECOMPOSITION%numberOfDimensions == 1) THEN
+        startNic=1
+      ELSE
+        startNic=-MESH_TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+      ENDIF
+    CASE DEFAULT
+      CALL FlagError("The basis type is not yet implemented",ERR,ERROR,*999)
+    END SELECT
 
-                        DEALLOCATE(TEMP_FACES)
-                        !\todo Note: Adjacency will be left out of faces calculation for the time being
-                        !Calculate adjacent faces and the surrounding elements for each face
-                        DO face_idx=1,DECOMPOSITION_FACES%NUMBER_OF_FACES
-                          DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(face_idx)
-                          DOMAIN_FACE=>DOMAIN_FACES%FACES(face_idx)
-                          BASIS=>DOMAIN_FACE%BASIS
-                          IF(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS==1) THEN
-                            DECOMPOSITION_FACE%BOUNDARY_FACE=.TRUE.
-                            DOMAIN_FACE%BOUNDARY_FACE=.TRUE.
+
+    SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
+    CASE(1)
+      ! Faces not calculated in 1D
+    CASE(2)
+      ! Faces not calculated in 2D
+    CASE(3)
+
+      ALLOCATE(TEMP_FACES(16,FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate temporary faces array",ERR,ERROR,*999)
+      ALLOCATE(NODES_NUMBER_OF_FACES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate nodes number of faces array",ERR,ERROR,*999)
+      NODES_NUMBER_OF_FACES=0
+      TEMP_FACES=0
+      !Loop over the elements in the topology
+      DO elementLocalNo=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(elementLocalNo)
+        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(elementLocalNo)
+        BASIS=>DOMAIN_ELEMENT%BASIS
+        ALLOCATE(DECOMPOSITION_ELEMENT%ELEMENT_FACES(BASIS%NUMBER_OF_LOCAL_FACES),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate element faces.",ERR,ERROR,*999)
+
+        elementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
+
+        DO xicIdx = startNic,MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+          IF(xicIdx ==0) CYCLE
+          IF(MESH_TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%TYPE == BASIS_LAGRANGE_HERMITE_TP_TYPE) THEN 
+            IF(xicIdx<0) THEN
+              IF(BASIS%COLLAPSED_XI(abs(xicIdx))==BASIS_COLLAPSED_AT_XI0) CYCLE
+            ELSE
+              IF(BASIS%COLLAPSED_XI(xicIdx)==BASIS_COLLAPSED_AT_XI1) CYCLE
+            ENDIF
+          ENDIF
+
+          faceBasisLocalNo=BASIS%xiNormalLocalFace(xicIdx)
+
+          NODES_IN_FACE=0
+          DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(faceBasisLocalNo)
+            NODES_IN_FACE(basis_local_face_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
+              & BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx,faceBasisLocalNo))
+          ENDDO !basis_local_face_node_idx
+
+          !Try and find a previously created face that matches in the adjacent elements
+          FOUND=.FALSE.
+          node_idx=NODES_IN_FACE(1)
+          DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
+            surroundingElementLocalNo=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
+            IF(surroundingElementLocalNo/=elementLocalNo) THEN
+              IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%ELEMENT_FACES)) THEN
+                BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%BASIS
+                DO surrounding_element_basis_local_face_idx=1,BASIS2%NUMBER_OF_LOCAL_FACES
+                  local_face_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)% &
+                    & ELEMENT_FACES(surrounding_element_basis_local_face_idx)
+                  IF(ALL(NODES_IN_FACE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(faceBasisLocalNo))== &
+                    & TEMP_FACES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(faceBasisLocalNo),local_face_idx))) THEN
+                    FOUND=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO !surrounding_element_basis_local_face_idx
+                IF(FOUND) EXIT
+              ENDIF
+            ENDIF
+          ENDDO !elem_idx
+
+          IF(FOUND) THEN
+            !Face has already been created
+            DECOMPOSITION_ELEMENT%ELEMENT_FACES(faceBasisLocalNo)=local_face_idx
+          ELSE
+
+            faceGlobalNo=MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)
+
+            !Find the face local number
+            DO faceIdx = 1,FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              faceGlobalNo2 = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(faceIdx)
+
+              IF(faceGlobalNo == faceGlobalNo2) THEN
+                faceLocalNo=faceIdx
+                EXIT
+              ENDIF
+            ENDDO !faceIdx
+            DECOMPOSITION_ELEMENT%ELEMENT_FACES(faceBasisLocalNo)=faceLocalNo
+            TEMP_FACES(:,faceLocalNo)=NODES_IN_FACE
+
+            DO basis_local_face_node_idx=1,SIZE(NODES_IN_FACE,1)
+              IF(NODES_IN_FACE(basis_local_face_node_idx)/=0) &
+                & NODES_NUMBER_OF_FACES(NODES_IN_FACE(basis_local_face_node_idx))= &
+                & NODES_NUMBER_OF_FACES(NODES_IN_FACE(basis_local_face_node_idx))+1
+            ENDDO !basis_local_face_node_idx
+
+          ENDIF
+        ENDDO !xicIdx
+      ENDDO !elementLocalNo
+
+      !Allocate the face arrays and set them from the FACES and NODE_FACES arrays
+      DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
+        ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_FACES(NODES_NUMBER_OF_FACES(node_idx)),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate node faces array.",ERR,ERROR,*999)
+        DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=0
+      ENDDO !node_idx
+      DEALLOCATE(NODES_NUMBER_OF_FACES)
+      ALLOCATE(DECOMPOSITION_FACES%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate decomposition topology faces.",ERR,ERROR,*999)
+      DECOMPOSITION_FACES%NUMBER_OF_FACES=FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+      ALLOCATE(DOMAIN_FACES%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate domain topology faces.",ERR,ERROR,*999)
+      DOMAIN_FACES%NUMBER_OF_FACES=FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+      DO local_face_idx=1,DOMAIN_FACES%NUMBER_OF_FACES
+        CALL DECOMPOSITION_TOPOLOGY_FACE_INITIALISE(DECOMPOSITION_FACES%FACES(local_face_idx),ERR,ERROR,*999)
+        CALL DOMAIN_TOPOLOGY_FACE_INITIALISE(DOMAIN_FACES%FACES(local_face_idx),ERR,ERROR,*999)
+        DO basis_local_face_node_idx=1,SIZE(TEMP_FACES,1)
+          IF(TEMP_FACES(basis_local_face_node_idx,local_face_idx)/=0) THEN
+            node_idx=TEMP_FACES(basis_local_face_node_idx,local_face_idx)
+            DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES+1
+            DOMAIN_NODES%NODES(node_idx)%NODE_FACES(DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES)= &
+              & local_face_idx
+          ENDIF
+        ENDDO !basis_local_face_node_idx
+      ENDDO !local_face_idx
+      DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+        BASIS=>DOMAIN_ELEMENT%BASIS
+        DO basis_local_face_idx=1,BASIS%NUMBER_OF_LOCAL_FACES
+          FACE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
+          DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(FACE_NUMBER)
+          DOMAIN_FACE=>DOMAIN_FACES%FACES(FACE_NUMBER)
+          DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS=DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS+1
+          IF(.NOT.ASSOCIATED(DOMAIN_FACE%BASIS)) THEN
+            DECOMPOSITION_FACE%NUMBER=FACE_NUMBER
+            DOMAIN_FACE%NUMBER=FACE_NUMBER
+            DOMAIN_FACE%ELEMENT_NUMBER=element_idx !Needs checking
+            DECOMPOSITION_FACE%XI_DIRECTION=BASIS%localFaceXiNormal(basis_local_face_idx)
+            IF(ALLOCATED(BASIS%localFaceBasis)) THEN
+              DOMAIN_FACE%BASIS=>BASIS%localFaceBasis(basis_local_face_idx)%PTR
+            ELSE
+              !Basis is only 1D
+              DOMAIN_FACE%BASIS=>BASIS
+            ENDIF
+            ALLOCATE(DOMAIN_FACE%NODES_IN_FACE(BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate face nodes in face.",ERR,ERROR,*999)
+            ALLOCATE(DOMAIN_FACE%DERIVATIVES_IN_FACE(2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
+              & BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate face derivatives in face.",ERR,ERROR,*999)
+            DOMAIN_FACE%NODES_IN_FACE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx))= &
+              & TEMP_FACES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx),FACE_NUMBER)
+            DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)
+              element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx, &
+                & basis_local_face_idx)
+              !Set derivative number of u (NO_GLOBAL_DERIV) for the domain face
+              DOMAIN_FACE%DERIVATIVES_IN_FACE(1,1,basis_local_face_node_idx)=NO_GLOBAL_DERIV
+              !Set version number of u (NO_GLOBAL_DERIV) for the domain face
+              version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_FACE( &
+                & basis_local_face_node_idx,basis_local_face_idx))
+              DOMAIN_FACE%DERIVATIVES_IN_FACE(2,1,basis_local_face_node_idx)=version_idx
+              IF(DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
+                DO basis_local_face_derivative_idx=2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES
+                  derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
+                    & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
+                    & element_local_node_idx)
+                  DOMAIN_FACE%DERIVATIVES_IN_FACE(1,basis_local_face_derivative_idx, &
+                    & basis_local_face_node_idx)=derivative_idx
+                  version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
+                    & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
+                    & element_local_node_idx)
+                  DOMAIN_FACE%DERIVATIVES_IN_FACE(2,basis_local_face_derivative_idx, &
+                    & basis_local_face_node_idx)=version_idx
+                ENDDO !basis_local_face_derivative_idx
+              ENDIF
+            ENDDO !basis_local_face_node_idx
+          ENDIF
+        ENDDO !basis_local_face_idx
+      ENDDO !element_idx
+      DEALLOCATE(TEMP_FACES)
+      !Calculate adjacent faces and the surrounding elements for each face
+      DO local_face_idx=1,DECOMPOSITION_FACES%NUMBER_OF_FACES
+        DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(local_face_idx)
+        DOMAIN_FACE=>DOMAIN_FACES%FACES(local_face_idx)
+        BASIS=>DOMAIN_FACE%BASIS
+
+        ! IF(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS==1) THEN
+        ! This has been changed so that faces on boundary plane between two domains isn't counted as a boundary face
+        faceGlobalNo = FACES_MAPPING%LOCAL_TO_GLOBAL_MAP(local_face_idx)
+        IF(MESH_TOPOLOGY%faces%faces(faceGlobalNo)%externalFace) THEN
+          DECOMPOSITION_FACE%BOUNDARY_FACE=.TRUE.
+          DOMAIN_FACE%BOUNDARY_FACE=.TRUE.
+        ENDIF
+        !Allocate the elements surrounding the face
+        ALLOCATE(DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS), &
+          & STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate face surrounding elements.",ERR,ERROR,*999)
+        ALLOCATE(DECOMPOSITION_FACE%ELEMENT_FACES(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS), &
+          & STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate face element faces.",ERR,ERROR,*999)
+      !   DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS=0
+      !   DECOMPOSITION_FACE%ADJACENT_FACES=0
+      !   !Loop over the nodes at each end of the face
+      !   DO face_end_node_idx=0,1
+      !     FOUND=.FALSE.
+      !     node_idx=DOMAIN_FACE%NODES_IN_FACE(face_end_node_idx*(BASIS%NUMBER_OF_NODES-1)+1)
+      !     !Loop over the elements surrounding the node.
+      !     DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
+      !       element_idx=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
+      !       DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+      !       DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+      !       !Loop over the local faces of the element
+      !       DO basis_local_face_idx=1,DOMAIN_ELEMENT%BASIS%NUMBER_OF_LOCAL_FACES
+      !         surrounding_element_local_face_idx=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
+      !         IF(surrounding_element_local_face_idx/=local_face_idx) THEN
+      !           DECOMPOSITION_FACE2=>DECOMPOSITION_FACES%FACES(surrounding_element_local_face_idx)
+      !           DOMAIN_FACE2=>DOMAIN_FACES%FACES(surrounding_element_local_face_idx)
+      !           IF(DECOMPOSITION_FACE2%XI_DIRECTION==DECOMPOSITION_FACE%XI_DIRECTION) THEN
+      !             !Faces run in the same direction.
+      !             BASIS2=>DOMAIN_FACE2%BASIS
+      !             IF(face_end_node_idx==0) THEN
+      !               local_node_idx=DOMAIN_FACE2%NODES_IN_FACE(BASIS2%NUMBER_OF_NODES)
+      !             ELSE
+      !               local_node_idx=DOMAIN_FACE2%NODES_IN_FACE(1)
+      !             ENDIF
+      !             IF(local_node_idx==node_idx) THEN
+      !               !The node at the 'other' end of this face matches the node at the current end of the face.
+      !               !Check it is not a coexistant face running the other way
+      !               IF(BASIS2%INTERPOLATION_ORDER(1)==BASIS%INTERPOLATION_ORDER(1)) THEN
+      !                 COUNT=0
+      !                 DO basis_node_idx=1,BASIS%NUMBER_OF_NODES
+      !                   IF(DOMAIN_FACE2%NODES_IN_FACE(basis_node_idx)== &
+      !                     & DOMAIN_FACE%NODES_IN_FACE(BASIS2%NUMBER_OF_NODES-basis_node_idx+1)) &
+      !                     & COUNT=COUNT+1
+      !                 ENDDO !basis_node_idx
+      !                 IF(COUNT<BASIS%NUMBER_OF_NODES) THEN
+      !                   FOUND=.TRUE.
+      !                   EXIT
+      !                 ENDIF
+      !               ELSE
+      !                 FOUND=.TRUE.
+      !                 EXIT
+      !               ENDIF
+      !             ENDIF
+      !           ENDIF
+      !         ENDIF
+      !       ENDDO !basis_local_face_idx
+      !       IF(FOUND) EXIT
+      !     ENDDO !element_idx
+      !     IF(FOUND) DECOMPOSITION_FACE%ADJACENT_FACES(face_end_node_idx)=surrounding_element_local_face_idx
+      !   ENDDO !face_end_node_idx
+      ENDDO !local_face_idx
+
+      !Set the surrounding elements
+      DO element_idx=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+        DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(element_idx)
+        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(element_idx)
+        BASIS=>DOMAIN_ELEMENT%BASIS
+        DO basis_local_face_idx=1,BASIS%NUMBER_OF_LOCAL_FACES
+          FACE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
+          DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(FACE_NUMBER)
+          DO face_idx=1,DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS
+            DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(face_idx)=element_idx
+            DECOMPOSITION_FACE%ELEMENT_FACES(face_idx)=basis_local_face_idx
+          ENDDO
+        ENDDO !basis_local_face_idx
+      ENDDO !element_idx
+
+    CASE DEFAULT
+      CALL FlagError("Invalid number of dimensions for a topology domain",ERR,ERROR,*999)
+    END SELECT
+
+    !Now loop over the other mesh components in the decomposition and calculate the domain faces
+    MESH=>DECOMPOSITION%MESH
+    IF(ASSOCIATED(MESH)) THEN
+      DO component_idx=1,MESH%NUMBER_OF_COMPONENTS
+        IF(component_idx/=DECOMPOSITION%MESH_COMPONENT_NUMBER) THEN
+          DOMAIN=>DECOMPOSITION%DOMAIN(component_idx)%PTR
+          IF(ASSOCIATED(DOMAIN)) THEN
+            DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+            IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
+              DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
+              IF(ASSOCIATED(DOMAIN_NODES)) THEN
+                DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+                IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                  DOMAIN_FACES=>DOMAIN_TOPOLOGY%FACES
+                  IF(ASSOCIATED(DOMAIN_FACES)) THEN
+                    ALLOCATE(DOMAIN_FACES%FACES(DECOMPOSITION_FACES%NUMBER_OF_FACES),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate domain faces faces",ERR,ERROR,*999)
+                    DOMAIN_FACES%NUMBER_OF_FACES=DECOMPOSITION_FACES%NUMBER_OF_FACES
+                    ALLOCATE(NODES_NUMBER_OF_FACES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate nodes number of faces array",ERR,ERROR,*999)
+                    NODES_NUMBER_OF_FACES=0
+                    !Loop over the faces in the topology
+                    DO face_idx=1,DECOMPOSITION_FACES%NUMBER_OF_FACES
+                      DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(face_idx)
+                      DOMAIN_FACE=>DOMAIN_FACES%FACES(face_idx)
+                      IF(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS>0) THEN
+                        ne=DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(1)
+                        basis_local_face_idx=DECOMPOSITION_FACE%ELEMENT_FACES(1)
+                        CALL DOMAIN_TOPOLOGY_FACE_INITIALISE(DOMAIN_FACES%FACES(face_idx),ERR,ERROR,*999)
+                        DOMAIN_FACE%NUMBER=face_idx
+                        DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
+                        BASIS=>DOMAIN_ELEMENT%BASIS
+                        IF(ALLOCATED(BASIS%localFaceBasis)) THEN
+                          DOMAIN_FACE%BASIS=>BASIS%localFaceBasis(basis_local_face_idx)%PTR
+                        ELSE
+                          !Basis is only 2D
+                          DOMAIN_FACE%BASIS=>BASIS
+                        ENDIF
+                        ALLOCATE(DOMAIN_FACE%NODES_IN_FACE(BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)), &
+                          & STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate nodes in face",ERR,ERROR,*999)
+                        ALLOCATE(DOMAIN_FACE%DERIVATIVES_IN_FACE(2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
+                          & BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)),STAT=ERR)
+                        IF(ERR/=0) CALL FlagError("Could not allocate derivatives in face",ERR,ERROR,*999)
+                        !Set derivatives of nodes in domain face from derivatives of nodes in element
+                        DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)
+                          element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx, &
+                            & basis_local_face_idx)
+                          node_idx=DOMAIN_ELEMENT%ELEMENT_NODES(element_local_node_idx)
+                          DOMAIN_FACE%NODES_IN_FACE(basis_local_face_node_idx)=node_idx
+                          !Set derivative number of u (NO_GLOBAL_DERIV) for the domain face
+                          DOMAIN_FACE%DERIVATIVES_IN_FACE(1,1,basis_local_face_node_idx)=NO_GLOBAL_DERIV
+                          !Set version number of u (NO_GLOBAL_DERIV) for the domain face
+                          version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_FACE( &
+                            & basis_local_face_node_idx,basis_local_face_idx))
+                          DOMAIN_FACE%DERIVATIVES_IN_FACE(2,1,basis_local_face_node_idx)=version_idx
+                          IF(DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
+                            DO basis_local_face_derivative_idx=2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES
+                              derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
+                                & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
+                                & element_local_node_idx)
+                              DOMAIN_FACE%DERIVATIVES_IN_FACE(1,basis_local_face_derivative_idx, &
+                                & basis_local_face_node_idx)=derivative_idx
+                              version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
+                                & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
+                                & element_local_node_idx)
+                              DOMAIN_FACE%DERIVATIVES_IN_FACE(2,basis_local_face_derivative_idx, &
+                                & basis_local_face_node_idx)=version_idx
+                            ENDDO !basis_local_face_derivative_idx
                           ENDIF
-                          !Allocate the elements surrounding the face
-                          ALLOCATE(DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS), &
-                            & STAT=ERR)
-                          IF(ERR/=0) CALL FlagError("Could not allocate face surrounding elements",ERR,ERROR,*999)
-
-                          ALLOCATE(DECOMPOSITION_FACE%ELEMENT_FACES(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS), &
-                            & STAT=ERR)
-                          IF(ERR/=0) CALL FlagError("Could not allocate face element faces",ERR,ERROR,*999)
-!                          DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS=0
-!                          DECOMPOSITION_FACE%ADJACENT_FACES=0
-
-                           !Loop over the nodes at each end of the face
-!                          DO node_idx1=0,1
-!                           DO node_idx2=0,1
-!                            FOUND=.FALSE.
-!                            node_idx=DOMAIN_FACE%NODES_IN_FACE((node_idx2*BASIS%NUMBER_OF_NODES_IN_XI_DIRECTION*(BASIS%NUMBER_OF_FACES-1))&
-!                                                                             &+(node_idx1*(BASIS%NUMBER_OF_NODES_IN_XI_DIRECTION-1))+1)
-                             !Loop over the elements surrounding the node.
-!                            DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
-!                              ne=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
-!                              DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(ne)
-!                              DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
-                               !Loop over the local faces of the element
-!                              DO basis_local_face_idx=1,DOMAIN_ELEMENT%BASIS%NUMBER_OF_LOCAL_FACES
-!                                nf2=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
-!                                IF(nf2/=face_idx) THEN
-!                                  DECOMPOSITION_FACE2=>DECOMPOSITION_FACES%FACES(nf2)
-!                                  DOMAIN_FACE2=>DOMAIN_FACES%FACES(nf2)
-                                   !Check whether XI of face have same direction
-!                                  IF ((OTHER_XI_DIRECTIONS3(BASIS%localFaceXiNormal(basis_local_face_idx),2,1)==&
-!                                     &OTHER_XI_DIRECTIONS3(BASIS2%localFaceXiNormal(basis_local_face_idx),2,1)).OR.&
-!                                     &(OTHER_XI_DIRECTIONS3(BASIS%localFaceXiNormal(basis_local_face_idx),3,1)==&
-!                                     &OTHER_XI_DIRECTIONS3(BASIS2%localFaceXiNormal(basis_local_face_idx),3,1))) THEN
-                                     !Loop over nodes in face of surrounding element
-!                                    BASIS2=>DOMAIN_FACE2%BASIS
-!                                    IF(BASIS2%INTERPOLATION_ORDER(1)==BASIS%INTERPOLATION_ORDER(1)) THEN
-!                                      NODE_COUNT=0
-!                                      DO node_idx3=1,BASIS%NUMBER_OF_NODES_IN_XI_DIRECTION
-!                                        DO node_idx4=1,BASIS%NUMBER_OF_NODES_IN_XI_DIRECTION
-!                                          np2=DOMAIN_FACE2%NODES_IN_FACE((node_idx4*(BASIS2%NUMBER_OF_FACES-1))&
-!                                                                      &+(node_idx3*(BASIS2%NUMBER_OF_NODES_IN_XI_DIRECTION-1))+1)
-!                                          IF(np2==node_idx) NODE_COUNT=NODE_COUNT+1
-!                                        ENDDO !node_idx4
-!                                      ENDDO !node_idx3
-!                                      IF(NODE_COUNT<BASIS%NUMBER_OF_NODES) THEN
-!                                        FOUND=.TRUE.
-!                                        EXIT
-!                                      ENDIF
-!                                    ENDIF
-!                                  ENDIF
-!                                ENDIF
-!                              ENDDO !basis_local_face_idx
-!                                IF(FOUND) EXIT
-!                            ENDDO !elem_idx
-!                            IF(FOUND) DECOMPOSITION_FACE%ADJACENT_FACES(node_idx2)=nf2
-!                           ENDDO !node_idx2
-!                           IF(FOUND) DECOMPOSITION_FACE%ADJACENT_FACES(node_idx1)=nf2
-!                          ENDDO !node_idx1
-                        ENDDO !face_idx
-
-                        !Set the surrounding elements
-                        DO ne=1,DECOMPOSITION_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                          DECOMPOSITION_ELEMENT=>DECOMPOSITION_ELEMENTS%ELEMENTS(ne)
-                          DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
-                          BASIS=>DOMAIN_ELEMENT%BASIS
-                          DO basis_local_face_idx=1,BASIS%NUMBER_OF_LOCAL_FACES
-                            FACE_NUMBER=DECOMPOSITION_ELEMENT%ELEMENT_FACES(basis_local_face_idx)
-                            DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(FACE_NUMBER)
-                            DO face_idx=1,DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS
-                              DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(face_idx)=ne
-                              DECOMPOSITION_FACE%ELEMENT_FACES(face_idx)=basis_local_face_idx
-                            ENDDO
-                          ENDDO !basis_local_face_idx
-                        ENDDO !ne
+                          NODES_NUMBER_OF_FACES(node_idx)=NODES_NUMBER_OF_FACES(node_idx)+1
+                        ENDDO !basis_local_face_node_idx
                       ELSE
-                        CALL FlagError("Domain topology faces is not associated",ERR,ERROR,*999)
+                        CALL FlagError("Face is not surrounded by any elements?",ERR,ERROR,*999)
                       ENDIF
-                    CASE DEFAULT
-                      CALL FlagError("Invalid number of dimensions for a topology domain",ERR,ERROR,*999)
-                    END SELECT
-                 ELSE
-                    CALL FlagError("Domain topology elements is not associated",ERR,ERROR,*999)
+                    ENDDO !face_idx
+                    DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
+                      ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_FACES(NODES_NUMBER_OF_FACES(node_idx)),STAT=ERR)
+                      IF(ERR/=0) CALL FlagError("Could not allocate node faces",ERR,ERROR,*999)
+                      DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=0
+                    ENDDO !node_idx
+                    DEALLOCATE(NODES_NUMBER_OF_FACES)
+                    DO face_idx=1,DOMAIN_FACES%NUMBER_OF_FACES
+                      DOMAIN_FACE=>DOMAIN_FACES%FACES(face_idx)
+                      BASIS=>DOMAIN_FACE%BASIS
+                      DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES
+                        node_idx=DOMAIN_FACE%NODES_IN_FACE(basis_local_face_node_idx)
+                        DOMAIN_NODE=>DOMAIN_NODES%NODES(node_idx)
+                        DOMAIN_NODE%NUMBER_OF_NODE_FACES=DOMAIN_NODE%NUMBER_OF_NODE_FACES+1
+                        !Set the face numbers a node is on
+                        DOMAIN_NODE%NODE_FACES(DOMAIN_NODE%NUMBER_OF_NODE_FACES)=face_idx
+                      ENDDO !basis_local_face_node_idx
+                    ENDDO !face_idx
+                  ELSE
+                    CALL FlagError("Domain faces is not associated",ERR,ERROR,*999)
                   ENDIF
                 ELSE
-                  CALL FlagError("Domain topology nodes is not associated",ERR,ERROR,*999)
+                  CALL FlagError("Domain elements is not associated",ERR,ERROR,*999)
                 ENDIF
               ELSE
-                CALL FlagError("Topology decomposition domain topology is not associated",ERR,ERROR,*999)
+                CALL FlagError("Domain nodes is not associated",ERR,ERROR,*999)
               ENDIF
             ELSE
-              CALL FlagError("Topology decomposition domain is not associated",ERR,ERROR,*999)
-            ENDIF
-            !Now loop over the other mesh components in the decomposition and calculate the domain faces
-            MESH=>DECOMPOSITION%MESH
-            IF(ASSOCIATED(MESH)) THEN
-              DO component_idx=1,MESH%NUMBER_OF_COMPONENTS
-                IF(component_idx/=DECOMPOSITION%MESH_COMPONENT_NUMBER) THEN
-                  DOMAIN=>DECOMPOSITION%DOMAIN(component_idx)%PTR
-                  IF(ASSOCIATED(DOMAIN)) THEN
-                    DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
-                    IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
-                      DOMAIN_NODES=>DOMAIN_TOPOLOGY%NODES
-                      IF(ASSOCIATED(DOMAIN_NODES)) THEN
-                        DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
-                        IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
-                          DOMAIN_FACES=>DOMAIN_TOPOLOGY%FACES
-                          IF(ASSOCIATED(DOMAIN_FACES)) THEN
-                            ALLOCATE(DOMAIN_FACES%FACES(DECOMPOSITION_FACES%NUMBER_OF_FACES),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate domain faces faces",ERR,ERROR,*999)
-                            DOMAIN_FACES%NUMBER_OF_FACES=DECOMPOSITION_FACES%NUMBER_OF_FACES
-                            ALLOCATE(NODES_NUMBER_OF_FACES(DOMAIN_NODES%TOTAL_NUMBER_OF_NODES),STAT=ERR)
-                            IF(ERR/=0) CALL FlagError("Could not allocate nodes number of faces array",ERR,ERROR,*999)
-                            NODES_NUMBER_OF_FACES=0
-                            !Loop over the faces in the topology
-                            DO face_idx=1,DECOMPOSITION_FACES%NUMBER_OF_FACES
-                              DECOMPOSITION_FACE=>DECOMPOSITION_FACES%FACES(face_idx)
-                              DOMAIN_FACE=>DOMAIN_FACES%FACES(face_idx)
-                              IF(DECOMPOSITION_FACE%NUMBER_OF_SURROUNDING_ELEMENTS>0) THEN
-                                ne=DECOMPOSITION_FACE%SURROUNDING_ELEMENTS(1)
-                                basis_local_face_idx=DECOMPOSITION_FACE%ELEMENT_FACES(1)
-                                CALL DOMAIN_TOPOLOGY_FACE_INITIALISE(DOMAIN_FACES%FACES(face_idx),ERR,ERROR,*999)
-                                DOMAIN_FACE%NUMBER=face_idx
-                                DOMAIN_ELEMENT=>DOMAIN_ELEMENTS%ELEMENTS(ne)
-                                BASIS=>DOMAIN_ELEMENT%BASIS
-                                IF(ALLOCATED(BASIS%localFaceBasis)) THEN
-                                  DOMAIN_FACE%BASIS=>BASIS%localFaceBasis(basis_local_face_idx)%PTR
-                                ELSE
-                                  !Basis is only 2D
-                                  DOMAIN_FACE%BASIS=>BASIS
-                                ENDIF
-                                ALLOCATE(DOMAIN_FACE%NODES_IN_FACE(BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)), &
-                                  & STAT=ERR)
-                                IF(ERR/=0) CALL FlagError("Could not allocate nodes in face",ERR,ERROR,*999)
-                                ALLOCATE(DOMAIN_FACE%DERIVATIVES_IN_FACE(2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES, &
-                                  & BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)),STAT=ERR)
-                                IF(ERR/=0) CALL FlagError("Could not allocate derivatives in face",ERR,ERROR,*999)
-                                !Set derivatives of nodes in domain face from derivatives of nodes in element
-                                DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_FACE(basis_local_face_idx)
-                                  element_local_node_idx=BASIS%NODE_NUMBERS_IN_LOCAL_FACE(basis_local_face_node_idx, &
-                                    & basis_local_face_idx)
-                                  node_idx=DOMAIN_ELEMENT%ELEMENT_NODES(element_local_node_idx)
-                                  DOMAIN_FACE%NODES_IN_FACE(basis_local_face_node_idx)=node_idx
-                                  !Set derivative number of u (NO_GLOBAL_DERIV) for the domain face
-                                  DOMAIN_FACE%DERIVATIVES_IN_FACE(1,1,basis_local_face_node_idx)=NO_GLOBAL_DERIV
-                                  !Set version number of u (NO_GLOBAL_DERIV) for the domain face
-                                  version_idx=DOMAIN_ELEMENT%elementVersions(1,BASIS%NODE_NUMBERS_IN_LOCAL_FACE( &
-                                    & basis_local_face_node_idx,basis_local_face_idx))
-                                  DOMAIN_FACE%DERIVATIVES_IN_FACE(2,1,basis_local_face_node_idx)=version_idx
-                                  IF(DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES>1) THEN
-                                    DO basis_local_face_derivative_idx=2,DOMAIN_FACE%BASIS%MAXIMUM_NUMBER_OF_DERIVATIVES
-                                      derivative_idx=DOMAIN_ELEMENT%ELEMENT_DERIVATIVES(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
-                                        & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
-                                        & element_local_node_idx)
-                                      DOMAIN_FACE%DERIVATIVES_IN_FACE(1,basis_local_face_derivative_idx, &
-                                        & basis_local_face_node_idx)=derivative_idx
-                                      version_idx=DOMAIN_ELEMENT%elementVersions(BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE( &
-                                        & basis_local_face_derivative_idx,basis_local_face_node_idx,basis_local_face_idx), &
-                                        & element_local_node_idx)
-                                      DOMAIN_FACE%DERIVATIVES_IN_FACE(2,basis_local_face_derivative_idx, &
-                                        & basis_local_face_node_idx)=version_idx
-                                    ENDDO !basis_local_face_derivative_idx
-                                  ENDIF
-                                  NODES_NUMBER_OF_FACES(node_idx)=NODES_NUMBER_OF_FACES(node_idx)+1
-                                ENDDO !basis_local_face_node_idx
-                              ELSE
-                                CALL FlagError("Face is not surrounded by any elements?",ERR,ERROR,*999)
-                              ENDIF
-                            ENDDO !face_idx
-                            DO node_idx=1,DOMAIN_NODES%TOTAL_NUMBER_OF_NODES
-                              ALLOCATE(DOMAIN_NODES%NODES(node_idx)%NODE_FACES(NODES_NUMBER_OF_FACES(node_idx)),STAT=ERR)
-                              IF(ERR/=0) CALL FlagError("Could not allocate node faces",ERR,ERROR,*999)
-                              DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_FACES=0
-                            ENDDO !node_idx
-                            DEALLOCATE(NODES_NUMBER_OF_FACES)
-                            DO face_idx=1,DOMAIN_FACES%NUMBER_OF_FACES
-                              DOMAIN_FACE=>DOMAIN_FACES%FACES(face_idx)
-                              BASIS=>DOMAIN_FACE%BASIS
-                              DO basis_local_face_node_idx=1,BASIS%NUMBER_OF_NODES
-                                node_idx=DOMAIN_FACE%NODES_IN_FACE(basis_local_face_node_idx)
-                                DOMAIN_NODE=>DOMAIN_NODES%NODES(node_idx)
-                                DOMAIN_NODE%NUMBER_OF_NODE_FACES=DOMAIN_NODE%NUMBER_OF_NODE_FACES+1
-                                !Set the face numbers a node is on
-                                DOMAIN_NODE%NODE_FACES(DOMAIN_NODE%NUMBER_OF_NODE_FACES)=face_idx
-                              ENDDO !basis_local_face_node_idx
-                            ENDDO !face_idx
-                          ELSE
-                            CALL FlagError("Domain faces is not associated",ERR,ERROR,*999)
-                          ENDIF
-                        ELSE
-                          CALL FlagError("Domain elements is not associated",ERR,ERROR,*999)
-                        ENDIF
-                      ELSE
-                        CALL FlagError("Domain nodes is not associated",ERR,ERROR,*999)
-                      ENDIF
-                    ELSE
-                      CALL FlagError("Domain topology is not associated",ERR,ERROR,*999)
-                    ENDIF
-                  ELSE
-                    CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
-                  ENDIF
-                ENDIF
-              ENDDO !component_idx
-            ELSE
-              CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
+              CALL FlagError("Domain topology is not associated",ERR,ERROR,*999)
             ENDIF
           ELSE
-            CALL FlagError("Topology decomposition is not associated",ERR,ERROR,*999)
+            CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
           ENDIF
-        ELSE
-          CALL FlagError("Topology decomposition elements is not associated",ERR,ERROR,*999)
         ENDIF
-      ELSE
-        CALL FlagError("Topology faces is not associated",ERR,ERROR,*999)
-      ENDIF
+      ENDDO !component_idx
     ELSE
-      CALL FlagError("Topology is not associated",ERR,ERROR,*999)
+      CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
     ENDIF
 
     IF(DIAGNOSTICS1) THEN
@@ -4354,7 +4383,12 @@ CONTAINS
       CALL DOMAIN_MAPPINGS_ELEMENTS_FINALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
       CALL DOMAIN_MAPPINGS_NODES_FINALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
       CALL DOMAIN_MAPPINGS_DOFS_FINALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-      CALL DomainMappings_FacesFinalise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+      IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
+        CALL DomainMappings_LinesFinalise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+      ENDIF
+      IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
+        CALL DomainMappings_FacesFinalise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+      ENDIF
       DEALLOCATE(DOMAIN%MAPPINGS)
     ELSE
       CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
@@ -4469,11 +4503,14 @@ CONTAINS
         !Map the local face numbers to the global numbers
         SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
         CASE(1)
-          !Do nothing
+          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
+            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+          ENDIF
         CASE(2)
           IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
             CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            CALL DomainMappings_LinesCalculate(DOMAIN,ERR,ERROR,*999)
+            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
           ENDIF
           !else do nothing
         CASE(3)
@@ -4483,12 +4520,13 @@ CONTAINS
             !FIXTHIS The below subroutine needs to be modified for 3D models and DECOMPOSITION_TOPOLOGY_LINES_CALCULATE needs to be updated
             !Or a DomainMappings_3DLinesInitialise and DomainMappings_3DLinesCalculate should be created to create the lines in 3D models
             CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            CALL DomainMappings_LinesCalculate(DOMAIN,ERR,ERROR,*999)
+            !FIXTHIS change this to 3D lines calculate and create the subroutine
+            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
           ENDIF
           !else do nothing
           IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
             !FIXTHIS
-            CALL FlagError("3D is not yet implemented for face mappings",ERR,ERROR,*999)
+            ! CALL FlagError("3D is not yet implemented for face mappings",ERR,ERROR,*999)
             !FIXTHIS The below subroutine needs to be tested for 3D models and DECOMPOSITION_TOPOLOGY_FACES_CALCULATE needs to be updated
             CALL DomainMappings_FacesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
             CALL DomainMappings_FacesCalculate(DOMAIN,ERR,ERROR,*999)
@@ -4649,7 +4687,7 @@ CONTAINS
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfFacesToReceive, internalFacesIdx, &
       & boundaryFacesIdx, localFaceNo, domainListInternalIdx, domainListBoundaryIdx, internalFaceGlobalNo, boundaryFaceGlobalNo, &
       & domainListGhostIdx, dummyErr, numberBoundaryPlaneFaces, domainNo3, &
-      & otherElementGlobalNo, numberBoundaryAndGhostFaces, boundaryAndBoundaryPlaneFaceIdx, basisLocalFaceIdx2, &
+      & boundaryAndBoundaryPlaneFaceIdx, basisLocalFaceIdx2, &
       & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, meshNodeNo, surroundingElemIdx, basisLocalFaceIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalFaces(:), integerArray(:), boundaryAndBoundaryPlaneFaces(:), sendRequestHandle(:), &
@@ -4663,8 +4701,8 @@ CONTAINS
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: facesMapping
-    TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndBoundaryPlaneFacesList, adjacentDomainsList, localAndAdjacentDomainsList, &
-      & boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList
+    TYPE(LIST_TYPE), POINTER :: internalFacesList, boundaryAndBoundaryPlaneFacesList, adjacentDomainsList, &
+      & localAndAdjacentDomainsList, boundaryFacesList, ghostFacesDomainsList,extraAdjacentDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
@@ -4674,17 +4712,17 @@ CONTAINS
     ENTERS("DomainMappings_FacesCalculate",err,error,*999)
 
 
-    !FIXTHIS shouldn't be indented, we want something like this... IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*998)
+    !FIXTHIS shouldn't be indented, we want something like this... IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
     !Also fix typecase on subroutine calls. And but allocate parts in DomainMappings_FacesInitialise subroutine
-    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*998)
-    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*999)
     facesMapping=>domain%MAPPINGS%FACES
 
-    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*999)
     elementsMapping=>domain%MAPPINGS%ELEMENTS
-    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*999)
     decomposition=>domain%decomposition
-    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*999)
     mesh=>domain%mesh
     componentIdx=domain%MESH_COMPONENT_NUMBER
     topology=>mesh%topology(componentIdx)%PTR
@@ -4696,7 +4734,7 @@ CONTAINS
 
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-        & "  numberComputationalNodes: ",numberComputationalNodes,err,error,*998)
+        & "  numberComputationalNodes: ",numberComputationalNodes,err,error,*999)
 
     ENDIF
 
@@ -4710,11 +4748,11 @@ CONTAINS
 
 
     !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
-    SELECT CASE(topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    SELECT CASE(topology%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
     CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-      startNic=-topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+      startNic=-topology%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
     CASE DEFAULT
       !do nothing
     END SELECT
@@ -4731,7 +4769,6 @@ CONTAINS
     !Assign global numbers to each face
     faceCount=0
 
-    !FIXTHIS, change number order so that it is -2,2,-1,1
     DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
       DO basisLocalFaceIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_FACES
         xicIdx = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localFaceXiNormal(basisLocalFaceIdx)
@@ -4746,8 +4783,21 @@ CONTAINS
             topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)=faceCount
 
           ELSE
-            DO basisLocalFaceIdx2 = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_FACES
-              xicIdx2 = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localFaceXiNormal(basisLocalFaceIdx2)
+            DO basisLocalFaceIdx2 = 1, topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_LOCAL_FACES
+              xicIdx2 = topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%localFaceXiNormal(basisLocalFaceIdx2)
+
+              IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
+                & NUMBER_OF_ADJACENT_ELEMENTS==0) CYCLE
+
+              ! IF (DIAGNOSTICS1) THEN
+              !   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+              !     & "xicIdx2",xicIdx2,err,error,*999)
+              !   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+              !     & "number internal faces: ",facesMapping%NUMBER_OF_INTERNAL,err,error,*999)
+              ! ENDIF
+
+
+
               IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
                 & ADJACENT_ELEMENTS(1)==elementGlobalNo) THEN
                 topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES(xicIdx)= &
@@ -4875,10 +4925,10 @@ CONTAINS
 
     IF (DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-        & "number internal faces: ",facesMapping%NUMBER_OF_INTERNAL,err,error,*998)
+        & "number internal faces: ",facesMapping%NUMBER_OF_INTERNAL,err,error,*999)
       DO I=1,facesMapping%NUMBER_OF_INTERNAL
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global no. ", &
-          & internalFaces(I),err,error,*998)
+          & internalFaces(I),err,error,*999)
       ENDDO
     ENDIF
 
@@ -5245,7 +5295,8 @@ CONTAINS
 
     ! add local domain to domain list of each face
     DO boundaryAndBoundaryPlaneFaceIdx=1,numberBoundaryAndBoundaryPlaneFaces
-      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,myComputationalNodeNumber,err,error,*999)
+      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,myComputationalNodeNumber, &
+        & err,error,*999)
       CALL LIST_SORT(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,err,error,*999)
       !Assign local domain to the boundary faces that are not on the boundary plane
       IF(faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx) == -1) THEN
@@ -5300,7 +5351,8 @@ CONTAINS
           domainToAssignFacesToIdx = 1
           CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainToAssignFacesToIdx, &
             & domainToAssignFacesTo,err,error,*999)
-          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,numberDomains,err,error,*999)
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+            & numberDomains,err,error,*999)
 
           ! again loop over all further faces with the same domains, assign them to domains
           DO sharedFaceIdx2 = sharedFaceIdx,numberSharedFaces
@@ -5348,8 +5400,8 @@ CONTAINS
 
                   ! now that domain has got enough faces, get the next domain
                   domainToAssignFacesToIdx = domainToAssignFacesToIdx + 1
-                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,domainToAssignFacesToIdx, &
-                    & domainToAssignFacesTo,err,error,*999)
+                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR, &
+                    & domainToAssignFacesToIdx, domainToAssignFacesTo,err,error,*999)
                 ENDIF
               ENDDO
 
@@ -5803,7 +5855,7 @@ CONTAINS
   !998 IF(ALLOCATED(DOMAINS%MAPPINGS)) DEALLOCATE(Domains)
   !FIXTHIS Not sure if i need to deallocate facesMapping%ADJACENT_DOMAINS here
    !IF(ALLOCATED(facesMapping%ADJACENT_DOMAINS)) DEALLOCATE(facesMapping%ADJACENT_DOMAINS)
-  998 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalFacesFinalise(domain,dummyErr,dummyError,*999)
+  999 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalFacesFinalise(domain,dummyErr,dummyError,*998)
       IF(ALLOCATED(boundaryAndBoundaryPlaneFaces)) DEALLOCATE(boundaryAndBoundaryPlaneFaces)
       IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
       IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
@@ -5824,16 +5876,101 @@ CONTAINS
       IF(ALLOCATED(sharedFacesList)) DEALLOCATE(sharedFacesList)
       IF(ALLOCATED(extraAdjacentDomains)) DEALLOCATE(extraAdjacentDomains)
       IF(ALLOCATED(domainsOfBoundaryPlaneFaceList)) DEALLOCATE(domainsOfBoundaryPlaneFaceList)
-  999 ERRORSEXITS("DomainMappings_FacesCalculate",err,error)
+  998 ERRORSEXITS("DomainMappings_FacesCalculate",err,error)
     RETURN 1
   END SUBROUTINE DomainMappings_FacesCalculate
+  !
+  !================================================================================================================================
+  !
+
+  !>Calculates the local/global 1D line mappings for a domain decomposition.
+  SUBROUTINE DomainMappings_1DLinesCalculate(domain,err,error,*)
+
+    !Argument variables
+    TYPE(DOMAIN_TYPE), POINTER :: domain !<A pointer to the domain to calculate the Line dofs for.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: lineCount, elementGlobalNo,lineGlobalNo, componentIdx
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: linesMapping
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(MeshComponentTopologyType), POINTER :: topology
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+
+
+    ENTERS("DomainMappings_1DLinesCalculate",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*999)
+    linesMapping=>domain%MAPPINGS%LINES
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*999)
+    elementsMapping=>domain%MAPPINGS%ELEMENTS
+    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*999)
+    decomposition=>domain%decomposition
+    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*999)
+    mesh=>domain%mesh
+    componentIdx=domain%MESH_COMPONENT_NUMBER
+    topology=>mesh%topology(componentIdx)%PTR
+
+    !For 1D lines mapping is exactly the same as elements mapping
+    linesMapping=elementsMapping
+
+    !>>.............. Topology equations should be in its own subroutine eventually
+
+
+
+    CALL DomainTopology_AssignGlobalLinesInitialise(domain,err,error,*999)
+    !\Todo should seperate the following into seperate subroutines
+    !CALL DomainTopology_AssignGlobalLinesAndSurroundingElements(topology,err,error,*999)
+    !CALL DomainTopology_AssignGlobalLines(topology,err,error,*999)
+    !Assign global numbers to each line
+    lineCount=0
+
+    !FIXTHIS, change number order so that it is -2,2,-1,1
+    DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
+
+      lineCount=lineCount+1
+      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(1)=lineCount
+
+    ENDDO ! elementGlobalNo
+
+    !FIXTHIS This dosn't neccesarily need to be using a type, could just use allocatable local arrays
+    ALLOCATE(topology%lines)
+    topology%lines%numberOfLines=lineCount
+    ALLOCATE(topology%lines%lines(lineCount))
+
+
+    !Iterate through the elements to assign them as neighbouring elements of the lines
+    DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
+
+      lineGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(1)
+
+      ALLOCATE(topology%lines%lines(lineGlobalNo)%surroundingElements(1))
+
+      topology%lines%lines(lineGlobalNo)%surroundingElements(1)=elementGlobalNo
+      topology%lines%lines(lineGlobalNo)%globalNumber=lineGlobalNo
+      topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements=1
+      topology%lines%lines(lineGlobalNo)%externalLine=.FALSE.
+
+    ENDDO ! elementGlobalNo
+
+    !<<.............. Topology equations should be in their own subroutine eventually
+
+
+
+    EXITS("DomainMappings_1DLinesCalculate")
+    RETURN
+  999 ERRORSEXITS("DomainMappings_1DLinesCalculate",err,error)
+    RETURN 1
+  END SUBROUTINE DomainMappings_1DLinesCalculate
 
   !
   !================================================================================================================================
   !
 
-  !>Calculates the local/global node and dof mappings for a domain decomposition.
-  SUBROUTINE DomainMappings_LinesCalculate(domain,err,error,*)
+  !>Calculates the local/global 2D line mappings for a domain decomposition.
+  SUBROUTINE DomainMappings_2DLinesCalculate(domain,err,error,*)
 
     !Argument variables
     TYPE(DOMAIN_TYPE), POINTER :: domain !<A pointer to the domain to calculate the Line dofs for.
@@ -5851,7 +5988,7 @@ CONTAINS
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfLinesToReceive, internalLinesIdx, &
       & boundaryLinesIdx, localLineNo, domainListInternalIdx, domainListBoundaryIdx, internalLineGlobalNo, boundaryLineGlobalNo, &
       & domainListGhostIdx, dummyErr, numberBoundaryPlaneLines, domainNo3, lineIdx, &
-      & otherElementGlobalNo, numberBoundaryAndGhostLines, boundaryAndBoundaryPlaneLineIdx, basisLocalLineIdx2, &
+      & boundaryAndBoundaryPlaneLineIdx, basisLocalLineIdx2, &
       & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, meshNodeNo, surroundingElemIdx, basisLocalLineIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalLines(:), integerArray(:), boundaryAndBoundaryPlaneLines(:), sendRequestHandle(:), &
@@ -5865,28 +6002,28 @@ CONTAINS
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: linesMapping
-    TYPE(LIST_TYPE), POINTER :: internalLinesList, boundaryAndBoundaryPlaneLinesList, adjacentDomainsList, localAndAdjacentDomainsList, &
-      & boundaryLinesList, ghostLinesDomainsList,extraAdjacentDomainsList
+    TYPE(LIST_TYPE), POINTER :: internalLinesList, boundaryAndBoundaryPlaneLinesList, adjacentDomainsList, &
+      & localAndAdjacentDomainsList, boundaryLinesList, ghostLinesDomainsList,extraAdjacentDomainsList
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfLineList(:), sharedLinesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneLineList(:)
     REAL(DP) :: numberLines, optimalNumberLinesPerDomain, totalNumberLines, portionToDistribute, numberLinesAboveOptimum
     LOGICAL :: onOtherDomain,adacentDomainEntryFound, found
     TYPE(VARYING_STRING) :: dummyError, localError
 
-    ENTERS("DomainMappings_LinesCalculate",err,error,*999)
+    ENTERS("DomainMappings_2DLinesCalculate",err,error,*999)
 
 
-    !FIXTHIS shouldn't be indented, we want something like this... IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*998)
+    !FIXTHIS shouldn't be indented, we want something like this... IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
     !Also fix typecase on subroutine calls. And but allocate parts in DomainMappings_LinesInitialise subroutine
-    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*998)
-    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*999)
     linesMapping=>domain%MAPPINGS%LINES
 
-    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*999)
     elementsMapping=>domain%MAPPINGS%ELEMENTS
-    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*999)
     decomposition=>domain%decomposition
-    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*998)
+    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*999)
     mesh=>domain%mesh
     componentIdx=domain%MESH_COMPONENT_NUMBER
     topology=>mesh%topology(componentIdx)%PTR
@@ -5898,7 +6035,7 @@ CONTAINS
 
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-        & "  numberComputationalNodes: ",numberComputationalNodes,err,error,*998)
+        & "  numberComputationalNodes: ",numberComputationalNodes,err,error,*999)
 
     ENDIF
 
@@ -5912,11 +6049,11 @@ CONTAINS
 
 
     !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
-    SELECT CASE(topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    SELECT CASE(topology%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
     CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-      startNic=-topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+      startNic=-topology%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
     CASE DEFAULT
       !do nothing
     END SELECT
@@ -5948,13 +6085,16 @@ CONTAINS
             topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx)=lineCount
 
           ELSE
-            DO basisLocalLineIdx2 = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
-              xicIdx2 = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalLineIdx2)
-              IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
-                & ADJACENT_ELEMENTS(1)==elementGlobalNo) THEN
-                topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx)= &
-                  & topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx2)
+            DO basisLocalLineIdx2 = 1, topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+              xicIdx2 = topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%localLineXiNormals(1,basisLocalLineIdx2)
 
+              IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
+                & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+                IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2)% &
+                  & ADJACENT_ELEMENTS(1)==elementGlobalNo) THEN
+                  topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx)= &
+                    & topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx2)
+                ENDIF
               ENDIF
             ENDDO
           ENDIF
@@ -6077,10 +6217,10 @@ CONTAINS
 
     IF (DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-        & "number internal lines: ",linesMapping%NUMBER_OF_INTERNAL,err,error,*998)
+        & "number internal lines: ",linesMapping%NUMBER_OF_INTERNAL,err,error,*999)
       DO I=1,linesMapping%NUMBER_OF_INTERNAL
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global line no. ", &
-          & internalLines(I),err,error,*998)
+          & internalLines(I),err,error,*999)
       ENDDO
     ENDIF
 
@@ -6447,7 +6587,8 @@ CONTAINS
 
     ! add local domain to domain list of each line
     DO boundaryAndBoundaryPlaneLineIdx=1,numberBoundaryAndBoundaryPlaneLines
-      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR,myComputationalNodeNumber,err,error,*999)
+      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
+        & myComputationalNodeNumber,err,error,*999)
       CALL LIST_SORT(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR,err,error,*999)
       !Assign local domain to the boundary lines that are not on the boundary plane
       IF(lineOnBoundaryPlane(boundaryAndBoundaryPlaneLineIdx) == -1) THEN
@@ -6502,7 +6643,8 @@ CONTAINS
           domainToAssignLinesToIdx = 1
           CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR,domainToAssignLinesToIdx, &
             & domainToAssignLinesTo,err,error,*999)
-          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR,numberDomains,err,error,*999)
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
+            & numberDomains,err,error,*999)
 
           ! again loop over all further lines with the same domains, assign them to domains
           DO sharedLineIdx2 = sharedLineIdx,numberSharedLines
@@ -6550,8 +6692,8 @@ CONTAINS
 
                   ! now that domain has got enough lines, get the next domain
                   domainToAssignLinesToIdx = domainToAssignLinesToIdx + 1
-                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR,domainToAssignLinesToIdx, &
-                    & domainToAssignLinesTo,err,error,*999)
+                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR, &
+                    & domainToAssignLinesToIdx, domainToAssignLinesTo,err,error,*999)
                 ENDIF
               ENDDO
 
@@ -7050,13 +7192,13 @@ CONTAINS
     IF(ALLOCATED(extraAdjacentDomains)) DEALLOCATE(extraAdjacentDomains)
     IF(ALLOCATED(domainsOfBoundaryPlaneLineList)) DEALLOCATE(domainsOfBoundaryPlaneLineList)
 
-    EXITS("DomainMappings_LinesCalculate")
+    EXITS("DomainMappings_2DLinesCalculate")
     RETURN
     !FIXTHIS need to make sure I am deallocating the pointers that I assign in the subroutine.
   !998 IF(ALLOCATED(DOMAINS%MAPPINGS)) DEALLOCATE(Domains)
   !FIXTHIS Not sure if i need to deallocate linesMapping%ADJACENT_DOMAINS here
    !IF(ALLOCATED(linesMapping%ADJACENT_DOMAINS)) DEALLOCATE(linesMapping%ADJACENT_DOMAINS)
-  998 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalLinesFinalise(domain,dummyErr,dummyError,*999)
+  999 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalLinesFinalise(domain,dummyErr,dummyError,*998)
       IF(ALLOCATED(boundaryAndBoundaryPlaneLines)) DEALLOCATE(boundaryAndBoundaryPlaneLines)
       IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
       IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
@@ -7077,10 +7219,9 @@ CONTAINS
       IF(ALLOCATED(sharedLinesList)) DEALLOCATE(sharedLinesList)
       IF(ALLOCATED(extraAdjacentDomains)) DEALLOCATE(extraAdjacentDomains)
       IF(ALLOCATED(domainsOfBoundaryPlaneLineList)) DEALLOCATE(domainsOfBoundaryPlaneLineList)
-  999 ERRORSEXITS("DomainMappings_LinesCalculate",err,error)
+  998 ERRORSEXITS("DomainMappings_2DLinesCalculate",err,error)
     RETURN 1
-  END SUBROUTINE DomainMappings_LinesCalculate
-
+  END SUBROUTINE DomainMappings_2DLinesCalculate
   !
   !================================================================================================================================
   !
@@ -7658,11 +7799,11 @@ CONTAINS
     componentIdx=domain%MESH_COMPONENT_NUMBER
     topology=>mesh%topology(componentIdx)%PTR
 
-    SELECT CASE(topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    SELECT CASE(topology%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
     CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-      startNic=-topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+      startNic=-topology%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
     CASE DEFAULT
       !do nothing
     END SELECT
@@ -7672,7 +7813,7 @@ CONTAINS
         & ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=err)
       IF(err/=0) CALL FlagError("Could not allocate topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES", &
       & err,error,*999)
-      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES=0.0_DP
+      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_FACES=0
     ENDDO
 
     EXITS("DomainTopology_AssignGlobalFacesInitialise")
@@ -7705,11 +7846,15 @@ CONTAINS
     componentIdx=domain%MESH_COMPONENT_NUMBER
     topology=>mesh%topology(componentIdx)%PTR
 
-    SELECT CASE(topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%TYPE)!Assumes all elements have the same basis
+    SELECT CASE(topology%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)!Assumes all elements have the same basis
     CASE(BASIS_SIMPLEX_TYPE)
       startNic=1
     CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
-      startNic=-topology%ELEMENTS%ELEMENTS(componentIdx)%BASIS%NUMBER_OF_XI_COORDINATES
+      IF(domain%number_of_dimensions == 1) THEN
+        startNic=1
+      ELSE
+        startNic=-topology%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+      END IF
     CASE DEFAULT
       !do nothing
     END SELECT
@@ -7719,7 +7864,7 @@ CONTAINS
         & ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=err)
       IF(err/=0) CALL FlagError("Could not allocate topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES", &
       & err,error,*999)
-      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES=0.0_DP
+      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES=0
     ENDDO
 
     EXITS("DomainTopology_AssignGlobalLinesInitialise")
@@ -13223,7 +13368,7 @@ CONTAINS
     !Function variable
     LOGICAL :: SORTED_ARRAY_CONTAINS_ELEMENT_INDEX
     !Local Variables
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    !TYPE(VARYING_STRING) :: LOCAL_ERROR
     INTEGER(INTG) :: SearchIndex, ValueAtSearchIndex, LowerBoundSearchIndex, UpperBoundSearchIndex, &
       & PreviousSearchIndex
 
@@ -13293,7 +13438,7 @@ CONTAINS
     !Function variable
     LOGICAL :: SORTED_ARRAY_CONTAINS_ELEMENT
     !Local Variables
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    !TYPE(VARYING_STRING) :: LOCAL_ERROR
     INTEGER(INTG) :: FoundIndex
 
     ENTERS("SORTED_ARRAY_CONTAINS_ELEMENT",ERR,ERROR,*999)

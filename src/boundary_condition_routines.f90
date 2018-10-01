@@ -296,10 +296,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: MPI_IERROR,SEND_COUNT,STORAGE_TYPE, NUMBER_OF_NON_ZEROS, NUMBER_OF_ROWS,COUNT
-    INTEGER(INTG) :: variable_idx,dof_idx, equ_matrix_idx, dirichlet_idx, row_idx, DUMMY, LAST, DIRICHLET_DOF
-    INTEGER(INTG) :: col_idx,equations_set_idx,parameterSetIdx
-    INTEGER(INTG) :: pressureIdx,neumannIdx
+    INTEGER(INTG) :: MPI_IERROR,STORAGE_TYPE, NUMBER_OF_NON_ZEROS, NUMBER_OF_ROWS,COUNT !,SEND_COUNT
+    INTEGER(INTG) :: variable_idx,dof_idx, equ_matrix_idx, dirichlet_idx, row_idx, LAST, DIRICHLET_DOF !DUMMY,
+    INTEGER(INTG) :: col_idx,equations_set_idx,parameterSetIdx, lengthSparceIndices
+    INTEGER(INTG) :: pressureIdx,neumannIdx, globalNumberOfNeumann, numberOfNeumannOnRank
     INTEGER(INTG), POINTER :: ROW_INDICES(:), COLUMN_INDICES(:)
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: BOUNDARY_CONDITION_VARIABLE
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: VARIABLE_DOMAIN_MAPPING
@@ -318,7 +318,7 @@ CONTAINS
     TYPE(BOUNDARY_CONDITIONS_SPARSITY_INDICES_TYPE), POINTER :: SPARSITY_INDICES
     TYPE(LIST_TYPE), POINTER :: SPARSE_INDICES
     TYPE(LinkedList),POINTER :: LIST(:)
-    INTEGER(INTG), ALLOCATABLE:: COLUMN_ARRAY(:)
+    INTEGER(INTG), ALLOCATABLE:: COLUMN_ARRAY(:), tempArray(:)
 
     ENTERS("BOUNDARY_CONDITIONS_CREATE_FINISH",ERR,ERROR,*999)
 
@@ -338,38 +338,45 @@ CONTAINS
                 FIELD_VARIABLE=>BOUNDARY_CONDITION_VARIABLE%VARIABLE
                 IF(ASSOCIATED(FIELD_VARIABLE)) THEN
                   VARIABLE_DOMAIN_MAPPING=>FIELD_VARIABLE%DOMAIN_MAPPING
-                  IF(ASSOCIATED(VARIABLE_DOMAIN_MAPPING)) THEN
-                    SEND_COUNT=VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL
-                    IF(computationalEnvironment%numberOfComputationalNodes>1) THEN
-                      !\todo This operation is a little expensive as we are doing an unnecessary sum across all the ranks in order to combin
-                      !\todo the data from each rank into all ranks. We will see how this goes for now.
-                      CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%DOF_TYPES, &
-                        & SEND_COUNT,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
-                      CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
-                      CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%CONDITION_TYPES, &
-                        & SEND_COUNT,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
-                      CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
-                    ENDIF !mpi_in_place bug workaround - only do this when num comp nodes > 1
 
-                  ELSE
-                    LOCAL_ERROR="Field variable domain mapping is not associated for variable type "// &
-                      & TRIM(NUMBER_TO_VSTRING(variable_idx,"*",ERR,ERROR))//"."
-                    CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                  ENDIF
+                  ! FIXTHIS, I don't think the below is needed if we do boundary conditions locally.
+                  ! IF(ASSOCIATED(VARIABLE_DOMAIN_MAPPING)) THEN
+                  !   SEND_COUNT=VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL
+                  !   IF(computationalEnvironment%numberOfComputationalNodes>1) THEN
+                  !     !\todo This operation is a little expensive as we are doing an unnecessary sum across all the ranks in order to combin
+                  !     !\todo the data from each rank into all ranks. We will see how this goes for now.
+                  !     CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%DOF_TYPES, &
+                  !       & SEND_COUNT,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  !     CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+                  !     CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%CONDITION_TYPES, &
+                  !       & SEND_COUNT,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  !     CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+                  !   ENDIF !mpi_in_place bug workaround - only do this when num comp nodes > 1
+                  !
+                  ! ELSE
+                  !   LOCAL_ERROR="Field variable domain mapping is not associated for variable type "// &
+                  !     & TRIM(NUMBER_TO_VSTRING(variable_idx,"*",ERR,ERROR))//"."
+                  !   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                  ! ENDIF
 
-                  IF(computationalEnvironment%numberOfComputationalNodes>1) THEN
-
-                    ! Update the total number of boundary condition types by summing across all nodes
-                    CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS, &
-                      & MAX_BOUNDARY_CONDITION_NUMBER,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
-                    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
-                    CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%NUMBER_OF_DIRICHLET_CONDITIONS, &
-                      & 1,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
-                    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
-                  ENDIF !mpi_in_place bug workaround - only do this when num comp nodes > 1
+                  ! FIXTHIS, Only need local informatiom, so below isn't needed
+                  ! IF(computationalEnvironment%numberOfComputationalNodes>1) THEN
+                  !
+                  !   ! Update the total number of boundary condition types by summing across all nodes
+                  !   CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS, &
+                  !     & MAX_BOUNDARY_CONDITION_NUMBER,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  !   CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+                  !   CALL MPI_ALLREDUCE(MPI_IN_PLACE,BOUNDARY_CONDITION_VARIABLE%NUMBER_OF_DIRICHLET_CONDITIONS, &
+                  !     & 1,MPI_INTEGER,MPI_SUM,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  !   CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,ERR,ERROR,*999)
+                  ! ENDIF !mpi_in_place bug workaround - only do this when num comp nodes > 1
 
                   ! Check that the boundary conditions set are appropriate for equations sets
                   CALL BoundaryConditions_CheckEquations(BOUNDARY_CONDITION_VARIABLE,ERR,ERROR,*999)
+
+                  !make the dof counts with no ghosts equal to dof counts before ghosts are counted
+                  ALLOCATE(BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS_NOGHOST(MAX_BOUNDARY_CONDITION_NUMBER))
+                  BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS_NOGHOST = BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS
 
                   IF(computationalEnvironment%numberOfComputationalNodes>1) THEN
                     !Make sure the required parameter sets are created on all computational nodes and begin updating them
@@ -384,7 +391,25 @@ CONTAINS
                           & parameterSetIdx,ERR,ERROR,*999)
                       END IF
                     END DO
+
+
+                    CALL BoundaryConditions_ConditionsIncludeGhosts(BOUNDARY_CONDITION_VARIABLE,ERR,ERROR,*999)
                   ENDIF !mpi_in_place bug workaround - only do this when num comp nodes > 1
+
+                  !Check on all ranks to see if any have neumann conditions
+
+                  numberOfNeumannOnRank = BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS_NOGHOST(BOUNDARY_CONDITION_NEUMANN_POINT) + &
+                    BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)
+
+                  CALL MPI_ALLREDUCE(numberOfNeumannOnRank, globalNumberOfNeumann,1,MPI_INTEGER,MPI_SUM, &
+                    & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+
+                  IF(globalNumberOfNeumann >0) THEN
+                    BOUNDARY_CONDITION_VARIABLE%NeumannRequired = .True.
+                  ELSE
+                    BOUNDARY_CONDITION_VARIABLE%NeumannRequired = .False.
+                  ENDIF
 
                   ! Set up pressure incremented condition, if it exists
                   IF(BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_PRESSURE_INCREMENTED)>0) THEN
@@ -393,15 +418,16 @@ CONTAINS
                   END IF
 
                   ! Set up Neumann condition information if there are any Neumann conditions
-                  IF(BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT)>0.OR. &
-                      & BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)>0) THEN
+                  IF(BOUNDARY_CONDITION_VARIABLE%NeumannRequired) THEN
+                      ! !FIXTHIS, we need to make sure the below matrix is done locally
+                      ! CALL FlagError("NeumannMatricesInitialise has not yet been checked for local implementation",ERR,ERROR,*999)
                     CALL BoundaryConditions_NeumannInitialise(BOUNDARY_CONDITION_VARIABLE,ERR,ERROR,*999)
                   END IF
 
-                  ! Loop over all global DOFs, keeping track of the dof indices of specific BC types where required
+                  ! Loop over all local DOFs, keeping track of the dof indices of specific BC types where required
                   pressureIdx=1
                   neumannIdx=1
-                  DO dof_idx=1,FIELD_VARIABLE%NUMBER_OF_GLOBAL_DOFS
+                  DO dof_idx=1,FIELD_VARIABLE%TOTAL_NUMBER_OF_DOFS
                     IF(BOUNDARY_CONDITION_VARIABLE%CONDITION_TYPES(dof_idx)== BOUNDARY_CONDITION_PRESSURE_INCREMENTED) THEN
                       BOUNDARY_CONDITIONS_PRESSURE_INCREMENTED%PRESSURE_INCREMENTED_DOF_INDICES(pressureIdx)=dof_idx
                       pressureIdx=pressureIdx+1
@@ -413,8 +439,9 @@ CONTAINS
                   END DO
 
                   ! Now that we know where Neumann point DOFs are, we can calculate matrix structure
-                  IF(BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT)>0.OR. &
-                      & BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)>0) THEN
+                  IF(BOUNDARY_CONDITION_VARIABLE%NeumannRequired) THEN
+                    ! !FIXTHIS, we need to make sure the below matrix is done locally
+                    ! CALL FlagError("NeumannMatricesInitialise has not yet been checked for local implementation",ERR,ERROR,*999)
                     CALL BoundaryConditions_NeumannMatricesInitialise(BOUNDARY_CONDITION_VARIABLE,ERR,ERROR,*999)
                   END IF
 
@@ -425,7 +452,7 @@ CONTAINS
                     IF(ASSOCIATED(BOUNDARY_CONDITIONS_DIRICHLET)) THEN
                       ! Find dirichlet conditions
                       dirichlet_idx=1
-                      DO dof_idx=1,FIELD_VARIABLE%NUMBER_OF_GLOBAL_DOFS
+                      DO dof_idx=1,FIELD_VARIABLE%NUMBER_OF_DOFS
                         IF(BOUNDARY_CONDITION_VARIABLE%DOF_TYPES(dof_idx)==BOUNDARY_CONDITION_DOF_FIXED) THEN
                           BOUNDARY_CONDITIONS_DIRICHLET%DIRICHLET_DOF_INDICES(dirichlet_idx)=dof_idx
                           dirichlet_idx=dirichlet_idx+1
@@ -500,8 +527,10 @@ CONTAINS
                                           ENDDO
                                           SPARSITY_INDICES%SPARSE_COLUMN_INDICES(dirichlet_idx+1)=COUNT+1
                                         ENDDO
-                                        CALL LIST_DETACH_AND_DESTROY(SPARSE_INDICES,DUMMY,SPARSITY_INDICES%SPARSE_ROW_INDICES, &
+                                        CALL LIST_DETACH_AND_DESTROY(SPARSE_INDICES,lengthSparceIndices,tempArray, &
                                           & ERR,ERROR,*999)
+                                        SPARSITY_INDICES%SPARSE_ROW_INDICES=tempArray(1:lengthSparceIndices)
+                                        IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
                                         DO col_idx =1,NUMBER_OF_ROWS
                                           CALL LINKEDLIST_DESTROY(list(col_idx),ERR,ERROR,*999)
                                         ENDDO
@@ -547,6 +576,7 @@ CONTAINS
                                       CALL DISTRIBUTED_MATRIX_NUMBER_NON_ZEROS_GET(EQUATION_MATRIX%MATRIX,NUMBER_OF_NON_ZEROS, &
                                         & ERR,ERROR,*999)
                                       !Sparse matrix in a list
+                                      !\todo change method so a linked list doesn't need to be used, bad for memory
                                       CALL DISTRIBUTED_MATRIX_LINKLIST_GET(EQUATION_MATRIX%MATRIX,LIST,ERR,ERROR,*999)
                                       NUMBER_OF_ROWS=vectorMatrices%totalNumberOfRows
                                       !Intialise sparsity indices arrays
@@ -562,6 +592,7 @@ CONTAINS
                                         NULLIFY(SPARSE_INDICES)
                                         CALL LIST_CREATE_START(SPARSE_INDICES,ERR,ERROR,*999)
                                         CALL LIST_DATA_TYPE_SET(SPARSE_INDICES,LIST_INTG_TYPE,ERR,ERROR,*999)
+                                        !\todo the size of the list should be optomised for local implementation
                                         CALL LIST_INITIAL_SIZE_SET(SPARSE_INDICES, &
                                           & BOUNDARY_CONDITION_VARIABLE%NUMBER_OF_DIRICHLET_CONDITIONS*( &
                                           & NUMBER_OF_NON_ZEROS/NUMBER_OF_ROWS),ERR,ERROR,*999)
@@ -581,8 +612,10 @@ CONTAINS
                                           ENDDO
                                           SPARSITY_INDICES%SPARSE_COLUMN_INDICES(dirichlet_idx+1)=COUNT+1
                                         ENDDO
-                                        CALL LIST_DETACH_AND_DESTROY(SPARSE_INDICES,DUMMY,SPARSITY_INDICES%SPARSE_ROW_INDICES, &
-                                          & ERR,ERROR,*999)
+                                        CALL LIST_DETACH_AND_DESTROY(SPARSE_INDICES,lengthSparceIndices, &
+                                          & tempArray,ERR,ERROR,*999)
+                                        SPARSITY_INDICES%SPARSE_ROW_INDICES=tempArray(1:lengthSparceIndices)
+                                        IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
                                         DO col_idx =1,NUMBER_OF_ROWS
                                           CALL LINKEDLIST_DESTROY(list(col_idx),ERR,ERROR,*999)
                                         ENDDO
@@ -730,6 +763,7 @@ CONTAINS
                   END DO
 
                   !Finish creating the boundary conditions DOF constraints
+                  !FIXTHIS, BoundaryConditions_DofConstraintsCreateFinish needs to be updated for local implementation
                   CALL BoundaryConditions_DofConstraintsCreateFinish(boundary_condition_variable,err,error,*999)
                 ELSE
                   LOCAL_ERROR="Field variable is not associated for variable index "// &
@@ -825,6 +859,249 @@ CONTAINS
 
   END SUBROUTINE BOUNDARY_CONDITIONS_CREATE_START
 
+  !
+  !================================================================================================================================
+  !
+
+  !>Includes the ghost conditions into boundary condition variable dof_counts, dof_types and condition_types
+  SUBROUTINE BoundaryConditions_ConditionsIncludeGhosts(boundaryConditionsVariable,err,error,*)
+
+    !Argument variables
+    TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: boundaryConditionsVariable !<a pointer to the boundary conditions variable to assign ghost information to
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: domainNo, localDof, globalDof, I, numberOfDomains, maxNumberDofsSend, maxNumberDofsSendOrReceive, &
+      & receiveGhostIdx, globalDof2, adjacentDomainIdx, sendDofIdx, MPI_IERROR, dofCount, conditionType, numberOfAdjacentDomains, &
+      & dofType
+    INTEGER(INTG), ALLOCATABLE :: numberDofsToDomain(:), numberDofsFromDomain(:), globalDofAndConditionTypeToDomain(:,:,:), &
+      & globalDofAndConditionTypeFromDomain(:,:,:), sendRequestHandle1(:), sendRequestHandle2(:), receiveRequestHandle1(:), &
+      & receiveRequestHandle2(:), tempReceiveArray(:,:), tempSendArray(:,:)
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: rhsVariable
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowMapping
+    ! TYPE(LIST_PTR_TYPE), ALLOCATABLE :: globalDofsToDomainList(:)
+
+    ENTERS("BoundaryConditions_ConditionsIncludeGhosts",ERR,ERROR,*999)
+
+    IF(.NOT.ASSOCIATED(boundaryConditionsVariable)) CALL FlagError("Boundary Conditions Variable is not associated",err,error,*999)
+    IF(.NOT.ALLOCATED(boundaryConditionsVariable%DOF_COUNTS)) CALL FlagError("DOF_COUNTS is not associated",err,error,*999)
+    IF(.NOT.ALLOCATED(boundaryConditionsVariable%DOF_TYPES)) CALL FlagError("DOF_TYPES is not associated",err,error,*999)
+    IF(.NOT.ALLOCATED(boundaryConditionsVariable%CONDITION_TYPES)) CALL FlagError("CONDITION_TYPES is not associated", &
+      & err,error,*999)
+    IF(.NOT.ASSOCIATED(boundaryConditionsVariable%VARIABLE)) CALL FlagError( &
+      & "Boundary_Conditions_Variable%Variable not associated",err,error,*999)
+    rhsVariable=>boundaryConditionsVariable%variable
+    IF(.NOT.ASSOCIATED(rhsVariable%DOMAIN_MAPPING)) CALL FlagError("rhsVariable%rowMapping is not associated",err,error,*999)
+    rowMapping=>rhsVariable%DOMAIN_MAPPING
+    numberOfDomains = rowMapping%NUMBER_OF_DOMAINS
+    numberOfAdjacentDomains = rowMapping%NUMBER_OF_ADJACENT_DOMAINS
+    ! DO I=0, rowMapping%NUMBER_OF_ADJACENT_DOMAINS-1
+    !   NULLIFY(domainsOfFaceList(I)%PTR)
+    !   CALL LIST_CREATE_START(domainsOfFaceList(I)%PTR,err,error,*999)
+    !   CALL LIST_DATA_TYPE_SET(domainsOfFaceList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
+    !   CALL LIST_INITIAL_SIZE_SET(domainsOfFaceList(I)%PTR,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS+1,err,error,*999)
+    !   CALL LIST_CREATE_FINISH(domainsOfFaceList(I)%PTR,err,error,*999)
+    ! ENDDO
+    ALLOCATE(numberDofsToDomain(numberOfAdjacentDomains))
+    ALLOCATE(numberDofsFromDomain(numberOfAdjacentDomains))
+    numberDofsToDomain = 0
+    numberDofsFromDomain = 0
+
+    !Calculate the number of dofs with a boundary condition type that will be sent to each domain
+    DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      DO sendDofIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+        localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(sendDofIdx)
+        IF(boundaryConditionsVariable%CONDITION_TYPES(localDof)/=0) THEN
+          numberDofsToDomain(adjacentDomainIdx) = numberDofsToDomain(adjacentDomainIdx) + 1
+
+        ENDIF
+      ENDDO ! sendDofIdx
+    ENDDO ! adjacentDomainIdx
+
+
+    ! allocate request handles
+    ALLOCATE(sendRequestHandle1(numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(receiveRequestHandle1(numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate receiveRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    !Find number of dofs sent from each domain
+    ! Commit send commands
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      CALL MPI_ISEND(numberDofsToDomain(adjacentDomainIdx), 1, MPI_INT, domainNo, 0, &
+        & computationalEnvironment%mpiCommunicator, sendRequestHandle1(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+    ENDDO
+
+    ! commit receive commands
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      CALL MPI_IRECV(numberDofsFromDomain(adjacentDomainIdx), 1, MPI_INT, domainNo, 0, &
+        & computationalEnvironment%mpiCommunicator, receiveRequestHandle1(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+    ENDDO
+
+
+    ! wait for all communication to finish
+    CALL MPI_WAITALL(numberOfAdjacentDomains, sendRequestHandle1, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    CALL MPI_WAITALL(numberOfAdjacentDomains, receiveRequestHandle1, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    maxNumberDofsSend = 0
+    DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+      maxNumberDofsSend = max(maxNumberDofsSend,numberDofsToDomain(adjacentDomainIdx))
+    ENDDO
+
+    CALL MPI_ALLREDUCE(maxNumberDofsSend,maxNumberDofsSendOrReceive,1,MPI_INTEGER,MPI_MAX, &
+      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+
+
+    ! globalDofAndConditionTypeToDomain(sendDofIdx, domainNo, 1) is the globalDof number
+    ! globalDofAndConditionTypeToDomain(sendDofIdx, domainNo, 1) is the condition type of that dof
+    ALLOCATE(globalDofAndConditionTypeToDomain(maxNumberDofsSendOrReceive,numberOfAdjacentDomains,3))
+    globalDofAndConditionTypeToDomain = 0
+
+
+    DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+      dofCount = 0
+      DO sendDofIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+        localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(sendDofIdx)
+        globalDof = rowMapping%LOCAL_TO_GLOBAL_MAP(localDof)
+        IF(boundaryConditionsVariable%CONDITION_TYPES(localDof)/=0) THEN
+          dofCount = dofCount + 1
+          globalDofAndConditionTypeToDomain(dofCount, adjacentDomainIdx, 1) = globalDof
+          globalDofAndConditionTypeToDomain(dofCount, adjacentDomainIdx, 2) = boundaryConditionsVariable%CONDITION_TYPES(localDof)
+          globalDofAndConditionTypeToDomain(dofCount, adjacentDomainIdx, 3) = boundaryConditionsVariable%DOF_TYPES(localDof)
+
+        ENDIF
+      ENDDO ! sendDofIdx
+    ENDDO ! adjacentDomainIdx
+
+    ALLOCATE(globalDofAndConditionTypeFromDomain(maxNumberDofsSendOrReceive,numberOfAdjacentDomains,3))
+
+    ! allocate request handles
+    ALLOCATE(sendRequestHandle2(numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(receiveRequestHandle2(numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate receiveRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+
+    ALLOCATE(tempSendArray(maxNumberDofsSendOrReceive*3, numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate tempSendArray ",err,error,*999)
+
+    ALLOCATE(tempReceiveArray(maxNumberDofsSendOrReceive*3, numberOfAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate tempSendArray ",err,error,*999)
+
+
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      tempSendArray(1:maxNumberDofsSendOrReceive,adjacentDomainIdx) = globalDofAndConditionTypeToDomain(:, adjacentDomainIdx, 1)
+      tempSendArray(maxNumberDofsSendOrReceive + 1 : maxNumberDofsSendOrReceive*2 ,adjacentDomainIdx) = &
+        & globalDofAndConditionTypeToDomain(:, adjacentDomainIdx, 2)
+      tempSendArray(maxNumberDofsSendOrReceive*2 + 1 : maxNumberDofsSendOrReceive*3 ,adjacentDomainIdx) = &
+        & globalDofAndConditionTypeToDomain(:, adjacentDomainIdx, 3)
+    ENDDO ! adjacentDomainIdx
+
+
+    ! Commit send commands
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      CALL MPI_ISEND(tempSendArray(:,adjacentDomainIdx), maxNumberDofsSendOrReceive*3, MPI_INT, domainNo, &
+        & 0, computationalEnvironment%mpiCommunicator, sendRequestHandle2(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+    ENDDO
+
+
+    ! commit receive commands
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      CALL MPI_IRECV(tempReceiveArray(:,adjacentDomainIdx), maxNumberDofsSendOrReceive*3, MPI_INT, domainNo, &
+        & 0, computationalEnvironment%mpiCommunicator, receiveRequestHandle2(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+    ENDDO
+
+
+    ! wait for all communication to finish
+    CALL MPI_WAITALL(numberOfAdjacentDomains, sendRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    CALL MPI_WAITALL(numberOfAdjacentDomains, receiveRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    globalDofAndConditionTypeFromDomain(:, :, 1) = tempReceiveArray(1:maxNumberDofsSendOrReceive,:)
+    globalDofAndConditionTypeFromDomain(:, :, 2) = tempReceiveArray(maxNumberDofsSendOrReceive+1:maxNumberDofsSendOrReceive*2,:)
+    globalDofAndConditionTypeFromDomain(:, :, 3) = tempReceiveArray(maxNumberDofsSendOrReceive*2 + 1:maxNumberDofsSendOrReceive*3,:)
+
+    IF(ALLOCATED(tempSendArray)) DEALLOCATE(tempSendArray)
+    IF(ALLOCATED(tempReceiveArray)) DEALLOCATE(tempReceiveArray)
+
+    DO adjacentDomainIdx=1,numberOfAdjacentDomains
+      domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+      DO I = 1, numberDofsFromDomain(adjacentDomainIdx)
+        globalDof = globalDofAndConditionTypeFromDomain(I, adjacentDomainIdx, 1)
+        conditionType = globalDofAndConditionTypeFromDomain(I, adjacentDomainIdx, 2)
+        dofType = globalDofAndConditionTypeFromDomain(I, adjacentDomainIdx, 3)
+
+        DO receiveGhostIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+          localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(receiveGhostIdx)
+          globalDof2 = rowMapping%LOCAL_TO_GLOBAL_MAP(localDof)
+
+          IF(globalDof == globalDof2) THEN
+            boundaryConditionsVariable%CONDITION_TYPES(localDof)=conditionType
+            boundaryConditionsVariable%DOF_TYPES(localDof)=dofType
+            boundaryConditionsVariable%DOF_COUNTS(conditionType) =  boundaryConditionsVariable%DOF_COUNTS(conditionType) + 1
+          ENDIF
+
+        ENDDO !receiveGhostIdx
+      ENDDO ! I
+    ENDDO ! adjacentDomainIdx
+
+    IF(ALLOCATED(numberDofsToDomain)) DEALLOCATE(numberDofsToDomain)
+    IF(ALLOCATED(numberDofsFromDomain)) DEALLOCATE(numberDofsFromDomain)
+    IF(ALLOCATED(globalDofAndConditionTypeToDomain)) DEALLOCATE(globalDofAndConditionTypeToDomain)
+    IF(ALLOCATED(globalDofAndConditionTypeFromDomain)) DEALLOCATE(globalDofAndConditionTypeFromDomain)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(sendRequestHandle2)) DEALLOCATE(sendRequestHandle2)
+    IF(ALLOCATED(receiveRequestHandle1)) DEALLOCATE(receiveRequestHandle1)
+    IF(ALLOCATED(receiveRequestHandle2)) DEALLOCATE(receiveRequestHandle2)
+
+
+    EXITS("BoundaryConditions_ConditionsIncludeGhosts")
+    RETURN
+
+999 IF(ALLOCATED(numberDofsToDomain)) DEALLOCATE(numberDofsToDomain)
+    IF(ALLOCATED(numberDofsFromDomain)) DEALLOCATE(numberDofsFromDomain)
+    IF(ALLOCATED(globalDofAndConditionTypeToDomain)) DEALLOCATE(globalDofAndConditionTypeToDomain)
+    IF(ALLOCATED(globalDofAndConditionTypeFromDomain)) DEALLOCATE(globalDofAndConditionTypeFromDomain)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(sendRequestHandle2)) DEALLOCATE(sendRequestHandle2)
+    IF(ALLOCATED(receiveRequestHandle1)) DEALLOCATE(receiveRequestHandle1)
+    IF(ALLOCATED(receiveRequestHandle2)) DEALLOCATE(receiveRequestHandle2)
+    IF(ALLOCATED(tempReceiveArray)) DEALLOCATE(tempReceiveArray)
+    IF(ALLOCATED(tempSendArray)) DEALLOCATE(tempSendArray)
+
+
+998 ERRORSEXITS("BoundaryConditions_ConditionsIncludeGhosts",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE BoundaryConditions_ConditionsIncludeGhosts
   !
   !================================================================================================================================
   !
@@ -1281,7 +1558,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: i,global_ny,local_ny
+    INTEGER(INTG) :: i,local_ny
     REAL(DP) :: INITIAL_VALUE
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: BOUNDARY_CONDITIONS_VARIABLE
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING
@@ -1309,9 +1586,8 @@ CONTAINS
                     DO i=1,SIZE(DOF_INDICES,1)
                       local_ny=DOF_INDICES(i)
                       IF(local_ny>=1.AND.local_ny<=DOMAIN_MAPPING%NUMBER_OF_LOCAL) THEN
-                        global_ny=DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
                         ! Set boundary condition and dof type, and make sure parameter sets are created
-                        CALL BoundaryConditions_SetConditionType(BOUNDARY_CONDITIONS_VARIABLE,global_ny,CONDITIONS(i), &
+                        CALL BoundaryConditions_SetConditionType(BOUNDARY_CONDITIONS_VARIABLE,local_ny,CONDITIONS(i), &
                           & ERR,ERROR,*999)
                         ! Update field sets by adding boundary condition values
                         SELECT CASE(CONDITIONS(i))
@@ -1474,7 +1750,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: i,global_ny,local_ny
+    INTEGER(INTG) :: i,local_ny
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: BOUNDARY_CONDITIONS_VARIABLE
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: DEPENDENT_VARIABLE
@@ -1500,9 +1776,8 @@ CONTAINS
                     DO i=1,SIZE(DOF_INDICES,1)
                       local_ny=DOF_INDICES(i)
                       IF(local_ny>=1.AND.local_ny<=DOMAIN_MAPPING%NUMBER_OF_LOCAL) THEN
-                        global_ny=DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
                         ! Set boundary condition and dof type
-                        CALL BoundaryConditions_SetConditionType(BOUNDARY_CONDITIONS_VARIABLE,global_ny,CONDITIONS(i), &
+                        CALL BoundaryConditions_SetConditionType(BOUNDARY_CONDITIONS_VARIABLE,local_ny,CONDITIONS(i), &
                           & ERR,ERROR,*999)
                         ! Update field sets with boundary condition value
 
@@ -1620,11 +1895,11 @@ CONTAINS
 
   !> Checks the boundary condition type and sets the boundary condition type and dof type for the boundary conditions.
   !> Makes sure any field parameter sets required are created, and sets the parameter set required array value.
-  SUBROUTINE BoundaryConditions_SetConditionType(boundaryConditionsVariable,globalDof,condition,err,error,*)
+  SUBROUTINE BoundaryConditions_SetConditionType(boundaryConditionsVariable,localDof,condition,err,error,*)
 
     !Argument variables
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: boundaryConditionsVariable !<A pointer to the boundary conditions variable to set the boundary condition for
-    INTEGER(INTG), INTENT(IN) :: globalDof !<The globalDof to set the boundary condition at
+    INTEGER(INTG), INTENT(IN) :: localDof !<The localDof to set the boundary condition at
     INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see BOUNDARY_CONDITIONS_ROUTINES_BoundaryConditions,BOUNDARY_CONDITIONS_ROUTINES
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -1706,14 +1981,14 @@ CONTAINS
       dofType=BOUNDARY_CONDITION_DOF_FIXED
     CASE DEFAULT
       CALL FlagError("The specified boundary condition type for dof number "// &
-        & TRIM(NUMBER_TO_VSTRING(globalDof,"*",err,error))//" of "// &
+        & TRIM(NUMBER_TO_VSTRING(localDof,"*",err,error))//" of "// &
         & TRIM(NUMBER_TO_VSTRING(condition,"*",err,error))//" is invalid.", &
         & err,error,*999)
     END SELECT
 
     !We have a valid boundary condition type
     !Update condition type counts
-    previousCondition=boundaryConditionsVariable%CONDITION_TYPES(globalDof)
+    previousCondition=boundaryConditionsVariable%CONDITION_TYPES(localDof)
     IF(previousCondition/=condition) THEN
       ! DOF_COUNTS array doesn't include a count for BOUNDARY_CONDITION_FREE, which equals zero
       IF(previousCondition/=BOUNDARY_CONDITION_FREE) THEN
@@ -1726,7 +2001,7 @@ CONTAINS
       END IF
     END IF
     !Update Dirichlet DOF count
-    previousDof=boundaryConditionsVariable%DOF_TYPES(globalDof)
+    previousDof=boundaryConditionsVariable%DOF_TYPES(localDof)
     IF(dofType==BOUNDARY_CONDITION_DOF_FIXED.AND.previousDof/=BOUNDARY_CONDITION_DOF_FIXED) THEN
       boundaryConditionsVariable%NUMBER_OF_DIRICHLET_CONDITIONS= &
         & boundaryConditionsVariable%NUMBER_OF_DIRICHLET_CONDITIONS+1
@@ -1736,11 +2011,11 @@ CONTAINS
     END IF
 
     !Set the boundary condition type and DOF type
-    boundaryConditionsVariable%CONDITION_TYPES(globalDof)=condition
-    boundaryConditionsVariable%DOF_TYPES(globalDof)=dofType
+    boundaryConditionsVariable%CONDITION_TYPES(localDof)=condition
+    boundaryConditionsVariable%DOF_TYPES(localDof)=dofType
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Boundary Condition Being Set",err,error,*999)
-      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"global dof = ", globalDof,err,error,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"global dof = ", localDof,err,error,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Variable Type = ", &
         & boundaryConditionsVariable%VARIABLE_TYPE,err,error,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"New Condition = ", &
@@ -2270,14 +2545,22 @@ CONTAINS
     TYPE(DOMAIN_LINE_TYPE), POINTER :: line
     TYPE(DOMAIN_FACE_TYPE), POINTER :: face
     TYPE(LIST_TYPE), POINTER :: columnIndicesList, rowColumnIndicesList
-    INTEGER(INTG) :: myComputationalNodeNumber
-    INTEGER(INTG) :: numberOfPointDofs, numberNonZeros, numberRowEntries, neumannConditionNumber, localNeumannConditionIdx
-    INTEGER(INTG) :: neumannIdx, globalDof, localDof, localDofNyy, domainIdx, numberOfDomains, domainNumber, componentNumber
-    INTEGER(INTG) :: nodeIdx, derivIdx, nodeNumber, versionNumber, derivativeNumber, columnNodeNumber, lineIdx, faceIdx, columnDof
-    INTEGER(INTG), ALLOCATABLE :: rowIndices(:), columnIndices(:), localDofNumbers(:)
+    INTEGER(INTG) :: myComputationalNodeNumber, MPI_IERROR, numberOfAdjacentDomains, localNeumannDof
+    INTEGER(INTG) :: totalNumberOfPointDofs, numberNonZeros, numberRowEntries, neumannConditionNumber, localNeumannConditionIdx
+    INTEGER(INTG) :: neumannIdx, localDof, localDofNyy, domainIdx, numberOfDomains, domainNo, componentNumber, globalDof
+    INTEGER(INTG) :: nodeIdx, derivIdx, nodeNumber, versionNumber, derivativeNumber, columnNodeNumber, lineIdx, faceIdx, columnDof,&
+      & numberOfGlobalNeumannDofs, globalNeumannDof, localNumberOfPointDofs, numberOfGhostNeumannDofs, &
+      & numberOfInternalNeumannDofs, numberOfBoundaryNeumannDofs, I, adjacentDomainIdx, &
+      & maxNumberNeumannDofsSendOrReceive, maxNumberNeumannDofsSend, sendDofIdx, localNeumannDofIdx, &
+      &  localDof2, neumannCount,receiveGhostIdx, globalDof2
+    INTEGER(INTG), ALLOCATABLE :: rowIndices(:), columnIndices(:), localDofNumbers(:), tempArray(:), internalDofs(:), &
+      & localNumberOfNeumannDofsPerRank(:), numberNeumannDofsToDomain(:), numberNeumannDofsFromDomain(:), sendRequestHandle1(:), &
+      & receiveRequestHandle1(:), sendRequestHandle2(:), receiveRequestHandle2(:), globalDofAndNeumannDofToDomain(:,:,:), &
+      & globalDofAndNeumannDofFromDomain(:,:,:), tempSendArray(:,:), tempReceiveArray(:,:), localNumberOfNeumannGhostsPerRank(:)
     REAL(DP) :: pointValue
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
+    LOGICAL :: localNeumannDofFound, neumannDofFound, localDofIsInternal
 
     ENTERS("BoundaryConditions_NeumannMatricesInitialise",err,error,*999)
 
@@ -2285,12 +2568,17 @@ CONTAINS
       rhsVariable=>boundaryConditionsVariable%variable
       IF(.NOT.ASSOCIATED(rhsVariable)) &
         & CALL FlagError("RHS boundary conditions variable field variable is not associated.",err,error,*999)
-      numberOfPointDofs=boundaryConditionsVariable%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT) + &
+      !This is the local number of neumann dofs
+      myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
+      totalNumberOfPointDofs=boundaryConditionsVariable%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT) + &
         & boundaryConditionsVariable%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)
+      localNumberOfPointDofs=boundaryConditionsVariable%DOF_COUNTS_NOGHOST(BOUNDARY_CONDITION_NEUMANN_POINT) + &
+        & boundaryConditionsVariable%DOF_COUNTS_NOGHOST(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)
       boundaryConditionsNeumann=>boundaryConditionsVariable%neumannBoundaryConditions
       IF(ASSOCIATED(boundaryConditionsNeumann)) THEN
         ! For rows we can re-use the RHS variable row mapping
         rowMapping=>rhsVariable%DOMAIN_MAPPING
+        numberOfAdjacentDomains=rowMapping%NUMBER_OF_ADJACENT_DOMAINS
         IF(.NOT.ASSOCIATED(rowMapping)) &
           & CALL FlagError("RHS field variable mapping is not associated.",err,error,*998)
 
@@ -2299,75 +2587,373 @@ CONTAINS
         IF(err/=0) CALL FlagError("Could not allocate Neumann DOF domain mapping.",err,error,*999)
         CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(pointDofMapping,rowMapping%NUMBER_OF_DOMAINS,err,error,*999)
         boundaryConditionsNeumann%pointDofMapping=>pointDofMapping
-        ! Calculate global to local mapping for Neumann DOFs
-        pointDofMapping%NUMBER_OF_GLOBAL=numberOfPointDofs
-        ALLOCATE(pointDofMapping%GLOBAL_TO_LOCAL_MAP(numberOfPointDofs),stat=err)
-        IF(err/=0) CALL FlagError("Could not allocate Neumann point DOF global to local mapping.",err,error,*999)
-        ALLOCATE(localDofNumbers(0:rowMapping%NUMBER_OF_DOMAINS-1),stat=err)
-        IF(ERR/=0) CALL FlagError("Could not allocate local Neumann DOF numbers.",err,error,*999)
-        localDofNumbers=0
+
+
+        ! Calculate local to global mapping for Neumann DOFs
+        pointDofMapping%NUMBER_OF_LOCAL=localNumberOfPointDofs
+        pointDofMapping%TOTAL_NUMBER_OF_LOCAL=totalNumberOfPointDofs
+        pointDofMapping%NUMBER_OF_DOMAINS=rhsVariable%DOMAIN_MAPPING%NUMBER_OF_DOMAINS
+        pointDofMapping%NUMBER_OF_ADJACENT_DOMAINS=rhsVariable%DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
 
         IF(DIAGNOSTICS2) THEN
           CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Local numbering",err,error,*999)
         END IF
-        DO neumannIdx=1,numberOfPointDofs
-          globalDof=boundaryConditionsNeumann%setDofs(neumannIdx)
-          ! Get domain information from the RHS variable domain mapping, but set new local numbers.
-          numberOfDomains=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%NUMBER_OF_DOMAINS
-          pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%NUMBER_OF_DOMAINS=numberOfDomains
-          ALLOCATE(pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_NUMBER(numberOfDomains),stat=err)
-          IF(err/=0) CALL FlagError("Could not allocate Neumann DOF global to local map local number.",err,error,*999)
-          ALLOCATE(pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%DOMAIN_NUMBER(numberOfDomains),stat=err)
-          IF(err/=0) CALL FlagError("Could not allocate Neumann DOF global to local map domain number.",err,error,*999)
-          ALLOCATE(pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(numberOfDomains),stat=err)
-          IF(err/=0) CALL FlagError("Could not allocate Neumann DOF global to local map local type.",err,error,*999)
-          IF(DIAGNOSTICS2) THEN
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Neumann point DOF index = ",neumannIdx,err,error,*999)
-          END IF
-          DO domainIdx=1,numberOfDomains
-            domainNumber=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(domainIdx)
-            pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%DOMAIN_NUMBER(domainIdx)=domainNumber
-            pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(domainIdx)= &
-              & rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_TYPE(domainIdx)
-            IF(pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(domainIdx)==DOMAIN_LOCAL_INTERNAL.OR. &
-                & pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(domainIdx)==DOMAIN_LOCAL_BOUNDARY) THEN
-              localDofNumbers(domainNumber)=localDofNumbers(domainNumber)+1
-              pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_NUMBER(domainIdx)=localDofNumbers(domainNumber)
-              IF(DIAGNOSTICS2) THEN
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Global rhs var DOF = ",globalDof,err,error,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Domain number = ",domainNumber,err,error,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Local type = ", &
-                  & pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(domainIdx),err,error,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Local number = ",localDofNumbers(domainNumber),err,error,*999)
-              END IF
-            ENDIF
-          END DO
-        END DO
-        !Local DOFs must be numbered before ghost DOFs, so loop though again, this time numbering GHOST DOFs
-        IF(DIAGNOSTICS2) THEN
-          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Ghost numbering",err,error,*999)
-        END IF
-        DO neumannIdx=1,numberOfPointDofs
-          globalDof=boundaryConditionsNeumann%setDofs(neumannIdx)
-          numberOfDomains=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%NUMBER_OF_DOMAINS
-          IF(DIAGNOSTICS2) THEN
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Neumann point DOF index = ",neumannIdx,err,error,*999)
-          END IF
-          DO domainIdx=1,numberOfDomains
-            IF(pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_TYPE(domainIdx)==DOMAIN_LOCAL_GHOST) THEN
-              domainNumber=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(domainIdx)
-              localDofNumbers(domainNumber)=localDofNumbers(domainNumber)+1
-              pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_NUMBER(domainIdx)=localDofNumbers(domainNumber)
-              IF(DIAGNOSTICS2) THEN
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Global rhs var DOF = ",globalDof,err,error,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Domain number = ",domainNumber,err,error,*999)
-                CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Local number = ",localDofNumbers(domainNumber),err,error,*999)
-              END IF
-            ENDIF
-          END DO
-        END DO
 
-        CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(pointDofMapping,err,error,*999)
+
+
+        !FIXTHIS need to create an if statement so communication is only done when more than two domains
+
+
+
+        !numberOfGhostNeumannDofs is the number of ghost neumann dofs this domain has
+        numberOfGhostNeumannDofs = totalNumberOfPointDofs - localNumberOfPointDofs
+
+
+        !First we communicate between ranks so each one knows how many neumann dofs are on the other ranks
+        ALLOCATE(localNumberOfNeumannDofsPerRank(0:pointDofMapping%NUMBER_OF_DOMAINS-1))
+        !Also communicate number of ghosts on each ranks
+        ALLOCATE(localNumberOfNeumannGhostsPerRank(0:pointDofMapping%NUMBER_OF_DOMAINS-1))
+
+        ! localNumberOfNeumannDofsPerRank holds the number of neumann dofs in myComputationalNodeNumbers entry
+        CALL MPI_ALLGATHER(localNumberOfPointDofs,1,MPI_INTEGER,localNumberOfNeumannDofsPerRank, &
+          & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+        ! Also communicate number of ghosts on each ranks
+        ! localNumberOfNeumannGhostsPerRank holds the number of neumann ghost dofs in myComputationalNodeNumbers entry
+        CALL MPI_ALLGATHER(numberOfGhostNeumannDofs,1,MPI_INTEGER,localNumberOfNeumannGhostsPerRank, &
+          & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+        !Allocate number of local and ghost neumann dofs on each domain in mapping
+        ALLOCATE(pointDofMapping%NUMBER_OF_DOMAIN_LOCAL(0:pointDofMapping%NUMBER_OF_DOMAINS-1))
+        pointDofMapping%NUMBER_OF_DOMAIN_LOCAL = localNumberOfNeumannDofsPerRank
+        ALLOCATE(pointDofMapping%NUMBER_OF_DOMAIN_GHOST(0:pointDofMapping%NUMBER_OF_DOMAINS-1))
+        pointDofMapping%NUMBER_OF_DOMAIN_GHOST = localNumberOfNeumannGhostsPerRank
+
+        !Count number of local neumann dofs on each rank to get the number of global dofs
+        numberOfGlobalNeumannDofs=0
+        DO domainIdx = 0,pointDofMapping%NUMBER_OF_DOMAINS-1
+          numberOfGlobalNeumannDofs = numberOfGlobalNeumannDofs + localNumberOfNeumannDofsPerRank(domainIdx)
+        ENDDO
+
+        pointDofMapping%NUMBER_OF_GLOBAL = numberOfGlobalNeumannDofs
+
+        !Get the first global dof number of this rank
+        IF(myComputationalNodeNumber == 0) THEN
+          globalNeumannDof = 1
+        ELSE
+          globalNeumannDof = localNumberOfNeumannDofsPerRank(myComputationalNodeNumber-1)+1
+        ENDIF
+
+
+        pointDofMapping%INTERNAL_START=1
+        numberOfInternalNeumannDofs=0
+        numberOfBoundaryNeumannDofs=0
+
+        !Allocate the size of the domain list and local to global map arrays
+        ALLOCATE(pointDofMapping%DOMAIN_LIST(totalNumberOfPointDofs))
+        ALLOCATE(pointDofMapping%LOCAL_TO_GLOBAL_MAP(totalNumberOfPointDofs))
+
+        !Assign an array with all of the internal dofs in it
+        ALLOCATE(internalDofs(rowMapping%NUMBER_OF_INTERNAL))
+        internalDofs=rowMapping%DOMAIN_LIST(rowMapping%INTERNAL_START:rowMapping%INTERNAL_FINISH)
+
+        ! Iterate through neumann dofs and save internal neumann dofs
+        DO localNeumannDof = 1, localNumberOfPointDofs
+          localDof=boundaryConditionsNeumann%setDofs(localNeumannDof)
+
+          localDofIsInternal = .False.
+
+          !\TODO This is a slow search, array is ordered so could use SORTED_ARRAY_CONTAINS_ELEMENT
+          DO I = 1,rowMapping%NUMBER_OF_INTERNAL
+            IF(internalDofs(I) == localDof) THEN
+              localDofIsInternal=.True.
+            ENDIF
+          ENDDO !I
+
+          IF(localDofIsInternal) THEN
+            numberOfInternalNeumannDofs = numberOfInternalNeumannDofs + 1
+            pointDofMapping%DOMAIN_LIST(numberOfInternalNeumannDofs) = localNeumannDof
+            pointDofMapping%LOCAL_TO_GLOBAL_MAP(localNeumannDof) = globalNeumannDof
+
+            globalNeumannDof = globalNeumannDof +1
+          ENDIF
+        ENDDO !localNeumannDof
+
+        ! Iterate through neumann dofs and save boundary neumann dofs
+        DO localNeumannDof = 1, localNumberOfPointDofs
+          localDof=boundaryConditionsNeumann%setDofs(localNeumannDof)
+
+          localDofIsInternal = .False.
+
+          !\TODO This is a slow search, array is ordered so could use SORTED_ARRAY_CONTAINS_ELEMENT
+          DO I = 1,rowMapping%NUMBER_OF_INTERNAL
+            IF(internalDofs(I) == localDof) THEN
+              localDofIsInternal=.True.
+            ENDIF
+          ENDDO !I
+
+
+
+          IF(.NOT.localDofIsInternal) THEN
+            numberOfBoundaryNeumannDofs = numberOfBoundaryNeumannDofs + 1
+            pointDofMapping%DOMAIN_LIST(numberOfInternalNeumannDofs + numberOfBoundaryNeumannDofs) = localNeumannDof
+            pointDofMapping%LOCAL_TO_GLOBAL_MAP(localNeumannDof) = globalNeumannDof
+
+            globalNeumannDof = globalNeumannDof +1
+          ENDIF
+        ENDDO !localNeumannDof
+
+        pointDofMapping%INTERNAL_FINISH = numberOfInternalNeumannDofs
+        pointDofMapping%BOUNDARY_START = numberOfInternalNeumannDofs + 1
+        pointDofMapping%BOUNDARY_FINISH = numberOfInternalNeumannDofs + numberOfBoundaryNeumannDofs
+        pointDofMapping%GHOST_START = numberOfInternalNeumannDofs + numberOfBoundaryNeumannDofs + 1
+        pointDofMapping%GHOST_FINISH = totalNumberOfPointDofs
+
+        pointDofMapping%NUMBER_OF_INTERNAL = numberOfInternalNeumannDofs
+        pointDofMapping%NUMBER_OF_BOUNDARY = numberOfBoundaryNeumannDofs
+        pointDofMapping%NUMBER_OF_GHOST = numberOfGhostNeumannDofs
+
+
+        ALLOCATE(numberNeumannDofsToDomain(numberOfAdjacentDomains))
+        ALLOCATE(numberNeumannDofsFromDomain(numberOfAdjacentDomains))
+        numberNeumannDofsToDomain = 0
+        numberNeumannDofsFromDomain = 0
+
+        !Calculate the number of neumann dofs that will be sent to each domain
+        DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          DO sendDofIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+            localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(sendDofIdx)
+            IF(boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
+                & boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
+
+              numberNeumannDofsToDomain(adjacentDomainIdx) = numberNeumannDofsToDomain(adjacentDomainIdx) + 1
+
+            ENDIF
+          ENDDO ! sendDofIdx
+        ENDDO ! adjacentDomainIdx
+
+
+        ! allocate request handles
+        ALLOCATE(sendRequestHandle1(numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+        ALLOCATE(receiveRequestHandle1(numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate receiveRequestHandle array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+        !Find number of neumann dofs sent from each domain
+        ! Commit send commands
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          CALL MPI_ISEND(numberNeumannDofsToDomain(adjacentDomainIdx), 1, MPI_INT, domainNo, 0, &
+            & computationalEnvironment%mpiCommunicator, sendRequestHandle1(adjacentDomainIdx), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+        ENDDO
+
+        ! commit receive commands
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          CALL MPI_IRECV(numberNeumannDofsFromDomain(adjacentDomainIdx), 1, MPI_INT, domainNo, 0, &
+            & computationalEnvironment%mpiCommunicator, receiveRequestHandle1(adjacentDomainIdx), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+        ENDDO
+
+
+        ! wait for all communication to finish
+        CALL MPI_WAITALL(numberOfAdjacentDomains, sendRequestHandle1, MPI_STATUSES_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+        CALL MPI_WAITALL(numberOfAdjacentDomains, receiveRequestHandle1, MPI_STATUSES_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+
+        maxNumberNeumannDofsSend = 0
+        DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+          maxNumberNeumannDofsSend = max(maxNumberNeumannDofsSend,numberNeumannDofsToDomain(adjacentDomainIdx))
+        ENDDO
+
+        CALL MPI_ALLREDUCE(maxNumberNeumannDofsSend,maxNumberNeumannDofsSendOrReceive,1,MPI_INTEGER,MPI_MAX, &
+          & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+
+        ! allocate ADJACENT_DOMAINS
+        ALLOCATE(pointDofMapping%ADJACENT_DOMAINS(numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate adjacent domains array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+          pointDofMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER = domainNo
+          pointDofMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = numberNeumannDofsToDomain(adjacentDomainIdx)
+          pointDofMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = &
+            & numberNeumannDofsFromDomain(adjacentDomainIdx)
+          pointDofMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
+        ENDDO
+
+
+
+        ! globalDofAndNeumannDofToDomain(sendDofIdx, domainNo, 1) is the globalDof number
+        ! globalDofAndNeumannDofToDomain(sendDofIdx, domainNo, 1) is the global neumann idx of that neumann dof
+        ALLOCATE(globalDofAndNeumannDofToDomain(maxNumberNeumannDofsSendOrReceive,numberOfAdjacentDomains,2))
+        globalDofAndNeumannDofToDomain = 0
+
+        !UPTOHERE>>>>>>!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 11/08 Finbar
+
+        DO adjacentDomainIdx = 1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+          neumannCount = 0
+          DO sendDofIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS
+            localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(sendDofIdx)
+            globalDof = rowMapping%LOCAL_TO_GLOBAL_MAP(localDof)
+            IF(boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
+                & boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
+              neumannCount = neumannCount + 1
+
+              neumannDofFound = .False.
+              ! Find the global globalNeumannDof
+              DO neumannIdx = pointDofMapping%BOUNDARY_START, pointDofMapping%BOUNDARY_FINISH
+                localneumannDof = pointDofMapping%DOMAIN_LIST(neumannIdx)
+                localDof2=boundaryConditionsNeumann%setDofs(localNeumannDof)
+
+                IF(localDof == localDof2) THEN
+                  globalNeumannDof = pointDofMapping%LOCAL_TO_GLOBAL_MAP(neumannIdx)
+                  neumannDofFound = .True.
+                  EXIT
+                ENDIF
+              ENDDO ! neumannIdx
+
+              IF(.NOT.neumannDofFound) CALL FlagError("neumann dof was not found",err,error, *999)
+
+              globalDofAndNeumannDofToDomain(neumannCount, adjacentDomainIdx, 1) = globalDof
+              globalDofAndNeumannDofToDomain(neumannCount, adjacentDomainIdx, 2) = globalNeumannDof
+
+            ENDIF
+          ENDDO ! sendDofIdx
+        ENDDO ! adjacentDomainIdx
+
+        ALLOCATE(globalDofAndNeumannDofFromDomain(maxNumberNeumannDofsSendOrReceive,numberOfAdjacentDomains,2))
+
+        ! allocate request handles
+        ALLOCATE(sendRequestHandle2(numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle2 array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+        ALLOCATE(receiveRequestHandle2(numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate receiveRequestHandle2 array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+
+
+        ALLOCATE(tempSendArray(maxNumberNeumannDofsSendOrReceive*2, numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate tempSendArray ",err,error,*999)
+
+        ALLOCATE(tempReceiveArray(maxNumberNeumannDofsSendOrReceive*2, numberOfAdjacentDomains), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate tempSendArray ",err,error,*999)
+
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+
+          tempSendArray(1:maxNumberNeumannDofsSendOrReceive,adjacentDomainIdx) = globalDofAndNeumannDofToDomain(:, &
+            & adjacentDomainIdx, 1)
+          tempSendArray(maxNumberNeumannDofsSendOrReceive + 1 : maxNumberNeumannDofsSendOrReceive*2 ,adjacentDomainIdx) = &
+            & globalDofAndNeumannDofToDomain(:, adjacentDomainIdx, 2)
+          ! tempSendArray(maxNumberNeumannDofsSendOrReceive*2 + 1 : maxNumberNeumannDofsSendOrReceive*3 ,adjacentDomainIdx) = &
+          !   & globalDofAndNeumannDofToDomain(:, adjacentDomainIdx, 3)
+        ENDDO ! adjacentDomainIdx
+
+
+        ! Commit send commands
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          CALL MPI_ISEND(tempSendArray(:,adjacentDomainIdx), maxNumberNeumannDofsSendOrReceive*2, MPI_INT, domainNo, &
+            & 0, computationalEnvironment%mpiCommunicator, sendRequestHandle2(adjacentDomainIdx), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+        ENDDO
+
+
+        ! commit receive commands
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          CALL MPI_IRECV(tempReceiveArray(:,adjacentDomainIdx), maxNumberNeumannDofsSendOrReceive*2, MPI_INT, domainNo, &
+            & 0, computationalEnvironment%mpiCommunicator, receiveRequestHandle2(adjacentDomainIdx), MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+        ENDDO
+
+
+        ! wait for all communication to finish
+        CALL MPI_WAITALL(numberOfAdjacentDomains, sendRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+        CALL MPI_WAITALL(numberOfAdjacentDomains, receiveRequestHandle2, MPI_STATUSES_IGNORE, MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+        globalDofAndNeumannDofFromDomain(:, :, 1) = tempReceiveArray(1:maxNumberNeumannDofsSendOrReceive,:)
+        globalDofAndNeumannDofFromDomain(:, :, 2) = tempReceiveArray(maxNumberNeumannDofsSendOrReceive+1 : &
+          & maxNumberNeumannDofsSendOrReceive*2,:)
+        ! globalDofAndNeumannDofFromDomain(:, :, 3) = tempReceiveArray(maxNumberDofsSendOrReceive*2 + 1:maxNumberDofsSendOrReceive*3,:)
+
+        IF(ALLOCATED(tempSendArray)) DEALLOCATE(tempSendArray)
+        IF(ALLOCATED(tempReceiveArray)) DEALLOCATE(tempReceiveArray)
+
+        !\todo, this loop will be slow when there are a lot of neumann dofs, posiibly fins a faster
+
+        neumannCount = pointDofMapping%GHOST_START
+        DO adjacentDomainIdx=1,numberOfAdjacentDomains
+          domainNo = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+          DO I = 1, numberNeumannDofsFromDomain(adjacentDomainIdx)
+            globalDof = globalDofAndNeumannDofFromDomain(I, adjacentDomainIdx, 1)
+            globalNeumannDof = globalDofAndNeumannDofFromDomain(I, adjacentDomainIdx, 2)
+
+            DO receiveGhostIdx = 1, rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+              localDof = rowMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(receiveGhostIdx)
+              globalDof2 = rowMapping%LOCAL_TO_GLOBAL_MAP(localDof)
+
+              IF(globalDof == globalDof2) THEN
+                !Now we know the localDof number we can search through setDofs to find the localNeumannDof
+
+                localNeumannDofFound = .False.
+                DO localNeumannDofIdx = localNumberOfPointDofs + 1, totalNumberOfPointDofs
+                  localDof2 = boundaryConditionsNeumann%setDofs(localNeumannDofIdx)
+
+                  IF(localDof == localDof2) THEN
+                    localNeumannDof = localNeumannDofIdx
+                    localNeumannDofFound = .True.
+                    EXIT
+                  ENDIF
+                ENDDO !I
+                IF(.NOT.localNeumannDofFound) CALL FlagError("LocalNeumannDof was not found",err,error,*999)
+
+
+                pointDofMapping%DOMAIN_LIST(neumannCount) = localNeumannDof
+                pointDofMapping%LOCAL_TO_GLOBAL_MAP(localNeumannDof) = globalNeumannDof
+                neumannCount = neumannCount +1
+              ENDIF
+
+            ENDDO !receiveGhostIdx
+          ENDDO ! I
+        ENDDO ! adjacentDomainIdx
+
+
+        !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
+        !From the rowMapping mapping
+        ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_PTR(0:pointDofMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+        pointDofMapping%ADJACENT_DOMAINS_PTR=rowMapping%ADJACENT_DOMAINS_PTR
+
+        ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_LIST(rowMapping%ADJACENT_DOMAINS_PTR(rowMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+        IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+        pointDofMapping%ADJACENT_DOMAINS_LIST=rowMapping%ADJACENT_DOMAINS_LIST
+
+
+        ! CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(pointDofMapping,err,error,*999)
 
         CALL DISTRIBUTED_MATRIX_CREATE_START(rowMapping,pointDofMapping,boundaryConditionsNeumann%integrationMatrix,err,error,*999)
         SELECT CASE(boundaryConditionsVariable%BOUNDARY_CONDITIONS%neumannMatrixSparsity)
@@ -2412,19 +2998,19 @@ CONTAINS
                 CASE(1)
                   ! Only one column used, as this is the same as setting an integrated
                   ! value so no other DOFs are affected
-                  globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
-                  IF(boundaryConditionsVariable%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
-                      & boundaryConditionsVariable%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
+                  ! globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
+                  IF(boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
+                      & boundaryConditionsVariable%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
                     ! Find the Neumann condition number
                     neumannConditionNumber=0
-                    DO neumannIdx=1,numberOfPointDofs
-                      IF(boundaryConditionsNeumann%setDofs(neumannIdx)==globalDof) THEN
+                    DO neumannIdx=1,totalNumberOfPointDofs
+                      IF(boundaryConditionsNeumann%setDofs(neumannIdx)==localDof) THEN
                         neumannConditionNumber=neumannIdx
                       END IF
                     END DO
                     IF(neumannConditionNumber==0) THEN
-                      CALL FlagError("Could not find matching Neuamann condition number for global DOF "// &
-                        & TRIM(NUMBER_TO_VSTRING(globalDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
+                      CALL FlagError("Could not find matching Neuamann condition number for local DOF "// &
+                        & TRIM(NUMBER_TO_VSTRING(localDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
                     ELSE
                       CALL LIST_ITEM_ADD(rowColumnIndicesList,neumannConditionNumber,err,error,*999)
                     END IF
@@ -2444,19 +3030,19 @@ CONTAINS
                         versionNumber=line%DERIVATIVES_IN_LINE(2,derivIdx,nodeIdx)
                         columnDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                           & NODES(columnNodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
-                        globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(columnDof)
-                        IF(boundaryConditionsVariable%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
-                            & boundaryConditionsVariable%CONDITION_TYPES(globalDof)== &
+                        ! globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(columnDof)
+                        IF(boundaryConditionsVariable%CONDITION_TYPES(columnDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
+                            & boundaryConditionsVariable%CONDITION_TYPES(columnDof)== &
                             & BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
                           neumannConditionNumber=0
-                          DO neumannIdx=1,numberOfPointDofs
-                            IF(boundaryConditionsNeumann%setDofs(neumannIdx)==globalDof) THEN
+                          DO neumannIdx=1,totalNumberOfPointDofs
+                            IF(boundaryConditionsNeumann%setDofs(neumannIdx)==columnDof) THEN
                               neumannConditionNumber=neumannIdx
                             END IF
                           END DO
                           IF(neumannConditionNumber==0) THEN
                             CALL FlagError("Could not find matching Neuamann condition number for global DOF "// &
-                              & TRIM(NUMBER_TO_VSTRING(globalDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
+                              & TRIM(NUMBER_TO_VSTRING(columnDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
                           ELSE
                             CALL LIST_ITEM_ADD(rowColumnIndicesList,neumannConditionNumber,err,error,*999)
                           END IF
@@ -2479,19 +3065,19 @@ CONTAINS
                         versionNumber=face%DERIVATIVES_IN_FACE(2,derivIdx,nodeIdx)
                         columnDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                           & NODES(columnNodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
-                        globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(columnDof)
-                        IF(boundaryConditionsVariable%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
-                            & boundaryConditionsVariable%CONDITION_TYPES(globalDof)== &
+                        ! globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(columnDof)
+                        IF(boundaryConditionsVariable%CONDITION_TYPES(columnDof)==BOUNDARY_CONDITION_NEUMANN_POINT.OR. &
+                            & boundaryConditionsVariable%CONDITION_TYPES(columnDof)== &
                             & BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED) THEN
                           neumannConditionNumber=0
-                          DO neumannIdx=1,numberOfPointDofs
-                            IF(boundaryConditionsNeumann%setDofs(neumannIdx)==globalDof) THEN
+                          DO neumannIdx=1,totalNumberOfPointDofs
+                            IF(boundaryConditionsNeumann%setDofs(neumannIdx)==columnDof) THEN
                               neumannConditionNumber=neumannIdx
                             END IF
                           END DO
                           IF(neumannConditionNumber==0) THEN
                             CALL FlagError("Could not find matching Neuamann condition number for global DOF "// &
-                              & TRIM(NUMBER_TO_VSTRING(globalDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
+                              & TRIM(NUMBER_TO_VSTRING(columnDof,"*",err,error))//" with Neumann condition set.",err,error,*999)
                           ELSE
                             CALL LIST_ITEM_ADD(rowColumnIndicesList,neumannConditionNumber,err,error,*999)
                           END IF
@@ -2529,14 +3115,16 @@ CONTAINS
           END DO !local DOFs
 
           CALL LIST_DESTROY(rowColumnIndicesList,err,error,*999)
-          CALL LIST_DETACH_AND_DESTROY(columnIndicesList,numberNonZeros,columnIndices,err,error,*999)
+          CALL LIST_DETACH_AND_DESTROY(columnIndicesList,numberNonZeros,tempArray,err,error,*999)
+          columnIndices=tempArray(1:numberNonZeros)
+          IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
           IF(DIAGNOSTICS1) THEN
             CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Neumann integration matrix sparsity",err,error,*999)
             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Number non-zeros = ", numberNonZeros,err,error,*999)
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Number columns = ",numberOfPointDofs,err,error,*999)
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Number columns = ",totalNumberOfPointDofs,err,error,*999)
             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Number rows = ", &
               & rhsVariable%DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL,err,error,*999)
-            CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfPointDofs+1,6,6, &
+            CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,totalNumberOfPointDofs+1,6,6, &
               & rowIndices,'("  Row indices: ",6(X,I6))', '(6X,6(X,I6))',err,error,*999)
             CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberNonZeros,6,6, &
               & columnIndices,'("  Column indices: ",6(X,I6))', '(6X,6(X,I6))',err,error,*999)
@@ -2548,9 +3136,6 @@ CONTAINS
           CALL DISTRIBUTED_MATRIX_STORAGE_LOCATIONS_SET(boundaryConditionsNeumann%integrationMatrix, &
             & rowIndices,columnIndices(1:numberNonZeros),err,error,*999)
 
-          DEALLOCATE(localDofNumbers)
-          DEALLOCATE(rowIndices)
-          DEALLOCATE(columnIndices)
         CASE(BOUNDARY_CONDITION_FULL_MATRICES)
           CALL DISTRIBUTED_MATRIX_STORAGE_TYPE_SET(boundaryConditionsNeumann%integrationMatrix, &
             & DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE,err,error,*999)
@@ -2565,19 +3150,19 @@ CONTAINS
         !Set up vector of Neumann point values
         CALL DISTRIBUTED_VECTOR_CREATE_START(pointDofMapping,boundaryConditionsNeumann%pointValues,err,error,*999)
         CALL DISTRIBUTED_VECTOR_CREATE_FINISH(boundaryConditionsNeumann%pointValues,err,error,*999)
-        myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
+
         !Set point values vector from boundary conditions field parameter set
-        DO neumannIdx=1,numberOfPointDofs
-          globalDof=boundaryConditionsNeumann%setDofs(neumannIdx)
-          IF(rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(1)==myComputationalNodeNumber) THEN
-            localDof=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_NUMBER(1)
+        DO neumannIdx=1,totalNumberOfPointDofs
+          localDof=boundaryConditionsNeumann%setDofs(neumannIdx)
+          ! IF(rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(1)==myComputationalNodeNumber) THEN
+          !   localDof=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_NUMBER(1)
             ! Set point DOF vector value
-            localNeumannConditionIdx=boundaryConditionsNeumann%pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_NUMBER(1)
-            CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,rhsVariable%VARIABLE_TYPE, &
-              & FIELD_BOUNDARY_CONDITIONS_SET_TYPE,localDof,pointValue,err,error,*999)
-            CALL DISTRIBUTED_VECTOR_VALUES_SET(boundaryConditionsNeumann%pointValues, &
-              & localNeumannConditionIdx,pointValue,err,error,*999)
-          END IF
+          ! localNeumannConditionIdx=boundaryConditionsNeumann%pointDofMapping%GLOBAL_TO_LOCAL_MAP(neumannIdx)%LOCAL_NUMBER(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,rhsVariable%VARIABLE_TYPE, &
+            & FIELD_BOUNDARY_CONDITIONS_SET_TYPE,localDof,pointValue,err,error,*999)
+          CALL DISTRIBUTED_VECTOR_VALUES_SET(boundaryConditionsNeumann%pointValues, &
+            & neumannIdx,pointValue,err,error,*999)
+          ! END IF
         END DO
         CALL DISTRIBUTED_VECTOR_UPDATE_START(boundaryConditionsNeumann%pointValues,err,error,*999)
         CALL DISTRIBUTED_VECTOR_UPDATE_FINISH(boundaryConditionsNeumann%pointValues,err,error,*999)
@@ -2589,17 +3174,45 @@ CONTAINS
       CALL FlagError("Boundary conditions variable is not associated.",err,error,*998)
     END IF
 
+
+    IF(ALLOCATED(rowIndices)) DEALLOCATE(rowIndices)
+    IF(ALLOCATED(columnIndices)) DEALLOCATE(columnIndices)
+    IF(ALLOCATED(localDofNumbers)) DEALLOCATE(localDofNumbers)
+    IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+    IF(ALLOCATED(internalDofs)) DEALLOCATE(internalDofs)
+    IF(ALLOCATED(localNumberOfNeumannDofsPerRank)) DEALLOCATE(localNumberOfNeumannDofsPerRank)
+    IF(ALLOCATED(numberNeumannDofsToDomain)) DEALLOCATE(numberNeumannDofsToDomain)
+    IF(ALLOCATED(numberNeumannDofsFromDomain)) DEALLOCATE(numberNeumannDofsFromDomain)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(receiveRequestHandle1)) DEALLOCATE(receiveRequestHandle1)
+    IF(ALLOCATED(sendRequestHandle2)) DEALLOCATE(sendRequestHandle2)
+    IF(ALLOCATED(receiveRequestHandle2)) DEALLOCATE(receiveRequestHandle2)
+    IF(ALLOCATED(globalDofAndNeumannDofToDomain)) DEALLOCATE(globalDofAndNeumannDofToDomain)
+    IF(ALLOCATED(globalDofAndNeumannDofFromDomain)) DEALLOCATE(globalDofAndNeumannDofFromDomain)
+    IF(ALLOCATED(tempSendArray)) DEALLOCATE(tempSendArray)
+    IF(ALLOCATED(tempReceiveArray)) DEALLOCATE(tempReceiveArray)
+    IF(ALLOCATED(localNumberOfNeumannGhostsPerRank)) DEALLOCATE(localNumberOfNeumannGhostsPerRank)
+
     EXITS("BoundaryConditions_NeumannMatricesInitialise")
     RETURN
-999 IF(ALLOCATED(rowIndices)) THEN
-      DEALLOCATE(rowIndices)
-    END IF
-    IF(ALLOCATED(columnIndices)) THEN
-      DEALLOCATE(columnIndices)
-    END IF
-    IF(ALLOCATED(localDofNumbers)) THEN
-      DEALLOCATE(localDofNumbers)
-    END IF
+999 IF(ALLOCATED(rowIndices)) DEALLOCATE(rowIndices)
+    IF(ALLOCATED(columnIndices)) DEALLOCATE(columnIndices)
+    IF(ALLOCATED(localDofNumbers)) DEALLOCATE(localDofNumbers)
+    IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+    IF(ALLOCATED(internalDofs)) DEALLOCATE(internalDofs)
+    IF(ALLOCATED(localNumberOfNeumannDofsPerRank)) DEALLOCATE(localNumberOfNeumannDofsPerRank)
+    IF(ALLOCATED(numberNeumannDofsToDomain)) DEALLOCATE(numberNeumannDofsToDomain)
+    IF(ALLOCATED(numberNeumannDofsFromDomain)) DEALLOCATE(numberNeumannDofsFromDomain)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(receiveRequestHandle1)) DEALLOCATE(receiveRequestHandle1)
+    IF(ALLOCATED(sendRequestHandle2)) DEALLOCATE(sendRequestHandle2)
+    IF(ALLOCATED(receiveRequestHandle2)) DEALLOCATE(receiveRequestHandle2)
+    IF(ALLOCATED(globalDofAndNeumannDofToDomain)) DEALLOCATE(globalDofAndNeumannDofToDomain)
+    IF(ALLOCATED(globalDofAndNeumannDofFromDomain)) DEALLOCATE(globalDofAndNeumannDofFromDomain)
+    IF(ALLOCATED(tempSendArray)) DEALLOCATE(tempSendArray)
+    IF(ALLOCATED(tempReceiveArray)) DEALLOCATE(tempReceiveArray)
+    IF(ALLOCATED(localNumberOfNeumannGhostsPerRank)) DEALLOCATE(localNumberOfNeumannGhostsPerRank)
+
     CALL BoundaryConditions_NeumannMatricesFinalise(boundaryConditionsVariable,dummyErr,dummyError,*998)
 998 ERRORS("BoundaryConditions_NeumannMatricesInitialise",err,error)
     EXITS("BoundaryConditions_NeumannMatricesInitialise")
@@ -2692,8 +3305,8 @@ CONTAINS
 
     !Local variables
     INTEGER(INTG) :: componentNumber,globalDof,localDof,neumannDofIdx,myComputationalNodeNumber
-    INTEGER(INTG) :: numberOfNeumann,neumannLocalDof,neumannDofNyy
-    INTEGER(INTG) :: neumannGlobalDof,neumannNodeNumber,neumannLocalNodeNumber,neumannLocalDerivNumber
+    INTEGER(INTG) :: totalNumberOfNeumann,neumannLocalDof,neumannDofNyy
+    INTEGER(INTG) :: neumannNodeNumber,neumannLocalNodeNumber,neumannLocalDerivNumber! ,neumannGlobalDof,
     INTEGER(INTG) :: faceIdx,lineIdx,nodeIdx,derivIdx,gaussIdx
     INTEGER(INTG) :: faceNumber,lineNumber
     INTEGER(INTG) :: ms,os,nodeNumber,derivativeNumber,versionNumber
@@ -2714,6 +3327,7 @@ CONTAINS
     TYPE(DOMAIN_LINE_TYPE), POINTER :: line
     TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
     TYPE(QUADRATURE_SCHEME_TYPE), POINTER :: quadratureScheme
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowMapping
 
     ENTERS("BoundaryConditions_NeumannIntegrate",err,error,*999)
 
@@ -2730,12 +3344,16 @@ CONTAINS
       IF(.NOT.ASSOCIATED(rhsVariable)) THEN
         CALL FlagError("Field variable for RHS boundary conditions is not associated.",err,error,*999)
       END IF
+      IF(.NOT.ASSOCIATED(rhsVariable%DOMAIN_MAPPING)) THEN
+        CALL FlagError("domain mapping for the RHS boundary conditions is not associated.",err,error,*999)
+      ENDIF
+      rowMapping=>rhsVariable%DOMAIN_MAPPING
 
       CALL Field_GeometricGeneralFieldGet(rhsVariable%field,geometricField,dependentGeometry,err,error,*999)
 
       CALL DISTRIBUTED_MATRIX_ALL_VALUES_SET(neumannConditions%integrationMatrix,0.0_DP,err,error,*999)
 
-      numberOfNeumann=rhsBoundaryConditions%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT) + &
+      totalNumberOfNeumann=rhsBoundaryConditions%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT) + &
         & rhsBoundaryConditions%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
 
@@ -2746,12 +3364,12 @@ CONTAINS
       CALL FIELD_INTERPOLATED_POINTS_INITIALISE(interpolationParameters,interpolatedPoints,err,error,*999)
       CALL Field_InterpolatedPointsMetricsInitialise(interpolatedPoints,interpolatedPointMetrics,err,error,*999)
 
-      ! Loop over all Neumann point DOFs, finding the boundary lines or faces they are on
+      ! Loop over total local Neumann point DOFs, finding the boundary lines or faces they are on
       ! and integrating over them
-      DO neumannDofIdx=1,numberOfNeumann
-        neumannGlobalDof=neumannConditions%setDofs(neumannDofIdx)
-        IF(rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(neumannGlobalDof)%DOMAIN_NUMBER(1)==myComputationalNodeNumber) THEN
-          neumannLocalDof=rhsVariable%DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(neumannGlobalDof)%LOCAL_NUMBER(1)
+      DO neumannDofIdx=1,totalNumberOfNeumann
+        neumannLocalDof=neumannConditions%setDofs(neumannDofIdx)
+        !if the neumann dof is owned by this domain it is internal or boundary
+        IF(neumannDofIdx<=rowMapping%BOUNDARY_FINISH) THEN
           ! Get Neumann DOF component and topology for that component
           neumannDofNyy=rhsVariable%DOF_TO_PARAM_MAP%DOF_TYPE(2,neumannLocalDof)
           componentNumber=rhsVariable%DOF_TO_PARAM_MAP%NODE_DOF2PARAM_MAP(4,neumannDofNyy)
@@ -2798,11 +3416,11 @@ CONTAINS
                     versionNumber=line%DERIVATIVES_IN_LINE(2,derivIdx,nodeIdx)
                     localDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                       & NODES(nodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
-                    globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
-                    IF(globalDof==neumannGlobalDof) THEN
+                    ! globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
+                    IF(localDof==neumannLocalDof) THEN
                       neumannLocalNodeNumber=nodeIdx
                       neumannLocalDerivNumber=derivIdx
-                    ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
+                    ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
                       CYCLE linesLoop
                     END IF
                   END DO
@@ -2893,11 +3511,11 @@ CONTAINS
                     versionNumber=face%DERIVATIVES_IN_FACE(2,derivIdx,nodeIdx)
                     localDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                       & NODES(nodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
-                    globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
-                    IF(globalDof==neumannGlobalDof) THEN
+                    ! globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
+                    IF(localDof==neumannLocalDof) THEN
                       neumannLocalNodeNumber=nodeIdx
                       neumannLocalDerivNumber=derivIdx
-                    ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
+                    ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(localDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
                       CYCLE facesLoop
                     END IF
                   END DO
@@ -3000,7 +3618,7 @@ CONTAINS
         ELSE
           CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Using undeformed geometry",err,error,*999)
         END IF
-        CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,numberOfNeumann,6,6,neumannConditions%setDofs, &
+        CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,totalNumberOfNeumann,6,6,neumannConditions%setDofs, &
           & '("  setDofs:",6(X,I8))', '(10X,6(X,I8))',err,error,*999)
         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Neumann point values",err,error,*999)
         CALL DISTRIBUTED_VECTOR_OUTPUT(DIAGNOSTIC_OUTPUT_TYPE,neumannConditions%pointValues,err,error,*999)
@@ -3269,12 +3887,12 @@ CONTAINS
   !
 
   !>Constrain multiple equations dependent field DOFs to be a single solver DOF in the solver equations
-  SUBROUTINE BoundaryConditions_ConstrainDofsEqual(boundaryConditions,fieldVariable,globalDofs,coefficient,err,error,*)
+  SUBROUTINE BoundaryConditions_ConstrainDofsEqual(boundaryConditions,fieldVariable,localDofs,coefficient,err,error,*)
 
     !Argument variables
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER, INTENT(IN) :: boundaryConditions !<The boundary conditions for the solver equations in which to constrain the DOF.
     TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(IN) :: fieldVariable !<A pointer to the field variable containing the DOFs.
-    INTEGER(INTG), INTENT(IN) :: globalDofs(:) !<The global DOFs to be constrained to be equal.
+    INTEGER(INTG), INTENT(IN) :: localDofs(:) !<The local DOFs to be constrained to be equal.
     REAL(DP), INTENT(IN) :: coefficient !<The coefficient of constraint.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error message.
@@ -3283,7 +3901,7 @@ CONTAINS
 
     ENTERS("BoundaryConditions_ConstrainDofsEqual",err,error,*999)
 
-    numberOfDofs=SIZE(globalDofs,1)
+    numberOfDofs=SIZE(localDofs,1)
     IF(numberOfDofs<2) THEN
       CALL FlagError("Cannot constrain zero or 1 DOF to be equal.",err,error,*999)
     END IF
@@ -3291,8 +3909,8 @@ CONTAINS
     !Check for duplicate DOFs
     DO dofIdx=1,numberOfDofs
       DO dofIdx2=dofIdx+1,numberOfDofs
-        IF(globalDofs(dofIdx)==globalDofs(dofIdx2)) THEN
-          CALL FlagError("DOF number "//TRIM(NumberToVstring(globalDofs(dofIdx),"*",err,error))// &
+        IF(localDofs(dofIdx)==localDofs(dofIdx2)) THEN
+          CALL FlagError("DOF number "//TRIM(NumberToVstring(localDofs(dofIdx),"*",err,error))// &
             & " is duplicated in the DOFs constrained to be equal.",err,error,*999)
         END IF
       END DO
@@ -3303,7 +3921,7 @@ CONTAINS
     !The first DOF is left unconstrained
     DO dofIdx=2,numberOfDofs
       CALL BoundaryConditions_DofConstraintSet( &
-        & boundaryConditions,fieldVariable,globalDofs(dofIdx),[globalDofs(1)],[coefficient],err,error,*999)
+        & boundaryConditions,fieldVariable,localDofs(dofIdx),[localDofs(1)],[coefficient],err,error,*999)
     END DO
 
     EXITS("BoundaryConditions_ConstrainDofsEqual")
@@ -3334,7 +3952,7 @@ CONTAINS
     !Local variables
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
     INTEGER(INTG) :: numberOfNodes, nodeIdx, dof
-    INTEGER(INTG), ALLOCATABLE :: globalDofs(:)
+    INTEGER(INTG), ALLOCATABLE :: localDofs(:)
 
     ENTERS("BoundaryConditions_ConstrainNodeDofsEqual",err,error,*998)
 
@@ -3345,24 +3963,24 @@ CONTAINS
     END IF
 
     numberOfNodes=SIZE(nodes,1)
-    ALLOCATE(globalDofs(numberOfNodes),stat=err)
-    IF(err/=0) CALL FlagError("Could not allocate equal global DOFs array.",err,error,*998)
+    ALLOCATE(localDofs(numberOfNodes),stat=err)
+    IF(err/=0) CALL FlagError("Could not allocate equal local DOFs array.",err,error,*998)
     !Get field DOFs for nodes
     DO nodeIdx=1,numberOfNodes
       CALL FIELD_COMPONENT_DOF_GET_USER_NODE(field,fieldVariableType,versionNumber,derivativeNumber,nodes(nodeIdx), &
-        & component,dof,globalDofs(nodeIdx),err,error,*999)
+        & component,localDofs(nodeIdx),dof,err,error,*999)
     END DO
     !Get the field variable and boundary conditions variable for the field
     CALL Field_VariableGet(field,fieldVariableType,fieldVariable,err,error,*999)
 
     !Now set DOF constraint
-    CALL BoundaryConditions_ConstrainDofsEqual(boundaryConditions,fieldVariable,globalDofs,coefficient,err,error,*999)
+    CALL BoundaryConditions_ConstrainDofsEqual(boundaryConditions,fieldVariable,localDofs,coefficient,err,error,*999)
 
-    DEALLOCATE(globalDofs)
+    DEALLOCATE(localDofs)
 
     EXITS("BoundaryConditions_ConstrainNodeDofsEqual")
     RETURN
-999 IF(ALLOCATED(globalDofs)) DEALLOCATE(globalDofs)
+999 IF(ALLOCATED(localDofs)) DEALLOCATE(localDofs)
 998 ERRORSEXITS("BoundaryConditions_ConstrainNodeDofsEqual",err,error)
     RETURN 1
   END SUBROUTINE BoundaryConditions_ConstrainNodeDofsEqual
@@ -3372,13 +3990,13 @@ CONTAINS
   !
 
   !>Constrain a DOF to be a linear combination of other DOFs.
-  SUBROUTINE BoundaryConditions_DofConstraintSet(boundaryConditions,fieldVariable,globalDof,dofs,coefficients,err,error,*)
+  SUBROUTINE BoundaryConditions_DofConstraintSet(boundaryConditions,fieldVariable,localDof,dofs,coefficients,err,error,*)
 
     !Argument variables
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER, INTENT(IN) :: boundaryConditions !<The boundary conditions for the solver equations in which to constrain the DOF.
     TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(IN) :: fieldVariable !<A pointer to the field variable containing the DOFs.
-    INTEGER(INTG), INTENT(IN) :: globalDof !<The global DOF to set the constraint on.
-    INTEGER(INTG), INTENT(IN) :: dofs(:) !<The global DOFs that this DOF is constrained to depend on.
+    INTEGER(INTG), INTENT(IN) :: localDof !<The local DOF to set the constraint on.
+    INTEGER(INTG), INTENT(IN) :: dofs(:) !<The local DOFs that this DOF is constrained to depend on.
     REAL(DP), INTENT(IN) :: coefficients(:) !<The coefficient values in the DOF constraint.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error message.
@@ -3456,7 +4074,7 @@ CONTAINS
     IF(err/=0) CALL FlagError("Could not allocate constraint DOFs array.",err,error,*999)
     ALLOCATE(dofConstraint%coefficients(numberOfDofs),stat=err)
     IF(err/=0) CALL FlagError("Could not allocate constraint coefficients array.",err,error,*999)
-    dofConstraint%globalDof=globalDof
+    dofConstraint%localDof=localDof
     dofConstraint%numberOfDofs=numberOfDofs
     dofConstraint%dofs(1:numberOfDofs)=dofs(1:numberOfDofs)
     dofConstraint%coefficients(1:numberOfDofs)=coefficients(1:numberOfDofs)
@@ -3468,7 +4086,7 @@ CONTAINS
     dofConstraints%numberOfConstraints=dofConstraints%numberOfConstraints+1
 
     !Set the DOF type and BC type of the constrained DOF
-    CALL BoundaryConditions_SetConditionType(boundaryConditionsVariable,globalDof,BOUNDARY_CONDITION_LINEAR_CONSTRAINT, &
+    CALL BoundaryConditions_SetConditionType(boundaryConditionsVariable,localDof,BOUNDARY_CONDITION_LINEAR_CONSTRAINT, &
       & err,error,*999)
 
     EXITS("BoundaryConditions_DofConstraintSet")
@@ -3495,10 +4113,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local variables
-    INTEGER(INTG) :: constraintIdx,dofIdx,thisDofDomain,otherDofDomain
-    INTEGER(INTG) :: globalDof,globalDof2,localDof,localDof2
+    INTEGER(INTG) :: constraintIdx,dofIdx !,thisDofDomain ,otherDofDomain
+    INTEGER(INTG) :: localDof,localDof2 !globalDof,globalDof2,
     INTEGER(INTG) :: numberOfCoupledDofs
-    INTEGER(INTG), ALLOCATABLE :: newCoupledGlobalDofs(:),newCoupledLocalDofs(:)
+    INTEGER(INTG), ALLOCATABLE :: newCoupledLocalDofs(:) !newCoupledGlobalDofs(:),
     REAL(DP), ALLOCATABLE :: newCoefficients(:)
     TYPE(BoundaryConditionsDofConstraintsType), POINTER :: dofConstraints
     TYPE(BoundaryConditionsDofConstraintType), POINTER :: dofConstraint
@@ -3533,11 +4151,11 @@ CONTAINS
 
         !Allocate an array of pointers to DOF couplings
         IF(dofConstraints%numberOfConstraints>0) THEN
-          ALLOCATE(dofConstraints%dofCouplings(fieldVariable%number_of_global_dofs),stat=err)
+          ALLOCATE(dofConstraints%dofCouplings(fieldVariable%total_number_of_dofs),stat=err)
           IF(err/=0) CALL FlagError( &
             & "Could not allocate dof constraints dof couplings array.",err,error,*998)
-          dofConstraints%numberOfDofs=fieldVariable%number_of_global_dofs
-          DO dofIdx=1,fieldVariable%number_of_global_dofs
+          dofConstraints%numberOfDofs=fieldVariable%total_number_of_dofs
+          DO dofIdx=1,fieldVariable%total_number_of_dofs
             NULLIFY(dofConstraints%dofCouplings(dofIdx)%ptr)
           END DO
         END IF
@@ -3551,73 +4169,73 @@ CONTAINS
               & " is not associated.",err,error,*999)
           END IF
 
-          globalDof=dofConstraint%globalDof
-          localDof=variableDomainMapping%global_to_local_map(globalDof)%local_number(1)
-          thisDofDomain=variableDomainMapping%global_to_local_map(globalDof)%domain_number(1)
+          localDof=dofConstraint%localDof
 
           !Check that the constrained DOFs are still set to be constrained, as
           !subsequently setting a boundary condition would change the DOF type but
           !not update the DOF constraints structure.
-          IF(boundaryConditionsVariable%dof_types(globalDof)/=BOUNDARY_CONDITION_DOF_CONSTRAINED) THEN
-            CALL FlagError("Global DOF number "//TRIM(NumberToVstring(globalDof,"*",err,error))// &
+          IF(boundaryConditionsVariable%dof_types(localDof)/=BOUNDARY_CONDITION_DOF_CONSTRAINED) THEN
+            CALL FlagError("Global DOF number "//TRIM(NumberToVstring(localDof,"*",err,error))// &
               & " is part of a linear constraint but the DOF type has been changed"// &
               & " by applying a boundary condition.",err,error,*999)
           END IF
 
           DO dofIdx=1,dofConstraint%numberOfDofs
-            globalDof2=dofConstraint%dofs(dofIdx)
-            localDof2=variableDomainMapping%global_to_local_map(globalDof2)%local_number(1)
+            localDof2=dofConstraint%dofs(dofIdx)
             !Check a Dirichlet conditions hasn't also been set on this DOF
-            IF(boundaryConditionsVariable%dof_types(globalDof2)/=BOUNDARY_CONDITION_DOF_FREE) THEN
-              CALL FlagError("A Dirichlet boundary condition has been set on DOF number "// &
-                & TRIM(NumberToVstring(globalDof2,"*",err,error))// &
+            IF(boundaryConditionsVariable%dof_types(localDof2)/=BOUNDARY_CONDITION_DOF_FREE) THEN
+              CALL FlagError("A Dirichlet boundary condition has been set on local DOF number "// &
+                & TRIM(NumberToVstring(localDof2,"*",err,error))// &
                 & " which is part of a linear constraint.",err,error,*999)
             END IF
 
             !Check we don't have DOF constraints that are split over domains
-            !\todo Implement support for DOF constraints that are split over domains
-            IF(variableDomainMapping%number_of_domains>1) THEN
-              otherDofDomain=variableDomainMapping%global_to_local_map(globalDof2)%domain_number(1)
-              IF(thisDofDomain/=otherDofDomain) THEN
-                CALL FlagError("An equal DOF constraint is split over multiple domains, "// &
-                  & "support for this has not yet been implemented.",err,error,*999)
-              END IF
-            END IF
+            !\todo Due to the change to local we can't do this check, as only local dofs are contributed to the constraint.
+            !\todo create a fix to implement support for DOF constraints that are split over domains
 
-            !Add to the DOFs that are coupled with globalDof2
+            ! IF(variableDomainMapping%number_of_domains>1) THEN
+            !   otherDofDomain=variableDomainMapping%global_to_local_map(globalDof2)%domain_number(1)
+            !   IF(thisDofDomain/=otherDofDomain) THEN
+            !     CALL FlagError("An equal DOF constraint is split over multiple domains, "// &
+            !       & "support for this has not yet been implemented.",err,error,*999)
+            !   END IF
+            ! END IF
+
+            !Add to the DOFs that are coupled with localDof2
             !This might be quite inefficient if there are many dofs mapped to a single row/column
             !due to the reallocation at each step
-            IF(ASSOCIATED(dofConstraints%dofCouplings(globalDof2)%ptr)) THEN
-              numberOfCoupledDofs=dofConstraints%dofCouplings(globalDof2)%ptr%numberOfDofs
-              ALLOCATE(newCoupledGlobalDofs(numberOfCoupledDofs+1),stat=err)
-              IF(err/=0) CALL FlagError("Could not allocate new DOF coupling global DOFs.",err,error,*999)
+            !\todo once able to have constraints split over domian, change below to also find the coupled global dofs.
+            IF(ASSOCIATED(dofConstraints%dofCouplings(localDof2)%ptr)) THEN
+              numberOfCoupledDofs=dofConstraints%dofCouplings(localDof2)%ptr%numberOfDofs
+              ! ALLOCATE(newCoupledGlobalDofs(numberOfCoupledDofs+1),stat=err)
+              ! IF(err/=0) CALL FlagError("Could not allocate new DOF coupling global DOFs.",err,error,*999)
               ALLOCATE(newCoupledLocalDofs(numberOfCoupledDofs+1),stat=err)
               IF(err/=0) CALL FlagError("Could not allocate new DOF coupling local DOFs.",err,error,*999)
               ALLOCATE(newCoefficients(numberOfCoupledDofs+1),stat=err)
               IF(err/=0) CALL FlagError("Could not allocate new DOF coupling values.",err,error,*999)
-              newCoupledGlobalDofs(1:numberOfCoupledDofs)=dofCoupling%globalDofs(1:numberOfCoupledDofs)
+              !newCoupledGlobalDofs(1:numberOfCoupledDofs)=dofCoupling%globalDofs(1:numberOfCoupledDofs)
               newCoupledLocalDofs(1:numberOfCoupledDofs)=dofCoupling%localDofs(1:numberOfCoupledDofs)
               newCoefficients(1:numberOfCoupledDofs)=dofCoupling%coefficients(1:numberOfCoupledDofs)
             ELSE
-              !Set up a a new dofCoupling and set globalDof2 as the first DOF
-              ALLOCATE(dofConstraints%dofCouplings(globalDof2)%ptr,stat=err)
+              ! Set up a a new dofCoupling and set globalDof2 as the first DOF
+              ALLOCATE(dofConstraints%dofCouplings(localDof2)%ptr,stat=err)
               IF(err/=0) CALL FlagError("Could not allocate new DOF coupling type.",err,error,*999)
-              ALLOCATE(newCoupledGlobalDofs(2),stat=err)
-              IF(err/=0) CALL FlagError("Could not allocate new DOF coupling global DOFs.",err,error,*999)
+              ! ALLOCATE(newCoupledGlobalDofs(2),stat=err)
+              ! IF(err/=0) CALL FlagError("Could not allocate new DOF coupling global DOFs.",err,error,*999)
               ALLOCATE(newCoupledLocalDofs(2),stat=err)
               IF(err/=0) CALL FlagError("Could not allocate new DOF coupling local DOFs.",err,error,*999)
               ALLOCATE(newCoefficients(2),stat=err)
               IF(err/=0) CALL FlagError("Could not allocate new DOF coupling values.",err,error,*999)
-              newCoupledGlobalDofs(1)=globalDof2
+              !newCoupledGlobalDofs(1)=globalDof2
               newCoupledLocalDofs(1)=localDof2
               newCoefficients(1)=1.0_DP
               numberOfCoupledDofs=1
             END IF
-            dofCoupling=>dofConstraints%dofCouplings(globalDof2)%ptr
-            newCoupledGlobalDofs(numberOfCoupledDofs+1)=globalDof
+            dofCoupling=>dofConstraints%dofCouplings(localDof2)%ptr
+            !newCoupledGlobalDofs(numberOfCoupledDofs+1)=globalDof
             newCoupledLocalDofs(numberOfCoupledDofs+1)=localDof
             newCoefficients(numberOfCoupledDofs+1)=dofConstraint%coefficients(dofIdx)
-            CALL MOVE_ALLOC(newCoupledGlobalDofs,dofCoupling%globalDofs)
+            ! CALL MOVE_ALLOC(newCoupledGlobalDofs,dofCoupling%globalDofs)
             CALL MOVE_ALLOC(newCoupledLocalDofs,dofCoupling%localDofs)
             CALL MOVE_ALLOC(newCoefficients,dofCoupling%coefficients)
             dofCoupling%numberOfDofs=numberOfCoupledDofs+1
@@ -3632,8 +4250,7 @@ CONTAINS
 
     EXITS("BoundaryConditions_DofConstraintsCreateFinish")
     RETURN
-999 IF(ALLOCATED(newCoupledGlobalDofs)) DEALLOCATE(newCoupledGlobalDofs)
-    IF(ALLOCATED(newCoupledLocalDofs)) DEALLOCATE(newCoupledLocalDofs)
+999 IF(ALLOCATED(newCoupledLocalDofs)) DEALLOCATE(newCoupledLocalDofs) ! IF(ALLOCATED(newCoupledGlobalDofs)) DEALLOCATE(newCoupledGlobalDofs)
     IF(ALLOCATED(newCoefficients)) DEALLOCATE(newCoefficients)
     CALL BoundaryConditions_DofConstraintsFinalise(dofConstraints,err,error,*998)
 998 ERRORS("BoundaryConditions_DofConstraintsCreateFinish",err,error)
@@ -3676,9 +4293,10 @@ CONTAINS
       IF(ALLOCATED(dofConstraints%dofCouplings)) THEN
         DO dofIdx=1,dofConstraints%numberOfDofs
           IF(ASSOCIATED(dofConstraints%dofCouplings(dofIdx)%ptr)) THEN
-            IF(ALLOCATED(dofConstraints%dofCouplings(dofIdx)%ptr%globalDofs)) THEN
-              DEALLOCATE(dofConstraints%dofCouplings(dofIdx)%ptr%globalDofs)
-            END IF
+            ! No longer needed with local implementation
+            ! IF(ALLOCATED(dofConstraints%dofCouplings(dofIdx)%ptr%globalDofs)) THEN
+            !   DEALLOCATE(dofConstraints%dofCouplings(dofIdx)%ptr%globalDofs)
+            ! END IF
             IF(ALLOCATED(dofConstraints%dofCouplings(dofIdx)%ptr%localDofs)) THEN
               DEALLOCATE(dofConstraints%dofCouplings(dofIdx)%ptr%localDofs)
             END IF
@@ -3865,10 +4483,10 @@ CONTAINS
             BOUNDARY_CONDITIONS_VARIABLE%BOUNDARY_CONDITIONS=>BOUNDARY_CONDITIONS
             BOUNDARY_CONDITIONS_VARIABLE%VARIABLE_TYPE=FIELD_VARIABLE%VARIABLE_TYPE
             BOUNDARY_CONDITIONS_VARIABLE%VARIABLE=>FIELD_VARIABLE
-            ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%CONDITION_TYPES(VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
-            IF(ERR/=0) CALL FlagError("Could not allocate global boundary condition types.",ERR,ERROR,*999)
-            ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
-            IF(ERR/=0) CALL FlagError("Could not allocate global boundary condition dof types.",ERR,ERROR,*999)
+            ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%CONDITION_TYPES(VARIABLE_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate local boundary condition types.",ERR,ERROR,*999)
+            ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(VARIABLE_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate local boundary condition dof types.",ERR,ERROR,*999)
             BOUNDARY_CONDITIONS_VARIABLE%CONDITION_TYPES=BOUNDARY_CONDITION_FREE
             BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES=BOUNDARY_CONDITION_DOF_FREE
             ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%DOF_COUNTS(MAX_BOUNDARY_CONDITION_NUMBER),STAT=ERR)
