@@ -2638,11 +2638,12 @@ CONTAINS
 
         pointDofMapping%NUMBER_OF_GLOBAL = numberOfGlobalNeumannDofs
 
+        globalNeumannDof = 1
         !Get the first global dof number of this rank
-        IF(myComputationalNodeNumber == 0) THEN
-          globalNeumannDof = 1
-        ELSE
-          globalNeumannDof = localNumberOfNeumannDofsPerRank(myComputationalNodeNumber-1)+1
+        IF(myComputationalNodeNumber /= 0) THEN
+          DO I=1,myComputationalNodeNumber
+            globalNeumannDof = globalNeumannDof + localNumberOfNeumannDofsPerRank(myComputationalNodeNumber-1)
+          ENDDO !I
         ENDIF
 
 
