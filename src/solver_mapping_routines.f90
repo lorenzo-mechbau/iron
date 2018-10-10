@@ -152,7 +152,7 @@ CONTAINS
       & localDofCouplingNumber,equationsRow,eqnLocalDof,numberOfEquationsRHSVariables,rhsVariableType,equationsSetIdx, &
       & itemList(3), sendGhostIdx, numberOfDofsToRank, maxNumberToSend, numberToSend, numberDofsReceived, &
       & dofsReceivedStart, dofsReceivedFinish, localDofIdx, solver_local_dof, maxNumberToReceive, fullArraySize(2),starts(2), &
-      & subArraySize(2), receiveGhostCount, fromRankIdx, receiveGhostIdx
+      & subArraySize(2), receiveGhostCount, fromRankIdx, receiveGhostIdx, dummyErr
     INTEGER(INTG) :: temp_offset, solver_variable_idx_temp
     INTEGER(INTG), ALLOCATABLE :: subArray_type(:), subArray_type2(:)
     INTEGER(INTG), ALLOCATABLE :: EQUATIONS_SET_VARIABLES(:,:),EQUATIONS_VARIABLES(:,:),INTERFACE_EQUATIONS_LIST(:,:), &
@@ -195,7 +195,7 @@ CONTAINS
     TYPE(BoundaryConditionsCoupledDofsType), TARGET :: dummyDofCoupling
     TYPE(SolverMappingDofCouplingsType) :: rowCouplings
     TYPE(SolverMappingDofCouplingsType) :: columnCouplings
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(VARYING_STRING) :: LOCAL_ERROR, dummyError
 
     ENTERS("SOLVER_MAPPING_CALCULATE",ERR,ERROR,*999)
 
@@ -4097,8 +4097,8 @@ CONTAINS
     IF(ALLOCATED(dummyDofCoupling%globalDofs)) DEALLOCATE(dummyDofCoupling%globalDofs)
     IF(ALLOCATED(dummyDofCoupling%localDofs)) DEALLOCATE(dummyDofCoupling%localDofs)
     IF(ALLOCATED(dummyDofCoupling%coefficients)) DEALLOCATE(dummyDofCoupling%coefficients)
-    CALL SolverDofCouplings_Finalise(rowCouplings,err,error,*998)
-998 CALL SolverDofCouplings_Finalise(columnCouplings,err,error,*997)
+    CALL SolverDofCouplings_Finalise(rowCouplings,dummyErr,dummyError,*998)
+998 CALL SolverDofCouplings_Finalise(columnCouplings,dummyErr,dummyError,*997)
 997 ERRORSEXITS("SOLVER_MAPPING_CALCULATE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE SOLVER_MAPPING_CALCULATE
