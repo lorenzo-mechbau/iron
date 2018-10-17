@@ -152,11 +152,11 @@ CONTAINS
       & localDofCouplingNumber,equationsRow,eqnLocalDof,numberOfEquationsRHSVariables,rhsVariableType,equationsSetIdx, &
       & itemList(3), sendGhostIdx, numberOfDofsToRank, maxNumberToSend, numberToSend, numberDofsReceived, &
       & dofsReceivedStart, dofsReceivedFinish, localDofIdx, solver_local_dof, maxNumberToReceive, fullArraySize(2),starts(2), &
-      & subArraySize(2), receiveGhostCount, fromRankIdx, receiveGhostIdx, dummyErr
+      & subArraySize(2), fromRankIdx, receiveGhostIdx, dummyErr
     INTEGER(INTG) :: temp_offset, solver_variable_idx_temp
     INTEGER(INTG), ALLOCATABLE :: subArray_type(:), subArray_type2(:)
     INTEGER(INTG), ALLOCATABLE :: EQUATIONS_SET_VARIABLES(:,:),EQUATIONS_VARIABLES(:,:),INTERFACE_EQUATIONS_LIST(:,:), &
-      & INTERFACE_VARIABLES(:,:),EQUATION_ROWS_LIST(:,:),EQUATIONS_COLS_LIST(:,:), &
+      & INTERFACE_VARIABLES(:,:), receiveGhostCount(:), EQUATION_ROWS_LIST(:,:),EQUATIONS_COLS_LIST(:,:), &
       & equationsRHSVariables(:,:), numberOfLocalSolverRowsPerRank(:), sendBuffer(:,:), receiveBuffer(:,:), &
       & sendRequestHandle0(:), sendRequestHandle1(:)
     INTEGER(INTG), ALLOCATABLE :: NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(:),NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(:), &
@@ -328,19 +328,16 @@ CONTAINS
           !--- Row mappings ---
           !
           ! 2. Determine the number of rows in the solver matrix. Do this the by setting up a list of rows for this rank.
-          !    We can then later arrange the rows in rank order by communicating the startglobalNumber for each rank,
-          ! this number is set as NUMBER_OF_GLOBAL_SOLVER_ROWS
+          !    We can then later arrange the rows in rank order by communicating the startglobalNumber for each rank.
           !
-          !Calculate the row mappings.
+          !    Note: For rows we don't have any ghosts, we only store information about local rows, Therefore for now we don't store
+          !          mapping information about adjacent domains, boundary rows or ghost rows.
+          !initialise variables
           myRank=computationalEnvironment%myComputationalNodeNumber
           NUMBER_OF_GLOBAL_SOLVER_ROWS=0
           NUMBER_OF_LOCAL_SOLVER_ROWS=0
-          !Add in the rows from any equations sets that have been added to the solver equations
-          !Presort the row numbers by rank.
           !
           !Allocate and initialise the rank lists.
-
-
           ALLOCATE(EQUATION_ROWS_LISTS(SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS+SOLVER_MAPPING% &
             & NUMBER_OF_INTERFACE_CONDITIONS),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate rank global rows lists.",ERR,ERROR,*999)
@@ -382,7 +379,6 @@ CONTAINS
                     NULLIFY(EQUATION_ROWS_LISTS(equations_idx)%PTR)
                     CALL LIST_CREATE_START(EQUATION_ROWS_LISTS(equations_idx)%PTR,ERR,ERROR,*999)
                     CALL LIST_DATA_TYPE_SET(EQUATION_ROWS_LISTS(equations_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
-                    !!!!!::::::::::::::::::::: FinbarToFix Double check that the size of this is correct
                     CALL LIST_INITIAL_SIZE_SET(EQUATION_ROWS_LISTS(equations_idx)%PTR, &
                       & INT(INTERFACE_MAPPING%TOTAL_NUMBER_OF_COLUMNS, &
                       & INTG),ERR,ERROR,*999)
@@ -416,16 +412,6 @@ CONTAINS
           !involved in the row. If all the variables are set as a fixed boundary condition then do not include the row. If
           !any variable is not fixed then include the row.
 
-
-          !!!!!::::::::::::::::::::: FinbarToFix
-          !Change the vectorMapping%numberOfGlobalRows to vectorMapping%totalNumberOfRows, so it only iterates over the rows for the current rank
-          !Then can include every row that is iterated over
-          !BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES now has size of totalNumberOfDofs, not global so will have to change to assigning local dofs as free or Constrained
-          !Need to change dofConstraints%dofCouplings(global_dof) so that it stores only LocalDofs, then will have to include communication to do all of the SolverDofCouplings_AddCoupling required
-          !Ask chris about couplings
-          !
-          !we can find how many rows on each rank then communicate with MPI, we will need to then globally number the rows from knowledge of how many rows each rank has
-          !!!!:::::::::::::::::::::
           equations_idx=0
           DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
             equations_idx=equations_idx+1
@@ -457,24 +443,21 @@ CONTAINS
                         CALL BOUNDARY_CONDITIONS_VARIABLE_GET(BOUNDARY_CONDITIONS,DEPENDENT_VARIABLE, &
                           & BOUNDARY_CONDITIONS_VARIABLE,ERR,ERROR,*999)
                         IF(ASSOCIATED(BOUNDARY_CONDITIONS_VARIABLE)) THEN
-                          !This is wrong as we only have the mappings for the local rank not the global ranks.
-                          !For now assume 1-1 mapping between rows and dofs.
-                          !!!!!::::::::::: FinbarToFix localDof should equal local row, so that will be fine, then the entry into DOF_TYPES is localDof, which is correct.
+                          ! \TODO For now assume 1-1 mapping between rows and dofs.
+                          ! localDof should equal local row, then the entry into DOF_TYPES is localDof, which is correct.
                           localDof=localRow
                           INCLUDE_ROW=INCLUDE_ROW.AND.(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(localDof)== &
                             & BOUNDARY_CONDITION_DOF_FREE)
                           CONSTRAINED_DOF=CONSTRAINED_DOF.OR.(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(localDof)== &
                             & BOUNDARY_CONDITION_DOF_CONSTRAINED)
-                          !!!!!::::::::::: FinbarToFix Change dofCouplings to local. Make sure every local rank that has that coupling stores the information.
                           IF(ASSOCIATED(BOUNDARY_CONDITIONS_VARIABLE%dofConstraints)) THEN
                             dofConstraints=>BOUNDARY_CONDITIONS_VARIABLE%dofConstraints
                             IF(dofConstraints%numberOfConstraints>0) THEN
                               IF(ALLOCATED(dofConstraints%dofCouplings)) THEN
                                 IF(ASSOCIATED(dofConstraints%dofCouplings(localDof)%ptr)) THEN
                                   !This equations row is the owner of a solver row that is mapped to
-                                  !multiple other equations rows, add it to the list of global row
+                                  !multiple other equations rows, add it to the list of local row
                                   !couplings and remember the index into the global list for this solver row
-                                  !!!!!::::::::::: FinbarToFix Will have to check whether this should be localDofCouplingNumber, do we then have to MPI to communicate the localDofCouplingNumbers between ranks
                                   CALL SolverDofCouplings_AddCoupling(rowCouplings, &
                                     & dofConstraints%dofCouplings(localDof)%ptr, &
                                     & localDofCouplingNumber,err,error,*999)
@@ -504,7 +487,6 @@ CONTAINS
                             dofConstraints=>BOUNDARY_CONDITIONS_VARIABLE%dofConstraints
                             IF(dofConstraints%numberOfConstraints>0) THEN
                               IF(ALLOCATED(dofConstraints%dofCouplings)) THEN
-                                !!!!!::::::::::: FinbarToFix again do we change this to local?
                                 IF(ASSOCIATED(dofConstraints%dofCouplings(localDof)%ptr)) THEN
                                   CALL SolverDofCouplings_AddCoupling(rowCouplings, &
                                     & dofConstraints%dofCouplings(localDof)%ptr, &
@@ -528,8 +510,8 @@ CONTAINS
                           CALL BOUNDARY_CONDITIONS_VARIABLE_GET(BOUNDARY_CONDITIONS,DEPENDENT_VARIABLE, &
                             & BOUNDARY_CONDITIONS_VARIABLE,ERR,ERROR,*999)
                           IF(ASSOCIATED(BOUNDARY_CONDITIONS_VARIABLE)) THEN
-                            !\TODO This is wrong as we only have the mappings for the local rank not the global ranks. See below
-                            !\TODO For now assume 1-1 mapping between rows and dofs.
+                            ! \TODO For now assume 1-1 mapping between rows and dofs.
+                            ! localDof should equal local row, then the entry into DOF_TYPES is localDof, which is correct.
                             localDof=localRow
                             INCLUDE_ROW=INCLUDE_ROW.AND.(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(localDof)== &
                               & BOUNDARY_CONDITION_DOF_FREE)
@@ -556,19 +538,15 @@ CONTAINS
                       ENDIF
                       ROW_LIST_ITEM(1)=globalRow
                       ROW_LIST_ITEM(2)=localRow
-                      !!!!!::::::::::: FinbarToFix Again, I don't know whether this should be localDofCouplingNumber or localDofCouplingNumber
                       ROW_LIST_ITEM(4)=localDofCouplingNumber
                       IF(INCLUDE_ROW) THEN
                         ROW_LIST_ITEM(3)=1
-                        !!!!!::::::::::: FinbarToFix wont be counting this, as only doing local rows. if NUMBER_OF_GLOBAL_SOLVER_ROWS is needed, will have to use mpi.
-                        !!!!!::::::::::: FinbarToFix check if this is the same as vectorMapping%numberOfRows
                         NUMBER_OF_LOCAL_SOLVER_ROWS=NUMBER_OF_LOCAL_SOLVER_ROWS+1
                       ELSE IF(CONSTRAINED_DOF) THEN
                         ROW_LIST_ITEM(3)=2
                       ELSE
                         ROW_LIST_ITEM(3)=0
                       ENDIF !include row
-                      !!!!!::::::::::: FinbarToFix
                       CALL LIST_ITEM_ADD(EQUATION_ROWS_LISTS(equations_idx)%PTR,ROW_LIST_ITEM,ERR,ERROR,*999)
                     ENDDO !globalRow
                   ELSE
@@ -608,8 +586,6 @@ CONTAINS
                               & BOUNDARY_CONDITIONS_VARIABLE,ERR,ERROR,*999)
                           IF(ASSOCIATED(BOUNDARY_CONDITIONS_VARIABLE)) THEN
                             !Loop over the global columns for this interface equation
-                            !!!!!::::::::::: FinbarToFix again will have to loop over local columns. If global columns are needed we will have to use MPI to get that information after this loop?
-                            !!!!!::::::::::: FinbarToFix Double check the order and whether these will already be numbered globally, so maybe we use MPI to find out the global number of interface rows?
                             !Here, we loop through columns of the interface mapping because we are assigning the transpose to the solver matrix
                             DO localColumn=1,INTERFACE_MAPPING%NUMBER_OF_COLUMNS
                               globalColumn=COL_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(localColumn)
@@ -619,7 +595,7 @@ CONTAINS
                               localDof=localColumn
                               INCLUDE_COLUMN=INCLUDE_COLUMN.AND.(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(localDof)== &
                                 & BOUNDARY_CONDITION_DOF_FREE)
-                              !!!!!::::::::::: FinbarToFix This should be COLUMN_LIST_ITEM?
+                              !This is ROW list item becuase it will map to the solver row. but it is the interface matrix transpose, so is the interface condition column.
                               ROW_LIST_ITEM(1)=globalColumn
                               ROW_LIST_ITEM(2)=localColumn
                               IF(INCLUDE_COLUMN) THEN
@@ -686,7 +662,7 @@ CONTAINS
           !Allocate the solver rows to equations set maps
           ALLOCATE(SOLVER_MAPPING%SOLVER_ROW_TO_EQUATIONS_ROWS_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate solver mapping solver row to equation rows map.",ERR,ERROR,*999)
-          !Set the number of rows
+          !Set the number of rows,
           SOLVER_MAPPING%NUMBER_OF_ROWS=NUMBER_OF_LOCAL_SOLVER_ROWS
           SOLVER_MAPPING%NUMBER_OF_GLOBAL_ROWS=NUMBER_OF_GLOBAL_SOLVER_ROWS
 
@@ -702,6 +678,8 @@ CONTAINS
           ROW_DOMAIN_MAPPING=>SOLVER_MAPPING%ROW_DOFS_MAPPING
 
           ROW_DOMAIN_MAPPING%NUMBER_OF_LOCAL = SOLVER_MAPPING%NUMBER_OF_ROWS
+          ! since there are no ghosts, number of local and total number of local is the same.
+          ROW_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL = SOLVER_MAPPING%NUMBER_OF_ROWS
           ROW_DOMAIN_MAPPING%NUMBER_OF_GLOBAL = NUMBER_OF_GLOBAL_SOLVER_ROWS
 
           !Initialise the equations sets to solver maps
@@ -727,12 +705,12 @@ CONTAINS
 
             !Allocate the equations row to solver rows maps
             ALLOCATE(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
-              & vectorMapping%totalNumberOfRows),STAT=ERR)
+              & vectorMapping%numberOfRows),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate equations set to solver map equations row to solver rows maps.", &
               & ERR,ERROR,*999)
 
-            !!!!!::::::::::: FinbarToFix Unsure why this is totalNumberOfRows, not numberOfRows. rows shouldn't need ghosts?
-            DO equations_row_number=1,vectorMapping%totalNumberOfRows
+            !\TODO double check that this should be numberOfRows, not totalNumberOfRows
+            DO equations_row_number=1,vectorMapping%numberOfRows
               !Initialise
               CALL SolverMapping_EquatsRowToSolRowsMapInitialise(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                 & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number),ERR,ERROR,*999)
@@ -789,6 +767,7 @@ CONTAINS
             IF(ERR/=0)  &
               & CALL FlagError("Could not allocate interface condition to solver map interface column to solver row map.", &
               & ERR,ERROR,*999)
+            !\TODO check whether this should be total_number_of_columns or just number_of_columns
             DO interface_col_number=1,INTERFACE_MAPPING%TOTAL_NUMBER_OF_COLUMNS
               !Initialise
               CALL SolverMapping_InterfColToSolRowsMapInitialise(SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
@@ -817,6 +796,8 @@ CONTAINS
             ENDDO !I
           ENDIF
 
+          IF(ALLOCATED(numberOfLocalSolverRowsPerRank)) DEALLOCATE(numberOfLocalSolverRowsPerRank)
+
           !Make a "dof coupling" for rows that aren't coupled
           ALLOCATE(dummyDofCoupling%globalDofs(1),stat=err)
           IF(err/=0) CALL FlagError("Could not allocate dummy DOF coupling DOFs.",err,error,*999)
@@ -831,13 +812,7 @@ CONTAINS
           ALLOCATE(ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(SOLVER_MAPPING%NUMBER_OF_ROWS),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate row local to global map.",ERR,ERROR,*999)
 
-          !!!!!::::::::::: FinbarToFix not sure about the below comment?
-          !Loop over the ranks to  ensure that the lowest ranks have the lowest numbered solver variables
-
-
           NUMBER_OF_LOCAL_SOLVER_ROWS=0
-
-
 
           !Calculate the solver row <-> equations row & interface row mappings.
           equations_idx=0
@@ -869,7 +844,6 @@ CONTAINS
               localDofCouplingNumber=EQUATION_ROWS_LIST(4,global_row_idx)
 
               IF(localDofCouplingNumber>0) THEN
-                !!!!!::::::::::: FinbarToFix Again unsure whether this should be localDofCouplingNumber
                 rowEquationRows=>rowCouplings%dofCouplings(localDofCouplingNumber)%ptr
                 IF(ASSOCIATED(rowEquationRows)) THEN
                   !numberRowEquationsRows is the number of compressed rows in this rows loop.
@@ -886,19 +860,17 @@ CONTAINS
                 rowEquationRows=>dummyDofCoupling
               END IF
 
-              !!!!!::::::::::: FinbarToFix INCLUDE_ROW is still needed because coupled rows can result in rows not being included.
               IF(INCLUDE_ROW) THEN
+                !set up the solver->equations and equations->solver row mappings
 
+                ! Increase count of local and global row numbers
                 NUMBER_OF_GLOBAL_SOLVER_ROWS=NUMBER_OF_GLOBAL_SOLVER_ROWS+1
                 NUMBER_OF_LOCAL_SOLVER_ROWS=NUMBER_OF_LOCAL_SOLVER_ROWS+1
                 !Set up the row domain mappings.
-                !There are no ghosted rows for the solver matrices so local_to_global_map doesn't need ghosts
-                !Initialise
 
-                !set up the solver->equations and equations->solver row mappings
+
                 ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS) = NUMBER_OF_GLOBAL_SOLVER_ROWS
-
-                !!!!>.......... FinbarToFix also assign all the other mapping values in ROW_DOMAIN_MAPPING, i.e numberOfLocal etc.
+                ! ROW_DOMAIN_MAPPING is not filled fully, as we don't need to fill the info about adjacent domains or number of boundary and ghosts.
 
                 !Set up the solver row -> equations row mappings. Will need to look
                 !At the interface conditions for this equations set later.
@@ -918,7 +890,6 @@ CONTAINS
                 IF(ERR/=0) CALL FlagError("Could not allocate solver row to equations rows coupling coefficients.", &
                   & ERR,ERROR,*999)
                 !Set the mappings for the first equations DOF, the rest will be set up later using the DOF constraints
-                !!!!!::::::::::: FinbarToFix The mapping is the solver "row" to the equations set "dof"?
                 SOLVER_MAPPING%SOLVER_ROW_TO_EQUATIONS_ROWS_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS)% &
                   & NUMBER_OF_EQUATIONS_SET_ROWS=numberRowEquationsRows
                 DO rowEquationsRowIdx=1,numberRowEquationsRows
@@ -1028,11 +999,10 @@ CONTAINS
 
                 ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS) = NUMBER_OF_GLOBAL_SOLVER_ROWS
 
-                !!!!>.......... FinbarToFix also assign all the other mapping values in ROW_DOMAIN_MAPPING, i.e numberOfLocal etc.
 
                 !Set the interface column/row -> solver row mappings
                 !Note that for populating SOLVER_MAPPING%SOLVER_ROW_TO_EQUATIONS_ROWS_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS)%ROWCOL_NUMBER(i)
-                !If the row are equations set rows this is the i'th row number that the solver row is mapped to.
+                !If the rows are equations set rows this is the i'th row number that the solver row is mapped to.
 
                 !If the rows are interface rows (which is the case here) then this is the i'th column number that the solver row is mapped to.
                 !Initialise
@@ -1105,13 +1075,13 @@ CONTAINS
 
           CALL SolverDofCouplings_Finalise(rowCouplings,err,error,*999)
 
-          ! CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(ROW_DOMAIN_MAPPING,ERR,ERROR,*999)
-          !
           !--- Column mappings ---
           !
           ! 4. Calculate the number of local and global columns in the solver matrix. Do this by calculating the list of columns
           !    for the current rank then communicating for ghosts
           !
+
+
           !Allocate solver column to equations sets mapping array
           ALLOCATE(SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate solver mapping solver column to equations column maps.",ERR,ERROR,*999)
@@ -1126,7 +1096,7 @@ CONTAINS
             CALL SOLVER_MAPPING_VARIABLES_INITIALISE(SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx),ERR,ERROR,*999)
             !
             ! 4a Calculate the list of field variables involved in the columns of the solver matrix
-            !!!!!!::::::::::: FinbarToFix I believe this part is fine
+            !
             !Compute the order of variables for the solver matrices
             CALL LIST_DETACH_AND_DESTROY(SOLVER_MAPPING%CREATE_VALUES_CACHE%EQUATIONS_VARIABLE_LIST(solver_matrix_idx)%PTR, &
               & NUMBER_OF_EQUATIONS_VARIABLES,EQUATIONS_VARIABLES,ERR,ERROR,*999)
@@ -1284,7 +1254,6 @@ CONTAINS
             !equations_idx goes from 1 to the number of equations sets + interface conditions
             !variable_idx goes from 1 to the number of variables mapped to this solver matrix
 
-            !!!!!::::::::::: FinbarToFix Unsure what this submatrix is?
             ALLOCATE(SUB_MATRIX_INFORMATION(3,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS+ &
               & SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS,SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)% &
               & NUMBER_OF_VARIABLES),STAT=ERR)
@@ -1300,8 +1269,8 @@ CONTAINS
             !
             ! 4b Calculate the number of columns
             !
-            !!!!!::::::::::: FinbarToFix not too sure how to deal with columns? is it similar way but also communicate the global column numbers of current ranks ghosts.
-            !!!!!:::::::::;: FinbarToFix, equation set dofs different to solver columns because multiple equation sets and there is coupling, constraints and interface conditions.
+            ! Similar to rows, we loop through the equation sets in each rank then use MPI after the loop to add up the number of columns (dofs)
+            !
             !Calculate the number of solver dofs
             ALLOCATE(NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)%NUMBER_OF_VARIABLES), &
               & STAT=ERR)
@@ -1471,17 +1440,12 @@ CONTAINS
                           ENDDO
                         ENDIF
                         !Loop over the global dofs for this variable.
-
-
-                        !!!!!::::::::::: FinbarToFix
-
                         DO localDofIdx=1,DEPENDENT_VARIABLE%TOTAL_NUMBER_OF_DOFS
 
                           localDof=COL_DOFS_MAPPING%DOMAIN_LIST(localDofIdx)
                           globalDof=COL_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
 
-                          ! dof_type=COL_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_TYPE(rank_idx)
-                          !!!!!::::::::::: FinbarToFix here find the dof type, i.e is it internal or boundary
+                          ! find the dof type, i.e is it internal or boundary
                           IF(localDofIdx <= COL_DOFS_MAPPING%INTERNAL_FINISH) THEN
                             dof_type = DOMAIN_LOCAL_INTERNAL
                           ELSE IF(localDofIdx <= COL_DOFS_MAPPING%BOUNDARY_FINISH) THEN
@@ -1517,13 +1481,11 @@ CONTAINS
                             IF(INCLUDE_COLUMN) THEN
                               COLUMN_LIST_ITEM(3)=1
                               IF(.NOT.VARIABLE_PROCESSED(variable_position_idx)) THEN
-                                !!!!>>> FinbarToFix, count the global number after the loop with MPI
-                                ! NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(variable_position_idx)= &
-                                !   & NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(variable_position_idx)+1
                                 NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)= &
                                   & NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)+1
                                 TOTAL_NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)= &
                                   & TOTAL_NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)+1
+                                !count the global number after the loop with MPI
                               ENDIF
                             ELSE IF(CONSTRAINED_DOF) THEN
                               COLUMN_LIST_ITEM(3)=2
@@ -1532,6 +1494,7 @@ CONTAINS
                             ENDIF
                             COLUMN_LIST_ITEM(4)=variable_idx
                             IF(dof_type == DOMAIN_LOCAL_BOUNDARY) THEN
+                              ! COLUMN_LIST_ITEM(6) is 1 if it is boundary type, 0 otherwise.
                               COLUMN_LIST_ITEM(6) = 1
                             ELSE
                               COLUMN_LIST_ITEM(6) = 0
@@ -1553,6 +1516,7 @@ CONTAINS
                               COLUMN_LIST_ITEM(3)=0
                             ENDIF
                             COLUMN_LIST_ITEM(4)=variable_idx
+                            COLUMN_LIST_ITEM(6) = 0
                             CALL LIST_ITEM_ADD(EQUATIONS_COLS_LISTS(2,equations_idx,variable_position_idx)%PTR, &
                               & COLUMN_LIST_ITEM,ERR,ERROR,*999)
                           ENDIF
@@ -1668,8 +1632,7 @@ CONTAINS
                             localDof=COL_DOFS_MAPPING%DOMAIN_LIST(localDofIdx)
                             globalDof=COL_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
 
-                            ! dof_type=COL_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(global_dof)%LOCAL_TYPE(rank_idx)
-                            !!!!!::::::::::: FinbarToFix here find the dof type, i.e is it internal or boundary
+                            !find the dof type, i.e is it internal or boundary
                             IF(localDofIdx <= COL_DOFS_MAPPING%INTERNAL_FINISH) THEN
                               dof_type = DOMAIN_LOCAL_INTERNAL
                             ELSE IF(localDofIdx <= COL_DOFS_MAPPING%BOUNDARY_FINISH) THEN
@@ -1688,18 +1651,18 @@ CONTAINS
                               IF(INCLUDE_COLUMN) THEN
                                 COLUMN_LIST_ITEM(3)=1
                                 IF(.NOT.VARIABLE_PROCESSED(variable_position_idx)) THEN
-                                  ! NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(variable_position_idx)= &
-                                  !   & NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS(variable_position_idx)+1
                                   NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)= &
                                     & NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)+1
                                   TOTAL_NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)= &
                                     & TOTAL_NUMBER_OF_VARIABLE_LOCAL_SOLVER_DOFS(variable_position_idx)+1
+                                  !Calculate number of global with MPI after loop
                                 ENDIF
                               ELSE
                                 COLUMN_LIST_ITEM(3)=0
                               ENDIF
                               COLUMN_LIST_ITEM(4)=variable_idx
                               IF(dof_type == DOMAIN_LOCAL_BOUNDARY) THEN
+                                !COLUMN_LIST_ITEM(6) is 1 if this is a boundary column, 0 otherwise.
                                 COLUMN_LIST_ITEM(6) = 1
                               ELSE
                                 COLUMN_LIST_ITEM(6) = 0
@@ -1798,8 +1761,7 @@ CONTAINS
                               localDof=COL_DOFS_MAPPING%DOMAIN_LIST(localDofIdx)
                               globalDof=COL_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
 
-                              ! dof_type=COL_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(global_dof)%LOCAL_TYPE(rank_idx)
-                              !!!!!::::::::::: FinbarToFix here find the dof type, i.e is it internal or boundary
+                              !find the dof type, i.e is it internal or boundary
                               IF(localDofIdx <= COL_DOFS_MAPPING%INTERNAL_FINISH) THEN
                                 dof_type = DOMAIN_LOCAL_INTERNAL
                               ELSE IF(localDofIdx <= COL_DOFS_MAPPING%BOUNDARY_FINISH) THEN
@@ -1849,6 +1811,7 @@ CONTAINS
                                 ENDIF
                                 COLUMN_LIST_ITEM(4)=variable_idx
                                 IF(dof_type == DOMAIN_LOCAL_BOUNDARY) THEN
+                                  !COLUMN_LIST_ITEM(6) is 1 if this is a boundary column, 0 otherwise.
                                   COLUMN_LIST_ITEM(6) = 1
                                 ELSE
                                   COLUMN_LIST_ITEM(6) = 0
@@ -1965,7 +1928,6 @@ CONTAINS
             ALLOCATE(COL_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(COL_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate column dofs mapping local to global.",ERR,ERROR,*999)
             !Calculate the column mappings
-            !!!... FinbarToFix this was previously number_of_global_solver_dofs
             NUMBER_OF_COLUMNS=TOTAL_NUMBER_OF_LOCAL_SOLVER_DOFS
 
             !Initialise
@@ -2189,9 +2151,6 @@ CONTAINS
                   ENDIF
                 ENDIF
 
-                !!!!.>> FinbarToFix I don't know why this was here?
-                ! DEPENDENT_VARIABLE=>DEPENDENT_FIELD%VARIABLE_TYPE_MAP(variable_type)%PTR
-                ! COL_DOFS_MAPPING=>DEPENDENT_VARIABLE%DOMAIN_MAPPING
                 IF(ASSOCIATED(dynamicMapping)) THEN
                   !Allocate dynamic equations to solver matrix maps equations column to solver columns maps
                   DO equations_matrix_idx=1,NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES
@@ -2338,7 +2297,7 @@ CONTAINS
             !
             ! 4d Now calculate the solver mappings for each column in rank order
             !
-            !!!!!::::::::::: FinbarToFix Again only do for own rank, then may have to communicate to get ghosts since it's columns
+            !!!!!::::::::::: FinbarToFix Again only do for own rank, then have to communicate to get ghosts since adjacent ranks column info is needed.
 
             NUMBER_OF_GLOBAL_SOLVER_DOFS=0
             solver_global_dof=0
@@ -2346,7 +2305,7 @@ CONTAINS
 
             !Assume the adjacent domains for the solver matrix (COL_DOMAIN_MAPPING) is the same as for the first dependant variable
             !>TODO, this wont work if different dependant variables have different adjacent domains.
-            !>TODO, loop through adjacent domians of each solver variable and map them to adjacent domains for the column domain mapping.
+            !>TODO, loop through adjacent domains of each solver variable and map them to adjacent domains for the column domain mapping.
             COL_DOFS_MAPPING=>SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)%VARIABLES(1)% &
               & VARIABLE%DOMAIN_MAPPING
             COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = COL_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
@@ -2374,16 +2333,17 @@ CONTAINS
 
             IF(ALLOCATED(numberOfLocalDofsPerRank)) DEALLOCATE(numberOfLocalDofsPerRank)
 
-            !initialise counter for number of received ghosts
-            receiveGhostCount = 0
-
+            ! dof_type = 1 for internal or boundary. dof_type = 2 for ghost.
+            ! This loops through internal/boundary dofs first and adds them to dofsToRankLists for the rank to send them to.
+            ! After the dof_type=1 loop, the globalDof numbers and relevant solver_global_dof numbers that are to be sent to each domain are communicated,
+            ! thus, each rank knows what dofs it is to receive and from which ranks they receive them.
             DO dof_type=1,2
 
               DO solver_variable_idx=1,SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)%NUMBER_OF_VARIABLES
 
 
                 IF (SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS>0) THEN
-                  !TODO Chris is going to apply interface condition fix, ignore this for now. Ths will need to take into account the solver_global_dof
+                  !\TODO Chris is going to apply interface condition fix. Ths will need to take into account the solver_global_dof
                   ! offset calculated above the current DO loop
                   ! Ensure that the dof_offset is calculated as a sum of the number of dofs in the diagonal entries of the solver
                   ! matrix (ie the sum of the number of solver dofs in each equation set).
@@ -2432,20 +2392,13 @@ CONTAINS
                     & ERR,ERROR,*999)
                 ENDDO !rank_idx
 
-
-
-
-
-
                 variable_type=SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)%VARIABLES(solver_variable_idx)%VARIABLE_TYPE
 
                 DO equations_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS+SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
 
                   !Get columns list
-                  !!!!.... FinbarToFix here the key dimension of the list is 1 so it is sorted into global dof number order,
-                  !TODO             !!!!.... FinbarToFix I think we will want it to be local order, so will have to change the key_dimension of the list
-                  !!!!.... FinbarToFix Might actually have to include localDofIdx in the list as well, and order it with that
-                  !!!!.... FinbarToFix Or we might not even need to change it, could leave the counting as global_dof_idx, check check check
+                  ! Here the key dimension of the list is 1 so it is sorted into global dof number order
+                  !\TODO Check that this should be ordered by global dof number, not local Dof Number
                   CALL LIST_SORT(EQUATIONS_COLS_LISTS(dof_type,equations_idx,solver_variable_idx)%PTR,ERR,ERROR,*999)
                   CALL LIST_DETACH_AND_DESTROY(EQUATIONS_COLS_LISTS(dof_type,equations_idx,solver_variable_idx)%PTR, &
                     & NUMBER_OF_RANK_COLS,EQUATIONS_COLS_LIST,ERR,ERROR,*999)
@@ -2512,18 +2465,19 @@ CONTAINS
 
                           !dof_type == 1 for internal and boundary dofs, == 2 for ghost dofs
                           IF(dof_type==2) THEN
-
+                            !This occurs after one loop of the dof_type DO loop, so dofsReceived(:) has been filled.
+                            COL_DOMAIN_MAPPING%NUMBER_OF_GHOST = COL_DOMAIN_MAPPING%NUMBER_OF_GHOST+1
                             ! Search through the first index of dofsReceived to find the globalDof, the corresponding second index is the solver_global_dof, the third is the rank that owns the dof
                             ghostFound = .False.
-                            !>TODO this search is slow, improve search method.
+                            !\TODO this search is slow, improve search method.
                             DO receiveGhostIdx = 1, numberDofsReceived
                               IF(dofsReceived(receiveGhostIdx,1)==globalDof) THEN
                                 solver_global_dof = dofsReceived(receiveGhostIdx,2)
                                 fromRankIdx = dofsReceived(receiveGhostIdx,3)
-                                receiveGhostCount = receiveGhostCount + 1
+                                receiveGhostCount(fromRankIdx) = receiveGhostCount(fromRankIdx) + 1
                                 !Allocate COL_DOMAIN_MAPPING receive ghost indices from the rank that sends this dof
                                 COL_DOMAIN_MAPPING%ADJACENT_DOMAINS(fromRankIdx)% &
-                                  & LOCAL_GHOST_RECEIVE_INDICES(receiveGhostCount) = localDof
+                                  & LOCAL_GHOST_RECEIVE_INDICES(receiveGhostCount(fromRankIdx)) = localDof
                                 ghostFound = .True.
                                 EXIT
                               ENDIF
@@ -2532,14 +2486,13 @@ CONTAINS
                               & ERR,ERROR,*999)
 
                           ELSE
-                            !!!>>> FinbarToFix here we want to check whether the dof is a boundary dof, if it is then
-                            !!! we add the solver_global_dof to the DOF_MAP, may want to use something other than DOF_MAP, as we wont store all global dofs
+                            ! Here we check whether the dof is a boundary dof, if it is then
+                            ! we add the globalDof, solver_global_dof and localDof to dofsToRankLists.
                             solver_global_dof=solver_global_dof+1
-
-                            ! DOF_MAP(solver_variable_idx)%PTR(globalDof)=solver_global_dof
 
                             ! if this is a boundary dof
                             IF(boundaryDof) THEN
+                              COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY = COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY+1
                               ghostFound=.False.
                               ! find out what ranks this globalDof gets sent to
                               DO rank_Idx=1,COL_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
@@ -2559,6 +2512,9 @@ CONTAINS
                                 ENDDO ! receiveGhostIdx
                               ENDDO ! rank_idx
                               IF(.NOT.ghostFound) CALL FlagError("boundary dof did not find a rank to send to",ERR,ERROR,*999)
+
+                            ELSE
+                              COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL+1
                             ENDIF
 
                           ENDIF
@@ -2566,11 +2522,7 @@ CONTAINS
                           solver_local_dof=solver_local_dof+1
 
                           !Set up the column domain mappings.
-                          !!!FinbarToFix, do I need to assign all other parts of the COL_DOMAIN_MAPPING
                           COL_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(solver_local_dof) = solver_global_dof
-
-                          ! COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1)= &
-                          !   & solver_local_dof
 
                           !Set up the solver dofs -> variable dofs map
                           !Initialise
@@ -2765,36 +2717,6 @@ CONTAINS
                             ENDDO !matrix_type_idx
                           END DO !colEquationsColIdx
 
-                          !!!!!..... FinbarToFix this was done before for ranks not on the current rank.. double check if this is fine to remove.
-                          ! ELSE !rank /= myRank
-                          !
-                          !   IF(.NOT.VARIABLE_RANK_PROCESSED(solver_variable_idx,rank)) THEN
-                          !
-                          !     !Set up the column domain mappings.
-                          !     CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP( &
-                          !       & solver_global_dof),ERR,ERROR,*999)
-                          !     !There are no ghosted cols for the solver matrices so there is only 1 domain for the global to
-                          !     !local map.
-                          !     !Allocate the global to local map arrays
-                          !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1),STAT=ERR)
-                          !     IF(ERR/=0) CALL FlagError("Could not allocate column domain global to local map local number.", &
-                          !       & ERR,ERROR,*999)
-                          !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%DOMAIN_NUMBER(1),STAT=ERR)
-                          !     IF(ERR/=0) CALL FlagError("Could not allocate column domain global to local map domain number.", &
-                          !       & ERR,ERROR,*999)
-                          !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_TYPE(1),STAT=ERR)
-                          !     IF(ERR/=0) CALL FlagError("Could not allocate column domain global to local map domain number.", &
-                          !       & ERR,ERROR,*999)
-                          !     !Set up the global to local mappings
-                          !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%NUMBER_OF_DOMAINS=1
-                          !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1)= &
-                          !       & solver_local_dof(rank)
-                          !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%DOMAIN_NUMBER(1)=rank
-                          !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_TYPE(1)=DOMAIN_LOCAL_INTERNAL
-                          !
-                          !   ENDIF
-                          !
-                          ! ENDIF !rank == myRank
                         ELSE IF(CONSTRAINED_DOF) THEN
                           !Do nothing, this is set up above
                         ELSE
@@ -2906,22 +2828,65 @@ CONTAINS
                           IF(INCLUDE_COLUMN) THEN
                             !DOF is not fixed so map the variable/equation dof to a new solver dof
 
+                            !dof_type == 1 for internal and boundary dofs, == 2 for ghost dofs
                             IF(dof_type==2) THEN
-                              !Ghosted, reuse global dof
-                              !!!!FinbarToFix copy the non interface stuff from above
-                              ! solver_global_dof=DOF_MAP(solver_variable_idx)%PTR(globalDof)
+                              COL_DOMAIN_MAPPING%NUMBER_OF_GHOST = COL_DOMAIN_MAPPING%NUMBER_OF_GHOST+1
+                              ! Search through the first index of dofsReceived to find the globalDof, the corresponding second index is the solver_global_dof, the third is the rank that owns the dof
+                              ghostFound = .False.
+                              !>TODO this search is slow, improve search method.
+                              DO receiveGhostIdx = 1, numberDofsReceived
+                                IF(dofsReceived(receiveGhostIdx,1)==globalDof) THEN
+                                  solver_global_dof = dofsReceived(receiveGhostIdx,2)
+                                  fromRankIdx = dofsReceived(receiveGhostIdx,3)
+                                  receiveGhostCount(fromRankIdx) = receiveGhostCount(fromRankIdx) + 1
+                                  !Allocate COL_DOMAIN_MAPPING receive ghost indices from the rank that sends this dof
+                                  COL_DOMAIN_MAPPING%ADJACENT_DOMAINS(fromRankIdx)% &
+                                    & LOCAL_GHOST_RECEIVE_INDICES(receiveGhostCount(fromRankIdx)) = localDof
+                                  ghostFound = .True.
+                                  EXIT
+                                ENDIF
+                              ENDDO !receiveGhostIdx
+                              IF(.NOT.ghostFound) CALL FlagError("ghost dof did not find the rank it should be sent from", &
+                                & ERR,ERROR,*999)
+
                             ELSE
+                              !check whether the dof is a boundary dof, if it is then
+                              ! add the globalDof, solver_global_dof and localDof to dofsToRankLists
                               solver_global_dof=solver_global_dof+1
-                              ! DOF_MAP(solver_variable_idx)%PTR(globalDof)=solver_global_dof
+
+                              ! if this is a boundary dof
+                              IF(boundaryDof) THEN
+                                COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY = COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY+1
+                                ghostFound=.False.
+                                ! find out what ranks this globalDof gets sent to
+                                DO rank_Idx=1,COL_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                                  !TODO this search is slow, should be using ordered_array_contains to check whether it is contained in the ordered array.
+                                  DO sendGhostIdx=1,COL_DOFS_MAPPING%ADJACENT_DOMAINS(rank_idx)%NUMBER_OF_SEND_GHOSTS
+                                    IF(localDof==COL_DOFS_MAPPING%ADJACENT_DOMAINS(rank_idx)% &
+                                      & LOCAL_GHOST_SEND_INDICES(sendGhostIdx)) THEN
+                                      ! rank = COL_DOFS_MAPPING%ADJACENT_DOMAINS(rank_idx)%DOMAIN_NUMBER
+                                      itemList(1)=globalDof
+                                      itemList(2)=solver_global_dof
+                                      itemList(3)=localDof
+                                      CALL LIST_ITEM_ADD(dofsToRankLists(rank_idx)%PTR, &
+                                        & itemList,ERR,ERROR,*999)
+                                      ghostFound=.True.
+                                      EXIT
+                                    ENDIF
+                                  ENDDO ! receiveGhostIdx
+                                ENDDO ! rank_idx
+                                IF(.NOT.ghostFound) CALL FlagError("boundary dof did not find a rank to send to",ERR,ERROR,*999)
+
+                              ELSE
+                                COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL+1
+                              ENDIF
+
                             ENDIF
 
                             solver_local_dof=solver_local_dof+1
 
                             !Set up the column domain mappings.
-
                             COL_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(solver_local_dof) = solver_global_dof
-                            ! COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1)= &
-                            !   & solver_local_dof
 
                             !Set up the solver column -> equations column mappings.
                             !Set up the solver dofs -> variable dofs map
@@ -3063,37 +3028,6 @@ CONTAINS
                                   & INTERFACE_MAPPING%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(interface_matrix_idx)%MATRIX_COEFFICIENT
                               ENDIF
                             END DO
-
-                            ! ELSE !rank /= myRank
-                            !   IF(.NOT.VARIABLE_RANK_PROCESSED(solver_variable_idx,rank)) THEN
-                            !
-                            !     !Set up the column domain mappings.
-                            !     CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP( &
-                            !       & solver_global_dof),ERR,ERROR,*999)
-                            !     !There are no ghosted cols for the solver matrices so there is only 1 domain for the global to
-                            !     !local map.
-                            !     !Allocate the global to local map arrays
-                            !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1),STAT=ERR)
-                            !     IF(ERR/=0) &
-                            !       & CALL FlagError("Could not allocate column domain global to local map local number.", &
-                            !       & ERR,ERROR,*999)
-                            !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%DOMAIN_NUMBER(1),STAT=ERR)
-                            !     IF(ERR/=0) &
-                            !       & CALL FlagError("Could not allocate column domain global to local map domain number.", &
-                            !       & ERR,ERROR,*999)
-                            !     ALLOCATE(COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_TYPE(1),STAT=ERR)
-                            !     IF(ERR/=0) &
-                            !       & CALL FlagError("Could not allocate column domain global to local map domain number.", &
-                            !       & ERR,ERROR,*999)
-                            !     !Set up the global to local mappings
-                            !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%NUMBER_OF_DOMAINS=1
-                            !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_NUMBER(1)= &
-                            !       & solver_local_dof
-                            !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%DOMAIN_NUMBER(1)=rank
-                            !     COL_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(solver_global_dof)%LOCAL_TYPE(1)=DOMAIN_LOCAL_INTERNAL
-                            !
-                            !   ENDIF
-                            ! ENDIF !rank == myRank
                           ELSE IF(CONSTRAINED_DOF) THEN
                             !Do nothing, this is set up above
                           ELSE
@@ -3178,6 +3112,8 @@ CONTAINS
                 ALLOCATE(sendBuffer(maxNumberToSend,2), STAT=err)
                 IF(err/=0) CALL FlagError("Could not allocate sendBuffer",err,error,*999)
 
+                !Initialise subArray_type, which is the mpi new type that is created to transfer noncontiguous subarrays.
+                !subArray_type2 is the type for receiving the subarrays.
                 fullArraySize = [maxNumberToSend,2]
                 starts = [0,0]
                 ALLOCATE(subArray_type(COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS))
@@ -3189,7 +3125,6 @@ CONTAINS
                   sendBuffer = 0
                   CALL LIST_DETACH_AND_DESTROY(dofsToRankLists(rank_idx)%PTR, &
                     & numberOfDofsToRank,tempArray2D,ERR,ERROR,*999)
-                    !TODO checking with communicating just globalDof, not solver_global_dof, will fix that afterwards.
                   sendBuffer(1:numberOfDofsToRank,1)=tempArray2D(1,1:numberOfDofsToRank)
                   sendBuffer(1:numberOfDofsToRank,2)=tempArray2D(2,1:numberOfDofsToRank)
 
@@ -3204,14 +3139,11 @@ CONTAINS
                   !>TODO may have to order these localDofs...
                   IF(ALLOCATED(tempArray2D)) DEALLOCATE(tempArray2D)
 
-                  !Create new mpi type to get data from sendBuffer contiguously
+                  !Create new mpi type to get contiguous data from sendBuffer
                   subArraySize = [numberOfDofsToRank,2]
                   CALL MPI_TYPE_CREATE_SUBARRAY(2,fullArraySize,subArraySize,starts,MPI_ORDER_FORTRAN, &
                     & MPI_INT, subArray_type(rank_idx), MPI_IERROR)
                   CALL MPI_TYPE_COMMIT(subArray_type(rank_idx), MPI_IERROR)
-
-
-
 
 
                   ! number of dofs to be sent to rank
@@ -3219,7 +3151,7 @@ CONTAINS
                     & computationalEnvironment%mpiCommunicator, sendRequestHandle0(rank_idx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
 
-                  ! global dofs to send
+                  ! global dofs and solver_global_dofs to send
                   IF (numberOfDofsToRank > 0) THEN
                     CALL MPI_ISEND(sendBuffer,1, subArray_type(rank_Idx),rank,1, &
                       &computationalEnvironment%mpiCommunicator, sendRequestHandle1(rank_idx), MPI_IERROR)
@@ -3228,6 +3160,7 @@ CONTAINS
 
                 ENDDO !rank_idx
 
+                !numberOfDofsFromRank has the number of dofs that the current rank received from the adjacent domain idx
                 ALLOCATE(numberOfDofsFromRank(COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=err)
                 IF(err/=0) CALL FlagError("Could not allocate numberOfDofsFromRank",err,error,*999)
                 numberDofsReceived = 0
@@ -3243,7 +3176,7 @@ CONTAINS
                   numberDofsReceived = numberDofsReceived + numberOfDofsFromRank(rank_idx)
                 ENDDO !rank_idx
 
-
+                !Allocate receive buffer to maximum number to receive size
                 ALLOCATE(receiveBuffer(maxNumberToReceive,2),STAT=err)
                 IF(err/=0) CALL FlagError("Could not allocate receiveBuffer ",err,error,*999)
                 receiveBuffer = 0
@@ -3258,6 +3191,7 @@ CONTAINS
                 DO rank_idx=1,COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                   rank = COL_DOMAIN_MAPPING%ADJACENT_DOMAINS(rank_idx)%DOMAIN_NUMBER
 
+                  !Create the mpi subarray type for receiving
                   subArraySize = [numberOfDofsFromRank(rank_idx),2]
                   CALL MPI_TYPE_CREATE_SUBARRAY(2,fullArraySize,subArraySize,starts,MPI_ORDER_FORTRAN, &
                     & MPI_INT, subArray_type2(rank_idx), MPI_IERROR)
@@ -3282,9 +3216,17 @@ CONTAINS
                   dofsReceivedStart=dofsReceivedFinish+1
                 ENDDO !rank_idx
 
+                !initialise counter for number of received ghosts
+
+                ALLOCATE(receiveGhostCount(COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS))
+                receiveGhostCount = 0
+
+                IF(ALLOCATED(numberOfDofsFromRank)) DEALLOCATE(numberOfDofsFromRank)
                 IF(ALLOCATED(receiveBuffer)) DEALLOCATE(receiveBuffer)
                 IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
                 IF(ALLOCATED(dofsToRankLists)) DEALLOCATE(dofsToRankLists)
+                IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+                IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
                 DO rank_idx=1,COL_DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                   CALL MPI_Type_free(subArray_type(rank_idx),MPI_IERROR)
                   CALL MPI_Type_free(subArray_type2(rank_idx),MPI_IERROR)
@@ -3295,10 +3237,22 @@ CONTAINS
 
             ENDDO !dof_type
 
-            !!!>>> FinbarToFix here make sure I deallocate all allocatables from above.
+            !Fill the rest of COL_DOMAIN_MAPPING
+            COL_DOMAIN_MAPPING%INTERNAL_START = 1
+            COL_DOMAIN_MAPPING%INTERNAL_FINISH = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL
+            COL_DOMAIN_MAPPING%BOUNDARY_START = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL + 1
+            COL_DOMAIN_MAPPING%BOUNDARY_FINISH = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL + COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY
+            COL_DOMAIN_MAPPING%GHOST_START = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL + COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY + 1
+            COL_DOMAIN_MAPPING%GHOST_FINISH = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL + COL_DOMAIN_MAPPING%NUMBER_OF_BOUNDARY + &
+              & COL_DOMAIN_MAPPING%NUMBER_OF_GHOST
 
-            ! CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(COL_DOMAIN_MAPPING,ERR,ERROR,*999)
+            !\TODO IF COL_DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR and ADJACENT_DOMAINS_LIST are needed, assign them here
 
+
+            !\TODO make sure I deallocate all allocatables from above.
+
+            IF(ALLOCATED(dofsReceived)) DEALLOCATE(dofsReceived)
+            IF(ALLOCATED(receiveGhostCount)) DEALLOCATE(receiveGhostCount)
             IF(ALLOCATED(SUB_MATRIX_INFORMATION)) DEALLOCATE(SUB_MATRIX_INFORMATION)
             IF(ALLOCATED(SUB_MATRIX_LIST)) DEALLOCATE(SUB_MATRIX_LIST)
             IF(ALLOCATED(NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS)) DEALLOCATE(NUMBER_OF_VARIABLE_GLOBAL_SOLVER_DOFS)
@@ -4097,6 +4051,25 @@ CONTAINS
     IF(ALLOCATED(dummyDofCoupling%globalDofs)) DEALLOCATE(dummyDofCoupling%globalDofs)
     IF(ALLOCATED(dummyDofCoupling%localDofs)) DEALLOCATE(dummyDofCoupling%localDofs)
     IF(ALLOCATED(dummyDofCoupling%coefficients)) DEALLOCATE(dummyDofCoupling%coefficients)
+    IF(ALLOCATED(EQUATIONS_SET_VARIABLES)) DEALLOCATE(EQUATIONS_SET_VARIABLES)
+    IF(ALLOCATED(EQUATIONS_VARIABLES)) DEALLOCATE(EQUATIONS_VARIABLES)
+    IF(ALLOCATED(INTERFACE_EQUATIONS_LIST)) DEALLOCATE(INTERFACE_EQUATIONS_LIST)
+    IF(ALLOCATED(INTERFACE_VARIABLES)) DEALLOCATE(INTERFACE_VARIABLES)
+    IF(ALLOCATED(EQUATION_ROWS_LIST)) DEALLOCATE(EQUATION_ROWS_LIST)
+    IF(ALLOCATED(EQUATIONS_COLS_LIST)) DEALLOCATE(EQUATIONS_COLS_LIST)
+    IF(ALLOCATED(VARIABLE_TYPES)) DEALLOCATE(VARIABLE_TYPES)
+    IF(ALLOCATED(subArray_type)) DEALLOCATE(subArray_type)
+    IF(ALLOCATED(subArray_type2)) DEALLOCATE(subArray_type2)
+    IF(ALLOCATED(receiveGhostCount)) DEALLOCATE(receiveGhostCount)
+    IF(ALLOCATED(numberOfLocalSolverRowsPerRank)) DEALLOCATE(numberOfLocalSolverRowsPerRank)
+    IF(ALLOCATED(receiveBuffer)) DEALLOCATE(receiveBuffer)
+    IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
+    IF(ALLOCATED(dofsToRankLists)) DEALLOCATE(dofsToRankLists)
+    IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(numberOfLocalDofsPerRank)) DEALLOCATE(numberOfLocalDofsPerRank)
+    IF(ALLOCATED(numberOfDofsFromRank)) DEALLOCATE(numberOfDofsFromRank)
+    IF(ALLOCATED(tempArray2D)) DEALLOCATE(tempArray2D)
     CALL SolverDofCouplings_Finalise(rowCouplings,dummyErr,dummyError,*998)
 998 CALL SolverDofCouplings_Finalise(columnCouplings,dummyErr,dummyError,*997)
 997 ERRORSEXITS("SOLVER_MAPPING_CALCULATE",ERR,ERROR)
