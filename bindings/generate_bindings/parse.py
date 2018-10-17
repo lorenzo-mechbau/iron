@@ -178,12 +178,12 @@ class LibrarySource(object):
         """
 
         self.lib_source = self.SourceFile(
-            os.sep.join((cm_path, 'src', 'opencmiss_iron.f90')))
+            os.sep.join((cm_path, 'src', 'opencmiss_iron.F90')))
         cm_source_path = cm_path + os.sep + 'src'
         source_files = [
                 cm_source_path + os.sep + file_name
                 for file_name in os.listdir(cm_source_path)
-                if file_name.endswith('.f90') and file_name != 'opencmiss_iron.f90']
+                if file_name.endswith('.F90') and file_name != 'opencmiss_iron.F90']
         self.sources = [
                 self.SourceFile(source, params_only=True)
                 for source in source_files]
@@ -241,7 +241,7 @@ class LibrarySource(object):
         for routine in self.public_subroutines:
             public_objects[routine.line_number] = routine
 
-	for doxygen_grouping in self.lib_source.doxygen_groupings:
+        for doxygen_grouping in self.lib_source.doxygen_groupings:
             public_objects[doxygen_grouping.line_number] = doxygen_grouping
 
         self.ordered_objects = [public_objects[k]
