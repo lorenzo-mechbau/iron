@@ -38,6 +38,7 @@ if (WITH_C_BINDINGS)
         COMMAND "${Python_EXECUTABLE}" generate_bindings "${Iron_SOURCE_DIR}" C "${OPENCMISS_H}" "${OPENCMISS_C_F90}"
         WORKING_DIRECTORY ${Iron_SOURCE_DIR}/bindings
     )
+message(STATUS "${Python_EXECUTABLE} generate_bindings ${Iron_SOURCE_DIR} C ${OPENCMISS_H} ${OPENCMISS_C_F90}")
     list(APPEND _CLEANUP ${OPENCMISS_H} ${OPENCMISS_C_F90})
     
     add_library(iron_c ${OPENCMISS_C_F90})
@@ -116,6 +117,11 @@ if (WITH_Python_BINDINGS)
         WORKING_DIRECTORY ${Iron_SOURCE_DIR}/bindings
     )
 
+message(STATUS "===========================")
+message(STATUS "Python_EXECUTABLE: ${Python_EXECUTABLE}")
+message(STATUS "Python_VERSION_MAJOR: ${Python_VERSION_MAJOR}")
+message(STATUS "Python_INCLUDE_DIRS: ${Python_INCLUDE_DIRS}")
+message(STATUS "PYTHON_INCLUDE_DIRS: ${PYTHON_INCLUDE_DIRS}")
     if(Python_VERSION_MAJOR STREQUAL "3")
         set(PYTHONLIBS_SWIG_FLAGS -py3)
     endif()
@@ -143,7 +149,7 @@ if (WITH_Python_BINDINGS)
     target_link_libraries(${IRON_PYTHON_MODULE} PUBLIC iron_c Python::Python)
     target_include_directories(${IRON_PYTHON_MODULE} PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
-        ${PYTHON_INCLUDE_DIRS}
+        ${Python_INCLUDE_DIRS}
         ${NUMPY_INCLUDES}
     )
     set_target_properties(${IRON_PYTHON_MODULE} PROPERTIES PREFIX ""
