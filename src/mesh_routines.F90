@@ -233,7 +233,7 @@ MODULE MESH_ROUTINES
   PUBLIC MESHES_INITIALISE,MESHES_FINALISE
 
   ! original (Benjamin): old true, new true
-  LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
+  LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
   LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code
 
 CONTAINS
@@ -724,7 +724,7 @@ CONTAINS
 
                   ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
                   ! the list contains pairs of (global el. no., domain no)
-                  DO GlobalElementNo=0,MyNumberOfElements
+                  DO GlobalElementNo=1,MyNumberOfElements
                     GlobalElementNoDomainPair(1) = GlobalElementNo
                     GlobalElementNoDomainPair(2) = MyComputationalNodeNumber    ! this is 0
 
@@ -6653,6 +6653,7 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_ELEMENTS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_NODES_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+        DOMAIN%MAPPINGS%ELEMENTS=>DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
 
         !This case statement may have to be moved into the IF (USE_NEW_LOCAL_IMPLEMENTATION) part.
         !Map the local face numbers to the global numbers
@@ -9800,13 +9801,14 @@ CONTAINS
 
     !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
     !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-    ALLOCATE(facesMapping%ADJACENT_DOMAINS_PTR(0:facesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
-    facesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
-
-    ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
-    facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+    ! \TODO This shouldn't be needed, as only were required for send tag number. check.
+    ! ALLOCATE(facesMapping%ADJACENT_DOMAINS_PTR(0:facesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    ! IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+    ! facesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+    !
+    ! ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    ! IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+    ! facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
 
 
 
@@ -11092,13 +11094,15 @@ CONTAINS
 
     !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
     !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
 
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+    ! \TODO This shouldn't be needed, as only were required for send tag number. check.
+    ! ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    ! IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
+    ! linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+    !
+    ! ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    ! IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
+    ! linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
 
 
 

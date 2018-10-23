@@ -11073,8 +11073,8 @@ CONTAINS
     INTEGER(INTG) :: CALL_COUNTER = 1
     LOGICAL :: DEBUGGING = .TRUE.
     ! original (Benjamin): old true, new false
-    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
-    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .FALSE.     ! new code
+    LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
+    LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code
 
     LOGICAL :: DIAGNOSTICS2 = .FALSE.
 
@@ -11126,9 +11126,9 @@ CONTAINS
             FIELD_COMPONENT=>FIELD%VARIABLES(variable_idx)%COMPONENTS(component_idx)
             TOPOLOGY=>FIELD%DECOMPOSITION%MESH%TOPOLOGY(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
             !TOPOLOGY=>FIELD_COMPONENT%DOMAIN%TOPOLOGY
-            DOMAIN_MAPPINGS=>FIELD_COMPONENT%DOMAIN%MAPPINGS
+            domainMappings=>FIELD_COMPONENT%DOMAIN%MAPPINGS
             ELEMENTS_MAPPING=>FIELD_COMPONENT%DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
-            NODES_MAPPING=>DOMAIN_MAPPINGS%NODES
+            NODES_MAPPING=>domainMappings%NODES
 
             PRINT *, ""
             PRINT *, "============= component ", component_idx," elements mapping ==========="
