@@ -2028,7 +2028,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: DECOMPOSITION_LOCAL_ELEMENT_NUMBER, faceLocalNo, myComputationalNodeNumber, faceBasisLocalNo,faceGlobalNo
+    INTEGER(INTG) :: DECOMPOSITION_LOCAL_ELEMENT_NUMBER, faceLocalNo, myComputationalNodeNumber, faceBasisLocalNo,faceGlobalNo, &
+      & lineLocalNo, lineBasisLocalNo,lineGlobalNo
     LOGICAL :: GHOST_ELEMENT,USER_ELEMENT_EXISTS
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: DECOMPOSITION_TOPOLOGY
@@ -2100,8 +2101,8 @@ CONTAINS
                   ELEMENT_BASIS=>DOMAIN_ELEMENT%BASIS
                   IF(.NOT. ASSOCIATED(ELEMENT_BASIS)) CALL FlagError("element basis is not associated.",ERR,ERROR,*999)
 
-                  !FIXTHIS, get lines should probably have its own subroutine
-                  faceBasisLocalNo=ELEMENT_BASIS%xiNormalsLocalLine(userXiDir,1)
+                  !FIXTHIS, get faces should probably have its own subroutine
+                  faceBasisLocalNo=ELEMENT_BASIS%xiNormalLocalFace(userXiDir)
 
                   IF(DECOMPOSITION%numberOfDimensions==3) THEN
                     faceLocalNo=DECOMPOSITION_ELEMENT%ELEMENT_FACES(faceBasisLocalNo)
@@ -2110,7 +2111,7 @@ CONTAINS
                   ENDIF
                   !FIXTHIS should include a check here for the face being a boundary face!!!!!
                   faceGlobalNo=DOMAIN%MAPPINGS%FACES%LOCAL_TO_GLOBAL_MAP(faceLocalNo)
-                  IF(DECOMPOSITION_TOPOLOGY%lines%lines(faceLocalNo)%BOUNDARY_LINE) THEN
+                  IF(DECOMPOSITION_TOPOLOGY%faces%faces(faceLocalNo)%BOUNDARY_FACE) THEN
                     !do nothing
                   ELSE
                     LOCAL_ERROR="The external face with global number of " // &
@@ -2136,11 +2137,63 @@ CONTAINS
                   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
               CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                LOCAL_ERROR="Can not get the dof by user element for component number "// &
-                  & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
-                  & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
-                  & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has element and ext line based interpolation."
-                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                DECOMPOSITION=>FIELD%DECOMPOSITION
+                IF(.NOT. ASSOCIATED(DECOMPOSITION)) CALL FlagError("Field decomposition is not associated.",ERR,ERROR,*999)
+
+                DECOMPOSITION_TOPOLOGY=>DECOMPOSITION%TOPOLOGY
+                CALL DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION_TOPOLOGY,userElementNumber, &
+                  & USER_ELEMENT_EXISTS,DECOMPOSITION_LOCAL_ELEMENT_NUMBER,GHOST_ELEMENT,ERR,ERROR,*999)
+
+                IF(USER_ELEMENT_EXISTS) THEN
+                  !Here we must find the local line number from the local element number and the xi direction.
+                  !We do this using basis%xiNormalsLocalLine
+                  DECOMPOSITION_ELEMENT=>DECOMPOSITION_TOPOLOGY%ELEMENTS%ELEMENTS(DECOMPOSITION_LOCAL_ELEMENT_NUMBER)
+                  IF(.NOT. ASSOCIATED(DECOMPOSITION_ELEMENT)) CALL FlagError("decomposition element is not associated.", &
+                    & ERR,ERROR,*999)
+                  DOMAIN=>DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR
+                  IF(.NOT. ASSOCIATED(DOMAIN)) CALL FlagError("domain is not associated.",ERR,ERROR,*999)
+                  DOMAIN_TOPOLOGY=>DOMAIN%TOPOLOGY
+                  IF(.NOT. ASSOCIATED(DOMAIN_TOPOLOGY)) CALL FlagError("domain topology is not associated.",ERR,ERROR,*999)
+                  DOMAIN_ELEMENT=>DOMAIN_TOPOLOGY%ELEMENTS%ELEMENTS(DECOMPOSITION_LOCAL_ELEMENT_NUMBER)
+                  IF(.NOT. ASSOCIATED(DOMAIN_ELEMENT)) CALL FlagError("domain element is not associated.",ERR,ERROR,*999)
+                  ELEMENT_BASIS=>DOMAIN_ELEMENT%BASIS
+                  IF(.NOT. ASSOCIATED(ELEMENT_BASIS)) CALL FlagError("element basis is not associated.",ERR,ERROR,*999)
+
+                  !FIXTHIS, get lines should probably have its own subroutine
+                  lineBasisLocalNo=ELEMENT_BASIS%xiNormalsLocalLine(userXiDir,1)
+
+                  IF(DECOMPOSITION%numberOfDimensions==2) THEN
+                    lineLocalNo=DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)
+                  ELSE
+                    CALL FlagError("number of dimensions must = 2 for lines",ERR,ERROR,*999)
+                  ENDIF
+                  !FIXTHIS should include a check here for the line being a boundary line!!!!!
+                  lineGlobalNo=DOMAIN%MAPPINGS%LINES%LOCAL_TO_GLOBAL_MAP(lineLocalNo)
+                  IF(DECOMPOSITION_TOPOLOGY%lines%lines(lineLocalNo)%BOUNDARY_LINE) THEN
+                    !do nothing
+                  ELSE
+                    LOCAL_ERROR="The external line with global number of " // &
+                      & TRIM(NumberToVString(lineGlobalNo,"*",ERR,ERROR)) // " is not a boundary line"
+                    CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                  ENDIF
+                  !Now find the local dof number from the line local number
+
+                  IF(ASSOCIATED(FIELD_VARIABLE%DOMAIN_MAPPING)) THEN
+                    LOCAL_DOF=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                      & LINE_PARAM2DOF_MAP%LINES(lineLocalNo)%DERIVATIVES(DERIVATIVE_NUMBER)%VERSIONS(VERSION_NUMBER)
+                    GLOBAL_DOF=FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(LOCAL_DOF)
+                  ELSE
+                    CALL FlagError("The field variable domain mapping is not associated.",ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  LOCAL_ERROR="The specified user element number of "// &
+                    & TRIM(NumberToVString(userElementNumber,"*",ERR,ERROR))// &
+                    & " does not exist in the decomposition for field component number "// &
+                    & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of field variable "// &
+                    & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                    & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
               CASE(FIELD_NODE_BASED_INTERPOLATION)
                 LOCAL_ERROR="Can not get the dof by user element for component number "// &
                   & TRIM(NumberToVString(COMPONENT_NUMBER,"*",ERR,ERROR))//" of variable type "// &
@@ -12915,10 +12968,8 @@ CONTAINS
                         ! setup dof to parameter map
                         FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_LINE_DOF_TYPE
                         FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=lineDofIdx
-                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=VersionIdx
-                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=DerivativeIdx
-                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(3,lineDofIdx)=LineLocalNo
-                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(4,lineDofIdx)=component_idx
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
+                        FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
                         lineDofIdx = lineDofIdx + 1   ! this is the index when iterating over all line dofs of this field variable
 
                         ! setup reverse parameter to dof map
@@ -14799,10 +14850,8 @@ CONTAINS
                       ! setup dof to parameter map
                       FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,CurrentDofLocalNo)=FIELD_LINE_DOF_TYPE
                       FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,CurrentDofLocalNo)=lineDofIdx
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=VersionIdx
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=DerivativeIdx
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(3,lineDofIdx)=LineLocalNo
-                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(4,lineDofIdx)=component_idx
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
+                      FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
                       lineDofIdx = lineDofIdx + 1   ! this is the index when iterating over all line dofs of this field variable
 
                       ! setup reverse parameter to dof map
@@ -15364,128 +15413,133 @@ CONTAINS
 
 
               !get the first and last ghost line local numbers, these will be in order
-              FirstGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_START)
-              LastGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_FINISH)
+
+              !\TODO this if statmenet should be around more of the code above
+              IF(LINES_MAPPING%NUMBER_OF_GHOST>0) THEN
+                FirstGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_START)
+                LastGhostLineLocalNo = LINES_MAPPING%DOMAIN_LIST(LINES_MAPPING%GHOST_FINISH)
+                ALLOCATE(dofGlobalNumberFromLineLocalNumber(FirstGhostLineLocalNo:LastGhostLineLocalNo))
 
 
-              DofLocalNo=CurrentDofLocalNo-1
-
-
-              ALLOCATE(dofGlobalNumberFromLineLocalNumber(FirstGhostLineLocalNo:LastGhostLineLocalNo))
-
-              ! loop over adjacent domains
-              DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-
-                ! copy information to send buffer
-                DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
-                  LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(LineSendIdx)
-                  LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
-
-
-                  dofGlobalNumberFromLineLocalNumber(LineLocalNo)=ReceiveBuffer2(LineSendIdx,AdjacentDomainIdx)
-
-                ENDDO !LineSendIdx
-              ENDDO !AdjacentDomainIdx
-
-
-              DO lineIdx=LINES_MAPPING%GHOST_START,LINES_MAPPING%GHOST_FINISH
-                LineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
-                LineGlobalNo=LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
-
-                !If this line isn't an external line then we exit the do loop.
-                IF(.NOT.FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(LineLocalNo)%BOUNDARY_LINE) CYCLE
-
-
-                !DofGlobalNo = FirstDofGlobalNo(component_idx) + LineGlobalNo - Line1GlobalNo(component_idx)
-                DofLocalNo = DofLocalNo+1
-
-                DofGlobalNo = dofGlobalNumberFromLineLocalNumber(LineLocalNo)
-                ! add global dof no to LOCAL_TO_GLOBAL_MAP
-                FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
-                FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
-
-                InternalDofIdx = InternalDofIdx + 1
-
-                ! setup dof to parameter map
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_LINE_DOF_TYPE
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=lineDofIdx
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
-                FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
-
-
-                ! setup reverse parameter to dof map
-
-
-                !Not sure if we want this to be componentLineDofIdx or lineLocalNo, id it is lineLocal Number we would have to allocate a lot more LINES for line_param2dof_map
-                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
-                  & NumberDerivatives),STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map for LineLocalNo "//&
-                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
-
-                ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
-                  & DERIVATIVES(NumberDerivatives)%VERSIONS(NumberVersions),STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative versions map for LineLocalNo"//&
-                  & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                DofLocalNo=CurrentDofLocalNo-1
 
 
 
-                FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(1)%VERSIONS(1) =  &
-                  & DofLocalNo
-                lineDofIdx = lineDofIdx + 1   ! counter of number of lineDofIdx used
+
+                ! loop over adjacent domains
+                DO AdjacentDomainIdx=1,LINES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+
+                  ! copy information to send buffer
+                  DO LineSendIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                    LineLocalNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(LineSendIdx)
+                    LineGlobalNo = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
 
 
-                ! find the adjacent domain that has the boundary line for this ghost line
-                AdjacentDomainIdx = 1
-                AdjacentDomainFound = .FALSE.
-                DO WHILE(.NOT. AdjacentDomainFound)
+                    dofGlobalNumberFromLineLocalNumber(LineLocalNo)=ReceiveBuffer2(LineSendIdx,AdjacentDomainIdx)
 
-                  ! check if line is in current adjacent domain
-                  ! loop over receive ghost local numbers
-                  DO GhostReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+                  ENDDO !LineSendIdx
+                ENDDO !AdjacentDomainIdx
 
-                    IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
-                      & == LineLocalNo) THEN
-                      AdjacentDomainNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
-                      AdjacentDomainFound = .TRUE.
+
+                DO lineIdx=LINES_MAPPING%GHOST_START,LINES_MAPPING%GHOST_FINISH
+                  LineLocalNo=LINES_MAPPING%DOMAIN_LIST(lineIdx)
+                  LineGlobalNo=LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(LineLocalNo)
+
+                  !If this line isn't an external line then we exit the do loop.
+                  IF(.NOT.FIELD_COMPONENT%DOMAIN%TOPOLOGY%LINES%LINES(LineLocalNo)%BOUNDARY_LINE) CYCLE
+
+
+                  !DofGlobalNo = FirstDofGlobalNo(component_idx) + LineGlobalNo - Line1GlobalNo(component_idx)
+                  DofLocalNo = DofLocalNo+1
+
+                  DofGlobalNo = dofGlobalNumberFromLineLocalNumber(LineLocalNo)
+                  ! add global dof no to LOCAL_TO_GLOBAL_MAP
+                  FIELD_VARIABLE_DOFS_MAPPING%LOCAL_TO_GLOBAL_MAP(DofLocalNo) = DofGlobalNo
+                  FIELD_VARIABLE_DOFS_MAPPING%DOMAIN_LIST(InternalDofIdx) = CurrentDofLocalNo
+
+                  InternalDofIdx = InternalDofIdx + 1
+
+                  ! setup dof to parameter map
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,DofLocalNo)=FIELD_LINE_DOF_TYPE
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(2,DofLocalNo)=lineDofIdx
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(1,lineDofIdx)=LineLocalNo
+                  FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%LINE_DOF2PARAM_MAP(2,lineDofIdx)=component_idx
+
+
+                  ! setup reverse parameter to dof map
+
+
+                  !Not sure if we want this to be componentLineDofIdx or lineLocalNo, id it is lineLocal Number we would have to allocate a lot more LINES for line_param2dof_map
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(&
+                    & NumberDerivatives),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative map for LineLocalNo "//&
+                    & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+                  ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)% &
+                    & DERIVATIVES(NumberDerivatives)%VERSIONS(NumberVersions),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines derivative versions map for LineLocalNo"//&
+                    & TRIM(NUMBER_TO_VSTRING(LineLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+
+
+
+                  FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LineLocalNo)%DERIVATIVES(1)%VERSIONS(1) =  &
+                    & DofLocalNo
+                  lineDofIdx = lineDofIdx + 1   ! counter of number of lineDofIdx used
+
+
+                  ! find the adjacent domain that has the boundary line for this ghost line
+                  AdjacentDomainIdx = 1
+                  AdjacentDomainFound = .FALSE.
+                  DO WHILE(.NOT. AdjacentDomainFound)
+
+                    ! check if line is in current adjacent domain
+                    ! loop over receive ghost local numbers
+                    DO GhostReceiveIdx = 1,LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS
+
+                      IF (LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(GhostReceiveIdx) &
+                        & == LineLocalNo) THEN
+                        AdjacentDomainNo = LINES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                        AdjacentDomainFound = .TRUE.
+                        EXIT
+                      ENDIF
+
+                    ENDDO
+                    IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
+                  ENDDO
+
+                  ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
+                  DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                    IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
                       EXIT
                     ENDIF
-
                   ENDDO
-                  IF (.NOT. AdjacentDomainFound) AdjacentDomainIdx = AdjacentDomainIdx + 1
-                ENDDO
 
-                ! find adjacent domain idx of AdjacentDomainNo of FIELD_VARIABLE_DOFS_MAPPING (can be different from AdjacentDomainIdx)
-                DO AdjacentDomainIdx2 = 1,FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-                  IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%DOMAIN_NUMBER == AdjacentDomainNo) THEN
-                    EXIT
+                  ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
+                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS &
+                    = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS + 1
+
+                  ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
+                  IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
+                    ! array does not yet exist, allocate with size 1
+                    ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1), &
+                      & STAT=ERR)
+                    IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
+
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1) &
+                      & = CurrentDofLocalNo
+                  ELSE
+                    ! array already exists, increase size by 1
+                    FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
+                      & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES, &
+                      & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS], &
+                      & [CurrentDofLocalNo])
                   ENDIF
-                ENDDO
 
-                ! add current local dof no to adjacent domains array (LOCAL_GHOST_RECEIVE_INDICES)
-                FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS &
-                  = FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS + 1
-
-                ! add CurrentDofLocalNo to LOCAL_GHOST_RECEIVE_INDICES
-                IF (FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS == 1) THEN
-                  ! array does not yet exist, allocate with size 1
-                  ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1), &
-                    & STAT=ERR)
-                  IF(ERR/=0) CALL FlagError("Could not allocate LOCAL_GHOST_RECEIVE_INDICES.",ERR,ERROR,*999)
-
-                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES(1) &
-                    & = CurrentDofLocalNo
-                ELSE
-                  ! array already exists, increase size by 1
-                  FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES = RESHAPE(&
-                    & FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%LOCAL_GHOST_RECEIVE_INDICES, &
-                    & [FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx2)%NUMBER_OF_RECEIVE_GHOSTS], &
-                    & [CurrentDofLocalNo])
-                ENDIF
-
-                CurrentDofLocalNo=CurrentDofLocalNo+1
+                  CurrentDofLocalNo=CurrentDofLocalNo+1
 
 
-              ENDDO !lineIdx
+                ENDDO !lineIdx
+              ENDIF
               IF(ALLOCATED(SendBuffer2)) DEALLOCATE(SendBuffer2)
               IF(ALLOCATED(ReceiveBuffer2)) DEALLOCATE(ReceiveBuffer2)
               IF(ALLOCATED(dofGlobalNumberFromLineLocalNumber)) DEALLOCATE(dofGlobalNumberFromLineLocalNumber)
