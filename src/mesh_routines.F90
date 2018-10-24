@@ -233,7 +233,7 @@ MODULE MESH_ROUTINES
   PUBLIC MESHES_INITIALISE,MESHES_FINALISE
 
   ! original (Benjamin): old true, new true
-  LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .FALSE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
+  LOGICAL, PARAMETER :: USE_OLD_GLOBAL_IMPLEMENTATION = .TRUE.     ! code that doesn't get executed when this is set to false should be removed when removal of GLOBAL_TO_LOCAL_MAP
   LOGICAL, PARAMETER :: USE_NEW_LOCAL_IMPLEMENTATION = .TRUE.     ! new code
 
 CONTAINS
@@ -5930,8 +5930,9 @@ CONTAINS
               DEALLOCATE(LOCAL_ELEMENT_NUMBERS)
 
               !Calculate element local to global maps from global to local map
-              CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(ELEMENTS_MAPPING,ERR,ERROR,*999)
-
+              IF(.NOT.USE_NEW_LOCAL_IMPLEMENTATION) THEN
+                CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(ELEMENTS_MAPPING,ERR,ERROR,*999)
+              ENDIF
             ELSE
               CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
             ENDIF
@@ -6653,6 +6654,7 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_ELEMENTS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_NODES_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+
         DOMAIN%MAPPINGS%ELEMENTS=>DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
 
         !This case statement may have to be moved into the IF (USE_NEW_LOCAL_IMPLEMENTATION) part.
