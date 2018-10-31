@@ -1292,7 +1292,8 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   !> A type to hold the mapping from field dof numbers to field parameters (nodes, elements, etc)
   TYPE FIELD_DOF_TO_PARAM_MAP_TYPE
     INTEGER(INTG) :: NUMBER_OF_DOFS !<The number of degrees-of-freedom for the field.
-    INTEGER(INTG), ALLOCATABLE :: DOF_TYPE(:,:) !<DOF_TYPE(i=1..2,ny). The parameter type of the ny'th dof. When i=1 the DOF_TYPE is the type of the dof, i.e., 1=constant field dof, 2=element based field dof, 3=node based field dof, 4=point based field dof. When i=2 the DOF_TYPE gives the nyy'th number of the different field types and is used to index the XXX_DOF2PARAM_MAP arrays.
+    INTEGER(INTG), ALLOCATABLE :: DOF_TYPE(:,:) !<DOF_TYPE(i=1..2,ny). The parameter type of the ny'th dof. When i=1 the DOF_TYPE is the type of the dof, i.e., 1=constant field dof, 2=element based field dof, 3=face based field dof, 4=line based field dof,
+      ! 5=node based field dof, 6=grid_point based field dof. 7=gauss point based dof, 8=data point based dof. When i=2 the DOF_TYPE gives the nyy'th number of the different field types and is used to index the XXX_DOF2PARAM_MAP arrays.
     INTEGER(INTG) :: NUMBER_OF_CONSTANT_DOFS !<The number of constant degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_DOFS !<The number of element based degrees-of-freedom in the field dofs.
     INTEGER(INTG) :: NUMBER_OF_ELEMENT_AND_EXT_FACE_DOFS !<The number of element and external face based degrees-of-freedom in the field dofs.
@@ -1399,7 +1400,7 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     INTEGER(INTG) :: CONSTANT_PARAM2DOF_MAP !<The field variable dof number of the constant parameter for this field variable component.
     TYPE(FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE) :: ELEMENT_PARAM2DOF_MAP !> A type to hold the mapping from field element parameters to field dof numbers
     TYPE(FIELD_FACE_PARAM_TO_DOF_MAP_TYPE) :: FACE_PARAM2DOF_MAP !> A type to hold the mapping from field face parameters to field dof numbers
-    TYPE(FIELD_LINE_PARAM_TO_DOF_MAP_TYPE) :: LINE_PARAM2DOF_MAP !> A type to hold the mapping from field face parameters to field dof numbers
+    TYPE(FIELD_LINE_PARAM_TO_DOF_MAP_TYPE) :: LINE_PARAM2DOF_MAP !> A type to hold the mapping from field line parameters to field dof numbers
     TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_TYPE) :: NODE_PARAM2DOF_MAP !> A type to hold the mapping from field node parameters to field dof numbers
     TYPE(FIELD_GRID_POINT_PARAM_TO_DOF_MAP_TYPE) :: GRID_POINT_PARAM2DOF_MAP !> A type to hold the mapping from grid point element parameters to field dof numbers
     TYPE(FIELD_GAUSS_POINT_PARAM_TO_DOF_MAP_TYPE) :: GAUSS_POINT_PARAM2DOF_MAP !> A type to hold the mapping from field gauss point parameters to field dof numbers

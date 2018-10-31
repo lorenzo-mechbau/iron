@@ -2584,20 +2584,15 @@ CONTAINS
                   !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
                   !    & err,error,*999)
                   CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                    !Sparse matrices are not yet implemented for finite volume
-                    localError="The equations matrices sparsity type of "// &
-                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
-                    CALL FlagError(localError,err,error,*999)
-                  !   !FIXTHIS needs to be changed for FV
-                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
-                  !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
-                  !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
-                  !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
-                  !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
-                  !FIXTHIS Need to make cases to optomise storage for specific FV matrices
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                      & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                    ! CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                    !   & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                      & [EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE],err,error,*999)
+                    ! CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                    ! & EQUATIONS_MATRIX_FV_STRUCTURE,err,error,*999)
+
                   CASE DEFAULT
                     localError="The equations matrices sparsity type of "// &
                       & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
@@ -2633,17 +2628,12 @@ CONTAINS
                   !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
                   !    & err,error,*999)
                   CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                    !Sparse matrices are not yet implemented for finite volume
-                    localError="The equations matrices sparsity type of "// &
-                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
-                    CALL FlagError(localError,err,error,*999)
-                  !   !FIXTHIS needs to be changed for FV
-                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                     CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                       & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
                   !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
                   !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                      & [EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE],err,error,*999)
                   !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
                   !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
                   !FIXTHIS Need to make cases to optomise storage for specific FV matrices
@@ -2680,17 +2670,12 @@ CONTAINS
                   !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
                   !    & err,error,*999)
                   CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                    !Sparse matrices are not yet implemented for finite volume
-                    localError="The equations matrices sparsity type of "// &
-                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is not yet implemented for finite volume."
-                    CALL FlagError(localError,err,error,*999)
-                  !   !FIXTHIS needs to be changed for FV
-                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                  !     & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                      & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
                   !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
                   !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                  !     & [EQUATIONS_MATRIX_FEM_STRUCTURE],err,error,*999)
+                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                      & [EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE],err,error,*999)
                   !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
                   !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
                   !FIXTHIS Need to make cases to optomise storage for specific FV matrices
