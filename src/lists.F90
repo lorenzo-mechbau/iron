@@ -52,8 +52,8 @@ MODULE LISTS
   USE STRINGS
   USE TYPES
 
-#include "macros.h"  
-  
+#include "macros.h"
+
   IMPLICIT NONE
 
   PRIVATE
@@ -68,7 +68,7 @@ MODULE LISTS
   INTEGER(INTG), PARAMETER :: LIST_SP_TYPE=SINGLE_REAL_TYPE !<Single precision real data type for a list \see Lists_DataType,Lists
   INTEGER(INTG), PARAMETER :: LIST_DP_TYPE=DOUBLE_REAL_TYPE !<Double precision real data type for a list \see Lists_DataType,Lists
   !>@}
-  
+
   !> \addtogroup Lists_SortingOrder Lists::SortingOrder
   !> \brief Sorting order parameters for a list.
   !> \see Lists
@@ -80,7 +80,7 @@ MODULE LISTS
 
 
   !\todo Change lists sorting to use sorting module
-  
+
   !> \addtogroup Lists_SortingMethod Lists::SortingMethod
   !> \brief Sorting method parameters for a list.
   !> \see Lists
@@ -93,25 +93,25 @@ MODULE LISTS
   !Module types
 
   !Module variables
-  
+
   !Interfaces
 
   INTERFACE List_CreateFinish
     MODULE PROCEDURE LIST_CREATE_FINISH
   END INTERFACE List_CreateFinish
-  
+
   INTERFACE List_CreateStart
     MODULE PROCEDURE LIST_CREATE_START
   END INTERFACE List_CreateStart
-  
+
   INTERFACE List_DataDimensionSet
     MODULE PROCEDURE LIST_DATA_DIMENSION_SET
   END INTERFACE List_DataDimensionSet
-  
+
   INTERFACE List_DataTypeSet
     MODULE PROCEDURE LIST_DATA_TYPE_SET
   END INTERFACE List_DataTypeSet
-  
+
   !>Detaches the list values from a list and returns them as a pointer to a array of base type before destroying the list \see Lists.
   INTERFACE LIST_DETACH_AND_DESTROY
     MODULE PROCEDURE LIST_DETACH_AND_DESTROY_INTG1
@@ -141,7 +141,7 @@ MODULE LISTS
     MODULE PROCEDURE LIST_ITEM_ADD_DP1
     MODULE PROCEDURE LIST_ITEM_ADD_DP2
   END INTERFACE LIST_ITEM_ADD
-  
+
   !>Adds an item to the end of a list \see Lists.
   INTERFACE List_ItemAdd
     MODULE PROCEDURE LIST_ITEM_ADD_INTG1
@@ -151,11 +151,11 @@ MODULE LISTS
     MODULE PROCEDURE LIST_ITEM_ADD_DP1
     MODULE PROCEDURE LIST_ITEM_ADD_DP2
   END INTERFACE List_ItemAdd
-  
+
   INTERFACE List_ItemDelete
     MODULE PROCEDURE LIST_ITEM_DELETE
   END INTERFACE List_ItemDelete
-  
+
   !>Sets an item in the list \see Lists.
   INTERFACE LIST_ITEM_SET
     MODULE PROCEDURE LIST_ITEM_SET_INTG1
@@ -165,7 +165,7 @@ MODULE LISTS
     MODULE PROCEDURE LIST_ITEM_SET_DP1
     MODULE PROCEDURE LIST_ITEM_SET_DP2
   END INTERFACE LIST_ITEM_SET
-  
+
   !>Sets an item in the list \see Lists.
   INTERFACE List_ItemSet
     MODULE PROCEDURE LIST_ITEM_SET_INTG1
@@ -175,7 +175,7 @@ MODULE LISTS
     MODULE PROCEDURE LIST_ITEM_SET_DP1
     MODULE PROCEDURE LIST_ITEM_SET_DP2
   END INTERFACE List_ItemSet
-  
+
   !>Returns an item in a list at a specififed position. \see Lists.
   INTERFACE LIST_ITEM_GET
     MODULE PROCEDURE LIST_ITEM_GET_INTG1
@@ -213,23 +213,23 @@ MODULE LISTS
   INTERFACE List_InitialSizeSet
     MODULE PROCEDURE LIST_INITIAL_SIZE_SET
   END INTERFACE List_InitialSizeSet
-  
+
   INTERFACE List_KeyDimensionSet
     MODULE PROCEDURE LIST_KEY_DIMENSION_SET
   END INTERFACE List_KeyDimensionSet
-  
+
   INTERFACE List_MutableSet
     MODULE PROCEDURE LIST_MUTABLE_SET
   END INTERFACE List_MutableSet
-  
+
   INTERFACE List_NumberOfItemsGet
     MODULE PROCEDURE LIST_NUMBER_OF_ITEMS_GET
   END INTERFACE List_NumberOfItemsGet
-  
+
   INTERFACE List_RemoveDuplicates
     MODULE PROCEDURE LIST_REMOVE_DUPLICATES
   END INTERFACE List_RemoveDuplicates
-  
+
   !>Searches a list for a given value and returns the position in the list if the value exists \see Lists.
   INTERFACE List_Search
     MODULE PROCEDURE LIST_SEARCH_INTG_ARRAY
@@ -346,23 +346,25 @@ MODULE LISTS
   PUBLIC LIST_CREATE_FINISH,LIST_CREATE_START
 
   PUBLIC List_CreateFinish,List_CreateStart
-  
+
   PUBLIC LIST_DATA_DIMENSION_SET
 
   PUBLIC List_DataDimensionSet
-  
+
   PUBLIC LIST_DATA_TYPE_SET
 
   PUBLIC List_DataTypeSet
 
   PUBLIC LIST_DETACH_AND_DESTROY
 
+  PUBLIC LIST_EQUAL
+
   PUBLIC List_Destroy,List_DetachAndDestroy
 
   PUBLIC LIST_ITEM_ADD
 
   PUBLIC List_ItemAdd
-  
+
   PUBLIC LIST_ITEM_DELETE
 
   PUBLIC List_ItemDelete
@@ -378,7 +380,7 @@ MODULE LISTS
   PUBLIC LIST_ITEM_SET
 
   PUBLIC List_ItemSet
-  
+
   PUBLIC LIST_INITIAL_SIZE_SET
 
   PUBLIC List_InitialSizeSet
@@ -400,17 +402,17 @@ MODULE LISTS
   PUBLIC List_RemoveDuplicates
 
   PUBLIC LIST_SEARCH_LINEAR
-  
+
   PUBLIC List_Search,List_SearchLinear
-  
+
   PUBLIC LIST_SORT_BUBBLE,LIST_SORT_HEAP,LIST_SORT_SHELL
-  
+
   PUBLIC List_Sort,List_SortBubble,List_SortHeap,List_SortShell
 
   PUBLIC List_Itersection
 
   PUBLIC LIST_SUBSET_OF
-  
+
   PUBLIC List_SubsetOf
 
 CONTAINS
@@ -429,7 +431,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR
-    
+
     ENTERS("LIST_CREATE_FINISH",ERR,ERROR,*998)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -498,7 +500,7 @@ CONTAINS
     ENTERS("LIST_CREATE_START",ERR,ERROR,*999)
 
     CALL LIST_INITIALISE(LIST,ERR,ERROR,*999)
-    
+
     EXITS("LIST_CREATE_START")
     RETURN
 999 ERRORSEXITS("LIST_CREATE_START",ERR,ERROR)
@@ -513,7 +515,7 @@ CONTAINS
   SUBROUTINE LIST_DATA_DIMENSION_SET(LIST,DATA_DIMENSION,ERR,ERROR,*)
 
     !Argument Variables
-    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list 
+    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
     INTEGER(INTG), INTENT(IN) :: DATA_DIMENSION !<The data dimension of the list to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -552,7 +554,7 @@ CONTAINS
   SUBROUTINE LIST_MUTABLE_SET(LIST,MUTABLE,ERR,ERROR,*)
 
     !Argument Variables
-    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list 
+    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
     LOGICAL, INTENT(IN) :: MUTABLE !<The mutability of the list to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -583,7 +585,7 @@ CONTAINS
   SUBROUTINE LIST_DATA_TYPE_SET(LIST,DATA_TYPE,ERR,ERROR,*)
 
     !Argument Variables
-    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list 
+    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
     INTEGER(INTG), INTENT(IN) :: DATA_TYPE !<The data type of the list to set \see Lists_DataType,Lists
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -650,7 +652,7 @@ CONTAINS
   !
 
   !>Finalises a list and deallocates all memory.
-  SUBROUTINE LIST_FINALISE(LIST,ERR,ERROR,*)    
+  SUBROUTINE LIST_FINALISE(LIST,ERR,ERROR,*)
 
     !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list to finalise
@@ -831,7 +833,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
-    TYPE(VARYING_STRING) :: DUMMY_ERROR    
+    TYPE(VARYING_STRING) :: DUMMY_ERROR
 
     ENTERS("LIST_INITIALISE",ERR,ERROR,*998)
 
@@ -902,7 +904,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Adds an item to the end of an integer list of data dimension 1. 
+  !>Adds an item to the end of an integer list of data dimension 1.
   SUBROUTINE LIST_ITEM_ADD_INTG1(LIST,ITEM,ERR,ERROR,*)
    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
@@ -947,19 +949,19 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_ITEM_ADD_INTG1")
     RETURN
 999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
     ERRORSEXITS("LIST_ITEM_ADD_INTG1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_INTG1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Adds an item to the end of an integer list of data dimension > 1. 
+  !>Adds an item to the end of an integer list of data dimension > 1.
   SUBROUTINE LIST_ITEM_ADD_INTG2(LIST,ITEM,ERR,ERROR,*)
    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<A pointer to the list
@@ -1005,20 +1007,20 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_ITEM_ADD_INTG2")
     RETURN
 999 IF(ALLOCATED(NEW_LIST)) DEALLOCATE(NEW_LIST)
     ERRORSEXITS("LIST_ITEM_ADD_INTG2",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE LIST_ITEM_ADD_INTG2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Adds an item to the end of a single precision real list of data dimension 1. 
+  !>Adds an item to the end of a single precision real list of data dimension 1.
   SUBROUTINE LIST_ITEM_ADD_SP1(LIST,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1030,7 +1032,7 @@ CONTAINS
     INTEGER(INTG) :: NEW_SIZE
     REAL(SP), ALLOCATABLE :: NEW_LIST(:)
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_ADD_SP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1069,12 +1071,12 @@ CONTAINS
     ERRORSEXITS("LIST_ITEM_ADD_SP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_SP1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Adds an item to the end of a single precision real list of data dimension > 1. 
+  !>Adds an item to the end of a single precision real list of data dimension > 1.
   SUBROUTINE LIST_ITEM_ADD_SP2(LIST,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1086,7 +1088,7 @@ CONTAINS
     INTEGER(INTG) :: NEW_SIZE
     REAL(SP), ALLOCATABLE :: NEW_LIST(:,:)
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_ADD_SP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1127,7 +1129,7 @@ CONTAINS
     ERRORSEXITS("LIST_ITEM_ADD_SP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_SP2
-  
+
   !
   !================================================================================================================================
   !
@@ -1184,7 +1186,7 @@ CONTAINS
     ERRORSEXITS("LIST_ITEM_ADD_DP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_DP1
-  
+
   !
   !================================================================================================================================
   !
@@ -1242,12 +1244,12 @@ CONTAINS
     ERRORSEXITS("LIST_ITEM_ADD_DP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_ADD_DP2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Sets an item in an integer list of data dimension 1. 
+  !>Sets an item in an integer list of data dimension 1.
   SUBROUTINE LIST_ITEM_SET_INTG1(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
@@ -1292,18 +1294,18 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_ITEM_SET_INTG1")
     RETURN
 999 ERRORSEXITS("LIST_ITEM_SET_INTG1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_SET_INTG1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set an item in an integer list of data dimension > 1. 
+  !>Set an item in an integer list of data dimension > 1.
   SUBROUTINE LIST_ITEM_SET_INTG2(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
@@ -1349,19 +1351,19 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_ITEM_SET_INTG2")
     RETURN
 999 ERRORSEXITS("LIST_ITEM_SET_INTG2",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE LIST_ITEM_SET_INTG2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Sets an item in a single precision real list of data dimension 1. 
+  !>Sets an item in a single precision real list of data dimension 1.
   SUBROUTINE LIST_ITEM_SET_SP1(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1372,7 +1374,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_SET_SP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1411,12 +1413,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_SET_SP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_SET_SP1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Sets an item in a single precision real list of data dimension > 1. 
+  !>Sets an item in a single precision real list of data dimension > 1.
   SUBROUTINE LIST_ITEM_SET_SP2(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1427,7 +1429,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_SET_SP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1468,7 +1470,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_SET_SP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_SET_SP2
-  
+
   !
   !================================================================================================================================
   !
@@ -1478,7 +1480,7 @@ CONTAINS
 
     !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
-    INTEGER(INTG), INTENT(IN) :: LIST_ITEM !<The index of the item to set. 
+    INTEGER(INTG), INTENT(IN) :: LIST_ITEM !<The index of the item to set.
     REAL(DP), INTENT(IN) :: ITEM !<The item to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -1524,7 +1526,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_SET_DP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_SET_DP1
-  
+
   !
   !================================================================================================================================
   !
@@ -1581,12 +1583,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_SET_DP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_SET_DP2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given integer LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given integer LIST.
   SUBROUTINE LIST_ITEM_GET_INTG1(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1597,7 +1599,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_INTG1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1634,12 +1636,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_INTG1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_INTG1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given integer LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given integer LIST.
   SUBROUTINE LIST_ITEM_GET_INTG2(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1650,7 +1652,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_INTG2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1688,12 +1690,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_INTG2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_INTG2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given single precision LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given single precision LIST.
   SUBROUTINE LIST_ITEM_GET_SP1(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1704,7 +1706,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_SP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1741,12 +1743,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_SP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_SP1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given single precision LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given single precision LIST.
   SUBROUTINE LIST_ITEM_GET_SP2(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1757,7 +1759,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_SP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1795,12 +1797,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_SP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_SP2
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given double precision LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given double precision LIST.
   SUBROUTINE LIST_ITEM_GET_DP1(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1811,7 +1813,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_DP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1848,12 +1850,12 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_DP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_DP1
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Returns the ITEM in a list at position LIST_ITEM in the given double precision LIST. 
+  !>Returns the ITEM in a list at position LIST_ITEM in the given double precision LIST.
   SUBROUTINE LIST_ITEM_GET_DP2(LIST,LIST_ITEM,ITEM,ERR,ERROR,*)
 
     !Argument Variables
@@ -1864,7 +1866,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_GET_DP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1902,7 +1904,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_GET_DP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_GET_DP2
-  
+
   !
   !================================================================================================================================
   !
@@ -1918,7 +1920,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_INTG1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1947,7 +1949,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_IN_LIST_INTG1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_IN_LIST_INTG1
-  
+
   !
   !================================================================================================================================
   !
@@ -1963,7 +1965,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_INTG2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -1993,7 +1995,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_IN_LIST_INTG2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_IN_LIST_INTG2
-  
+
   !
   !================================================================================================================================
   !
@@ -2002,15 +2004,15 @@ CONTAINS
   !> LIST_ITEM is 0.
   SUBROUTINE LIST_ITEM_IN_LIST_SP1(LIST,ITEM,LIST_ITEM,ERR,ERROR,*)
 
-    !Argument Variables    
+    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<The pointer to the list
     REAL(SP), INTENT(IN) :: ITEM !<The item to find.
-    INTEGER(INTG), INTENT(OUT) :: LIST_ITEM !<On exit, the position of the item in the list. If the item does not exist then the value of 0 is returned.     
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code    
+    INTEGER(INTG), INTENT(OUT) :: LIST_ITEM !<On exit, the position of the item in the list. If the item does not exist then the value of 0 is returned.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_SP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -2039,7 +2041,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_IN_LIST_SP1",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_IN_LIST_SP1
-  
+
   !
   !================================================================================================================================
   !
@@ -2048,15 +2050,15 @@ CONTAINS
   !> LIST_ITEM is 0.
   SUBROUTINE LIST_ITEM_IN_LIST_SP2(LIST,ITEM,LIST_ITEM,ERR,ERROR,*)
 
-    !Argument Variables    
+    !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<The pointer to the list
     REAL(SP), INTENT(IN) :: ITEM(:) !<The item to find.
-    INTEGER(INTG), INTENT(OUT) :: LIST_ITEM !<On exit, the position of the item in the list. If the item does not exist then the value of 0 is returned.     
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code    
+    INTEGER(INTG), INTENT(OUT) :: LIST_ITEM !<On exit, the position of the item in the list. If the item does not exist then the value of 0 is returned.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_SP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -2086,7 +2088,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_IN_LIST_SP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_IN_LIST_SP2
-  
+
   !
   !================================================================================================================================
   !
@@ -2103,7 +2105,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_DP1",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -2149,7 +2151,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_ITEM_IN_LIST_DP2",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -2183,7 +2185,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Deletes the item given by the LIST_ITEM index from the given list.
   SUBROUTINE LIST_ITEM_DELETE(LIST,LIST_ITEM,ERR,ERROR,*)
 
@@ -2249,7 +2251,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_ITEM_DELETE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_ITEM_DELETE
-  
+
   !
   !================================================================================================================================
   !
@@ -2292,14 +2294,14 @@ CONTAINS
 
   !>Gets the current number of items in a list
   SUBROUTINE LIST_NUMBER_OF_ITEMS_GET(LIST,NUMBER_OF_ITEMS,ERR,ERROR,*)
-      
+
     !Argument variables
-    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list 
+    TYPE(LIST_TYPE), POINTER, INTENT(IN) :: LIST !<A pointer to the list
     INTEGER(INTG), INTENT(OUT) :: NUMBER_OF_ITEMS !<On exit, the current number of items in the list
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_NUMBER_OF_ITEMS_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -2311,13 +2313,13 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_NUMBER_OF_ITEMS_GET")
     RETURN
 999 ERRORSEXITS("LIST_NUMBER_OF_ITEMS_GET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_NUMBER_OF_ITEMS_GET
-  
+
   !
   !================================================================================================================================
   !
@@ -2366,7 +2368,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_INTG1")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_INTG1",ERR,ERROR)
@@ -2420,7 +2422,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_INTG2")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_INTG2",ERR,ERROR)
@@ -2475,7 +2477,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_SP1")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_SP1",ERR,ERROR)
@@ -2484,7 +2486,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Detaches the list values from a single precision real list of data dimension > 1 and returns them as an array
   !>of base type before destroying the list. The LIST_VALUES array must not be allocated on entry. It is up to the user to
   !>then deallocate the returned list memory.
@@ -2528,7 +2530,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_SP2")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_SP2",ERR,ERROR)
@@ -2538,7 +2540,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Detaches the list values from a double precision real list of data dimension 1 and returns them as an array
   !>of base type before destroying the list. The LIST_VALUES array must not be allocated on entry. It is up to the user
   !>to then deallocate the returned list memory.
@@ -2583,7 +2585,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_DP1")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_DP1",ERR,ERROR)
@@ -2593,7 +2595,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Detaches the list values from a double precision real list of data dimension > 1 and returns them as an array
   !>of base type before destroying the list. The LIST_VALUES array must not be allocated on entry. It is up to the user
   !>to then deallocate the returned list memory.
@@ -2637,12 +2639,99 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("LIST_DETACH_AND_DESTROY_DP2")
     RETURN
 999 ERRORSEXITS("LIST_DETACH_AND_DESTROY_DP2",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_DETACH_AND_DESTROY_DP2
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION LIST_EQUAL(LIST,LIST2,ERR,ERROR)
+
+    !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The pointer to the list
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST2 !<The pointer to the 2nd list to compare to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Function Variable
+    LOGICAL :: LIST_EQUAL  !< if the lists are equal
+    !Local Variables
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    INTEGER(INTG) :: I, J
+
+    ENTERS("LIST_EQUAL",ERR,ERROR,*999)
+    LIST_EQUAL = .FALSE.
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(ASSOCIATED(LIST2)) THEN
+          IF(LIST2%LIST_FINISHED) THEN
+            IF(LIST%DATA_TYPE/=LIST2%DATA_TYPE) RETURN
+            IF(LIST%DATA_DIMENSION/=LIST2%DATA_DIMENSION) RETURN
+            IF(LIST%NUMBER_IN_LIST/=LIST2%NUMBER_IN_LIST) RETURN
+
+            IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_INTG(I) /= LIST2%LIST_INTG(I)) RETURN
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_INTG2(J,I) /= LIST2%LIST_INTG2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_SP(I) /= LIST2%LIST_SP(I)) RETURN
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_SP2(J,I) /= LIST2%LIST_SP2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_DP(I) /= LIST2%LIST_DP(I)) RETURN
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_DP2(J,I) /= LIST2%LIST_DP2(J,I)) RETURN
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSE
+              CALL FlagError("List type is invalid.",ERR,ERROR,*999)
+            ENDIF
+            LIST_EQUAL = .TRUE.
+
+          ELSE
+            CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("List2 is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("List has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("LIST_EQUAL")
+    RETURN
+999 ERRORSEXITS("LIST_EQUAL",ERR,ERROR)
+    RETURN
+  END FUNCTION LIST_EQUAL
 
   !
   !================================================================================================================================
@@ -2667,7 +2756,7 @@ CONTAINS
         IF(LIST%NUMBER_IN_LIST>0) THEN
           IF(LIST%DATA_DIMENSION==1) THEN
             SELECT CASE(LIST%DATA_TYPE)
-            CASE(LIST_INTG_TYPE)              
+            CASE(LIST_INTG_TYPE)
               CALL LIST_SORT(LIST%LIST_INTG(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
               i=1
               DO WHILE(i<=LIST%NUMBER_IN_LIST)
@@ -2754,7 +2843,7 @@ CONTAINS
             END SELECT
           ELSE
             SELECT CASE(LIST%DATA_TYPE)
-            CASE(LIST_INTG_TYPE)              
+            CASE(LIST_INTG_TYPE)
               CALL LIST_SORT(LIST%LIST_INTG2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION,ERR,ERROR,*999)
               i=1
               DO WHILE(i<=LIST%NUMBER_IN_LIST)
@@ -2847,7 +2936,7 @@ CONTAINS
     ELSE
       CALL FlagError("List is not associated.",ERR,ERROR,*999)
     ENDIF
-  
+
     EXITS("LIST_REMOVE_DUPLICATES")
     RETURN
 999 ERRORSEXITS("LIST_REMOVE_DUPLICATES",ERR,ERROR)
@@ -2860,121 +2949,121 @@ CONTAINS
 
   !>Searches an integer array list A for VALUE. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_INTG_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: A(:) !<The list to search
     INTEGER(INTG), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SEARCH_INTG_ARRAY",ERR,ERROR,*999)
 
     !Default search method is a linear search
     CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)
-    
+
     EXITS("LIST_SEARCH_INTG_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_INTG_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_INTG_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches an integer array list A for VALUE. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_C_INT_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(IN) :: A(:) !<The list to search
     INTEGER(C_INT), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SEARCH_C_INT_ARRAY",ERR,ERROR,*999)
 
     !Default search method is a linear search
     CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)
-    
+
     EXITS("LIST_SEARCH_C_INT_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_C_INT_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_C_INT_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches a single precision real array list A for VALUE. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_SP_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
    !Argument variables
     REAL(SP), INTENT(IN) :: A(:) !<The list to search
     REAL(SP), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-   
+
     ENTERS("LIST_SEARCH_SP_ARRAY",ERR,ERROR,*999)
 
     !Default search method is a linear search
-    CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)    
-    
+    CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)
+
     EXITS("LIST_SEARCH_SP_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_SP_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_SP_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches a double precision real array list A for VALUE. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_DP_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(IN) :: A(:) !<The list to search
     REAL(DP), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SEARCH_DP_ARRAY",ERR,ERROR,*999)
 
     !Default search method is a linear search
-    CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)    
-    
+    CALL LIST_SEARCH_LINEAR(A,VALUE,POSITION,ERR,ERROR,*999)
+
     EXITS("LIST_SEARCH_DP_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_DP_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_DP_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches an integer array list A for VALUE using the linear search method. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_LINEAR_INTG_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: A(:) !<The list to search
     INTEGER(INTG), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: i
     LOGICAL :: FOUND
-    
+
     ENTERS("LIST_SEARCH_LINEAR_INTG_ARRAY",ERR,ERROR,*999)
 
     FOUND=.FALSE.
@@ -2991,30 +3080,30 @@ CONTAINS
     ELSE
       POSITION=0
     ENDIF
-    
+
     EXITS("LIST_SEARCH_LINEAR_INTG_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_LINEAR_INTG_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_LINEAR_INTG_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches an integer array list A for VALUE using the linear search method. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_LINEAR_C_INT_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(IN) :: A(:) !<The list to search
     INTEGER(C_INT), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: i
     LOGICAL :: FOUND
-    
+
     ENTERS("LIST_SEARCH_LINEAR_C_INT_ARRAY",ERR,ERROR,*999)
 
     FOUND=.FALSE.
@@ -3031,30 +3120,30 @@ CONTAINS
     ELSE
       POSITION=0
     ENDIF
-    
+
     EXITS("LIST_SEARCH_LINEAR_C_INT_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_LINEAR_C_INT_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_LINEAR_C_INT_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches a single precision real array list A for VALUE using the linear search method. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_LINEAR_SP_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(IN) :: A(:) !<The list to search
     REAL(SP), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: i
     LOGICAL :: FOUND
-    
+
     ENTERS("LIST_SEARCH_LINEAR_SP_ARRAY",ERR,ERROR,*999)
 
     FOUND=.FALSE.
@@ -3071,30 +3160,30 @@ CONTAINS
     ELSE
       POSITION=0
     ENDIF
-    
+
     EXITS("LIST_SEARCH_LINEAR_SP_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_LINEAR_SP_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_LINEAR_SP_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Searches a double precision real array list A for VALUE using the linear search method. If the search is successful POSITION contains the index of the position of VALUE in the list otherwise POSITION is zero.
   SUBROUTINE LIST_SEARCH_LINEAR_DP_ARRAY(A,VALUE,POSITION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(IN) :: A(:) !<The list to search
     REAL(DP), INTENT(IN) :: VALUE !<The value to search for
-    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero. 
+    INTEGER(INTG), INTENT(OUT) :: POSITION !<On exit, the position of value in the list. If value does not exist in the list the returned position is zero.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: i
     LOGICAL :: FOUND
-    
+
     ENTERS("LIST_SEARCH_LINEAR_DP_ARRAY",ERR,ERROR,*999)
 
     FOUND=.FALSE.
@@ -3111,27 +3200,27 @@ CONTAINS
     ELSE
       POSITION=0
     ENDIF
-    
+
     EXITS("LIST_SEARCH_LINEAR_DP_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SEARCH_LINEAR_DP_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SEARCH_LINEAR_DP_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts a list of into ascending order.
   SUBROUTINE LIST_SORT_LIST(LIST,ERR,ERROR,*)
-  
+
     !Argument variables
     TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_LIST",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LIST)) THEN
@@ -3143,13 +3232,13 @@ CONTAINS
             CASE(LIST_INTG_TYPE)
               CALL LIST_SORT_BUBBLE_INTG1_ARRAY(LIST%LIST_INTG(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
-              CALL LIST_SORT_BUBBLE_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)              
+              CALL LIST_SORT_BUBBLE_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
-              CALL LIST_SORT_BUBBLE_DP1_ARRAY(LIST%LIST_DP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999) 
+              CALL LIST_SORT_BUBBLE_DP1_ARRAY(LIST%LIST_DP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ELSE
             SELECT CASE(LIST%DATA_TYPE)
             CASE(LIST_INTG_TYPE)
@@ -3157,14 +3246,14 @@ CONTAINS
                 & ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
               CALL LIST_SORT_BUBBLE_SP2_ARRAY(LIST%LIST_SP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)              
+                & ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
               CALL LIST_SORT_BUBBLE_DP2_ARRAY(LIST%LIST_DP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)                            
+                & ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ENDIF
         CASE(LIST_SHELL_SORT_METHOD)
           IF(LIST%DATA_DIMENSION==1) THEN
@@ -3172,13 +3261,13 @@ CONTAINS
             CASE(LIST_INTG_TYPE)
               CALL LIST_SORT_SHELL_INTG1_ARRAY(LIST%LIST_INTG(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
-              CALL LIST_SORT_SHELL_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)              
+              CALL LIST_SORT_SHELL_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
               CALL LIST_SORT_SHELL_DP1_ARRAY(LIST%LIST_DP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ELSE
             SELECT CASE(LIST%DATA_TYPE)
             CASE(LIST_INTG_TYPE)
@@ -3186,14 +3275,14 @@ CONTAINS
                 & ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
               CALL LIST_SORT_SHELL_SP2_ARRAY(LIST%LIST_SP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)              
+                & ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
               CALL LIST_SORT_SHELL_DP2_ARRAY(LIST%LIST_DP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)                            
+                & ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ENDIF
         CASE(LIST_HEAP_SORT_METHOD)
           IF(LIST%DATA_DIMENSION==1) THEN
@@ -3201,13 +3290,13 @@ CONTAINS
             CASE(LIST_INTG_TYPE)
               CALL LIST_SORT_HEAP_INTG1_ARRAY(LIST%LIST_INTG(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
-              CALL LIST_SORT_HEAP_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)              
+              CALL LIST_SORT_HEAP_SP1_ARRAY(LIST%LIST_SP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
-              CALL LIST_SORT_HEAP_DP1_ARRAY(LIST%LIST_DP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)                            
+              CALL LIST_SORT_HEAP_DP1_ARRAY(LIST%LIST_DP(1:LIST%NUMBER_IN_LIST),ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ELSE
             SELECT CASE(LIST%DATA_TYPE)
             CASE(LIST_INTG_TYPE)
@@ -3215,14 +3304,14 @@ CONTAINS
                 & ERR,ERROR,*999)
             CASE(LIST_SP_TYPE)
               CALL LIST_SORT_HEAP_SP2_ARRAY(LIST%LIST_SP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)              
+                & ERR,ERROR,*999)
             CASE(LIST_DP_TYPE)
               CALL LIST_SORT_HEAP_DP2_ARRAY(LIST%LIST_DP2(:,1:LIST%NUMBER_IN_LIST),LIST%KEY_DIMENSION, &
-                & ERR,ERROR,*999)                            
+                & ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The list data type of "//TRIM(NumberToVString(LIST%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-            END SELECT            
+            END SELECT
           ENDIF
         CASE DEFAULT
           LOCAL_ERROR="The list sort method of "//TRIM(NumberToVString(LIST%SORT_METHOD,"*",ERR,ERROR))//" is invlaid."
@@ -3240,217 +3329,217 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_LIST",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_LIST
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array list of data dimension 1 into ascending order.
   SUBROUTINE LIST_SORT_INTG1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_INTG1_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_INTG1_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_INTG1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_INTG1_ARRAY
-  
+
    !
   !================================================================================================================================
   !
 
   !>Sorts an integer array list of data dimension > 1 into ascending order.
   SUBROUTINE LIST_SORT_INTG2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension to sort on
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_INTG2_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_INTG2_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_INTG2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_INTG2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array list of data dimension 1 into ascending order.
   SUBROUTINE LIST_SORT_C_INT1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_C_INT1_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_C_INT1_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_C_INT1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_C_INT1_ARRAY
-  
+
    !
   !================================================================================================================================
   !
 
   !>Sorts an integer array list of data dimension > 1 into ascending order.
   SUBROUTINE LIST_SORT_C_INT2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension to sort on
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_C_INT2_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_C_INT2_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_C_INT2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_C_INT2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an single precision array list of data dimension 1 into ascending order.
   SUBROUTINE LIST_SORT_SP1_ARRAY(A,ERR,ERROR,*)
-      
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_SP1_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_SP1_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_SP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an single precision array list of data dimension > 1 into ascending order.
   SUBROUTINE LIST_SORT_SP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-      
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension to sort the list on.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    
+
     ENTERS("LIST_SORT_SP2_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_SP2_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_SP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an double precision array list of data dimension 1 into ascending order.
   SUBROUTINE LIST_SORT_DP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-     
+
     ENTERS("LIST_SORT_DP1_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_DP1_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_DP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_DP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an double precision array list of data dimension > 1 into ascending order.
   SUBROUTINE LIST_SORT_DP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension to sort on.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-     
+
     ENTERS("LIST_SORT_DP2_ARRAY",ERR,ERROR,*999)
 
     !Default sort method is a heap sort
-    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)    
+    CALL LIST_SORT_HEAP(A,KEY_DIMENSION,ERR,ERROR,*999)
 
     EXITS("LIST_SORT_DP2_ARRAY")
     RETURN
 999 ERRORSEXITS("LIST_SORT_DP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_DP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_INTG performs a bubble sort on an integer array of data dimension 1 list
   SUBROUTINE LIST_SORT_BUBBLE_INTG1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: FLAG,i,j,k,VALUE
-    
+
     ENTERS("LIST_SORT_BUBBLE_INTG1_ARRAY",ERR,ERROR,*999)
 
     IF(SIZE(A,1)>1) THEN
@@ -3475,14 +3564,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_INTG1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_INTG1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_INTG performs a bubble sort on an integer array of data dimension > 1 list
   SUBROUTINE LIST_SORT_BUBBLE_INTG2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3491,7 +3580,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: FLAG,i,j,k,VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_BUBBLE_INTG2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -3522,14 +3611,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_INTG2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_INTG2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_C_INT performs a bubble sort on an integer array of data dimension 1 list
   SUBROUTINE LIST_SORT_BUBBLE_C_INT1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -3537,7 +3626,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: FLAG,i,j,k
     INTEGER(C_INT) :: VALUE
-    
+
     ENTERS("LIST_SORT_BUBBLE_C_INT1_ARRAY",ERR,ERROR,*999)
 
     IF(SIZE(A,1)>1) THEN
@@ -3562,14 +3651,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_C_INT1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_C_INT1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_C_INT performs a bubble sort on an integer array of data dimension > 1 list
   SUBROUTINE LIST_SORT_BUBBLE_C_INT2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3579,7 +3668,7 @@ CONTAINS
     INTEGER(INTG) :: FLAG,i,j,k
     INTEGER(C_INT) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_BUBBLE_C_INT2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -3610,14 +3699,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_C_INT2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_C_INT2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_SP performs a bubble sort on a single precision array of data dimension 1 list
   SUBROUTINE LIST_SORT_BUBBLE_SP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -3625,7 +3714,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: FLAG,i,j,k
     REAL(SP) :: VALUE
-    
+
     ENTERS("LIST_SORT_BUBBLE_SP1_ARRAY",ERR,ERROR,*999)
 
     IF(SIZE(A,1)>1) THEN
@@ -3650,14 +3739,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_SP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_SP1_ARRAY
-  
+
    !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_SP performs a bubble sort on a single precision array of data dimension > 1 list
   SUBROUTINE LIST_SORT_BUBBLE_SP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3667,7 +3756,7 @@ CONTAINS
     INTEGER(INTG) :: FLAG,i,j,k
     REAL(SP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-     
+
     ENTERS("LIST_SORT_BUBBLE_SP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -3698,14 +3787,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_SP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_SP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_DP performs a bubble sort on a double precision of data dimension 1 list
   SUBROUTINE LIST_SORT_BUBBLE_DP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -3713,7 +3802,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: FLAG,i,j,k
     REAL(DP) :: VALUE
-    
+
     ENTERS("LIST_SORT_BUBBLE_DP1_ARRAY",ERR,ERROR,*999)
 
     IF(SIZE(A,1)>1) THEN
@@ -3738,14 +3827,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_DP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_DP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>BUBBLE_SORT_DP performs a bubble sort on a double precision of data dimension > 1 list
   SUBROUTINE LIST_SORT_BUBBLE_DP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3755,7 +3844,7 @@ CONTAINS
     INTEGER(INTG) :: FLAG,i,j,k
     REAL(DP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_BUBBLE_DP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -3786,27 +3875,27 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_BUBBLE_DP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_BUBBLE_DP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_INTG1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: I,IVALUE,J,L,VALUE
-    
+
     ENTERS("LIST_SORT_HEAP_INTG1_ARRAY",ERR,ERROR,*999)
 
-    IF(SIZE(A,1)>1) THEN      
+    IF(SIZE(A,1)>1) THEN
       L=SIZE(A,1)/2+1
       IVALUE=SIZE(A,1)
-      DO 
+      DO
         IF(L>1) THEN
           L=L-1
           VALUE=A(L)
@@ -3842,14 +3931,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_INTG1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_INTG1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension > 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_INTG2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3858,14 +3947,14 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,IVALUE,J,L,VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_HEAP_INTG2_ARRAY",ERR,ERROR,*999)
-    
+
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
-      IF(SIZE(A,2)>1) THEN      
+      IF(SIZE(A,2)>1) THEN
         L=SIZE(A,2)/2+1
         IVALUE=SIZE(A,2)
-        DO 
+        DO
           IF(L>1) THEN
             L=L-1
             VALUE=A(:,L)
@@ -3906,14 +3995,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_INTG2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_INTG2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_C_INT1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -3921,13 +4010,13 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,J,L
     INTEGER(C_INT) :: IVALUE,VALUE
-    
+
     ENTERS("LIST_SORT_HEAP_C_INT1_ARRAY",ERR,ERROR,*999)
 
-    IF(SIZE(A,1)>1) THEN      
+    IF(SIZE(A,1)>1) THEN
       L=SIZE(A,1)/2+1
       IVALUE=SIZE(A,1)
-      DO 
+      DO
         IF(L>1) THEN
           L=L-1
           VALUE=A(L)
@@ -3963,14 +4052,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_C_INT1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_C_INT1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension > 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_C_INT2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -3980,14 +4069,14 @@ CONTAINS
     INTEGER(INTG) :: I,J,L
     INTEGER(C_INT) :: IVALUE,VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_HEAP_C_INT2_ARRAY",ERR,ERROR,*999)
-    
+
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
-      IF(SIZE(A,2)>1) THEN      
+      IF(SIZE(A,2)>1) THEN
         L=SIZE(A,2)/2+1
         IVALUE=SIZE(A,2)
-        DO 
+        DO
           IF(L>1) THEN
             L=L-1
             VALUE=A(:,L)
@@ -4028,14 +4117,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_C_INT2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_C_INT2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts a real single precision array of data dimension 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_SP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -4043,13 +4132,13 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,IVALUE,J,L
     REAL(SP) :: VALUE
-    
+
     ENTERS("LIST_SORT_HEAP_SP1_ARRAY",ERR,ERROR,*999)
 
-    IF(SIZE(A,1)>1) THEN      
+    IF(SIZE(A,1)>1) THEN
       L=SIZE(A,1)/2+1
       IVALUE=SIZE(A,1)
-      DO 
+      DO
         IF(L>1) THEN
           L=L-1
           VALUE=A(L)
@@ -4085,14 +4174,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_SP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_SP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts a real single precision array of data dimension > 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_SP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4102,14 +4191,14 @@ CONTAINS
     INTEGER(INTG) :: I,IVALUE,J,L
     REAL(SP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_HEAP_SP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
-      IF(SIZE(A,2)>1) THEN      
+      IF(SIZE(A,2)>1) THEN
         L=SIZE(A,2)/2+1
         IVALUE=SIZE(A,2)
-        DO 
+        DO
           IF(L>1) THEN
             L=L-1
             VALUE=A(:,L)
@@ -4150,14 +4239,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_SP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_SP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
-  
+
   !>Sorts a real double precision array of data dimension 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_DP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -4165,13 +4254,13 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,IVALUE,J,L
     REAL(DP) :: VALUE
-    
+
     ENTERS("LIST_SORT_HEAP_DP1_ARRAY",ERR,ERROR,*999)
 
-    IF(SIZE(A,1)>1) THEN      
+    IF(SIZE(A,1)>1) THEN
       L=SIZE(A,1)/2+1
       IVALUE=SIZE(A,1)
-      DO 
+      DO
         IF(L>1) THEN
           L=L-1
           VALUE=A(L)
@@ -4207,14 +4296,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_DP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_DP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
-  
+
   !>Sorts a real double precision array of data dimension > 1 list into assending order using the heap sort method.
   SUBROUTINE LIST_SORT_HEAP_DP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4224,14 +4313,14 @@ CONTAINS
     INTEGER(INTG) :: I,IVALUE,J,L
     REAL(DP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-   
+
     ENTERS("LIST_SORT_HEAP_DP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
-      IF(SIZE(A,2)>1) THEN      
+      IF(SIZE(A,2)>1) THEN
         L=SIZE(A,2)/2+1
         IVALUE=SIZE(A,2)
-        DO 
+        DO
           IF(L>1) THEN
             L=L-1
             VALUE=A(:,L)
@@ -4272,21 +4361,21 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_HEAP_DP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_HEAP_DP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension 1 list into either assending or descending order using the shell sort method.
   SUBROUTINE LIST_SORT_SHELL_INTG1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     INTEGER(INTG) :: I,INC,J,VALUE
-    
+
     ENTERS("LIST_SORT_SHELL_INTG1_ARRAY",ERR,ERROR,*999)
 
     INC=4
@@ -4312,14 +4401,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_INTG1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_INTG1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension > 1 list into either assending or descending order using the shell sort method.
   SUBROUTINE LIST_SORT_SHELL_INTG2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(INTG), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4328,7 +4417,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,INC,J,VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-   
+
     ENTERS("LIST_SORT_SHELL_INTG2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -4360,14 +4449,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_INTG2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_INTG2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension 1 list into either assending or descending order using the shell sort method.
   SUBROUTINE LIST_SORT_SHELL_C_INT1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -4375,7 +4464,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,INC,J
     INTEGER(C_INT) :: VALUE
-    
+
     ENTERS("LIST_SORT_SHELL_C_INT1_ARRAY",ERR,ERROR,*999)
 
     INC=4
@@ -4401,14 +4490,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_C_INT1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_C_INT1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Sorts an integer array of data dimension > 1 list into either assending or descending order using the shell sort method.
   SUBROUTINE LIST_SORT_SHELL_C_INT2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     INTEGER(C_INT), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4418,7 +4507,7 @@ CONTAINS
     INTEGER(INTG) :: I,INC,J
     INTEGER(C_INT) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-   
+
     ENTERS("LIST_SORT_SHELL_C_INT2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -4450,7 +4539,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_C_INT2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_C_INT2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
@@ -4458,7 +4547,7 @@ CONTAINS
   !>Sorts a real single precision array of data dimension 1 list into either assending or descending order using the shell
   !>sort method.
   SUBROUTINE LIST_SORT_SHELL_SP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:) !<The list to sort
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -4466,7 +4555,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,INC,J
     REAL(SP) :: VALUE
-    
+
     ENTERS("LIST_SORT_SHELL_SP1_ARRAY",ERR,ERROR,*999)
 
     INC=4
@@ -4492,7 +4581,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_SP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_SP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
@@ -4500,7 +4589,7 @@ CONTAINS
   !>Sorts a real single precision array of data dimension > 1 list into either assending or descending order using the shell
   !>sort method.
   SUBROUTINE LIST_SORT_SHELL_SP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(SP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4510,7 +4599,7 @@ CONTAINS
     INTEGER(INTG) :: I,INC,J
     REAL(SP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_SHELL_SP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -4542,7 +4631,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_SP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_SP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
@@ -4550,7 +4639,7 @@ CONTAINS
   !>Sorts a real double precision array of data dimension 1 list into either assending or descending order using the shell
   !>sort method.
   SUBROUTINE LIST_SORT_SHELL_DP1_ARRAY(A,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:)
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
@@ -4558,7 +4647,7 @@ CONTAINS
     !Local variables
     INTEGER(INTG) :: I,INC,J
     REAL(DP) :: VALUE
-    
+
     ENTERS("LIST_SORT_SHELL_DP1_ARRAY",ERR,ERROR,*999)
 
     INC=4
@@ -4584,7 +4673,7 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_DP1_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_DP1_ARRAY
-  
+
   !
   !================================================================================================================================
   !
@@ -4592,7 +4681,7 @@ CONTAINS
   !>Sorts a real double precision array of data dimension 2 list into either assending or descending order using the shell
   !>sort method.
   SUBROUTINE LIST_SORT_SHELL_DP2_ARRAY(A,KEY_DIMENSION,ERR,ERROR,*)
-  
+
     !Argument variables
     REAL(DP), INTENT(INOUT) :: A(:,:) !<The list to sort
     INTEGER(INTG), INTENT(IN) :: KEY_DIMENSION !<The key dimension of A to do the sort on
@@ -4602,7 +4691,7 @@ CONTAINS
     INTEGER(INTG) :: I,INC,J
     REAL(DP) :: VALUE(SIZE(A,1))
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("LIST_SORT_SHELL_DP2_ARRAY",ERR,ERROR,*999)
 
     IF(KEY_DIMENSION>0.AND.KEY_DIMENSION<=SIZE(A,1)) THEN
@@ -4634,14 +4723,14 @@ CONTAINS
 999 ERRORSEXITS("LIST_SORT_SHELL_DP2_ARRAY",ERR,ERROR)
     RETURN 1
   END SUBROUTINE LIST_SORT_SHELL_DP2_ARRAY
-  
+
   !
   !================================================================================================================================
   !
 
   !>Finds the intersection of two sets (arrays), leaving the original arrays intact
   SUBROUTINE LIST_INTERSECTION_INTG_ARRAY(A,B,C,ERR,ERROR,*)
-    
+
     ! Argument variables
     INTEGER(INTG), INTENT(IN), TARGET :: A(:)   !<One of the two arrays to find the intersection for
     INTEGER(INTG), INTENT(IN), TARGET :: B(:)   !<Other array to find the intersection for
@@ -4654,7 +4743,7 @@ CONTAINS
     INTEGER(INTG), POINTER :: LONGER(:),SHORTER(:)
     INTEGER(INTG), ALLOCATABLE :: MATCHES(:)
     INTEGER(INTG), ALLOCATABLE :: LONG_ARRAY(:),SHORT_ARRAY(:)   !<copies, if needed
-    
+
     ENTERS("LIST_INTERSECTION_INTG_ARRAY",ERR,ERROR,*999)
 
     ! if the lists are small, it's probably easier to directly compare: O(n^2)
@@ -4736,7 +4825,7 @@ CONTAINS
 
   !>Finds the intersection of two sets (arrays), leaving the original arrays intact
   SUBROUTINE LIST_INTERSECTION_C_INT_ARRAY(A,B,C,ERR,ERROR,*)
-    
+
     ! Argument variables
     INTEGER(C_INT), INTENT(IN), TARGET :: A(:)   !<One of the two arrays to find the intersection for
     INTEGER(C_INT), INTENT(IN), TARGET :: B(:)   !<Other array to find the intersection for
@@ -4749,7 +4838,7 @@ CONTAINS
     INTEGER(C_INT), POINTER :: LONGER(:),SHORTER(:)
     INTEGER(C_INT), ALLOCATABLE :: MATCHES(:)
     INTEGER(C_INT), ALLOCATABLE :: LONG_ARRAY(:),SHORT_ARRAY(:)   !<copies, if needed
-    
+
     ENTERS("LIST_INTERSECTION_C_INT_ARRAY",ERR,ERROR,*999)
 
     ! if the lists are small, it's probably easier to directly compare: O(n^2)
@@ -4846,7 +4935,7 @@ CONTAINS
     SIZE_A=SIZE(A)
     SIZE_B=SIZE(B)
     SUBSET=.FALSE.
-    
+
     ! some easy tests
     IF(SIZE_A>SIZE_B) THEN
       EXITS("Lists_SUBSET_OF_INTG_ARRAY")
@@ -4930,7 +5019,7 @@ CONTAINS
     SIZE_A=SIZE(A)
     SIZE_B=SIZE(B)
     SUBSET=.FALSE.
-    
+
     ! some easy tests
     IF(SIZE_A>SIZE_B) THEN
       EXITS("Lists_SUBSET_OF_C_INT_ARRAY")

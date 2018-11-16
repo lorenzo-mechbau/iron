@@ -106,7 +106,7 @@ MODULE OpenCMISS_Iron
   USE Kinds
   USE MESH_ROUTINES
   USE MeshAccessRoutines
-  USE NODE_ROUTINES
+  USE NodeRoutines
   USE PROBLEM_CONSTANTS
   USE PROBLEM_ROUTINES
   USE ProblemAccessRoutines
@@ -288,7 +288,7 @@ MODULE OpenCMISS_Iron
   !>Contains information on the nodes defined on a region.
   TYPE cmfe_NodesType
     PRIVATE
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
   END TYPE cmfe_NodesType
 
   !>Contains information for a problem.
@@ -373,6 +373,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_DecompositionType,cmfe_Decomposition_Finalise,cmfe_Decomposition_Initialise
 
   PUBLIC cmfe_Decomposition_CalculateFacesSet,cmfe_Decomposition_CalculateLinesSet
+
+  PUBLIC cmfe_Decomposition_CalculateCentroidsSet,cmfe_Decomposition_CalculateCentreLengthsSet
 
   PUBLIC cmfe_EquationsType,cmfe_Equations_Finalise,cmfe_Equations_Initialise
 
@@ -625,7 +627,7 @@ MODULE OpenCMISS_Iron
   !> \addtogroup OpenCMISS_BasisTypes OpenCMISS::Iron::Basis::BasisTypes
   !> \brief Basis definition type parameters.
   !> \see OpenCMISS::Iron::BasisConstants,OpenCMISS
-  !>@{ 
+  !>@{
   INTEGER(INTG), PARAMETER :: CMFE_BASIS_LAGRANGE_HERMITE_TP_TYPE = BASIS_LAGRANGE_HERMITE_TP_TYPE !<Lagrange-Hermite tensor product basis type \see OpenCMISS_BasisTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_BASIS_SIMPLEX_TYPE = BASIS_SIMPLEX_TYPE !<Simplex basis type \see OpenCMISS_BasisTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_BASIS_SERENDIPITY_TYPE = BASIS_SERENDIPITY_TYPE !<Serendipity basis type \see OpenCMISS_BasisTypes,OpenCMISS
@@ -939,6 +941,20 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_BoundaryConditions_AddNodeObj
   END INTERFACE cmfe_BoundaryConditions_AddNode
 
+  !>Sets the value of the face specified with element number and xi direction as a boundary condition on the specified face.
+  INTERFACE cmfe_BoundaryConditions_SetFace
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceNumber0
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceNumber1
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetFaceObj
+  END INTERFACE cmfe_BoundaryConditions_SetFace
+
+  !>Sets the value of the line specified with element number and xi direction as a boundary condition on the specified line.
+  INTERFACE cmfe_BoundaryConditions_SetLine
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineNumber0
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineNumber1
+    MODULE PROCEDURE cmfe_BoundaryConditions_SetLineObj
+  END INTERFACE cmfe_BoundaryConditions_SetLine
+
   !>Sets the value of the specified node as a boundary condition on the specified node.
   INTERFACE cmfe_BoundaryConditions_SetNode
     MODULE PROCEDURE cmfe_BoundaryConditions_SetNodeNumber0
@@ -980,6 +996,10 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_BoundaryConditions_AddElement,cmfe_BoundaryConditions_SetElement
 
   PUBLIC cmfe_BoundaryConditions_AddNode,cmfe_BoundaryConditions_SetNode
+
+  PUBLIC cmfe_BoundaryConditions_SetFace
+
+  PUBLIC cmfe_BoundaryConditions_SetLine
 
   PUBLIC cmfe_BoundaryConditions_NeumannSparsityTypeSet
 
@@ -1452,7 +1472,7 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_ControlLoop_AbsoluteToleranceSetObj
   END INTERFACE cmfe_ControlLoop_AbsoluteToleranceSet
 
-  !>Returns the number of iterations for a time control loop. If the returned value is 0, that means that the number has not yet been computed. 
+  !>Returns the number of iterations for a time control loop. If the returned value is 0, that means that the number has not yet been computed.
   INTERFACE cmfe_ControlLoop_NumberOfIterationsGet
     MODULE PROCEDURE cmfe_ControlLoop_NumberOfIterationsGetNumber0
     MODULE PROCEDURE cmfe_ControlLoop_NumberOfIterationsGetNumber1
@@ -1548,7 +1568,7 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_ControlLoop_AbsoluteToleranceSet
 
   PUBLIC cmfe_ControlLoop_NumberOfIterationsGet, cmfe_ControlLoop_NumberOfIterationsSet
-  
+
   PUBLIC cmfe_ControlLoop_NumberOfSubLoopsGet,cmfe_ControlLoop_NumberOfSubLoopsSet
 
   PUBLIC cmfe_ControlLoop_OutputTypeGet,cmfe_ControlLoop_OutputTypeSet
@@ -2315,6 +2335,18 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Equations_DestroyObj
   END INTERFACE cmfe_Equations_Destroy
 
+  !>Sets/changes the Jacobian matrix calculation types for equations
+  INTERFACE cmfe_Equations_JacobianCalculationTypeSet
+    MODULE PROCEDURE cmfe_Equations_JacobianCalculationTypeSetNumber
+    MODULE PROCEDURE cmfe_Equations_JacobianCalculationTypeSetObj
+  END INTERFACE cmfe_Equations_JacobianCalculationTypeSet
+
+  !>Sets/changes the Jacobian matrix finite difference step size for equations
+  INTERFACE cmfe_Equations_JacobianFiniteDifferenceStepSizeSet
+    MODULE PROCEDURE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber
+    MODULE PROCEDURE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj
+  END INTERFACE cmfe_Equations_JacobianFiniteDifferenceStepSizeSet
+
   !>Gets the linearity type for equations.
   INTERFACE cmfe_Equations_LinearityTypeGet
     MODULE PROCEDURE cmfe_Equations_LinearityTypeGetNumber
@@ -2390,7 +2422,9 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Equations_TimeDependenceTypeGet
 
-  PUBLIC cmfe_Equations_JacobianMatricesTypesSet
+  PUBLIC cmfe_Equations_JacobianCalculationTypeSet
+
+  PUBLIC cmfe_Equations_JacobianFiniteDifferenceStepSizeSet
 
   PUBLIC cmfe_Equations_NumberOfLinearMatricesGet
 
@@ -2788,7 +2822,19 @@ MODULE OpenCMISS_Iron
     & EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE !<Coupled 1D Monodomain 3D Elasticity equations set subtype \see OpenCMISS_EquationsSetSubtypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE = &
     & EQUATIONS_SET_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE !<Finite Elasticity Navier Stokes ALE equations set subtype \see OpenCMISS_EquationsSetSubtype,OpenCMISS
-
+  !>@}
+  !> \addtogroup OpenCMISS_EquationsSetFVVariableType OpenCMISS::Iron::EquationsSet::FVVariableType
+  !> \brief The equationSet for FV with a specified variable type, i.e velocity, mass flow rate or pressure.
+  !> \see OpenCMISS::Iron::EquationsSet,OpenCMISS
+  !>@{
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_NO_FV_VARIABLETYPE = &
+    & EQUATIONS_SET_NO_FV_VARIABLETYPE !<No equations set multiple\see OpenCMISS_EquationsSetMultiple,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE = &
+    & EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE !<equation set for the velocity for finite volume \see OpenCMISS_EquationsSetMultiple,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE = &
+    & EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE !<equation set for the massflow rate at faces for finite volume \see OpenCMISS_EquationsSetMultiple,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE = &
+    & EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE !<equation set for the pressure for finite volume \see OpenCMISS_EquationsSetMultiple,OpenCMISS
   !>@}
   !> \addtogroup OpenCMISS_EquationsSetFittingSmoothingTypes OpenCMISS::Iron::EquationsSet::Fitting::SmoothingTypes
   !> \brief The smoothing types for fitting equations sets.
@@ -3172,6 +3218,9 @@ MODULE OpenCMISS_Iron
     & CMFE_EQUATIONS_SET_RATE_BASED_SMOOTH_MODEL_SUBTYPE,CMFE_EQUATIONS_SET_COMPRESSIBLE_RATE_BASED_SMOOTH_MODEL_SUBTYPE, &
     & CMFE_EQUATIONS_SET_RATE_BASED_GROWTH_MODEL_SUBTYPE,CMFE_EQUATIONS_SET_COMPRESSIBLE_RATE_BASED_GROWTH_MODEL_SUBTYPE
 
+  PUBLIC CMFE_EQUATIONS_SET_NO_FV_VARIABLETYPE, CMFE_EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE, &
+    & CMFE_EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE, CMFE_EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE
+
   PUBLIC CMFE_EQUATIONS_SET_FITTING_NO_SMOOTHING,CMFE_EQUATIONS_SET_FITTING_SOBOLEV_VALUE_SMOOTHING, &
     & CMFE_EQUATIONS_SET_FITTING_SOBOLEV_DIFFERENCE_SMOOTHING,CMFE_EQUATIONS_SET_FITTING_STRAIN_ENERGY_SMOOTHING
 
@@ -3186,7 +3235,7 @@ MODULE OpenCMISS_Iron
     & CMFE_EQUATIONS_SET_DERIVED_L_CAUCHY_GREEN_DEFORMATION,CMFE_EQUATIONS_SET_DERIVED_GREEN_LAGRANGE_STRAIN, &
     & CMFE_EQUATIONS_SET_DERIVED_CAUCHY_STRESS,CMFE_EQUATIONS_SET_DERIVED_FIRST_PK_STRESS, &
     & CMFE_EQUATIONS_SET_DERIVED_SECOND_PK_STRESS
- 
+
   PUBLIC CMFE_EQUATIONS_MATRIX_STIFFNESS,CMFE_EQUATIONS_MATRIX_DAMPING,CMFE_EQUATIONS_MATRIX_MASS
 
   PUBLIC CMFE_EQUATIONS_SET_NO_OUTPUT,CMFE_EQUATIONS_SET_PROGRESS_OUTPUT
@@ -3493,7 +3542,7 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_EquationsSet_DerivedVariableSetNumber
     MODULE PROCEDURE cmfe_EquationsSet_DerivedVariableSetObj
   END INTERFACE cmfe_EquationsSet_DerivedVariableSet
-  
+
   !>Evaluate a tensor at a given element Gauss location.
   INTERFACE cmfe_EquationsSet_TensorInterpolateGaussPoint
     MODULE PROCEDURE cmfe_EquationsSet_TensorInterpolateGaussPointNumber
@@ -3626,10 +3675,14 @@ MODULE OpenCMISS_Iron
   !>@{
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_CONSTANT_INTERPOLATION = FIELD_CONSTANT_INTERPOLATION !<Constant interpolation. One parameter for the field \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_BASED_INTERPOLATION = FIELD_ELEMENT_BASED_INTERPOLATION !<Element based interpolation. Parameters are different in each element \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_FACE_BASED_INTERPOLATION = FIELD_FACE_BASED_INTERPOLATION !<Face based interpolation. Parameters are different on each face \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_LINE_BASED_INTERPOLATION = FIELD_LINE_BASED_INTERPOLATION !<Line based interpolation. Parameters are different on each line \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_NODE_BASED_INTERPOLATION = FIELD_NODE_BASED_INTERPOLATION !<Node based interpolation. Parameters are nodal based and a basis function is used \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION = FIELD_GRID_POINT_BASED_INTERPOLATION !<Grid point based interpolation. Parameters are different at each grid point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION = FIELD_GAUSS_POINT_BASED_INTERPOLATION !<Gauss point based interpolation. Parameters are different at each Gauss point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION = FIELD_DATA_POINT_BASED_INTERPOLATION !<Data point based interpolation. Parameters are different at each data point \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION = FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION !<Element and external boundary face based interpolation. Parameters are different in each element and there are different parameters at the boundary faces of the mesh \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION = FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION !<Element and external boundary line based interpolation. Parameters are different in each element and there are different parameters at the boundary lines of the mesh \see OpenCMISS_FieldInterpolationTypes,OpenCMISS
   !>@}
   !> \addtogroup OpenCMISS_FieldVariableTypes OpenCMISS::Iron::Field::VariableTypes
   !> \brief Field variable type parameters.
@@ -3645,6 +3698,7 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DELVDELT_VARIABLE_TYPE = FIELD_DELVDELT_VARIABLE_TYPE !<Second first time derivative variable type i.e., dv/dt \see OpenCMISS_FieldVariableTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DEL2VDELT2_VARIABLE_TYPE = FIELD_DEL2VDELT2_VARIABLE_TYPE !<Second second time derivative variable type i.e., d^2v/dt^2 \see OpenCMISS_FieldVariableTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_W_VARIABLE_TYPE = FIELD_W_VARIABLE_TYPE !<Third standard variable type i.e., w \see OpenCMISS_FieldVariableTypes,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_DELWDELN_VARIABLE_TYPE = FIELD_DELWDELN_VARIABLE_TYPE !<Third normal derivative variable type i.e., w \see OpenCMISS_FieldVariableTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_U1_VARIABLE_TYPE = FIELD_U1_VARIABLE_TYPE !<Standard variable type i.e., u \see OpenCMISS_FieldVariableTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DELU1DELN_VARIABLE_TYPE = FIELD_DELU1DELN_VARIABLE_TYPE !<Normal derivative variable type i.e., du/dn \see OpenCMISS_FieldVariableTypes,OpenCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_DELU1DELT_VARIABLE_TYPE = FIELD_DELU1DELT_VARIABLE_TYPE !<First time derivative variable type i.e., du/dt \see OpenCMISS_FieldVariableTypes,OpenCMISS
@@ -4296,8 +4350,9 @@ MODULE OpenCMISS_Iron
     & CMFE_FIELD_GEOMETRIC_GENERAL_TYPE
 
   PUBLIC CMFE_FIELD_CONSTANT_INTERPOLATION,CMFE_FIELD_ELEMENT_BASED_INTERPOLATION,CMFE_FIELD_NODE_BASED_INTERPOLATION, &
-    & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, &
-    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION
+    & CMFE_FIELD_GRID_POINT_BASED_INTERPOLATION,CMFE_FIELD_GAUSS_POINT_BASED_INTERPOLATION, CMFE_FIELD_FACE_BASED_INTERPOLATION, &
+    & CMFE_FIELD_DATA_POINT_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION, &
+    & CMFE_FIELD_LINE_BASED_INTERPOLATION, CMFE_FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION
 
   PUBLIC CMFE_FIELD_NUMBER_OF_VARIABLE_SUBTYPES
 
@@ -4305,7 +4360,7 @@ MODULE OpenCMISS_Iron
     & CMFE_FIELD_DEL2UDELT2_VARIABLE_TYPE, &
     & CMFE_FIELD_V_VARIABLE_TYPE,CMFE_FIELD_DELVDELN_VARIABLE_TYPE,CMFE_FIELD_DELVDELT_VARIABLE_TYPE, &
     & CMFE_FIELD_DEL2VDELT2_VARIABLE_TYPE, &
-    & CMFE_FIELD_W_VARIABLE_TYPE, &
+    & CMFE_FIELD_W_VARIABLE_TYPE, CMFE_FIELD_DELWDELN_VARIABLE_TYPE, &
     & CMFE_FIELD_U1_VARIABLE_TYPE,CMFE_FIELD_DELU1DELN_VARIABLE_TYPE,CMFE_FIELD_DELU1DELT_VARIABLE_TYPE, &
     & CMFE_FIELD_DEL2U1DELT2_VARIABLE_TYPE, &
     & CMFE_FIELD_U2_VARIABLE_TYPE,CMFE_FIELD_DELU2DELN_VARIABLE_TYPE,CMFE_FIELD_DELU2DELT_VARIABLE_TYPE, &
@@ -5292,6 +5347,18 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Decomposition_CalculateFacesSetObj
   END INTERFACE cmfe_Decomposition_CalculateFacesSet
 
+  !>Sets/changes whether Centroids should be calculated for the decomposition.
+  INTERFACE cmfe_Decomposition_CalculateCentroidsSet
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentroidsSetNumber
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentroidsSetObj
+  END INTERFACE cmfe_Decomposition_CalculateCentroidsSet
+
+  !>Sets/changes whether the finite volume lengths should be calculated for the decomposition.
+  INTERFACE cmfe_Decomposition_CalculateCentreLengthsSet
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentreLengthsSetNumber
+    MODULE PROCEDURE cmfe_Decomposition_CalculateCentreLengthsSetObj
+  END INTERFACE cmfe_Decomposition_CalculateCentreLengthsSet
+
   !>Finishes the creation of a mesh. \see OpenCMISS::Iron::cmfe_Mesh_CreateStart
   INTERFACE cmfe_Mesh_CreateFinish
     MODULE PROCEDURE cmfe_Mesh_CreateFinishNumber
@@ -5685,7 +5752,7 @@ MODULE OpenCMISS_Iron
 
 !!==================================================================================================================================
 !!
-!! NODE_ROUTINES
+!! NodeRoutines
 !!
 !!==================================================================================================================================
 
@@ -5992,6 +6059,14 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FE_CONTACT_REPROJECT_SUBTYPE=PROBLEM_FE_CONTACT_REPROJECT_SUBTYPE !<finear elasticity problem subject to contact constraint, reproject at Newton iterations \see OpenCMISS_ProblemSubtypes,OpenCMISS
 
   !>@}
+  !> \addtogroup OpenCMISS_ProblemMethod OpenCMISS::Iron::Problem::Method
+  !> \brief Problem Method.
+  !> \see OpenCMISS::Iron::Problem,OpenCMISS
+  !>@{
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_NO_METHOD = PROBLEM_NO_METHOD !<No problem method \see OpenCMISS_ProblemMethod,OpenCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FV_METHOD = PROBLEM_FV_METHOD !<Finite Volume problem method \see OpenCMISS_ProblemMethod,OpenCMISS
+
+  !>@}
   !> \addtogroup OpenCMISS_ProblemControlLoopTypes OpenCMISS::Iron::Problem::ControlLoopTypes
   !> \brief Problem control loop type parameters
   !> \see OpenCMISS::Iron::Problem,OpenCMISS
@@ -6106,6 +6181,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_PROBLEM_MONODOMAIN_GUDUNOV_SPLIT_SUBTYPE,CMFE_PROBLEM_MONODOMAIN_STRANG_SPLIT_SUBTYPE, &
     & CMFE_PROBLEM_BIDOMAIN_GUDUNOV_SPLIT_SUBTYPE,CMFE_PROBLEM_BIDOMAIN_STRANG_SPLIT_SUBTYPE
+
+  PUBLIC CMFE_PROBLEM_NO_METHOD, CMFE_PROBLEM_FV_METHOD
 
   PUBLIC CMFE_PROBLEM_MONODOMAIN_BUENOOROVIO_SUBTYPE, CMFE_PROBLEM_MONODOMAIN_TENTUSSCHER06_SUBTYPE
 
@@ -12668,6 +12745,298 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Sets the value of a face specified by element number and xi direction as a boundary condition on the specified face for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber0(regionUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceNumber0)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xi direction of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceNumber0",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_FACE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceNumber0",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber0
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the face specified by element number and xi direction as a boundary condition on the specified face for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber1(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceNumber1)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDir of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceNumber1",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_FACE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceNumber1")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceNumber1",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceNumber1
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the face specified by element number and xi direction and sets this as a boundary condition on the specified face for boundary conditions identified by an object.
+  SUBROUTINE cmfe_BoundaryConditions_SetFaceObj(boundaryConditions,field,variableType,versionNumber,derivativeNumber, &
+    & elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetFaceObj)
+
+    !Argument variables
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to set the face to.
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the face derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the face derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDirection of the face on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_BoundaryConditions_SetFaceObj",err,error,*999)
+
+    CALL BoundaryConditions_SetFace(boundaryConditions%boundaryConditions,field%field,variableType,versionNumber, &
+      & derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetFaceObj")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetFaceObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetFaceObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of a line specified by element number and xi direction as a boundary condition on the specified line for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineNumber0(regionUserNumber,problemUserNumber,controlLoopIdentifier,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineNumber0)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xi direction of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetLineNumber0",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_LINE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineNumber0",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineNumber0
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the line specified by element number and xi direction as a boundary condition on the specified line for boundary conditions identified by a user number.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineNumber1(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
+    & fieldUserNumber,variableType,versionNumber,derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition, &
+    & value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineNumber1)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations set to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the solver equations to destroy the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifiers(:) !<controlLoopIdentifiers(i). The i'th control loop identifier to get the solver equations boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index to get the solver equations for.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field for the boundary condition.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDir of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+
+    ENTERS("cmfe_BoundaryConditions_SetLineNumber1",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(boundaryConditions)
+    NULLIFY(dependentField)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_FieldGet(region,fieldUserNumber,dependentField,err,error,*999)
+    CALL Problem_Get(problemUserNumber,problem,err,error,*999)
+    CALL Problem_SolverEquationsGet(problem,controlLoopIdentifiers,solverIndex,solverEquations,err,error,*999)
+    CALL SolverEquations_BoundaryConditionsGet(solverEquations,boundaryConditions,err,error,*999)
+    CALL BOUNDARY_CONDITIONS_SET_LINE(boundaryConditions,dependentField,variableType,versionNumber,derivativeNumber, &
+      & elementUserNumber,xiDirUserNumber,componentNumber,condition,VALUE,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineNumber1")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineNumber1",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineNumber1
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the value of the line specified by element number and xi direction and sets this as a boundary condition on the specified line for boundary conditions identified by an object.
+  SUBROUTINE cmfe_BoundaryConditions_SetLineObj(boundaryConditions,field,variableType,versionNumber,derivativeNumber, &
+    & elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err)
+    !DLLEXPORT(cmfe_BoundaryConditions_SetLineObj)
+
+    !Argument variables
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to set the line to.
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The user number of the line derivative version to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The user number of the line derivative to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: elementUserNumber !<The user number of the element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: xiDirUserNumber !<The xiDirection of the line on this element to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN) :: condition !<The boundary condition type to set \see OpenCMISS_BoundaryConditionsTypes,OpenCMISS
+    REAL(DP), INTENT(IN) :: value !<The value of the boundary condition to set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_BoundaryConditions_SetLineObj",err,error,*999)
+
+    CALL BoundaryConditions_SetLine(boundaryConditions%boundaryConditions,field%field,variableType,versionNumber, &
+      & derivativeNumber,elementUserNumber,xiDirUserNumber,componentNumber,condition,value,err,error,*999)
+
+    EXITS("cmfe_BoundaryConditions_SetLineObj")
+    RETURN
+999 ERRORSEXITS("cmfe_BoundaryConditions_SetLineObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_BoundaryConditions_SetLineObj
+
+  !
+  !================================================================================================================================
+  !
+
   !>Adds the value to the specified node and sets this as a boundary condition on the specified node for boundary conditions identified by a user number.
   SUBROUTINE cmfe_BoundaryConditions_AddNodeNumber(regionUserNumber,problemUserNumber,controlLoopIdentifiers,solverIndex, &
     & fieldUserNumber,variableType,versionNumber,derivativeNumber,nodeUserNumber,componentNumber,condition,value,err)
@@ -17001,7 +17370,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Gets the number of iterations for a time control loop identified by user number.
   SUBROUTINE cmfe_ControlLoop_NumberOfIterationsGetNumber0(problemUserNumber,controlLoopIdentifier,numberOfIterations,err)
     !DLLEXPORT(cmfe_ControlLoop_NumberOfIterationsGetNumber0)
@@ -17028,7 +17397,7 @@ CONTAINS
       localError="A problem with an user number of "//TRIM(NumberToVString(problemUserNumber,"*",err,error))//" does not exist."
       CALL FlagError(localError,err,error,*999)
     END IF
-    
+
     EXITS("cmfe_ControlLoop_NumberOfItGetNumber0")  ! name is abbreviated because of maximum line length
     RETURN
 999 ERRORSEXITS("cmfe_ControlLoop_NumberOfItGetNumber0",err,error)  ! name is abbreviated because of maximum line length
@@ -17040,7 +17409,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Gets the number of iterations for a time control loop identified by user numbers.
   SUBROUTINE cmfe_ControlLoop_NumberOfIterationsGetNumber1(problemUserNumber,controlLoopIdentifiers,numberOfIterations,err)
     !DLLEXPORT(cmfe_ControlLoop_NumberOfIterationsGetNumber1)
@@ -17105,7 +17474,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Sets the number of iterations for a time control loop identified by user number.
   SUBROUTINE cmfe_ControlLoop_NumberOfIterationsSetNumber0(problemUserNumber,controlLoopIdentifier,numberOfIterations,err)
     !DLLEXPORT(cmfe_ControlLoop_NumberOfIterationsSetNumber0)
@@ -17132,7 +17501,7 @@ CONTAINS
       localError="A problem with an user number of "//TRIM(NumberToVString(problemUserNumber,"*",err,error))//" does not exist."
       CALL FlagError(localError,err,error,*999)
     END IF
-    
+
     EXITS("cmfe_ControlLoop_NumberOfItSetNumber0")        ! name is abbreviated because of maximum line length
     RETURN
 999 ERRORSEXITS("cmfe_ControlLoop_NumberOfItSetNumber0",err,error)    ! name is abbreviated because of maximum line length
@@ -17144,7 +17513,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Sets the number of iterations for a time control loop identified by user numbers.
   SUBROUTINE cmfe_ControlLoop_NumberOfIterationsSetNumber1(problemUserNumber,controlLoopIdentifiers,numberOfIterations,err)
     !DLLEXPORT(cmfe_ControlLoop_NumberOfIterationsSetNumber1)
@@ -25170,35 +25539,168 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Setting Jacobian matrix evaluation type
-  SUBROUTINE cmfe_Equations_JacobianMatricesTypesSet(equations,jacobianTypes,err)
-    !DLLEXPORT(cmfe_Equations_JacobianMatricesTypesSet)
-    
+  !>Setting Jacobian matrix calculation type for a matrix specified by user numbers.
+  SUBROUTINE cmfe_Equations_JacobianCalculationTypeSetNumber(regionUserNumber,equationsSetUserNumber,residualIndex,variableType, &
+    & jacobianCalculationType,err)
+    !DLLEXPORT(cmfe_Equations_JacobianCalculationTypeSetNumber)
+
     !Argument variables
-    TYPE(cmfe_EquationsType), INTENT(IN) :: equations !<The equations to set the Jacobian evaluation type for. 
-    INTEGER(INTG), INTENT(IN) :: jacobianTypes !<The type of Jacobian evaluation. \see OpenCMISS_EquationsJacobianCalculated 
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations to set the Jacobian calculation type for
+    INTEGER(INTG), INTENT(IN) :: equationsSetUserNumber !<The user number of the equations set to set the Jacobian calculation type for.
+    INTEGER(INTG), INTENT(IN) :: residualIndex !<The index of the residual vector of the Jacobian
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type that the residual is differentiated with respect to for this Jacobian. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: jacobianCalculationType !<The type of Jacobian calculation. \see OpenCMISS_EquationsJacobianCalculated
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     !Local variables
-    TYPE(EquationsVectorType), POINTER :: vectorEquations 
+    TYPE(EquationsType), POINTER :: equations
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
     TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
+    TYPE(REGION_TYPE), POINTER :: region
 
-    ENTERS("cmfe_Equations_JacobianMatricesTypesSet",err,error,*999)
+    ENTERS("cmfe_Equations_JacobianCalculationTypeSetNumber",err,error,*999)
 
+    NULLIFY(region)
+    NULLIFY(equationsSet)
+    NULLIFY(equations)
     NULLIFY(vectorEquations)
-    CALL Equations_VectorEquationsGet(equations%equations,vectorEquations,err,error,*999)    
     NULLIFY(vectorMatrices)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_EquationsSetGet(region,equationsSetUserNumber,equationsSet,err,error,*999)
+    CALL EquationsSet_EquationsGet(equationsSet,equations,err,error,*999)
+    CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
     CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
-    CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[jacobianTypes],err,error,*999)
+    CALL EquationsMatrices_JacobianCalculationTypeSet(vectorMatrices,residualIndex,variableType, &
+      & jacobianCalculationType,err,error,*999)
 
-    EXITS("cmfe_Equations_JacobianMatricesTypesSet")
+    EXITS("cmfe_Equations_JacobianCalculationTypeSetNumber")
     RETURN
-999 ERRORS("cmfe_Equations_JacobianMatricesTypesSet",err,error)
-    EXITS("cmfe_Equations_JacobianMatricesTypesSet")
+999 ERRORS("cmfe_Equations_JacobianCalculationTypeSetNumber",err,error)
+    EXITS("cmfe_Equations_JacobianCalculationTypeSetNumber")
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_Equations_JacobianMatricesTypesSet
+  END SUBROUTINE cmfe_Equations_JacobianCalculationTypeSetNumber
 
+  !
+  !================================================================================================================================
+  !
+
+  !>Setting Jacobian matrix calculation type for a matrix specified by obj.
+  SUBROUTINE cmfe_Equations_JacobianCalculationTypeSetObj(equations,residualIndex,variableType,jacobianCalculationType,err)
+    !DLLEXPORT(cmfe_Equations_JacobianCalculationTypeSetObj)
+
+    !Argument variables
+    TYPE(cmfe_EquationsType), INTENT(IN) :: equations !<The equations to set the Jacobian evaluation type for.
+    INTEGER(INTG), INTENT(IN) :: residualIndex !<The index of the residual vector of the Jacobian
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type that the residual is differentiated with respect to for this Jacobian. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: jacobianCalculationType !<The type of Jacobian calculation. \see OpenCMISS_EquationsJacobianCalculated
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    !Local variables
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+
+    ENTERS("cmfe_Equations_JacobianCalculationTypeSetObj",err,error,*999)
+
+    NULLIFY(vectorEquations)
+    CALL Equations_VectorEquationsGet(equations%equations,vectorEquations,err,error,*999)
+    NULLIFY(vectorMatrices)
+    CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+    CALL EquationsMatrices_JacobianCalculationTypeSet(vectorMatrices,residualIndex,variableType, &
+      & jacobianCalculationType,err,error,*999)
+
+    EXITS("cmfe_Equations_JacobianCalculationTypeSetObj")
+    RETURN
+999 ERRORS("cmfe_Equations_JacobianCalculationTypeSetObj",err,error)
+    EXITS("cmfe_Equations_JacobianCalculationTypeSetObj")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Equations_JacobianCalculationTypeSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the Jacobian matrix finite difference step size type for a matrix specified by user numbers.
+  SUBROUTINE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber(regionUserNumber,equationsSetUserNumber,residualIndex, &
+    & variableType,jacobianFiniteDifferenceStepSize,err)
+    !DLLEXPORT(cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the equations to set the Jacobian calculation type for
+    INTEGER(INTG), INTENT(IN) :: equationsSetUserNumber !<The user number of the equations set to set the Jacobian calculation type for.
+    INTEGER(INTG), INTENT(IN) :: residualIndex !<The index of the residual vector of the Jacobian
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type that the residual is differentiated with respect to for this Jacobian. \see OpenCMISS_FieldVariableTypes
+    REAL(DP), INTENT(IN) :: jacobianFiniteDifferenceStepSize !<The finite difference step size to calculate the Jacobian with.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    !Local variables
+    TYPE(EquationsType), POINTER :: equations
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
+    TYPE(REGION_TYPE), POINTER :: region
+
+    ENTERS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(equationsSet)
+    NULLIFY(equations)
+    NULLIFY(vectorEquations)
+    NULLIFY(vectorMatrices)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_EquationsSetGet(region,equationsSetUserNumber,equationsSet,err,error,*999)
+    CALL EquationsSet_EquationsGet(equationsSet,equations,err,error,*999)
+    CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+    CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+    CALL EquationsMatrices_JacobianFiniteDifferenceStepSizeSet(vectorMatrices,residualIndex,variableType, &
+      & jacobianFiniteDifferenceStepSize,err,error,*999)
+
+    EXITS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber")
+    RETURN
+999 ERRORS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber",err,error)
+    EXITS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets/changes the finite difference step size used for calculating the Jacobian
+  SUBROUTINE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj(equations,residualIndex,variableTYpe, &
+    & jacobianFiniteDifferenceStepSize,err)
+    !DLLEXPORT(cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj)
+
+    !Argument variables
+    TYPE(cmfe_EquationsType), INTENT(IN) :: equations !<The equations to set the Jacobian finite difference step size for.
+    INTEGER(INTG), INTENT(IN) :: residualIndex !<The index of the residual vector of the Jacobian
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type that the residual is differentiated with respect to for this Jacobian. \see OpenCMISS_FieldVariableTypes
+    REAL(DP), INTENT(IN) :: jacobianFiniteDifferenceStepSize !<The finite difference step size to calculate the Jacobian with.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    !Local variables
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+
+    ENTERS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj",err,error,*999)
+
+    NULLIFY(vectorEquations)
+    CALL Equations_VectorEquationsGet(equations%equations,vectorEquations,err,error,*999)
+    NULLIFY(vectorMatrices)
+    CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+    CALL EquationsMatrices_JacobianFiniteDifferenceStepSizeSet(vectorMatrices,residualIndex,variableType, &
+      & jacobianFiniteDifferenceStepSize,err,error,*999)
+
+    EXITS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj")
+    RETURN
+999 ERRORS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj",err,error)
+    EXITS("cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Equations_JacobianFiniteDifferenceStepSizeSetObj
 
   !
   !================================================================================================================================
@@ -29900,7 +30402,7 @@ CONTAINS
     !Argument variables
     TYPE(cmfe_FieldType), INTENT(IN) :: geometricField !<The geometric field to obtain the volume from
     INTEGER(INTG),  INTENT(IN) :: elementNumber !<The element to get the volume for
-    REAL(DP), INTENT(OUT) :: elementVolume !<The volume of the chosen element 
+    REAL(DP), INTENT(OUT) :: elementVolume !<The volume of the chosen element
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
@@ -43389,6 +43891,137 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetNumber(regionUserNumber,meshUserNumber, &
+                                                     & decompositionUserNumber,CalculateCentroidsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentroidsSetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region.
+    INTEGER(INTG), INTENT(IN) :: meshUserNumber !<The user number of the mesh.
+    INTEGER(INTG), INTENT(IN) :: decompositionUserNumber !<The user number of the decomposition to set the decomposition type for.
+    LOGICAL, INTENT(IN) :: CalculateCentroidsFlag !<Boolean to determine whether to set centroids to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(REGION_TYPE), POINTER :: region
+
+    ENTERS("cmfe_Decomposition_CalculateCentroidsSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(mesh)
+    NULLIFY(decomposition)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_MeshGet(region,meshUserNumber,mesh,err,error,*999)
+    CALL Mesh_DecompositionGet(mesh,decompositionUserNumber,decomposition,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_CENTROIDS_SET(decomposition,CalculateCentroidsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentroidsSetNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalcCentroid",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetObj(decomposition,CalculateCentroidsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentroidsSetObj)
+
+    !Argument variables
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate centroids flag for.
+    LOGICAL, INTENT(IN) :: CalculateCentroidsFlag !<Boolean to determine whether to set centroids to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Decomposition_CalculateCentroidsSetObj",err,error,*999)
+
+    CALL DECOMPOSITION_CALCULATE_CENTROIDS_SET(decomposition%decomposition,CalculateCentroidsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentroidsSetObj")
+    RETURN
+999 ERRORSEXITS("cmfe_Decomposition_CalculateCentroidsSetObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentroidsSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetNumber(regionUserNumber,meshUserNumber, &
+                                                     & decompositionUserNumber,CalculateCentreLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentreLengthsSetNumber)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region.
+    INTEGER(INTG), INTENT(IN) :: meshUserNumber !<The user number of the mesh.
+    INTEGER(INTG), INTENT(IN) :: decompositionUserNumber !<The user number of the decomposition to set the decomposition type for.
+    LOGICAL, INTENT(IN) :: CalculateCentreLengthsFlag !<Boolean to determine whether to set finite volume lengths to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(REGION_TYPE), POINTER :: region
+
+    ENTERS("cmfe_Decomposition_CalculateCentreLengthsSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(mesh)
+    NULLIFY(decomposition)
+    CALL Region_Get(regionUserNumber,region,err,error,*999)
+    CALL Region_MeshGet(region,meshUserNumber,mesh,err,error,*999)
+    CALL Mesh_DecompositionGet(mesh,decompositionUserNumber,decomposition,err,error,*999)
+    CALL DECOMPOSITION_CALCULATE_CENTRE_LENGTHS_SET(decomposition,CalculateCentreLengthsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetNumber")
+    RETURN
+999 ERRORS("cmfe_Decomposition_CalculateCentreLengthsSetNumber",err,error)
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetNumber")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets whether Centroids should be calculated
+  SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetObj(decomposition,CalculateCentreLengthsFlag,err)
+    !DLLEXPORT(cmfe_Decomposition_CalculateCentreLengthsSetObj)
+
+    !Argument variables
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to set the calculate CENTRE_LENGTHS flag for.
+    LOGICAL, INTENT(IN) :: CalculateCentreLengthsFlag !<Boolean to determine whether to set the lengths from centroid to face and centroid to neighbouring centroid to be calculated.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Decomposition_CalculateCentreLengthsSetObj",err,error,*999)
+
+    CALL DECOMPOSITION_CALCULATE_CENTRE_LENGTHS_SET(decomposition%decomposition,CalculateCentreLengthsFlag,err,error,*999)
+
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetObj")
+    RETURN
+999 ERRORS("cmfe_Decomposition_CalculateCentreLengthsSetObj",err,error)
+    EXITS("cmfe_Decomposition_CalculateCentreLengthsSetObj")
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Decomposition_CalculateCentreLengthsSetObj
+
+  !
+  !================================================================================================================================
+  !
+
   !>Returns the domain for a given node in a decomposition identified by a user number.
   SUBROUTINE cmfe_Decomposition_NodeDomainGetNumber(regionUserNumber,meshUserNumber,decompositionUserNumber, &
     & nodeUserNumber,meshComponentNumber,domain,err)
@@ -46142,7 +46775,7 @@ CONTAINS
 
 !!==================================================================================================================================
 !!
-!! NODE_ROUTINES
+!! NodeRoutines
 !!
 !!==================================================================================================================================
 
@@ -46154,7 +46787,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the nodes to finish the creation of.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_CreateFinishNumber",err,error,*999)
@@ -46163,7 +46796,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_CREATE_FINISH(nodes,err,error,*999)
+    CALL Nodes_CreateFinish(nodes,err,error,*999)
 
 #ifdef TAUPROF
     CALL TAU_STATIC_PHASE_STOP('Nodes Create')
@@ -46192,7 +46825,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_CreateFinishObj",err,error,*999)
 
-    CALL NODES_CREATE_FINISH(nodes%nodes,err,error,*999)
+    CALL Nodes_CreateFinish(nodes%nodes,err,error,*999)
 
 #ifdef TAUPROF
     CALL TAU_STATIC_PHASE_STOP('nodes Create')
@@ -46219,7 +46852,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: numberOfNodes !<The number of nodes to create.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_CreateStartNumber",err,error,*999)
@@ -46231,7 +46864,7 @@ CONTAINS
     NULLIFY(region)
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
-    CALL NODES_CREATE_START(region,numberOfNodes,nodes,err,error,*999)
+    CALL Nodes_CreateStart(region,numberOfNodes,nodes,err,error,*999)
 
     EXITS("cmfe_Nodes_CreateStartNumber")
     RETURN
@@ -46262,7 +46895,7 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('nodes Create')
 #endif
 
-    CALL NODES_CREATE_START(region%region,numberOfNodes,nodes%nodes,err,error,*999)
+    CALL Nodes_CreateStart(region%region,numberOfNodes,nodes%nodes,err,error,*999)
 
     EXITS("cmfe_Nodes_CreateStartObj")
     RETURN
@@ -46293,7 +46926,7 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('nodes Create')
 #endif
 
-    CALL NODES_CREATE_START(interface%interface,numberOfNodes,nodes%nodes,err,error,*999)
+    CALL Nodes_CreateStart(interface%interface,numberOfNodes,nodes%nodes,err,error,*999)
 
     EXITS("cmfe_Nodes_CreateStartInterfaceObj")
     RETURN
@@ -46315,7 +46948,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the nodes to destroy.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_DestroyNumber",err,error,*999)
@@ -46372,7 +47005,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: numberOfNodes !<On return, the number of nodes
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_NumberOfNodesGetNumber",err,error,*999)
@@ -46381,7 +47014,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_NUMBER_OF_NODES_GET(nodes,numberOfNodes,err,error,*999)
+    CALL Nodes_NumberOfNodesGet(nodes,numberOfNodes,err,error,*999)
 
     EXITS("cmfe_Nodes_NumberOfNodesGetNumber")
     RETURN
@@ -46407,7 +47040,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_NumberOfNodesGetObj",err,error,*999)
 
-    CALL NODES_NUMBER_OF_NODES_GET(nodes%nodes,numberOfNodes,err,error,*999)
+    CALL Nodes_NumberOfNodesGet(nodes%nodes,numberOfNodes,err,error,*999)
 
     EXITS("cmfe_Nodes_NumberOfNodesGetObj")
     RETURN
@@ -46431,7 +47064,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(OUT) :: label !<On return, the label for the node.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_LabelGetCNumber",err,error,*999)
@@ -46440,7 +47073,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_LABEL_GET(nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelGet(nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelGetCNumber")
     RETURN
@@ -46467,7 +47100,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_LabelGetCObj",err,error,*999)
 
-    CALL NODES_LABEL_GET(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelGet(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelGetCObj")
     RETURN
@@ -46491,7 +47124,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: label !<On return, the label for the node.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_LabelGetVSNumber",err,error,*999)
@@ -46500,7 +47133,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_LABEL_GET(nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelGet(nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelGetVSNumber")
     RETURN
@@ -46527,7 +47160,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_LabelGetVSObj",err,error,*999)
 
-    CALL NODES_LABEL_GET(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelGet(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelGetVSObj")
     RETURN
@@ -46551,7 +47184,7 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN) :: label !<The label for the node to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_LabelSetCNumber",err,error,*999)
@@ -46560,7 +47193,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_LABEL_SET(nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelSet(nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelSetCNumber")
     RETURN
@@ -46587,7 +47220,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_LabelSetCObj",err,error,*999)
 
-    CALL NODES_LABEL_SET(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelSet(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelSetCObj")
     RETURN
@@ -46611,7 +47244,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(IN) :: label !<The label for the node to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_LabelSetVSNumber",err,error,*999)
@@ -46620,7 +47253,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_LABEL_SET(nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelSet(nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelSetVSNumber")
     RETURN
@@ -46647,7 +47280,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_LabelSetVSObj",err,error,*999)
 
-    CALL NODES_LABEL_SET(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
+    CALL Nodes_LabelSet(nodes%nodes,nodeGlobalNumber,label,err,error,*999)
 
     EXITS("cmfe_Nodes_LabelSetVSObj")
     RETURN
@@ -46671,7 +47304,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: nodeUserNumber !<On return, the user number for the node.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_UserNumberGetNumber",err,error,*999)
@@ -46680,7 +47313,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_USER_NUMBER_GET(nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
+    CALL Nodes_UserNumberGet(nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumberGetNumber")
     RETURN
@@ -46707,7 +47340,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_UserNumberGetObj",err,error,*999)
 
-    CALL NODES_USER_NUMBER_GET(nodes%nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
+    CALL Nodes_UserNumberGet(nodes%nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumberGetObj")
     RETURN
@@ -46731,7 +47364,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: nodeUserNumber !<The user number for the node to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_UserNumberSetNumber",err,error,*999)
@@ -46740,7 +47373,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NODES_USER_NUMBER_SET(nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
+    CALL Nodes_UserNumberSet(nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumberSetNumber")
     RETURN
@@ -46767,7 +47400,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_UserNumberSetObj",err,error,*999)
 
-    CALL NODES_USER_NUMBER_SET(nodes%nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
+    CALL Nodes_UserNumberSet(nodes%nodes,nodeGlobalNumber,nodeUserNumber,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumberSetObj")
     RETURN
@@ -46790,7 +47423,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: nodeUserNumbers(:) !<The user numbers for the nodes to set.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
-    TYPE(NODES_TYPE), POINTER :: nodes
+    TYPE(NodesType), POINTER :: nodes
     TYPE(REGION_TYPE), POINTER :: region
 
     ENTERS("cmfe_Nodes_UserNumbersAllSetNumber",err,error,*999)
@@ -46799,7 +47432,7 @@ CONTAINS
     NULLIFY(nodes)
     CALL Region_Get(regionUserNumber,region,err,error,*999)
     CALL Region_NodesGet(region,nodes,err,error,*999)
-    CALL NodesUserNumbersAllSet(nodes,nodeUserNumbers,err,error,*999)
+    CALL Nodes_UserNumbersAllSet(nodes,nodeUserNumbers,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumbersAllSetNumber")
     RETURN
@@ -46825,7 +47458,7 @@ CONTAINS
 
     ENTERS("cmfe_Nodes_UserNumbersAllSetObj",err,error,*999)
 
-    CALL NodesUserNumbersAllSet(nodes%nodes,nodeUserNumbers,err,error,*999)
+    CALL Nodes_UserNumbersAllSet(nodes%nodes,nodeUserNumbers,err,error,*999)
 
     EXITS("cmfe_Nodes_UserNumbersAllSetObj")
     RETURN
@@ -58605,7 +59238,7 @@ CONTAINS
 
 #ifdef WITH_FIELDML
 
-    CALL FIELDML_INPUT_NODES_CREATE_START( fieldml%fieldmlInfo, nodesArgumentName, region%region, nodes%nodes, err, error, *999 )
+    CALL FIELDML_INPUT_NODES_CREATE_START(fieldml%fieldmlInfo, nodesArgumentName, region%region, nodes%nodes, err, error, *999 )
 
 #else
     CALL FlagError("Must compile with WITH_FIELDML ON to use FieldML functionality.",err,error,*999)
