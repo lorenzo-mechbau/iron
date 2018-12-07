@@ -83,11 +83,34 @@ option(PRINT_CONFIG_SUMMARY "Show a summary of the configuration." TRUE)
 set(PACKAGE_CONFIG_DIR "cmake" CACHE STRING "Directory for package config files (relative to CMAKE_INSTALL_PREFIX)")
 
 # Handle instrumentation choices.
-set(IRON_INSTRUMENTATION "none" CACHE STRING "Specify the instrumentation to use.")
-if (DEFINED FE_INSTRUMENTATION)
-    set(IRON_INSTRUMENTATION "${FE_INSTRUMENTATION}" CACHE STRING "Specify the instrumentation to use.")
+#set(${OC_INSTRUMENTATION} ${${OC_INSTRUMENTATION}} PARENT_SCOPE)
+set(IRON_INSTRUMENTATION ${OPENCMISS_INSTRUMENTATION})
+
+if(NOT DEFINED OPENCMISS_INSTRUMENTATION)
+  set(IRON_INSTRUMENTATION "none" CACHE STRING "Specify the instrumentation to use.")
+  if (DEFINED FE_INSTRUMENTATION)
+      set(IRON_INSTRUMENTATION "${FE_INSTRUMENTATION}" CACHE STRING "Specify the instrumentation to use.")
+  endif ()
+  set(OPENCMISS_INSTRUMENTATION ${IRON_INSTRUMENTATION})
 endif ()
-set(OPENCMISS_INSTRUMENTATION ${IRON_INSTRUMENTATION})
+
+if ("${OPENCMISS_INSTRUMENTATION}" STREQUAL "vtune")
+    foreach(lang C CXX Fortran)
+            SET(CMAKE_${lang}_FLAGS_RELEASE  "${CMAKE_${lang}_FLAGS_RELEASE} -g -shared-intel -debug inline-debug-info -D TBB_USE_THREADING_TOOLS -qopenmp-link dynamic -parallel-source-info=2 -fno-omit-frame-pointer")
+            SET(CMAKE_${lang}_FLAGS_DEBUG  "${CMAKE_${lang}_FLAGS_DEBUG} -g -shared-intel -debug inline-debug-info -D TBB_USE_THREADING_TOOLS -qopenmp-link dynamic -parallel-source-info=2 -fno-omit-frame-pointer")
+            SET(CMAKE_${lang}_FLAGS  "${CMAKE_${lang}_FLAGS} -g -shared-intel -debug inline-debug-info -D TBB_USE_THREADING_TOOLS -qopenmp-link dynamic -parallel-source-info=2 -fno-omit-frame-pointer")
+     endforeach()
+     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -qopenmp -g -shared-intel -qopenmp-link dynamic -tcollect")
+elseif ("${OPENCMISS_INSTRUMENTATION}" STREQUAL "gprof")
+     foreach(lang C CXX Fortran)
+         SET(CMAKE_${lang}_FLAGS_RELEASE  "${CMAKE_${lang}_FLAGS_RELEASE} -g -pg -fno-omit-frame-pointer")
+         SET(CMAKE_${lang}_FLAGS_DEBUG  "${CMAKE_${lang}_FLAGS_DEBUG} -g -pg -fno-omit-frame-pointer")
+         SET(CMAKE_${lang}_FLAGS  "${CMAKE_${lang}_FLAGS} -g -pg -fno-omit-frame-pointer")
+     endforeach()
+     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -pg -g")
+endif()
+
+message(STATUS "Iron::Instrumentation: ${OPENCMISS_INSTRUMENTATION}")
 
 # Bindings options
 find_program(VIRTUALENV_EXEC virtualenv)
