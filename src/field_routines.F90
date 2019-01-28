@@ -745,6 +745,22 @@ MODULE FIELD_ROUTINES
     MODULE PROCEDURE Field_ParameterSetGetLocalElement_L
   END INTERFACE Field_ParameterSetGetLocalElement
 
+  !>Returns from the given parameter set a value for the specified Face, derivative and version of a field variable component.
+  INTERFACE Field_ParameterSetGetLocalFace
+    MODULE PROCEDURE Field_ParameterSetGetLocalFace_Intg
+    MODULE PROCEDURE Field_ParameterSetGetLocalFace_Sp
+    MODULE PROCEDURE Field_ParameterSetGetLocalFace_Dp
+    MODULE PROCEDURE Field_ParameterSetGetLocalFace_L
+  END INTERFACE Field_ParameterSetGetLocalFace
+
+  !>Returns from the given parameter set a value for the specified Line, derivative and version of a field variable component.
+  INTERFACE Field_ParameterSetGetLocalLine
+    MODULE PROCEDURE Field_ParameterSetGetLocalLine_Intg
+    MODULE PROCEDURE Field_ParameterSetGetLocalLine_Sp
+    MODULE PROCEDURE Field_ParameterSetGetLocalLine_Dp
+    MODULE PROCEDURE Field_ParameterSetGetLocalLine_L
+  END INTERFACE Field_ParameterSetGetLocalLine
+
   !>Returns from the given parameter set a value for the specified user element and Gauss point of a field variable component.  TODO: sp/int/l versions
   INTERFACE Field_ParameterSetGetGaussPoint
     MODULE PROCEDURE Field_ParameterSetGetGaussPointDP
@@ -861,6 +877,26 @@ MODULE FIELD_ROUTINES
     MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_LOCAL_ELEMENT_DP
     MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_LOCAL_ELEMENT_L
   END INTERFACE Field_ParameterSetUpdateLocalElement
+
+  !>Updates the given parameter set with the given value for a particular face with user element number and xi direction of the field variable component.
+  INTERFACE FIELD_PARAMETER_SET_UPDATE_FACE
+    MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_FACE_INTG
+  END INTERFACE FIELD_PARAMETER_SET_UPDATE_FACE
+
+  !>Updates the given parameter set with the given value for a particular face with user element number and xi direction of the field variable component.
+  INTERFACE Field_ParameterSetUpdateFace
+    MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_FACE_INTG
+  END INTERFACE Field_ParameterSetUpdateFace
+
+  !>Updates the given parameter set with the given value for a particular line with user element number and xi direction of the field variable component.
+  INTERFACE FIELD_PARAMETER_SET_UPDATE_LINE
+    MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_LINE_INTG
+  END INTERFACE FIELD_PARAMETER_SET_UPDATE_LINE
+
+  !>Updates the given parameter set with the given value for a particular line with user element number and xi direction of the field variable component.
+  INTERFACE Field_ParameterSetUpdateLine
+    MODULE PROCEDURE FIELD_PARAMETER_SET_UPDATE_LINE_INTG
+  END INTERFACE Field_ParameterSetUpdateLine
 
   !>Updates the given parameter set with the given value for a particular user node, derivative and version of the field variable component.
   INTERFACE FIELD_PARAMETER_SET_UPDATE_NODE
@@ -1231,7 +1267,8 @@ MODULE FIELD_ROUTINES
 
   PUBLIC Field_ParameterSetGetConstant,Field_ParameterSetGetDataPoint,Field_ParameterSetGetElement, &
     & Field_ParameterSetGetLocalElement,Field_ParameterSetGetLocalDOF,Field_ParameterSetGetNode, &
-    & Field_ParameterSetGetLocalNode,Field_ParameterSetGetGaussPoint,Field_ParameterSetGetLocalGaussPoint
+    & Field_ParameterSetGetLocalNode,Field_ParameterSetGetGaussPoint,Field_ParameterSetGetLocalGaussPoint, &
+    & Field_ParameterSetGetLocalFace, Field_ParameterSetGetLocalLine
 
   PUBLIC FIELD_PARAMETER_SET_OUTPUT
 
@@ -1243,14 +1280,16 @@ MODULE FIELD_ROUTINES
 
   PUBLIC FIELD_PARAMETER_SET_UPDATE_CONSTANT,FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF,FIELD_PARAMETER_SET_UPDATE_LOCAL_DOFS, &
     & FIELD_PARAMETER_SET_UPDATE_ELEMENT,FIELD_PARAMETER_SET_UPDATE_LOCAL_ELEMENT,FIELD_PARAMETER_SET_UPDATE_NODE, &
-    & FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE,FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT
+    & FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE,FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT, FIELD_PARAMETER_SET_UPDATE_LINE, &
+    & FIELD_PARAMETER_SET_UPDATE_FACE
 
   PUBLIC Field_ParameterSetUpdateConstant, &
     & Field_ParameterSetUpdateDataPoint,Field_ParameterSetUpdateLocalDataPoint, &
     & Field_ParameterSetUpdateElement,Field_ParameterSetUpdateLocalElement,Field_ParameterSetUpdateElementDataPoint, &
     & Field_ParameterSetUpdateGaussPoint,Field_ParameterSetUpdateLocalGaussPoint, &
     & Field_ParameterSetUpdateLocalDOF,Field_ParameterSetUpdateLocalDOFS, &
-    & Field_ParameterSetUpdateNode,Field_ParameterSetUpdateLocalNode
+    & Field_ParameterSetUpdateNode,Field_ParameterSetUpdateLocalNode,Field_ParameterSetUpdateLine, &
+    & Field_ParameterSetUpdateFace
 
   PUBLIC Field_ParameterSetNodeScaleFactorGet,Field_ParameterSetNodeScaleFactorSet, &
     & Field_ParameterSetNodeScaleFactorsGet,Field_ParameterSetNodeScaleFactorsSet, &
@@ -3275,11 +3314,14 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: element_idx,derivative_idx,version_idx,field_dof,node_idx,partial_deriv_idx,gauss_point_idx,MAX_NGP
+    INTEGER(INTG) :: element_idx,derivative_idx,version_idx,field_dof,node_idx,partial_deriv_idx,gauss_point_idx,MAX_NGP, &
+      & line_idx, face_idx
     INTEGER(INTG), POINTER :: FIELD_PARAMETERS(:)
     TYPE(DOMAIN_TYPE), POINTER :: COMPONENT_DOMAIN
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: DOMAIN_ELEMENTS
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: DOMAIN_LINES
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: DOMAIN_FACES
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: FIELD_PARAMETER_SET
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
@@ -3337,17 +3379,79 @@ CONTAINS
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
+                      COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
+                      IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
+                        DOMAIN_TOPOLOGY=>COMPONENT_DOMAIN%TOPOLOGY
+                        IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
+                          DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+                          IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                            DO element_idx=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                              field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                & ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)
+                              FIELD_PARAMETERS(field_dof)=VALUE
+                            ENDDO !element_idx
+                          ELSE
+                            CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                          ENDIF
+
+                          DOMAIN_FACES=>DOMAIN_TOPOLOGY%FACES
+                          IF(ASSOCIATED(DOMAIN_FACES)) THEN
+                            DO face_idx=1,DOMAIN_FACES%TOTAL_NUMBER_OF_FACES
+                              IF(DOMAIN_TOPOLOGY%faces%FACES(face_Idx)%BOUNDARY_FACE) THEN
+                                field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                  & FACE_PARAM2DOF_MAP%FACES(face_idx)%DERIVATIVES(1)%VERSIONS(1)
+                                FIELD_PARAMETERS(field_dof)=VALUE
+                              ENDIF
+                            ENDDO !element_idx
+                          ELSE
+                            CALL FlagError("Domain topology faces is not associated.",ERR,ERROR,*999)
+                          ENDIF
+
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
                     CASE(FIELD_LINE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
+                      COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
+                      IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
+                        DOMAIN_TOPOLOGY=>COMPONENT_DOMAIN%TOPOLOGY
+                        IF(ASSOCIATED(DOMAIN_TOPOLOGY)) THEN
+                          DOMAIN_ELEMENTS=>DOMAIN_TOPOLOGY%ELEMENTS
+                          IF(ASSOCIATED(DOMAIN_ELEMENTS)) THEN
+                            DO element_idx=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                              field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                & ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)
+                              FIELD_PARAMETERS(field_dof)=VALUE
+                            ENDDO !element_idx
+                          ELSE
+                            CALL FlagError("Domain topology elements is not associated.",ERR,ERROR,*999)
+                          ENDIF
+
+                          DOMAIN_LINES=>DOMAIN_TOPOLOGY%LINES
+                          IF(ASSOCIATED(DOMAIN_LINES)) THEN
+                            DO line_idx=1,DOMAIN_LINES%TOTAL_NUMBER_OF_LINES
+                              IF(DOMAIN_TOPOLOGY%lines%LINES(line_Idx)%BOUNDARY_LINE) THEN
+                                field_dof=FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%PARAM_TO_DOF_MAP% &
+                                  & LINE_PARAM2DOF_MAP%LINES(line_idx)%DERIVATIVES(1)%VERSIONS(1)
+                                FIELD_PARAMETERS(field_dof)=VALUE
+                              ENDIF
+                            ENDDO !element_idx
+                          ELSE
+                            CALL FlagError("Domain topology lines is not associated.",ERR,ERROR,*999)
+                          ENDIF
+
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",ERR,ERROR,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       COMPONENT_DOMAIN=>FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%DOMAIN
                       IF(ASSOCIATED(COMPONENT_DOMAIN)) THEN
@@ -5062,6 +5166,8 @@ CONTAINS
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS=0
+    FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS=0
+    FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS=0
@@ -5092,6 +5198,8 @@ CONTAINS
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%NUMBER_OF_CONSTANT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS=0
+    FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS=0
+    FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%GRID_POINT_PARAM2DOF_MAP%NUMBER_OF_GRID_POINT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%NUMBER_OF_GAUSS_POINT_PARAMETERS=0
     FIELD_VARIABLE_COMPONENT%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP%NUMBER_OF_DATA_POINT_PARAMETERS=0
@@ -11161,6 +11269,8 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
                 & STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS = ELEMENTS_MAPPING% &
+                & TOTAL_NUMBER_OF_LOCAL
 
             CASE(FIELD_FACE_BASED_INTERPOLATION)
               NUMBER_OF_FACE_DOFS = NUMBER_OF_FACE_DOFS + FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
@@ -11172,6 +11282,7 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
                 & STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS = FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
 
             CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
 
@@ -11321,11 +11432,14 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
               & ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS = ELEMENTS_MAPPING% &
+                & TOTAL_NUMBER_OF_LOCAL
 
               !FIXTHIS, this allocates all local faces, not just boundary faces, seems to be the only way to have a face-dof map
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
               & FACES(FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof faces map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP%NUMBER_OF_FACE_PARAMETERS = FACES_MAPPING%TOTAL_NUMBER_OF_LOCAL
 
             CASE(FIELD_LINE_BASED_INTERPOLATION)
               NUMBER_OF_LINE_DOFS = NUMBER_OF_LINE_DOFS + LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
@@ -11337,6 +11451,7 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%LINES(LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL), &
                 & STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS = LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
 
             CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
 
@@ -11486,11 +11601,14 @@ CONTAINS
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
               & ELEMENTS(ELEMENTS_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof elements map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%NUMBER_OF_ELEMENT_PARAMETERS = ELEMENTS_MAPPING% &
+                & TOTAL_NUMBER_OF_LOCAL
 
               !FIXTHIS, this allocates all local lines, not just boundary lines, seems to be the only way to have a line-dof map
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
               & LINES(LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL), STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof lines map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP%NUMBER_OF_LINE_PARAMETERS = LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
 
 
             CASE(FIELD_NODE_BASED_INTERPOLATION)
@@ -11502,6 +11620,7 @@ CONTAINS
               ! allocate param_to_dof_map for nodes
               ALLOCATE(FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate param to dof nodes map.",ERR,ERROR,*999)
+              FIELD_COMPONENT%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NUMBER_OF_NODE_PARAMETERS = NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL
 
             CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
               CALL FlagError("Not implemented.",ERR,ERROR,*999)
@@ -17134,7 +17253,7 @@ CONTAINS
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%VOLUMES)) DEALLOCATE(GEOMETRIC_PARAMETERS%VOLUMES)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTROID_POSITION)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTROID_POSITION)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%HALFLENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%HALFLENGTH)
-      IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_LENGTH)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_LENGTH)
+      IF(ALLOCATED(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_VEC)) DEALLOCATE(GEOMETRIC_PARAMETERS%CENTRE_TO_CENTRE_VEC)
       IF(ALLOCATED(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)) DEALLOCATE(GEOMETRIC_PARAMETERS%SURFACE_VECTOR)
       DEALLOCATE(GEOMETRIC_PARAMETERS)
     ENDIF
@@ -17194,13 +17313,15 @@ CONTAINS
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
-            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
+            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES, &
+            & FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate HALFLENGTH.",ERR,ERROR,*999)
-          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_VEC(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
-            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate CENTRE_TO_CENTRE_LENGTH.",ERR,ERROR,*999)
+            & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES, &
+            & FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate CENTRE_TO_CENTRE_VEC.",ERR,ERROR,*999)
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS% &
             & TOTAL_NUMBER_OF_ELEMENTS,-FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES:FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION% &
@@ -17211,7 +17332,7 @@ CONTAINS
           !  & , 2*FIELD%DECOMPOSITION%numberOfDimensions, FIELD%DECOMPOSITION%numberOfDimensions),STAT=ERR) !THIS WILL ONLY WORK FOR QUADS
 
           FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH=0.0_DP
-          FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH=0.0_DP
+          FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_VEC=0.0_DP
           FIELD%GEOMETRIC_FIELD_PARAMETERS%SURFACE_VECTOR=0.0_DP
           FIELD%GEOMETRIC_FIELD_PARAMETERS%VOLUMES=0.0_DP
         ENDIF
@@ -17863,7 +17984,7 @@ CONTAINS
 
     INTEGER(INTG) :: element_idx,faceElementNodeNumbers(4),faceDomainNodeNumber1,faceDomainNodeNumber2, dimension_idx, &
       & neighbourElement,faceDomainNodeNumber3, faceDomainNodeNumber4, nic, start_nic,localLineNumber, localfaceNumber, &
-      & mesh_component_idx
+      & mesh_component_idx, numberOfDimensions
     REAL(DP) :: xVec_centroidP(3)=[0,0,0], xVec_centroidN(3)=[0,0,0],xVec_faceNode1(3)=[0,0,0],xVec_faceNode2(3)=[0,0,0]
     REAL(DP) :: xVec_faceNode4(3)=[0,0,0], faceVec_1_2(3)=[0,0,0], faceVec_1_3(3)=[0,0,0], faceNormal(3)=[0,0,0]
     REAL(DP) :: xVec_faceNode3(3)=[0,0,0], interceptPos(3)=[0,0,0], surfaceVector(3)=[0,0,0]
@@ -17877,6 +17998,7 @@ CONTAINS
         IF(FIELD%TYPE==FIELD_GEOMETRIC_TYPE) THEN
 
           mesh_component_idx=FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER
+          numberOfDimensions = FIELD%DECOMPOSITION%numberOfDimensions
 
           SELECT CASE(FIELD%DECOMPOSITION%DOMAIN(mesh_component_idx)%PTR%TOPOLOGY% &
             & ELEMENTS%ELEMENTS(mesh_component_idx)%BASIS%TYPE)!Assumes all elements have the same basis
@@ -17899,7 +18021,7 @@ CONTAINS
               !Find the position of the current element centroid.
               xVec_centroidP(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,1)
               xVec_centroidP(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,2)
-              IF(FIELD%DECOMPOSITION%numberOfDimensions==3) THEN
+              IF(numberOfDimensions==3) THEN
                 xVec_centroidP(3)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(element_idx,3)
               ENDIF
               !Only find neighbouring centroid if there is an element there.
@@ -17911,7 +18033,7 @@ CONTAINS
 
                 xVec_centroidN(1)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,1)
                 xVec_centroidN(2)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,2)
-                IF(FIELD%DECOMPOSITION%numberOfDimensions==3) THEN
+                IF(numberOfDimensions==3) THEN
                   xVec_centroidN(3)=FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTROID_POSITION(neighbourElement,3)
                 ENDIF
               ENDIF
@@ -17920,7 +18042,7 @@ CONTAINS
 
 
 
-              SELECT CASE(FIELD%DECOMPOSITION%numberOfDimensions)
+              SELECT CASE(numberOfDimensions)
               CASE(2)
                 !CALL Field_2D_NodePositionsOnXiDirectionFaceGet(FIELD,element_idx,nic,xVec_faceNode1,xVec_faceNode2, &
                 !  & ,ERR,ERROR,*999)
@@ -17936,7 +18058,7 @@ CONTAINS
                 faceDomainNodeNumber2=FIELD%DECOMPOSITION%DOMAIN(FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
                   & TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(2))
 
-                DO dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
+                DO dimension_idx=1,numberOfDimensions
                   CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
                     & faceDomainNodeNumber1,dimension_idx,xVec_faceNode1(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
                   CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
@@ -17984,7 +18106,7 @@ CONTAINS
                     & TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ELEMENT_NODES(faceElementNodeNumbers(4))
                 ENDIF
 
-                Do dimension_idx=1,FIELD%DECOMPOSITION%numberOfDimensions
+                Do dimension_idx=1,numberOfDimensions
                   CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
                     & faceDomainNodeNumber1,dimension_idx,xVec_faceNode1(dimension_idx),ERR,ERROR,*999) !not sure if the two 1 values are correct, they are for version number and derivative number
                   CALL Field_ParameterSetGetLocalNode(FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
@@ -18023,12 +18145,16 @@ CONTAINS
               END SELECT
 
 
-              CALL L2Norm(interceptPos-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(element_idx,nic), &
-                & err,error,*999)
+              ! CALL L2Norm(interceptPos-xVec_centroidP,FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(element_idx,nic), &
+              !   & err,error,*999)
+              FIELD%GEOMETRIC_FIELD_PARAMETERS%HALFLENGTH(element_idx,nic,:) = interceptPos(1:numberOfDimensions) - &
+                & xVec_centroidP(1:numberOfDimensions)
               IF(FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(element_idx)%ADJACENT_ELEMENTS(nic)% &
                 & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
-                CALL L2Norm(xVec_centroidN-xVec_centroidP, &
-                  & FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_LENGTH(element_idx,nic),err,error,*999)
+                ! CALL L2Norm(xVec_centroidN-xVec_centroidP, &
+                !   & FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_VEC(element_idx,nic),err,error,*999)
+                FIELD%GEOMETRIC_FIELD_PARAMETERS%CENTRE_TO_CENTRE_VEC(element_idx,nic,:) = xVec_centroidN(1:numberOfDimensions) - &
+                  & xVec_centroidP(1:numberOfDimensions)
               ENDIF
 
             ENDDO
@@ -27738,6 +27864,1387 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Returns from the given parameter set an integer value for the specified local face, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalFace_Intg(field,variableType,fieldSetType,versionNumber,derivativeNumber,localFaceNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The face derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The face derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localFaceNumber !<The local face number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    INTEGER(INTG), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalFace_Intg",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_INTG_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainFaces=>domainTopology%faces
+                          IF(ASSOCIATED(domainFaces)) THEN
+                            IF(localFaceNumber>0.AND.localFaceNumber<=domainFaces%TOTAL_NUMBER_OF_FACES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & FACE_PARAM2DOF_MAP%FACES(localFaceNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local face number of "// &
+                                & TRIM(NumberToVString(localFaceNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainFaces%TOTAL_NUMBER_OF_FACES,"*",ERR,ERROR))//" local faces."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology faces is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the integer data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalFace_Intg")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalFace_Intg",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalFace_Intg
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a single precision value for the specified local face, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalFace_Sp(field,variableType,fieldSetType,versionNumber,derivativeNumber,localFaceNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The face derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The face derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localFaceNumber !<The local face number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    REAL(SP), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalFace_Sp",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_SP_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainFaces=>domainTopology%faces
+                          IF(ASSOCIATED(domainFaces)) THEN
+                            IF(localFaceNumber>0.AND.localFaceNumber<=domainFaces%TOTAL_NUMBER_OF_FACES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & FACE_PARAM2DOF_MAP%FACES(localFaceNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local face number of "// &
+                                & TRIM(NumberToVString(localFaceNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainFaces%TOTAL_NUMBER_OF_FACES,"*",ERR,ERROR))//" local faces."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology faces is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the single precision data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalFace_Sp")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalFace_Sp",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalFace_Sp
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a double precision value for the specified local face, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalFace_Dp(field,variableType,fieldSetType,versionNumber,derivativeNumber,localFaceNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The face derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The face derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localFaceNumber !<The local face number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    REAL(DP), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalFace_Dp",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_DP_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainFaces=>domainTopology%faces
+                          IF(ASSOCIATED(domainFaces)) THEN
+                            IF(localFaceNumber>0.AND.localFaceNumber<=domainFaces%TOTAL_NUMBER_OF_FACES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & FACE_PARAM2DOF_MAP%FACES(localFaceNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local face number of "// &
+                                & TRIM(NumberToVString(localFaceNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainFaces%TOTAL_NUMBER_OF_FACES,"*",ERR,ERROR))//" local faces."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology faces is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the double precision data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalFace_Dp")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalFace_Dp",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalFace_Dp
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a logical value for the specified local face, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalFace_L(field,variableType,fieldSetType,versionNumber,derivativeNumber,localFaceNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The face derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The face derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localFaceNumber !<The local face number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    LOGICAL, INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalFace_L",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_L_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainFaces=>domainTopology%faces
+                          IF(ASSOCIATED(domainFaces)) THEN
+                            IF(localFaceNumber>0.AND.localFaceNumber<=domainFaces%TOTAL_NUMBER_OF_FACES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & FACE_PARAM2DOF_MAP%FACES(localFaceNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local face number of "// &
+                                & TRIM(NumberToVString(localFaceNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainFaces%TOTAL_NUMBER_OF_FACES,"*",ERR,ERROR))//" local faces."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology faces is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by face for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the logical data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalFace_L")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalFace_L",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalFace_L
+
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set an integer value for the specified local line, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalLine_Intg(field,variableType,fieldSetType,versionNumber,derivativeNumber,localLineNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The line derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The line derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localLineNumber !<The local line number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    INTEGER(INTG), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalLine_Intg",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_INTG_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainLines=>domainTopology%lines
+                          IF(ASSOCIATED(domainLines)) THEN
+                            IF(localLineNumber>0.AND.localLineNumber<=domainLines%TOTAL_NUMBER_OF_LINES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & LINE_PARAM2DOF_MAP%LINES(localLineNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local line number of "// &
+                                & TRIM(NumberToVString(localLineNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainLines%TOTAL_NUMBER_OF_LINES,"*",ERR,ERROR))//" local lines."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology lines is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the integer data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalLine_Intg")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalLine_Intg",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalLine_Intg
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a single precision value for the specified local line, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalLine_Sp(field,variableType,fieldSetType,versionNumber,derivativeNumber,localLineNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The line derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The line derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localLineNumber !<The local line number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    REAL(SP), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalLine_Sp",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_SP_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainLines=>domainTopology%lines
+                          IF(ASSOCIATED(domainLines)) THEN
+                            IF(localLineNumber>0.AND.localLineNumber<=domainLines%TOTAL_NUMBER_OF_LINES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & LINE_PARAM2DOF_MAP%LINES(localLineNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local line number of "// &
+                                & TRIM(NumberToVString(localLineNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainLines%TOTAL_NUMBER_OF_LINES,"*",ERR,ERROR))//" local lines."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology lines is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the single precision data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalLine_Sp")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalLine_Sp",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalLine_Sp
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a double precision value for the specified local line, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalLine_Dp(field,variableType,fieldSetType,versionNumber,derivativeNumber,localLineNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The line derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The line derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localLineNumber !<The local line number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    REAL(DP), INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalLine_Dp",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_DP_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainLines=>domainTopology%lines
+                          IF(ASSOCIATED(domainLines)) THEN
+                            IF(localLineNumber>0.AND.localLineNumber<=domainLines%TOTAL_NUMBER_OF_LINES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & LINE_PARAM2DOF_MAP%LINES(localLineNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local line number of "// &
+                                & TRIM(NumberToVString(localLineNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainLines%TOTAL_NUMBER_OF_LINES,"*",ERR,ERROR))//" local lines."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology lines is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the double precision data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalLine_Dp")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalLine_Dp",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalLine_Dp
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns from the given parameter set a logical value for the specified local line, derivative and version of a field
+  !>variable component.
+ SUBROUTINE Field_ParameterSetGetLocalLine_L(field,variableType,fieldSetType,versionNumber,derivativeNumber,localLineNumber, &
+   & componentNumber,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the value for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the value for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The line derivative version number to get the value for
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The line derivative number to get the value for
+    INTEGER(INTG), INTENT(IN) :: localLineNumber !<The local line number to get the value for
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component number to get the value for
+    LOGICAL, INTENT(OUT) :: value !<On return, the value
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dofIdx
+    TYPE(DOMAIN_TYPE), POINTER :: domain
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: domainTopology
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: parameterSet
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("Field_ParameterSetGetLocalLine_L",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%PTR
+          IF(ASSOCIATED(fieldVariable)) THEN
+            IF(fieldVariable%DATA_TYPE==FIELD_L_TYPE) THEN
+              IF(fieldSetType>0.AND.fieldSetType<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                parameterSet=>fieldVariable%PARAMETER_SETS%SET_TYPE(fieldSetType)%ptr
+                IF(ASSOCIATED(parameterSet)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=fieldVariable%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(fieldVariable%components(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has element based interpolation."
+                      CALL FlagError(localError,err,error,*999)
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_NODE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      domain=>fieldVariable%components(componentNumber)%domain
+                      IF(ASSOCIATED(domain)) THEN
+                        domainTopology=>domain%topology
+                        IF(ASSOCIATED(domainTopology)) THEN
+                          domainLines=>domainTopology%lines
+                          IF(ASSOCIATED(domainLines)) THEN
+                            IF(localLineNumber>0.AND.localLineNumber<=domainLines%TOTAL_NUMBER_OF_LINES) THEN
+                              dofIdx=fieldVariable%components(componentNumber)%PARAM_TO_DOF_MAP% &
+                                & LINE_PARAM2DOF_MAP%LINES(localLineNumber)%derivatives(derivativeNumber)% &
+                                & versions(versionNumber)
+                              CALL DistributedVector_ValuesGet(parameterSet%parameters,dofIdx,value,err,error,*999)
+                            ELSE
+                              localError="The specified local line number of "// &
+                                & TRIM(NumberToVString(localLineNumber,"*",ERR,ERROR))// &
+                                &  " does not exist in the domain for field component number "// &
+                                & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of field variable type "// &
+                                & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                                & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                                & TRIM(NumberToVString(domainLines%TOTAL_NUMBER_OF_LINES,"*",ERR,ERROR))//" local lines."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ELSE
+                            CALL FlagError("Domain topology lines is not associated.",err,error,*999)
+                          ENDIF
+                        ELSE
+                          CALL FlagError("Domain topology is not associated.",err,error,*999)
+                        ENDIF
+                      ELSE
+                        CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+                      ENDIF
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      localError="Can not get by line for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      localError="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      localError="The field component interpolation type of "//TRIM(NumberToVString(fieldVariable% &
+                        & components(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(localError,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    localError="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(fieldVariable%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))// &
+                      & " components."
+                    CALL FlagError(localError,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+                  CALL FlagError(localError,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                localError="The field parameter set type of "//TRIM(NumberToVString(fieldSetType,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+                CALL FlagError(localError,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              localError="The field variable data type of "//TRIM(NumberToVString(fieldVariable%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the logical data type of the given value."
+              CALL FlagError(localError,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            localError="The specified field variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(localError,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          localError="The specified variable type of "//TRIM(NumberToVString(variableType,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(localError,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(localError,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("Field_ParameterSetGetLocalLine_L")
+    RETURN
+999 ERRORSEXITS("Field_ParameterSetGetLocalLine_L",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetGetLocalLine_L
+
+
+  !
+  !================================================================================================================================
+  !
+
+
    !>Returns from the given parameter set a integer value for the specified local node, derivative and version of a field variable component. \see OpenCMISS::Iron::cmfe_FieldParameterSetGetNode
  SUBROUTINE FIELD_PARAMETER_SET_GET_NODE_INTG(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,VERSION_NUMBER,DERIVATIVE_NUMBER, &
     & USER_NODE_NUMBER,COMPONENT_NUMBER,VALUE,ERR,ERROR,*)
@@ -29423,7 +30930,8 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
                       CALL FlagError(localError,err,error,*999)
-                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION, &
+                        FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
                         domainTopology=>domain%topology
@@ -29457,17 +30965,9 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
                     CASE(FIELD_LINE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -29597,7 +31097,8 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
                       CALL FlagError(localError,err,error,*999)
-                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION, &
+                        FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
                         domainTopology=>domain%topology
@@ -29631,17 +31132,9 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
                     CASE(FIELD_LINE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -29771,7 +31264,8 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
                       CALL FlagError(localError,err,error,*999)
-                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION, &
+                        FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
                         domainTopology=>domain%topology
@@ -29805,17 +31299,9 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
                     CASE(FIELD_LINE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -29945,7 +31431,8 @@ CONTAINS
                         & TRIM(NumberToVString(variableType,"*",ERR,ERROR))//" of field number "// &
                         & TRIM(NumberToVString(field%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
                       CALL FlagError(localError,err,error,*999)
-                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION, FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION, &
+                        FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
                       domain=>fieldVariable%components(componentNumber)%domain
                       IF(ASSOCIATED(domain)) THEN
                         domainTopology=>domain%topology
@@ -29979,17 +31466,9 @@ CONTAINS
                       !!!!!
                       CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
                     CASE(FIELD_LINE_BASED_INTERPOLATION)
                       !!!!!
                       CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
-                      !!!!!
-                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
-                      !!!!!
-                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
                       !!!!!
                     CASE(FIELD_NODE_BASED_INTERPOLATION)
                       localError="Can not get by element for component number "// &
@@ -34236,6 +35715,310 @@ CONTAINS
 999 ERRORSEXITS("FIELD_PARAMETER_SET_UPDATE_FINISH",ERR,ERROR)
     RETURN 1
   END SUBROUTINE FIELD_PARAMETER_SET_UPDATE_FINISH
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Updates the given parameter set with the given integer value for a face with specified user number and xi direction for the field variable component. \see cmfe_Field_ParameterSetUpdateElement
+  SUBROUTINE FIELD_PARAMETER_SET_UPDATE_FACE_INTG(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,versionNumber,derivativeNumber, &
+    & userElementNumber,userXiDir,componentNumber,value,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to update
+    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The field variable type to update \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: FIELD_SET_TYPE !<The field parameter set identifier
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The face derivative version number to add
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The face derivative number to update
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The element number that the face is on
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<the xi_direction of the face
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component to update
+    INTEGER(INTG), INTENT(IN) :: value !<The value to update to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: localDof, globalDof
+    LOGICAL :: GHOST_ELEMENT,USER_ELEMENT_EXISTS
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: DECOMPOSITION_TOPOLOGY
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: PARAMETER_SET
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("FIELD_PARAMETER_SET_UPDATE_FACE_INTG",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(FIELD)) THEN
+      IF(FIELD%FIELD_FINISHED) THEN
+        IF(VARIABLE_TYPE>=1.AND.VARIABLE_TYPE<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          FIELD_VARIABLE=>FIELD%VARIABLE_TYPE_MAP(VARIABLE_TYPE)%PTR
+          IF(ASSOCIATED(FIELD_VARIABLE)) THEN
+            IF(FIELD_VARIABLE%DATA_TYPE==FIELD_INTG_TYPE) THEN
+              IF(FIELD_SET_TYPE>0.AND.FIELD_SET_TYPE<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                PARAMETER_SET=>FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_SET_TYPE)%PTR
+                IF(ASSOCIATED(PARAMETER_SET)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=FIELD_VARIABLE%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(FIELD_VARIABLE%COMPONENTS(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_INTERPOLATION is not applicable for set faces",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      CALL FIELD_COMPONENT_DOF_GET_USER_FACE(FIELD,VARIABLE_TYPE,versionNumber,derivativeNumber, &
+                        & userElementNumber, userXiDir,componentNumber,localDof,globalDof,ERR,ERROR,*999)
+
+                      CALL DistributedVector_ValuesSet(PARAMETER_SET%PARAMETERS,localDof,value,ERR,ERROR,*999)
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not applicable for set face",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION is not applicable for set face",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has node based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      LOCAL_ERROR="The field component interpolation type of "//TRIM(NumberToVString(FIELD_VARIABLE% &
+                        & COMPONENTS(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    LOCAL_ERROR="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(FIELD_VARIABLE%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))//" components."
+                    CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  LOCAL_ERROR="The field parameter set type of "//TRIM(NumberToVString(FIELD_SET_TYPE,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                LOCAL_ERROR="The field parameter set type of "//TRIM(NumberToVString(FIELD_SET_TYPE,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              LOCAL_ERROR="The field variable data type of "//TRIM(NumberToVString(FIELD_VARIABLE%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the integer data type of the given value."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            LOCAL_ERROR="The specified field variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The specified variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        LOCAL_ERROR="Field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("FIELD_PARAMETER_SET_UPDATE_FACE_INTG")
+    RETURN
+999 ERRORSEXITS("FIELD_PARAMETER_SET_UPDATE_FACE_INTG",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE FIELD_PARAMETER_SET_UPDATE_FACE_INTG
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Updates the given parameter set with the given integer value for a line with specified user number and xi direction for the field variable component. \see cmfe_Field_ParameterSetUpdateElement
+  SUBROUTINE FIELD_PARAMETER_SET_UPDATE_LINE_INTG(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,versionNumber,derivativeNumber, &
+    & userElementNumber,userXiDir,componentNumber,value,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to update
+    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The field variable type to update \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: FIELD_SET_TYPE !<The field parameter set identifier
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The line derivative version number to add
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The line derivative number to update
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The element number that the line is on
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<the xi_direction of the line
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The field variable component to update
+    INTEGER(INTG), INTENT(IN) :: value !<The value to update to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: localDof, globalDof
+    LOGICAL :: GHOST_ELEMENT,USER_ELEMENT_EXISTS
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: DECOMPOSITION_TOPOLOGY
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: PARAMETER_SET
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("FIELD_PARAMETER_SET_UPDATE_LINE_INTG",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(FIELD)) THEN
+      IF(FIELD%FIELD_FINISHED) THEN
+        IF(VARIABLE_TYPE>=1.AND.VARIABLE_TYPE<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          FIELD_VARIABLE=>FIELD%VARIABLE_TYPE_MAP(VARIABLE_TYPE)%PTR
+          IF(ASSOCIATED(FIELD_VARIABLE)) THEN
+            IF(FIELD_VARIABLE%DATA_TYPE==FIELD_INTG_TYPE) THEN
+              IF(FIELD_SET_TYPE>0.AND.FIELD_SET_TYPE<=FIELD_NUMBER_OF_SET_TYPES) THEN
+                PARAMETER_SET=>FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_SET_TYPE)%PTR
+                IF(ASSOCIATED(PARAMETER_SET)) THEN
+                  IF(componentNumber>=1.AND.componentNumber<=FIELD_VARIABLE%NUMBER_OF_COMPONENTS) THEN
+                    SELECT CASE(FIELD_VARIABLE%COMPONENTS(componentNumber)%INTERPOLATION_TYPE)
+                    CASE(FIELD_CONSTANT_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has constant interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_INTERPOLATION is not applicable for set lines",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not applicable for set line",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION is not applicable for set line",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_LINE_BASED_INTERPOLATION)
+                      !!!!!
+                      CALL FlagError("FIELD_LINE_BASED_INTERPOLATION is not yet implemented here",ERR,ERROR,*999)
+                      !!!!!
+                    CASE(FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION)
+
+                      CALL FIELD_COMPONENT_DOF_GET_USER_LINE(FIELD,VARIABLE_TYPE,versionNumber,derivativeNumber, &
+                        & userElementNumber, userXiDir,componentNumber,localDof,globalDof,ERR,ERROR,*999)
+
+                      CALL DistributedVector_ValuesSet(PARAMETER_SET%PARAMETERS,localDof,value,ERR,ERROR,*999)
+
+                    CASE(FIELD_NODE_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has node based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has grid point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not update by element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has Gauss point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                      LOCAL_ERROR="Can not add element for component number "// &
+                        & TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))//" of variable type "// &
+                        & TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))//" of field number "// &
+                        & TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has data point based interpolation."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    CASE DEFAULT
+                      LOCAL_ERROR="The field component interpolation type of "//TRIM(NumberToVString(FIELD_VARIABLE% &
+                        & COMPONENTS(componentNumber)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid for component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                        & " of variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                        & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    END SELECT
+                  ELSE
+                    LOCAL_ERROR="Component number "//TRIM(NumberToVString(componentNumber,"*",ERR,ERROR))// &
+                      & " is invalid for variable type "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+                      & " of field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//" which has "// &
+                      & TRIM(NumberToVString(FIELD_VARIABLE%NUMBER_OF_COMPONENTS,"*",ERR,ERROR))//" components."
+                    CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                  ENDIF
+                ELSE
+                  LOCAL_ERROR="The field parameter set type of "//TRIM(NumberToVString(FIELD_SET_TYPE,"*",ERR,ERROR))// &
+                    & " has not been created on field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))
+                  CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ELSE
+                LOCAL_ERROR="The field parameter set type of "//TRIM(NumberToVString(FIELD_SET_TYPE,"*",ERR,ERROR))// &
+                  & " is invalid. The field parameter set type must be between 1 and "// &
+                  & TRIM(NumberToVString(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))
+                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              LOCAL_ERROR="The field variable data type of "//TRIM(NumberToVString(FIELD_VARIABLE%DATA_TYPE,"*",ERR,ERROR))// &
+                & " does not correspond to the integer data type of the given value."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            LOCAL_ERROR="The specified field variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+              & " has not been defined on field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The specified variable type of "//TRIM(NumberToVString(VARIABLE_TYPE,"*",ERR,ERROR))// &
+            & " is invalid. The variable type must be between 1 and  "// &
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        LOCAL_ERROR="Field number "//TRIM(NumberToVString(FIELD%USER_NUMBER,"*",ERR,ERROR))// &
+          & " has not been finished."
+        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("FIELD_PARAMETER_SET_UPDATE_LINE_INTG")
+    RETURN
+999 ERRORSEXITS("FIELD_PARAMETER_SET_UPDATE_LINE_INTG",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE FIELD_PARAMETER_SET_UPDATE_LINE_INTG
 
   !
   !================================================================================================================================

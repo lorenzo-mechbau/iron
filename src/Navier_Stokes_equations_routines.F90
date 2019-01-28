@@ -79,6 +79,8 @@ MODULE NAVIER_STOKES_EQUATIONS_ROUTINES
 
   PUBLIC NavierStokes_FiniteElementResidualEvaluate,NavierStokes_FiniteElementJacobianEvaluate
 
+  PUBLIC NavierStokes_FVVelocityRowEvaluate !, NavierStokes_FVPressureRowEvaluate
+
   PUBLIC NavierStokes_BoundaryConditionsAnalyticCalculate
 
   PUBLIC NavierStokes_ResidualBasedStabilisation
@@ -234,9 +236,10 @@ CONTAINS
       CASE(4)
         SELECT CASE(specification(4))
         CASE(EQUATIONS_SET_VELOCITY_FV_VARIABLETYPE, &
-          & EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE, &
           & EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE)
           !ok
+        CASE(EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE)
+          CALL FlagError("A massflow equation set isn't implemented",err,error,*999)
         CASE DEFAULT
           localError="The fourth equations set specification of "//TRIM(NumberToVstring(specification(4),"*",err,error))// &
             & " is not valid for a Navier-Stokes fluid mechanics equations set."
@@ -346,8 +349,61 @@ CONTAINS
                 & EQUATIONS_SET_FEM_SOLUTION_METHOD,err,error,*999)
               EQUATIONS_SET%SOLUTION_METHOD=EQUATIONS_SET_FEM_SOLUTION_METHOD
               CALL EquationsSet_LabelSet(EQUATIONS_SET,"Navier-Stokes equations set",err,error,*999)
-           CASE(EQUATIONS_SET_SETUP_FINISH_ACTION)
-              !Do nothing
+
+
+              !TODO Fixthis, this might not be the best way to determine if FV is used.
+              IF(SIZE(EQUATIONS_SET%SPECIFICATION)==4) THEN
+                !The method is FV so we create a equations set field to store integer values that determine the boundary condition types.
+                EQUATIONS_SET_FIELD_NUMBER_OF_VARIABLES = 1
+                EQUATIONS_SET_FIELD_NUMBER_OF_COMPONENTS = 1
+                EQUATIONS_EQUATIONS_SET_FIELD=>EQUATIONS_SET%EQUATIONS_SET_FIELD
+                IF(EQUATIONS_EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED) THEN
+                  !Create the auto created equations set field field for SUPG element metrics
+                  CALL FIELD_CREATE_START(EQUATIONS_SET_SETUP%FIELD_USER_NUMBER,EQUATIONS_SET%REGION, &
+                    & EQUATIONS_EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD,err,error,*999)
+                  EQUATIONS_SET_FIELD_FIELD=>EQUATIONS_EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD
+                  CALL FIELD_LABEL_SET(EQUATIONS_SET_FIELD_FIELD,"Equations Set Boundary Type Field",err,error,*999)
+                  CALL FIELD_TYPE_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,FIELD_GENERAL_TYPE,&
+                    & err,error,*999)
+                  CALL FIELD_DEPENDENT_TYPE_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,FIELD_INDEPENDENT_TYPE, &
+                    & err,error,*999)
+                  CALL FIELD_NUMBER_OF_VARIABLES_SET(EQUATIONS_SET_FIELD_FIELD, &
+                    & EQUATIONS_SET_FIELD_NUMBER_OF_VARIABLES,err,error,*999)
+                  CALL FIELD_VARIABLE_TYPES_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,&
+                    & [FIELD_U_VARIABLE_TYPE],err,error,*999)
+                  CALL FIELD_VARIABLE_LABEL_SET(EQUATIONS_SET_FIELD_FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & "FV Boundary Type",err,error,*999)
+                  CALL FIELD_DATA_TYPE_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & FIELD_INTG_TYPE,err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,&
+                    & FIELD_U_VARIABLE_TYPE,EQUATIONS_SET_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
+                ELSE
+                  !Check the user specified field
+                  CALL FIELD_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_GENERAL_TYPE,err,error,*999)
+                  CALL FIELD_NUMBER_OF_VARIABLES_CHECK(EQUATIONS_SET_SETUP%FIELD,EQUATIONS_SET_FIELD_NUMBER_OF_VARIABLES &
+                    & ,err,error,*999)
+                  CALL FIELD_DEPENDENT_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_INDEPENDENT_TYPE,err,error,*999)
+                  CALL FIELD_VARIABLE_TYPES_CHECK(EQUATIONS_SET_SETUP%FIELD,[FIELD_U_VARIABLE_TYPE],err,error,*999)
+                  CALL FIELD_DATA_TYPE_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_INTG_TYPE,err,error,*999)
+                  ! CALL FIELD_DIMENSION_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VECTOR_DIMENSION_TYPE, &
+                  !   & err,error,*999)
+                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & EQUATIONS_SET_FIELD_NUMBER_OF_COMPONENTS,err,error,*999)
+                  CALL FIELD_NUMBER_OF_VARIABLES_CHECK(EQUATIONS_SET_SETUP%FIELD, &
+                    & EQUATIONS_SET_FIELD_NUMBER_OF_VARIABLES,err,error,*999)
+                END IF
+              ENDIF
+            CASE(EQUATIONS_SET_SETUP_FINISH_ACTION)
+              !Do nothing if FEM
+              IF(SIZE(EQUATIONS_SET%SPECIFICATION)==4) THEN
+                !Finish equations set field creation if finite volume, this field is for boundary types at the faces.
+                IF(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED) THEN
+                  CALL FIELD_CREATE_FINISH(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD,err,error,*999)
+                  !Default the penalty coefficient value to 1E4
+                  CALL FIELD_COMPONENT_VALUES_INITIALISE(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD, &
+                   & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,0,err,error,*999)
+                END IF
+              ENDIF
             CASE DEFAULT
               localError="The action type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%ACTION_TYPE, &
                 & "*",err,error))// " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP% &
@@ -507,7 +563,56 @@ CONTAINS
           CASE(EQUATIONS_SET_STATIC_NAVIER_STOKES_SUBTYPE,EQUATIONS_SET_LAPLACE_NAVIER_STOKES_SUBTYPE, &
             & EQUATIONS_SET_TRANSIENT_NAVIER_STOKES_SUBTYPE,EQUATIONS_SET_ALE_NAVIER_STOKES_SUBTYPE, &
             & EQUATIONS_SET_PGM_NAVIER_STOKES_SUBTYPE,EQUATIONS_SET_QUASISTATIC_NAVIER_STOKES_SUBTYPE)
-            !Do nothing???
+            !Do nothing if FEM
+            IF(SIZE(EQUATIONS_SET%SPECIFICATION)==4) THEN
+              SELECT CASE(EQUATIONS_SET_SETUP%ACTION_TYPE)
+              CASE(EQUATIONS_SET_SETUP_START_ACTION)
+                EQUATIONS_SET_FIELD_NUMBER_OF_COMPONENTS = 1
+                EQUATIONS_EQUATIONS_SET_FIELD=>EQUATIONS_SET%EQUATIONS_SET_FIELD
+                EQUATIONS_SET_FIELD_FIELD=>EQUATIONS_EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD
+                IF(EQUATIONS_EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED) THEN
+                  CALL FIELD_MESH_DECOMPOSITION_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_DECOMPOSITION,err,error,*999)
+                  CALL FIELD_MESH_DECOMPOSITION_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,&
+                    & GEOMETRIC_DECOMPOSITION,err,error,*999)
+                  CALL FIELD_GEOMETRIC_FIELD_SET_AND_LOCK(EQUATIONS_SET_FIELD_FIELD,&
+                    & EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,err,error,*999)
+                  CALL FIELD_COMPONENT_MESH_COMPONENT_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & 1,GEOMETRIC_COMPONENT_NUMBER,err,error,*999)
+
+                  !Get the number of dimensions
+                  CALL FIELD_NUMBER_OF_COMPONENTS_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,FIELD_U_VARIABLE_TYPE, &
+                    & NUMBER_OF_DIMENSIONS,err,error,*999)
+
+                  DO componentIdx = 1, EQUATIONS_SET_FIELD_NUMBER_OF_COMPONENTS
+                    CALL FIELD_COMPONENT_MESH_COMPONENT_SET_AND_LOCK(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD, &
+                      & FIELD_U_VARIABLE_TYPE,componentIdx,GEOMETRIC_COMPONENT_NUMBER,err,error,*999)
+                    IF(NUMBER_OF_DIMENSIONS==2) THEN
+                    !Use lines
+                      !TODO Eventually should probably have an external line interpolation to reduce memory storage for this equations set.
+                      CALL FIELD_COMPONENT_INTERPOLATION_SET_AND_LOCK(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD, &
+                        & FIELD_U_VARIABLE_TYPE,componentIdx,FIELD_ELEMENT_AND_EXT_LINE_BASED_INTERPOLATION,err,error,*999)
+                    ELSEIF(NUMBER_OF_DIMENSIONS==3) THEN
+                    !Use faces
+                      CALL FIELD_COMPONENT_INTERPOLATION_SET_AND_LOCK(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD, &
+                        & FIELD_U_VARIABLE_TYPE,componentIdx,FIELD_ELEMENT_AND_EXT_FACE_BASED_INTERPOLATION,err,error,*999)
+                    ELSE
+                      CALL FlagError("FV is only set up for 2D or 3D",err,error,*999)
+                    ENDIF
+                  END DO
+                  !Default the field scaling to that of the geometric field
+                  CALL FIELD_SCALING_TYPE_GET(EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD,GEOMETRIC_SCALING_TYPE,err,error,*999)
+                  CALL FIELD_SCALING_TYPE_SET(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD,GEOMETRIC_SCALING_TYPE, &
+                    & err,error,*999)
+                ENDIF
+              CASE(EQUATIONS_SET_SETUP_FINISH_ACTION)
+                ! do nothing
+              CASE DEFAULT
+                localError="The action type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%ACTION_TYPE,"*",err,error))// &
+                  & " for a setup type of "//TRIM(NumberToVString(EQUATIONS_SET_SETUP%SETUP_TYPE,"*",err,error))// &
+                  & " is invalid for a linear diffusion equation."
+                CALL FlagError(localError,err,error,*999)
+              END SELECT
+            ENDIF
           CASE(EQUATIONS_SET_TRANSIENT1D_NAVIER_STOKES_SUBTYPE, &
              & EQUATIONS_SET_COUPLED1D0D_NAVIER_STOKES_SUBTYPE, &
              & EQUATIONS_SET_TRANSIENT1D_ADV_NAVIER_STOKES_SUBTYPE, &
@@ -2603,46 +2708,47 @@ CONTAINS
 
                 CASE(EQUATIONS_SET_MASSFLOW_FV_VARIABLETYPE)
 
-                  CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
-                  CALL Equations_CreateFinish(equations,err,error,*999)
-                  NULLIFY(vectorEquations)
-                  CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
-                  !Create the equations mapping.
-                  CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_V_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
-                  CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
-                  CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_V_VARIABLE_TYPE], &
-                    & err,error,*999)
-                  CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELVDELN_VARIABLE_TYPE, &
-                    & err,error,*999)!
-                  CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
-                  !Create the equations matrices
-                  CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
-                  ! Use the analytic Jacobian calculation
-                  !CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
-                  !  & err,error,*999)!FIXTHIS Unsure what to do with this line
-                  !Will have to change the following for optimum Finite Volume matrix storage
-                  SELECT CASE(equations%sparsityType)
-                  CASE(EQUATIONS_MATRICES_FULL_MATRICES)
-                    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
-                      & err,error,*999)
-                  !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
-                  !    & err,error,*999)
-                  CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
-                     CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
-                       & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
-                  !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
-                  !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
-                    CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
-                      & [EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE],err,error,*999)
-                  !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
-                  !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
-                  !FIXTHIS Need to make cases to optomise storage for specific FV matrices
-                  CASE DEFAULT
-                    localError="The equations matrices sparsity type of "// &
-                      & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
-                    CALL FlagError(localError,err,error,*999)
-                  END SELECT
-                  CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
+                  CALL FlagError("A massflow equation set isn't implemented",err,error,*999)
+                  ! CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
+                  ! CALL Equations_CreateFinish(equations,err,error,*999)
+                  ! NULLIFY(vectorEquations)
+                  ! CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+                  ! !Create the equations mapping.
+                  ! CALL EquationsMapping_VectorCreateStart(vectorEquations,FIELD_V_VARIABLE_TYPE,vectorMapping,err,error,*999)! changed from FIELD_DELUDELN_VARIABLE_TYPE for FV
+                  ! CALL EquationsMapping_LinearMatricesNumberSet(vectorMapping,1,err,error,*999)
+                  ! CALL EquationsMapping_LinearMatricesVariableTypesSet(vectorMapping,[FIELD_V_VARIABLE_TYPE], &
+                  !   & err,error,*999)
+                  ! CALL EquationsMapping_RHSVariableTypeSet(vectorMapping,FIELD_DELVDELN_VARIABLE_TYPE, &
+                  !   & err,error,*999)!
+                  ! CALL EquationsMapping_VectorCreateFinish(vectorMapping,err,error,*999)
+                  ! !Create the equations matrices
+                  ! CALL EquationsMatrices_VectorCreateStart(vectorEquations,vectorMatrices,err,error,*999)
+                  ! ! Use the analytic Jacobian calculation
+                  ! !CALL EquationsMatrices_JacobianTypesSet(vectorMatrices,[EQUATIONS_JACOBIAN_ANALYTIC_CALCULATED], &
+                  ! !  & err,error,*999)!FIXTHIS Unsure what to do with this line
+                  ! !Will have to change the following for optimum Finite Volume matrix storage
+                  ! SELECT CASE(equations%sparsityType)
+                  ! CASE(EQUATIONS_MATRICES_FULL_MATRICES)
+                  !   CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices,[MATRIX_BLOCK_STORAGE_TYPE], &
+                  !     & err,error,*999)
+                  ! !  CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices,MATRIX_BLOCK_STORAGE_TYPE, &
+                  ! !    & err,error,*999)
+                  ! CASE(EQUATIONS_MATRICES_SPARSE_MATRICES)
+                  !    CALL EquationsMatrices_LinearStorageTypeSet(vectorMatrices, &
+                  !      & [MATRIX_COMPRESSED_ROW_STORAGE_TYPE],err,error,*999)
+                  ! !   CALL EquationsMatrices_NonlinearStorageTypeSet(vectorMatrices, &
+                  ! !     & MATRIX_COMPRESSED_ROW_STORAGE_TYPE,err,error,*999)
+                  !   CALL EquationsMatrices_LinearStructureTypeSet(vectorMatrices, &
+                  !     & [EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE],err,error,*999)
+                  ! !   CALL EquationsMatrices_NonlinearStructureTypeSet(vectorMatrices, &
+                  ! !     & EQUATIONS_MATRIX_FEM_STRUCTURE,err,error,*999)
+                  ! !FIXTHIS Need to make cases to optomise storage for specific FV matrices
+                  ! CASE DEFAULT
+                  !   localError="The equations matrices sparsity type of "// &
+                  !     & TRIM(NumberToVString(equations%sparsityType,"*",err,error))//" is invalid."
+                  !   CALL FlagError(localError,err,error,*999)
+                  ! END SELECT
+                  ! CALL EquationsMatrices_VectorCreateFinish(vectorMatrices,err,error,*999)
                 CASE(EQUATIONS_SET_PRESSURE_FV_VARIABLETYPE)
 
                   CALL EquationsSet_EquationsGet(EQUATIONS_SET,equations,err,error,*999)
@@ -3496,7 +3602,7 @@ CONTAINS
               CALL ControlLoop_AbsoluteToleranceSet(CONTROL_LOOP,1.0E-6_DP,err,error,*999)
               CALL ControlLoop_RelativeToleranceSet(CONTROL_LOOP,1.0E-6_DP,err,error,*999)
               CALL CONTROL_LOOP_LABEL_SET(CONTROL_LOOP,"SIMPLE algorithm while loop",ERR,ERROR,*999)
-              CALL CONTROL_LOOP_NUMBER_OF_SUB_LOOPS_SET(CONTROL_LOOP,3,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_NUMBER_OF_SUB_LOOPS_SET(CONTROL_LOOP,2,ERR,ERROR,*999)
 
               ! The iterative mommentum equation solution for velocity
               NULLIFY(simpleLoop)
@@ -3504,16 +3610,9 @@ CONTAINS
               CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_WHILE_LOOP_TYPE,ERR,ERROR,*999)
               CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"Velocity matrix equation loop",ERR,ERROR,*999)
 
-              NULLIFY(simpleLoop)
-              ! The simple loop for the face mass flow rates using the rhie chow interpolation
-              !FIXTHIS in the future this could be done with a post solve
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_SIMPLE_TYPE,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"mass flow rate interpolation",ERR,ERROR,*999)
-
               ! The iterative continuity equation update for the pressure correction
               NULLIFY(simpleLoop)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
               CALL CONTROL_LOOP_TYPE_SET(simpleLoop,PROBLEM_CONTROL_SIMPLE_TYPE,ERR,ERROR,*999)
               CALL CONTROL_LOOP_LABEL_SET(simpleLoop,"Pressure correction loop",ERR,ERROR,*999)
               !These loops will be followed by a post solve to update the velocity, pressure and massflow rate from the pressure correction value
@@ -3561,20 +3660,8 @@ CONTAINS
               NULLIFY(simpleLoop)
               NULLIFY(SOLVERS)
               NULLIFY(SOLVER)
-              !setup solver for mass flow rate interploation (This could be a post solver to the first solver eventually)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
-              CALL SOLVERS_CREATE_START(simpleLoop,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_NUMBER_SET(SOLVERS,1,ERR,ERROR,*999)
-              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
-              CALL SOLVER_TYPE_SET(SOLVER,SOLVER_LINEAR_TYPE,ERR,ERROR,*999)
-              CALL SOLVER_LABEL_SET(SOLVER,"Mass flow rate interploation",ERR,ERROR,*999)
-              CALL SOLVER_LIBRARY_TYPE_SET(SOLVER,SOLVER_PETSC_LIBRARY,err,error,*999)
-
-              NULLIFY(simpleLoop)
-              NULLIFY(SOLVERS)
-              NULLIFY(SOLVER)
               !setup solver for pressure correction equation
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
               CALL SOLVERS_CREATE_START(simpleLoop,SOLVERS,ERR,ERROR,*999)
               CALL SOLVERS_NUMBER_SET(SOLVERS,1,ERR,ERROR,*999)
               CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
@@ -3598,12 +3685,6 @@ CONTAINS
               NULLIFY(simpleLoop)
               NULLIFY(SOLVERS)
               CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_CREATE_FINISH(SOLVERS,ERR,ERROR,*999)
-
-              NULLIFY(simpleLoop)
-              NULLIFY(SOLVERS)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
               CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
               CALL SOLVERS_CREATE_FINISH(SOLVERS,ERR,ERROR,*999)
             ENDIF
@@ -3641,27 +3722,12 @@ CONTAINS
                 & ERR,ERROR,*999)
               CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,ERR,ERROR,*999)
 
-              !Get the mass flow rate interpolation solver equation
-              NULLIFY(SOLVERS)
-              NULLIFY(SOLVER)
-              NULLIFY(SOLVER_EQUATIONS)
-              NULLIFY(simpleLoop)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
-              !Create the solver equations
-              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
-              CALL SOLVER_EQUATIONS_CREATE_START(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
-              CALL SOLVER_EQUATIONS_LINEARITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_LINEAR,ERR,ERROR,*999)
-              CALL SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET(SOLVER_EQUATIONS,SOLVER_EQUATIONS_STATIC,&
-                & ERR,ERROR,*999)
-              CALL SOLVER_EQUATIONS_SPARSITY_TYPE_SET(SOLVER_EQUATIONS,SOLVER_SPARSE_MATRICES,ERR,ERROR,*999)
-
               !Get the pressure correction solver equation
               NULLIFY(SOLVERS)
               NULLIFY(SOLVER)
               NULLIFY(SOLVER_EQUATIONS)
               NULLIFY(simpleLoop)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
+              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
               CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
               !Create the solver equations
               CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
@@ -3696,17 +3762,6 @@ CONTAINS
               NULLIFY(SOLVER_EQUATIONS)
               NULLIFY(simpleLoop)
               CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,simpleLoop,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
-              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
-              !Finish the solver equations creation
-              CALL SOLVER_EQUATIONS_CREATE_FINISH(SOLVER_EQUATIONS,err,error,*999)
-
-              NULLIFY(SOLVERS)
-              NULLIFY(SOLVER)
-              NULLIFY(SOLVER_EQUATIONS)
-              NULLIFY(simpleLoop)
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,3,simpleLoop,ERR,ERROR,*999)
               CALL CONTROL_LOOP_SOLVERS_GET(simpleLoop,SOLVERS,ERR,ERROR,*999)
               CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
               CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,err,error,*999)
@@ -7064,6 +7119,2017 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE NavierStokes_FiniteElementJacobianEvaluate
+
+!TODO complete the following subroutine, when Finbar back to NZL
+!   !
+!   !================================================================================================================================
+!   !
+!
+!   !>Evaluates the row of the pressure linear matrix and RHS for a Navier-Stokes equation finite volume equations set.
+!   SUBROUTINE NavierStokes_FVPressureRowEvaluate(equationsSet,localRow,err,error,*)
+!
+!     !Argument variables
+!     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet !<A pointer to the equations set to perform the finite volume calculations on
+!     INTEGER(INTG), INTENT(IN) :: localRow !<The row number to calculate
+!     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+!     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+!
+!     INTEGER(INTG) :: dofIdxForType, localColumnIdx, xicIdx, component, localElementNo,  startNic, &
+!       & numberOfDimensions, elementLocalLineNo, localLine, elementLocalFaceNo, localFace, adjacentLocalElementNo, BoundaryType, &
+!       & elementLocalLineNo2, localLine2
+!     REAL(DP) ::  MatrixValue, rhsValue, aP_P, aP_F, aU_P, aV_P, aU_FP, aV_FP, &
+!       & m_dot_F, mu, diffConstant_x, diffConstant_y, centreToCentreLengthX_F, centreToCentreLengthY_F, halfLengthX_F, &
+!       & halfLengthY_F, D_Px, D_Py, &
+!       & surfaceAreaVectorX, surfaceAreaVectorY, faceNormalX, faceNormalY, &
+!       & totalFaceArea, deltaX_f, deltaY_f, volume_P, volume_F, &
+!       & deltaX_f2, deltaY_f2, centreToCentreLengthX_F2, centreToCentreLengthY_F2, xicIdx2, crossCheck, BCLineVec(2)
+!     TYPE(EquationsType), POINTER :: equations
+!     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: domainElements
+!     TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+!     TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+!     TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: decompositionElements
+!     TYPE(DECOMPOSITION_LINES_TYPE), POINTER :: decompositionLines
+!     TYPE(DECOMPOSITION_FACES_TYPE), POINTER :: decompositionFaces
+!     TYPE(DECOMPOSITION_LINE_TYPE), POINTER :: decompositionLine
+!     TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+!     TYPE(EquationsMappingVectorType), POINTER :: vectorMapping
+!     TYPE(EquationsMappingLinearType), POINTER :: linearMapping
+!     TYPE(EquationsMatricesLinearType), POINTER :: linearMatrices
+!     TYPE(EquationsVectorType), POINTER :: vectorEquations
+!     TYPE(FIELD_TYPE), POINTER :: dependentField, materialsField, geometricField
+!     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+!     TYPE(FIELD_DOF_TO_PARAM_MAP_TYPE), POINTER :: dependentDofsParamMapping
+!     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: dependentDofsDomainMapping
+!     TYPE(BASIS_TYPE), POINTER :: basis
+!     TYPE(EquationsMatrixType), POINTER :: equationsMatrix
+!     TYPE(EquationsMatricesRHSType), POINTER :: rhsVector
+!     TYPE(FIELD_GEOMETRIC_PARAMETERS_TYPE), POINTER :: geometricFieldParameters
+!     TYPE(FIELD_TYPE), POINTER :: BoundaryTypesEquationsSetField
+!
+!     ENTERS("NavierStokes_FVPressureRowEvaluate",err,error,*999)
+!
+!     IF(.NOT.ASSOCIATED(equationsSet)) CALL FlagError("Equations set is not associated.",err,error,*999)
+!
+!     NULLIFY(dependentField)
+!     CALL EquationsSet_DependentFieldGet(equationsSet,dependentField,err,error,*999)
+!     NULLIFY(geometricField)
+!     CALL EquationsSet_GeometricFieldGet(equationsSet,geometricField,err,error,*999)
+!     NULLIFY(equations)
+!     CALL EquationsSet_EquationsGet(equationsSet,equations,err,error,*999)
+!     NULLIFY(vectorEquations)
+!     CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+!     NULLIFY(vectorMatrices)
+!     CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+!     NULLIFY(vectorMapping)
+!     CALL EquationsVector_VectorMappingGet(vectorEquations,vectorMapping,err,error,*999)
+!     NULLIFY(linearMapping)
+!     CALL EquationsMappingVector_LinearMappingGet(vectorMapping,linearMapping,err,error,*999)
+!     NULLIFY(linearMatrices)
+!     CALL EquationsMatricesVector_LinearMatricesGet(vectorMatrices,linearMatrices,err,error,*999)
+!     NULLIFY(equationsMatrix)
+!     CALL EquationsMatricesLinear_EquationsMatrixGet(linearMatrices,2,equationsMatrix,err,error,*999) !The 2 is for pressure
+!     fieldVariable=>linearMapping%equationsMatrixToVarMaps(2)%variable !The 2 is for pressure
+!     IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*999)
+!     dependentDofsDomainMapping=>fieldVariable%DOMAIN_MAPPING
+!     IF(.NOT.ASSOCIATED(dependentDofsDomainMapping)) &
+!       & CALL FlagError("Dependent dofs domain mapping is not associated.",err,error,*999)
+!     dependentDofsParamMapping=>fieldVariable%DOF_TO_PARAM_MAP
+!     IF(.NOT.ASSOCIATED(dependentDofsParamMapping)) &
+!       & CALL FlagError("Dependent dofs parameter mapping is not associated.",err,error,*999)
+!     NULLIFY(rhsVector)
+!     rhsVector=>vectorMatrices%rhsVector
+!     geometricFieldParameters => dependentField%GEOMETRIC_FIELD%GEOMETRIC_FIELD_PARAMETERS
+!     IF(.NOT.ASSOCIATED(geometricFieldParameters)) CALL FlagError("geometricFieldParameters is not associated.",err,error,*999)
+!     ! Get the Equations set field which stores the boundary type of the boundary faces
+!     BoundaryTypesEquationsSetField => equationsSet%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD
+!
+!
+!     numberOfDimensions = fieldVariable%DIMENSION
+!
+!     MatrixValue = 0
+!     rhsValue = 0
+!
+!     dofIdxForType = dependentDofsParamMapping%DOF_TYPE(2,localRow) !the dof idx for the specific dof type
+!
+!     IF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_ELEMENT_DOF_TYPE) THEN
+!
+!       localElementNo=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(1,dofIdxForType) !element number of the field parameter
+!       component=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(2,dofIdxForType) !component number of the field parameter
+!       domainElements=>fieldVariable%components(component)%domain%topology%elements
+!       IF(numberOfDimensions==2) THEN
+!         domainLines=>fieldVariable%components(component)%domain%topology%lines
+!         decompositionLines = fieldVariable%components(component)%domain%decomposition%topology%lines
+!       ELSEIF(numberOfDimensions==3) THEN
+!         domainFaces=>fieldVariable%components(component)%domain%topology%faces
+!         decompositionFaces = fieldVariable%components(component)%domain%decomposition%topology%faces
+!       ENDIF
+!       decompositionElements=>fieldVariable%components(component)%domain%decomposition%topology%elements
+!       basis=>domainElements%elements(localElementNo)%basis
+!
+!       !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+!       SELECT CASE(basis%TYPE)!Assumes all elements have the same basis
+!       CASE(BASIS_SIMPLEX_TYPE)
+!         startNic=1
+!       CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+!         startNic=-basis%NUMBER_OF_XI_COORDINATES
+!       CASE DEFAULT
+!         CALL FlagError("basis type must be lagrange hermite or simplex",err,error,*999)
+!       END SELECT
+!
+!       !TODO, make it so the viscosity can be varied for different elements.
+!       materialsField=>equationsSet%materials%MATERIALS_FIELD
+!       CALL Field_ParameterSetGetConstant(materialsField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1, &
+!         & mu,err,error,*999)
+!
+!       !Get the column idx of localElementNo
+!       localColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!         & elements(localElementNo)
+!
+!       aU_P = 0
+!       aV_P = 0
+!       !First we get the coefficient in front of this elements velocity in the momentum equation.
+!       !Loop over adjacent elements to get each adjacent element term in this elements coefficient.
+!       DO xicIdx = startNic, basis%NUMBER_OF_XI_COORDINATES
+!         IF(xicIdx ==0) CYCLE
+!         IF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+!           & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+!
+!           elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+!           localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+!           decompositionLine = decompositionLines%lines(localLine)
+!
+!           !Get the mass flow rate (M_dot_F), which is the V variable type
+!           CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+!             & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+!           !TODO make sure when assigning the mass flow rate we multiply it by 1 if the element is the first index in surrounding elements and by negative 1 if it is the second index.
+!           !Easier is to only assign the mass flow rate for elements that are in the first index of the lines SURROUNDING_ELEMENTS
+!
+!           IF(decompositionLine%SURROUNDING_ELEMENTS(1) == localElementNo) THEN
+!             !do nothing
+!           ELSEIF(decompositionLine%SURROUNDING_ELEMENTS(2) == localElementNo) THEN
+!             M_dot_F = M_dot_F*(-1)
+!           ELSE
+!             CALL FlagError("the element and line are not adjacent to eachother",err,error,*999)
+!           ENDIF
+!
+!           !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+!           deltaX_f = - geometricFieldParameters%SURFACE_VECTOR( &
+!             & localElementNo,xicIdx,2)   !This is the Component part of the line vector of the line/face.
+!           !The above equation is Delta_x = - surfaceAreaVector_y.
+!
+!           deltaY_f = geometricFieldParameters%SURFACE_VECTOR( &
+!             & localElementNo,xicIdx,1)  !This is the off Component part of the line vector of the line/face.
+!           !The above equation is Delta_y = surfaceAreaVector_x.
+!
+!           !Get auxillary cell volume/area
+!           volumeAux = (centreToCentreLengthX_F * deltaY_f - centreToCentreLengthY_F * deltaX_f)/2
+!
+!           centreToCentreLengthX_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!             & localElementNo,xicIdx,1)  !this is Delta_x_PF in notes
+!
+!           centreToCentreLengthY_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!             & localElementNo,xicIdx,2)  !this is Delta_y_PF in notes
+!
+!
+!           convectionFlux_P = max(M_dot_F, 0.0_DP)
+!
+!           convectionFlux_F = -max(-M_dot_F, 0.0_DP)
+!
+!           !Get the diffusion constant
+!           diffConstant_x = mu * deltaY_f / (2*volumeAux)
+!
+!           diffConstant_y = mu * deltaX_f / (2*volumeAux)
+!
+!           aU_P = aU_P + convectionFlux_P + diffConstant_x * (2 * deltaY_f - deltaX_f)
+!
+!           aV_P = aV_P + convectionFlux_P - diffConstant_y * (2 * deltaX_f - deltaY_f)
+!
+!         ELSE
+!             !Do nothing only internal faces are included.
+!         ENDIF
+!       ENDDO !xiIdx
+!
+!       !Now we get the volume of the element.
+!       volume_P = geometricFieldParameters%VOLUMES(localElementNo)
+!
+!       !Now we get D terms, see derivation notes for info.
+!       D_Px = aU_P / volume_P
+!       D_Py = aV_P / volume_P
+!
+!
+!       !Loop over adjacent elements and assign the flux term for the corresponding column to the matrix.
+!       DO xicIdx = startNic, basis%NUMBER_OF_XI_COORDINATES
+!         IF(xicIdx ==0) CYCLE
+!         IF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+!           & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+!
+!           IF(numberOfDimensions==2) THEN
+!
+!             !get the local element number of the adjacent element
+!             adjacentLocalElementNo = decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)%ADJACENT_ELEMENTS(1)
+!
+!             !Find the local columns corresponding to adjacentLocalElementNo
+!             adjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!               & elements(adjacentLocalElementNo)
+!
+!             !Now we need to find D_Px and D_Py for the adjacent element, we will denote this D_FPx and D_FPy
+!             !To do this we iterate over the adjacent elements of the adjacent element.
+!             !Loop over adjacent elements to get each adjacent element term in this elements coefficient.
+!             aU_FP = 0
+!             aV_FP = 0
+!             DO xicIdx2 = startNic, basis%NUMBER_OF_XI_COORDINATES
+!               IF(xicIdx2 ==0) CYCLE
+!               IF(decompositionElements%elements(adjacentLocalElementNo)%ADJACENT_ELEMENTS(xicIdx2)% &
+!                 & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+!
+!                 elementLocalLineNo2 = basis%xiNormalsLocalLine(xicIdx2,1)
+!                 localLine2 = decompositionElements%elements(adjacentLocalElementNo)%ELEMENT_LINES(elementLocalLineNo)
+!                 decompositionLine = decompositionLines%lines(localLine2)
+!
+!                 !Get the mass flow rate (M_dot_F), which is the V variable type
+!                 CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine2, &
+!                   & 1,M_dot_F2,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+!                 !TODO make sure when assigning the mass flow rate we multiply it by 1 if the element is the first index in surrounding elements and by negative 1 if it is the second index.
+!
+!                 IF(decompositionLine%SURROUNDING_ELEMENTS(1) == adjacentLocalElementNo) THEN
+!                   !do nothing
+!                 ELSEIF(decompositionLine%SURROUNDING_ELEMENTS(2) == adjacentLocalElementNo) THEN
+!                   M_dot_F2 = M_dot_F2*(-1)
+!                 ELSE
+!                   CALL FlagError("the element and line are not adjacent to eachother",err,error,*999)
+!                 ENDIF
+!
+!
+!                 !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+!                 deltaX_f2 = - geometricFieldParameters%SURFACE_VECTOR( &
+!                   & adjacentLocalElementNo,xicIdx2,2)   !This is the Component part of the line vector of the line/face.
+!                 !The above equation is Delta_x = - surfaceAreaVector_y.
+!
+!                 deltaY_f2 = geometricFieldParameters%SURFACE_VECTOR( &
+!                   & adjacentLocalElementNo,xicIdx2,1)  !This is the off Component part of the line vector of the line/face.
+!                 !The above equation is Delta_y = surfaceAreaVector_x.
+!
+!                 centreToCentreLengthX_F2 = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!                   & adjacentLocalElementNo,xicIdx2,1)  !this is Delta_x_PF in notes
+!
+!                 centreToCentreLengthY_F2 = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!                   & adjacentLocalElementNo,xicIdx2,2)  !this is Delta_y_PF in notes
+!
+!                 !Get auxillary cell volume/area
+!                 volumeAux2 = (centreToCentreLengthX_F2 * deltaY_f2 - centreToCentreLengthY_F2 * deltaX_f2)/2
+!
+!
+!                 convectionFlux_P2 = max(M_dot_F2, 0.0_DP)
+!
+!                 convectionFlux_F2 = -max(-M_dot_F2, 0.0_DP)
+!
+!                 !Get the diffusion constant
+!                 diffConstant_x2 = mu * deltaY_f2 / (2*volumeAux2)
+!
+!                 diffConstant_y2 = mu * deltaX_f2 / (2*volumeAux2)
+!
+!                 aU_FP = aU_FP + convectionFlux_P2 + diffConstant_x2 * (2 * deltaY_f2 - deltaX_f2)
+!
+!                 aV_FP = aV_FP + convectionFlux_P2 - diffConstant_y2 * (2 * deltaX_f2 - deltaY_f2)
+!
+!               ELSE
+!                   !Do nothing only internal faces are included.
+!               ENDIF
+!             ENDDO !xiIdx
+!
+!             !Now we get the volume of the element.
+!             volume_F = geometricFieldParameters%VOLUMES(adjacentLocalElementNo)
+!
+!             !Now we get D terms, see derivation notes for info.
+!             D_FPx = aU_FP / volume_F
+!             D_FPy = aV_FP / volume_F
+!
+!
+!             !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+!             deltaX_f = - geometricFieldParameters%SURFACE_VECTOR( &
+!               & localElementNo,xicIdx,2)   !This is the Component part of the line vector of the line/face.
+!             !The above equation is Delta_x = - surfaceAreaVector_y.
+!
+!             deltaY_f = geometricFieldParameters%SURFACE_VECTOR( &
+!               & localElementNo,xicIdx,1)  !This is the off Component part of the line vector of the line/face.
+!             !The above equation is Delta_y = surfaceAreaVector_x.
+!
+!             centreToCentreLengthX_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!               & localElementNo,xicIdx,1)  !this is Delta_x_PF in notes
+!
+!             centreToCentreLengthY_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+!               & localElementNo,xicIdx,2)  !this is Delta_y_PF in notes
+!
+!             elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+!             localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+!             decompositionLine = decompositionLines%lines(localLine)
+!
+!             !Get the mass flow rate (M_dot_F), which is the V variable type
+!             CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+!               & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+!             !TODO make sure when assigning the mass flow rate we multiply it by 1 if the element is the first index in surrounding elements and by negative 1 if it is the second index.
+!             !Easier is to only assign the mass flow rate for elements that are in the first index of the lines SURROUNDING_ELEMENTS
+!
+!             IF(decompositionLine%SURROUNDING_ELEMENTS(1) == localElementNo) THEN
+!               !do nothing
+!             ELSEIF(decompositionLine%SURROUNDING_ELEMENTS(2) == localElementNo) THEN
+!               M_dot_F = M_dot_F*(-1)
+!             ELSE
+!               CALL FlagError("the element and line are not adjacent to eachother",err,error,*999)
+!             ENDIF
+!
+!             !Get local node number of corner nodes and their locations
+!             cornerNodeB = domainLines%LINES(localLine)%NODES_IN_LINE(1)
+!             cornerNodeC = domainLines%LINES(localLine)%NODES_IN_LINE(2)
+!
+!             !Get their locations
+!             CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+!               & 1,xCoordNodeB,err,error,*999)
+!             CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+!               & 1,xCoordNodeC,err,error,*999)
+!             CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+!               & 2,yCoordNodeB,err,error,*999)
+!             CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+!               & 2,yCoordNodeC,err,error,*999)
+!
+!             !Get the distance vector from point B to point C
+!             BCLineVec=[xCoordNodeC - xCoordNodeB, yCoordNodeC - yCoordNodeB]
+!
+!             !We need node B to be the first node on line reached when rotating around the element in the anticlockwise direction
+!             !Assume this is the case and check if it is correct by cross producting the surface vector with the B-C line vector. If the result is positive then we have correctly chosen B
+!             crossCheck = deltaY_f * BCLineVec(2) + deltaX_f * BCLineVec(1)
+!
+!             IF(crossCheck>0) THEN
+!               !do nothing
+!             ELSE
+!               !Swap corner node B and C
+!               cornerNodeTemp = cornerNodeB
+!               cornerNodeB = cornerNodeC
+!               cornerNodeC = cornerNodeB
+!             ENDIF
+!
+!             !Get auxillary cell volume/area
+!             volumeAux = (centreToCentreLengthX_F * deltaY_f - centreToCentreLengthY_F * deltaX_f)/2
+!
+!             IF(DIAGNOSTICS1) THEN
+!               IF(volumeAux<0) THEN
+!                 CALL FlagError("auxillary cell volume is negative which is not allowed",err,error,*999)
+!               ENDIF
+!             ENDIF
+!
+!             convectionFlux_P = max(M_dot_F, 0.0_DP)
+!
+!             convectionFlux_F = -max(-M_dot_F, 0.0_DP)
+!             !LEFT HAND SIDE
+!
+!             IF(component == 1) THEN
+!
+!               !Get the diffusion constant
+!               diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!               aU_P = convectionFlux_P + diffConstant * (2 * deltaY_f - deltaX_f)
+!
+!               aU_F = convectionFlux_F - diffConstant * (2 * deltaY_f - deltaX_f)
+!
+!               aV_P = diffConstant * deltaY_f
+!
+!               aV_F = -diffConstant * deltaY_f
+!
+!             ELSEIF(component==2) THEN
+!
+!               !Get the diffusion constant
+!               diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!               aV_P = convectionFlux_P - diffConstant * (2 * deltaX_f - deltaY_f)
+!
+!               aV_F = convectionFlux_F + diffConstant * (2 * deltaX_f - deltaY_f)
+!
+!               aU_P = -diffConstant * deltaX_f
+!
+!               aU_F = diffConstant * deltaX_f
+!
+!             ENDIF
+!
+!             !assign matrix values to matrix for current and adjacent element
+!
+!             CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+!
+!             CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+!
+!             CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+!
+!             CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+!
+!
+!             !Now add parts from elements surrounding the nodes
+!             !First do elements surrounding corner node B
+!             IF(domainNodes%NODES(cornerNodeB)%BOUNDARY_NODE) THEN
+!               !node is a boundary so the velocity will be approximated by the average of the neighbouring lines
+!               numberSurroundingLines = domainNodes%NODES(cornerNodeB)%NUMBER_OF_NODE_LINES
+!
+!               DO surroundingLineIdx = 1, numberSurroundingLines
+!                 surroundingLineLocalNo = domainNodes%NODES(cornerNodeB)%NODE_LINES(surroundingLineIdx)
+!                 IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+!                 !TODO make sure this works for a node at the corner of the mesh
+!
+!                 !Find the local columns corresponding to surroundingLineLocalNo
+!                 uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!                 vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                 IF(component == 1) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                   aU_Bf = -diffConstant/numberSurroundingLines * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+!
+!                   aV_Bf = -diffConstant/numberSurroundingLines * (centreToCentreLengthY_F)
+!
+!                 ELSEIF(component == 2) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                   aU_Bf = diffConstant/numberSurroundingLines * (centreToCentreLengthX_F)
+!
+!                   aV_Bf = diffConstant/numberSurroundingLines * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+!
+!
+!                 ENDIF
+!
+!                 !assign matrix values to matrix for the surrounding line
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!               ENDDO ! surroundingLineIdx
+!
+!             ELSE
+!               ! node is not a boundary so the corner velocity is approximated as the average of all surrounding elements, so add
+!               ! 1/numberSurroundingElements of the diffusion term to each velocity term in the matrix
+!               numberSurroundingElements = domainNodes%NODES(cornerNodeB)%NUMBER_OF_SURROUNDING_ELEMENTS
+!               DO surroundingElemIdx = 1, numberSurroundingElements
+!                 surroundingElemLocalNo = domainNodes%NODES(cornerNodeB)%SURROUNDING_ELEMENTS(surroundingElemIdx)
+!                 !Find the local columns corresponding to surroundingElemLocalNo
+!                 uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!                   & elements(surroundingElemLocalNo)
+!                 vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!                   & elements(surroundingElemLocalNo)
+!
+!                 IF(component == 1) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                   aU_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+!
+!                   aV_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+!
+!                 ELSEIF(component == 2) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                   aU_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+!
+!                   aV_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+!
+!
+!                 ENDIF
+!
+!                 !assign matrix values to matrix for the surrounding Element
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!               ENDDO ! surroundingElemIdx
+!
+!             ENDIF
+!
+!             !Repeat the above for cornerNodeC
+!             IF(domainNodes%NODES(cornerNodeC)%BOUNDARY_NODE) THEN
+!               !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces
+!               numberSurroundingLines = domainNodes%NODES(cornerNodeC)%NUMBER_OF_NODE_LINES
+!
+!               DO surroundingLineIdx = 1, numberSurroundingLines
+!                 surroundingLineLocalNo = domainNodes%NODES(cornerNodeC)%NODE_LINES(surroundingLineIdx)
+!                 IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+!                 !TODO make sure this works for a node at the corner of the mesh
+!
+!                 !Find the local columns corresponding to surroundingLinemLocalNo
+!                 uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!                 vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                 IF(component == 1) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                   aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+!
+!                   aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+!
+!                 ELSEIF(component == 2) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                   aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+!
+!                   aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+!
+!
+!                 ENDIF
+!
+!                 !assign matrix values to matrix for the surrounding line
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!               ENDDO ! surroundingLineIdx
+!
+!             ELSE
+!               ! node is not a boundary so the corner velocity is approximated as the average of all surrounding elements, so add
+!               ! 1/numberSurroundingElements of the diffusion term to each velocity term in the matrix
+!               numberSurroundingElements = domainNodes%NODES(cornerNodeC)%NUMBER_OF_SURROUNDING_ELEMENTS
+!               DO surroundingElemIdx = 1, numberSurroundingElements
+!                 surroundingElemLocalNo = domainNodes%NODES(cornerNodeC)%SURROUNDING_ELEMENTS(surroundingElemIdx)
+!                 !Find the local columns corresponding to surroundingElemLocalNo
+!                 uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!                   & elements(surroundingElemLocalNo)
+!                 vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+!                   & elements(surroundingElemLocalNo)
+!
+!                 IF(component == 1) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                   aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+!
+!                   aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+!
+!                 ELSEIF(component == 2) THEN
+!
+!                   ! diffConstant already calculated above
+!                   ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                   aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+!
+!                   aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+!
+!
+!                 ENDIF
+!
+!                 !assign matrix values to matrix for the surrounding Element
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!               ENDDO ! surroundingElemIdx
+!
+!             ENDIF
+!
+!             !RIGHT HAND SIDE
+!             ! sum the rhs value which is to be added to the rhs vector after this xicIdx loop
+!
+!             !First get pressure values at neighbouring face
+!             CALL Field_ParameterSetGetLocalElement(dependentField,FIELD_W_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+!               & adjacentLocalElementNo,1,elementPressure_F,err,error,*999)
+!
+!             halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+!               & localElementNo,xicIdx,1)
+!
+!             halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+!               & localElementNo,xicIdx,2)
+!
+!             halfLengthTotal = SQRT(halfLengthX_F**2 + halfLengthY_F**2)
+!
+!             centreToCentreLengthTotal = SQRT(centreToCentreLengthX_F**2 + centreToCentreLengthY_F**2)
+!
+!             IF(component==1) THEN
+!
+!               rhsValue = - elementPressure_F*halfLengthTotal*deltaY_f/centreToCentreLengthTotal - &
+!                 & elementPressure_P*(centreToCentreLengthTotal-halfLengthTotal)*deltaY_f/centreToCentreLengthTotal !- PRESSURE TERMS
+!             ELSEIF(component==2) THEN
+!
+!               rhsValue = elementPressure_F*halfLengthTotal*deltaX_f/centreToCentreLengthTotal + &
+!                 & elementPressure_P*(centreToCentreLengthTotal-halfLengthTotal)*deltaX_f/centreToCentreLengthTotal !- PRESSURE TERMS
+!
+!             ELSE
+!               CALL FlagError("Only component == 1 or 2 allowed",err,error,*999)
+!             ENDIF
+!
+!             CALL DistributedVector_ValuesAdd(rhsVector%vector,localRow,rhsValue,err,error,*999)
+!
+!
+!           ELSEIF(numberOfDimensions==3) THEN
+!             CALL FlagError("3d discretisation needs to be done",err,error,*999)
+!           ENDIF
+!
+!
+!
+!         ELSEIF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+!           & NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
+!           ! There is no adjacent element, which means that in this direction is an external boundary face or line.
+!
+!
+!           IF(numberOfDimensions==2) THEN
+!
+!             elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+!
+!             localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+!
+!             !Get x and y components of face area vector in normal direction
+!             surfaceAreaVectorX= geometricFieldParameters%SURFACE_VECTOR( &
+!               & localElementNo,xicIdx,1)
+!
+!             surfaceAreaVectorY = geometricFieldParameters%SURFACE_VECTOR( &
+!               & localElementNo,xicIdx,2)
+!
+!             !Get the boundary type of the external line
+!             CALL Field_ParameterSetGetLocalLine(BoundaryTypesEquationsSetField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
+!               & localLine,1,BoundaryType,err,error,*999)
+!
+!             SELECT CASE(boundaryType)
+!             CASE(BOUNDARY_CONDITION_FREE)
+!               !Do nothing
+!             CASE(BOUNDARY_CONDITION_FIXED_INLET)
+!
+!               !Find the local columns corresponding to localLine
+!               uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                 & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!               vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                 & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!
+!
+!               !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+!               deltaX_f = - surfaceAreaVectorY   !This is the x Component part of the line vector of the line/face.
+!               !The above equation is Delta_x = - surfaceAreaVector_y.
+!
+!               deltaY_f = surfaceAreaVectorX  !This is the y Component part of the line vector of the line/face.
+!               !The above equation is Delta_y = surfaceAreaVector_x.
+!
+!               !This is the x direction length from centroid to centre of line
+!               halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+!                 & localElementNo,xicIdx,1)  !this is Delta_x_Pb in notes
+!
+!               !This is the y direction length from centroid to centre of line
+!               halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+!                 & localElementNo,xicIdx,2)  !this is Delta_y_Pb in notes
+!
+!               !Get the mass flow rate (M_dot_F), which is the V variable type
+!               CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+!                 & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+!
+!               !Get local node number of corner nodes and their locations
+!               cornerNodeB = domainLines%LINES(localLine)%NODES_IN_LINE(1)
+!               cornerNodeC = domainLines%LINES(localLine)%NODES_IN_LINE(2)
+!
+!               !Get their locations
+!               CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+!                 & 1,xCoordNodeB,err,error,*999)
+!               CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+!                 & 1,xCoordNodeC,err,error,*999)
+!               CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+!                 & 2,yCoordNodeB,err,error,*999)
+!               CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+!                 & 2,yCoordNodeC,err,error,*999)
+!
+!               !Get the distance vector from point B to point C
+!               BCLineVec=[xCoordNodeC - xCoordNodeB, yCoordNodeC - yCoordNodeB]
+!
+!               !We need node B to be the first node on line reached when rotating around the element in the anticlockwise direction
+!               !Assume this is the case and check if it is correct by cross producting the surface vector with the B-C line vector. If the result is positive then we have correctly chosen B
+!               crossCheck = deltaY_f * BCLineVec(2) + deltaX_f * BCLineVec(1)
+!
+!               IF(crossCheck>0) THEN
+!                 !do nothing
+!               ELSE
+!                 !Swap corner node B and C
+!                 cornerNodeTemp = cornerNodeB
+!                 cornerNodeB = cornerNodeC
+!                 cornerNodeC = cornerNodeB
+!               ENDIF
+!
+!               !Get auxillary cell volume/area
+!               volumeAux = (halfLengthX_F * deltaY_f - halfLengthY_F * deltaX_f)/2
+!
+!               IF(DIAGNOSTICS1) THEN
+!                 IF(volumeAux<0) THEN
+!                   CALL FlagError("auxillary cell volume is negative which is not allowed",err,error,*999)
+!                 ENDIF
+!               ENDIF
+!
+!               convectionFlux_P = 0
+!
+!               convectionFlux_F = M_dot_F
+!               !LEFT HAND SIDE
+!
+!               IF(component == 1) THEN
+!
+!                 !Get the diffusion constant
+!                 diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                 aU_P = convectionFlux_P + diffConstant * (2 * deltaY_f - deltaX_f)
+!
+!                 aU_F = convectionFlux_F - diffConstant * (2 * deltaY_f - deltaX_f)
+!
+!                 aV_P = diffConstant * deltaY_f
+!
+!                 aV_F = -diffConstant * deltaY_f
+!
+!               ELSEIF(component==2) THEN
+!
+!                 !Get the diffusion constant
+!                 diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                 aV_P = convectionFlux_P - diffConstant * (2 * deltaX_f - deltaY_f)
+!
+!                 aV_F = convectionFlux_F + diffConstant * (2 * deltaX_f - deltaY_f)
+!
+!                 aU_P = -diffConstant * deltaX_f
+!
+!                 aU_F = diffConstant * deltaX_f
+!
+!               ENDIF
+!
+!               !assign matrix values to matrix for current and adjacent element columns
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+!
+!
+!               !Now add parts from elements surrounding the nodes
+!               !First do elements surrounding corner node B
+!               IF(domainNodes%NODES(cornerNodeB)%BOUNDARY_NODE) THEN
+!                 !node is a boundary so the velocity will be approximated by the average of the neighbouring lines
+!                 numberSurroundingLines = domainNodes%NODES(cornerNodeB)%NUMBER_OF_NODE_LINES
+!
+!                 DO surroundingLineIdx = 1, numberSurroundingLines
+!                   surroundingLineLocalNo = domainNodes%NODES(cornerNodeB)%NODE_LINES(surroundingLineIdx)
+!                   IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+!                   !TODO make sure this works for a node at the corner of the mesh
+!
+!                   !Find the local columns corresponding to surroundingLineLocalNo
+!                   uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                     & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!                   vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                     & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                   IF(component == 1) THEN
+!
+!                     ! diffConstant already calculated above
+!                     ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                     aU_Bf = -diffConstant/numberSurroundingLines * (2 * halfLengthY_F - halfLengthX_F)
+!
+!                     aV_Bf = -diffConstant/numberSurroundingLines * (halfLengthY_F)
+!
+!                   ELSEIF(component == 2) THEN
+!
+!                     ! diffConstant already calculated above
+!                     ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                     aU_Bf = diffConstant/numberSurroundingLines * (halfLengthX_F)
+!
+!                     aV_Bf = diffConstant/numberSurroundingLines * (2 * halfLengthX_F - halfLengthY_F)
+!
+!
+!                   ENDIF
+!
+!                   !assign matrix values to matrix for the surrounding line
+!                   CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                   CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!                 ENDDO ! surroundingLineIdx
+!
+!               ELSE
+!                 CALL FlagError("node on boundary line must be a boundary node",err,error,*999)
+!               ENDIF
+!
+!               !Repeat the above for cornerNodeC
+!               IF(domainNodes%NODES(cornerNodeC)%BOUNDARY_NODE) THEN
+!                 !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces
+!                 numberSurroundingLines = domainNodes%NODES(cornerNodeC)%NUMBER_OF_NODE_LINES
+!
+!                 DO surroundingLineIdx = 1, numberSurroundingLines
+!                   surroundingLineLocalNo = domainNodes%NODES(cornerNodeC)%NODE_LINES(surroundingLineIdx)
+!                   IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+!                   !TODO make sure this works for a node at the corner of the mesh
+!
+!                   !Find the local columns corresponding to surroundingLinemLocalNo
+!                   uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                     & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!                   vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                     & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                   IF(component == 1) THEN
+!
+!                     ! diffConstant already calculated above
+!                     ! diffConstant = mu * deltaY_f / (2*volumeAux)
+!
+!                     aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+!
+!                     aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+!
+!                   ELSEIF(component == 2) THEN
+!
+!                     ! diffConstant already calculated above
+!                     ! diffConstant = mu * deltaX_f / (2*volumeAux)
+!
+!                     aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+!
+!                     aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+!
+!
+!                   ENDIF
+!
+!                   !assign matrix values to matrix for the surrounding line
+!                   CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+!
+!                   CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+!
+!                 ENDDO ! surroundingLineIdx
+!
+!               ELSE
+!                 CALL FlagError("node on boundary line must be a boundary node",err,error,*999)
+!
+!               ENDIF
+!
+!             CASE(BOUNDARY_CONDITION_FIXED_WALL)
+!
+!               !Here assume mu_wall = mu_fluid.... TODO make this another user variable.
+!
+!               !Find the local columns corresponding to localLine
+!               uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                 & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!               vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                 & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!
+!               !This is the x direction length from centroid to centre of line
+!               halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+!                 & localElementNo,xicIdx,1)  !this is Delta_x_Pb in notes
+!
+!               !This is the y direction length from centroid to centre of line
+!               halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+!                 & localElementNo,xicIdx,2)  !this is Delta_y_Pb in notes
+!
+!               totalFaceArea = SQRT(surfaceAreaVectorX**2 + surfaceAreaVectorY**2)
+!
+!               faceNormalX = surfaceAreaVectorX / totalFaceArea
+!               faceNormalY = surfaceAreaVectorY / totalFaceArea
+!
+!               halfLengthDOTfaceNormal = halfLengthX_F * faceNormalX + halfLengthY_F * faceNormalY
+!
+!               diffConstant = mu * totalFaceArea / (halfLengthDOTfaceNormal)
+!
+!               IF(component==1) THEN
+!
+!
+!                 !TODO check that these should be double precision
+!                 aU_P = diffConstant * (1.0_DP - faceNormalX**2)
+!
+!                 aU_F = - diffConstant * (1.0_DP - faceNormalX**2)
+!
+!                 aV_P = - diffConstant * faceNormalX*faceNormalY
+!
+!                 aV_F = diffConstant * faceNormalX*faceNormalY
+!
+!
+!               ELSEIF(component==2) THEN
+!
+!                 aV_P = diffConstant * (1.0_DP - faceNormalY**2)
+!
+!                 aV_F = - diffConstant * (1.0_DP - faceNormalY**2)
+!
+!                 aU_P = - diffConstant * faceNormalX*faceNormalY
+!
+!                 aU_F = diffConstant * faceNormalX*faceNormalY
+!
+!               ENDIF
+!
+!               !assign matrix values to matrix for current element and adjacent boundary line columns
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+!
+!               CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+!
+!             CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
+!
+!               !Get the mass flow rate (M_dot_F), which is the V variable type
+!               CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+!                 & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+!
+!               convectionFlux_F = M_dot_F
+!
+!               vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                 & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!
+!               IF(component == 1) THEN
+!
+!                 !Find the local columns corresponding to localLine
+!                 uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                 aU_F = convectionFlux_F
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+!
+!               ELSEIF(component==2) THEN
+!
+!                 !Find the local columns corresponding to localLine
+!                 vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+!                   & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+!
+!                 aV_F = convectionFlux_F
+!
+!                 CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+!               ELSE
+!                 CALL FlagError("component must be 1 or 2, 3D is not yet implemented.",err,error,*999)
+!               ENDIF
+!
+!             CASE DEFAULT
+!               CALL FlagError("the specified boundary type is not implemented yet for finite volume",err,error,*999)
+!             END SELECT
+!
+!             ! Add pressure terms to the RHS...
+!             CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_W_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+!               & 1,boundaryPressure,err,error,*999)
+!
+!             IF(component == 1) THEN
+!               rhsValue = - boundaryPressure * surfaceAreaVectorX
+!             ELSEIF(component == 2) THEN
+!               rhsValue = - boundaryPressure * surfaceAreaVectorY
+!             ELSE
+!               CALL FlagError("3D not implemented so component must be 1 or 2",err,error,*999)
+!             ENDIF
+!
+!             CALL DistributedVector_ValuesAdd(rhsVector%vector,localRow,rhsValue,err,error,*999)
+!
+!           ELSEIF(numberOfDimensions==3) THEN
+!
+!             CALL FlagError("3D hasn't yet been discretised or implemented.",err,error,*999)
+!             elementLocalFaceNo = basis%xiNormalLocalFace(xicIdx)
+!
+!             localFace = decompositionElements%elements(localElementNo)%ELEMENT_FACES(elementLocalFaceNo)
+!             localColumnIdx=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
+!               & faces(localface)%DERIVATIVES(1)%VERSIONS(1)
+!             !Calculate values to add
+!
+!             !Get the boundary type of the external line
+!             CALL Field_ParameterSetGetLocalFace(BoundaryTypesEquationsSetField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
+!               & localFace,1,BoundaryType,err,error,*999)
+!
+!             SELECT CASE(boundaryType)
+!             CASE(BOUNDARY_CONDITION_FREE)
+!
+!
+!
+!
+!             rhsValue = rhsValue ! +
+!             CASE(BOUNDARY_CONDITION_FIXED_INLET)
+!
+!
+!
+!             rhsValue = rhsValue ! +
+!             CASE(BOUNDARY_CONDITION_FIXED_WALL)
+!
+!
+!
+!
+!             rhsValue = rhsValue ! +
+!             CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
+!
+!
+!
+!             rhsValue = rhsValue ! +
+!
+!             CASE DEFAULT
+!               CALL FlagError("the specified boundary type is not implemented yet for finite volume",err,error,*999)
+!             END SELECT
+!
+!           ENDIF
+!         ELSE
+!           CALL FlagError("can't have more than one adjacent element in one xi direction",err,error,*999)
+!         ENDIF
+!
+!       ENDDO !xicIdx
+!
+!     ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_LINE_DOF_TYPE) THEN
+!
+!       !Do nothing, there is no row for the boundary lines, these rows will be removed.
+!       !This is because there is no pressure correction at the boundary.
+!
+!
+!     ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_FACE_DOF_TYPE) THEN
+!
+!       !Do nothing, there is no row for the boundary faces, these rows will be removed.
+!       !This is because there is no pressure correction at the boundary.
+!
+!     ELSE
+!       CALL FlagError("dof type should be element face or line.",err,error,*999)
+!
+!     ENDIF
+!
+!
+!     EXITS("NavierStokes_FVPressureRowEvaluate")
+!     RETURN
+! 999 ERRORSEXITS("NavierStokes_FVPressureRowEvaluate",err,error)
+!     RETURN 1
+!   END SUBROUTINE NavierStokes_FVPressureRowEvaluate
+
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Evaluates the row of the velocity linear matrix and RHS for a Navier-Stokes equation finite volume equations set.
+  SUBROUTINE NavierStokes_FVVelocityRowEvaluate(equationsSet,localRow,err,error,*)
+
+    !Argument variables
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet !<A pointer to the equations set to perform the finite volume calculations on
+    INTEGER(INTG), INTENT(IN) :: localRow !<The row number to calculate
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+
+    INTEGER(INTG) :: dofIdxForType, localColumnIdx, xicIdx, component, localElementNo,  startNic, &
+      & numberOfDimensions, elementLocalLineNo, localLine, elementLocalFaceNo, localFace, adjacentLocalElementNo, BoundaryType, &
+      & cornerNodeTemp, cornerNodeB, cornerNodeC, surroundingElemIdx, surroundingElemLocalNo, numberSurroundingElements, &
+      & uSurrLocalColumnIdx, vSurrLocalColumnIdx, uLocalColumnIdx, vLocalColumnIdx, uAdjLocalColumnIdx, vAdjLocalColumnIdx, &
+      & surroundingLineIdx, surroundingLineLocalNo, numberSurroundingLines
+    REAL(DP) ::  MatrixValue, rhsValue, aU_P, aU_F, aV_P, aV_F, aU_Bf, aV_Bf, aU_Cf, aV_Cf, &
+      & m_dot_F, mu, extFaceVelocity, diffConstant, convectionFlux_F, convectionFlux_P, crossCheck, &
+      & volumeAux, deltaX_f, deltaY_f, centreToCentreLengthX_F, centreToCentreLengthY_F, BCLineVec(2), xCoordNodeB, xCoordNodeC, &
+      & yCoordNodeB, yCoordNodeC, halfLengthX_F, halfLengthY_F, surfaceAreaVectorX, surfaceAreaVectorY, faceNormalX, faceNormalY, &
+      & totalFaceArea, halfLengthDOTfaceNormal, boundaryPressure, halfLengthTotal, centreToCentreLengthTotal,elementPressure_F, &
+      & elementPressure_P, elementCoeff, faceCoeff
+    TYPE(EquationsType), POINTER :: equations
+    TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: domainElements
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DOMAIN_NODES_TYPE), POINTER :: domainNodes
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: decompositionElements
+    TYPE(DECOMPOSITION_LINES_TYPE), POINTER :: decompositionLines
+    TYPE(DECOMPOSITION_LINE_TYPE), POINTER :: decompositionLine
+    TYPE(DECOMPOSITION_FACES_TYPE), POINTER :: decompositionFaces
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+    TYPE(EquationsMappingVectorType), POINTER :: vectorMapping
+    TYPE(EquationsMappingLinearType), POINTER :: linearMapping
+    TYPE(EquationsMatricesLinearType), POINTER :: linearMatrices
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
+    TYPE(FIELD_TYPE), POINTER :: dependentField, materialsField, geometricField
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(FIELD_DOF_TO_PARAM_MAP_TYPE), POINTER :: dependentDofsParamMapping
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: dependentDofsDomainMapping
+    TYPE(BASIS_TYPE), POINTER :: basis
+    TYPE(EquationsMatrixType), POINTER :: equationsMatrix
+    TYPE(EquationsMatricesRHSType), POINTER :: rhsVector
+    TYPE(FIELD_GEOMETRIC_PARAMETERS_TYPE), POINTER :: geometricFieldParameters
+    TYPE(FIELD_TYPE), POINTER :: BoundaryTypesEquationsSetField
+
+    ENTERS("NavierStokes_FVVelocityRowEvaluate",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(equationsSet)) CALL FlagError("Equations set is not associated.",err,error,*999)
+
+    NULLIFY(dependentField)
+    CALL EquationsSet_DependentFieldGet(equationsSet,dependentField,err,error,*999)
+    NULLIFY(geometricField)
+    CALL EquationsSet_GeometricFieldGet(equationsSet,geometricField,err,error,*999)
+    NULLIFY(equations)
+    CALL EquationsSet_EquationsGet(equationsSet,equations,err,error,*999)
+    NULLIFY(vectorEquations)
+    CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+    NULLIFY(vectorMatrices)
+    CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+    NULLIFY(vectorMapping)
+    CALL EquationsVector_VectorMappingGet(vectorEquations,vectorMapping,err,error,*999)
+    NULLIFY(linearMapping)
+    CALL EquationsMappingVector_LinearMappingGet(vectorMapping,linearMapping,err,error,*999)
+    NULLIFY(linearMatrices)
+    CALL EquationsMatricesVector_LinearMatricesGet(vectorMatrices,linearMatrices,err,error,*999)
+    NULLIFY(equationsMatrix)
+    CALL EquationsMatricesLinear_EquationsMatrixGet(linearMatrices,1,equationsMatrix,err,error,*999)
+    fieldVariable=>linearMapping%equationsMatrixToVarMaps(1)%variable !The 1 is for velocity
+    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*999)
+    dependentDofsDomainMapping=>fieldVariable%DOMAIN_MAPPING
+    IF(.NOT.ASSOCIATED(dependentDofsDomainMapping)) &
+      & CALL FlagError("Dependent dofs domain mapping is not associated.",err,error,*999)
+    dependentDofsParamMapping=>fieldVariable%DOF_TO_PARAM_MAP
+    IF(.NOT.ASSOCIATED(dependentDofsParamMapping)) &
+      & CALL FlagError("Dependent dofs parameter mapping is not associated.",err,error,*999)
+    NULLIFY(rhsVector)
+    rhsVector=>vectorMatrices%rhsVector
+    geometricFieldParameters => dependentField%GEOMETRIC_FIELD%GEOMETRIC_FIELD_PARAMETERS
+    IF(.NOT.ASSOCIATED(geometricFieldParameters)) CALL FlagError("geometricFieldParameters is not associated.",err,error,*999)
+    ! Get the Equations set field which stores the boundary type of the boundary faces
+    BoundaryTypesEquationsSetField => equationsSet%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD
+
+
+    numberOfDimensions = fieldVariable%DIMENSION
+
+    !TODO, make it so the viscosity can be varied for different elements.
+    materialsField=>equationsSet%materials%MATERIALS_FIELD
+    CALL Field_ParameterSetGetConstant(materialsField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1, &
+      & mu,err,error,*999)
+
+    !Get the mass flow rate and pressure field variables
+
+    MatrixValue = 0
+    rhsValue = 0
+
+    dofIdxForType = dependentDofsParamMapping%DOF_TYPE(2,localRow) !the dof idx for the specific dof type
+
+    IF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_ELEMENT_DOF_TYPE) THEN
+
+      localElementNo=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(1,dofIdxForType) !element number of the field parameter
+      component=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(2,dofIdxForType) !component number of the field parameter
+      domainElements=>fieldVariable%components(component)%domain%topology%elements
+      domainNodes=>fieldVariable%components(component)%domain%topology%nodes
+      IF(numberOfDimensions==2) THEN
+        domainLines=>fieldVariable%components(component)%domain%topology%lines
+      ELSEIF(numberOfDimensions==3) THEN
+        domainFaces=>fieldVariable%components(component)%domain%topology%faces
+      ENDIF
+      decompositionElements=>fieldVariable%components(component)%domain%decomposition%topology%elements
+      basis=>domainElements%elements(localElementNo)%basis
+
+      !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+      SELECT CASE(basis%TYPE)!Assumes all elements have the same basis
+      CASE(BASIS_SIMPLEX_TYPE)
+        startNic=1
+      CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+        startNic=-basis%NUMBER_OF_XI_COORDINATES
+      CASE DEFAULT
+        CALL FlagError("basis type must be lagrange hermite or simplex",err,error,*999)
+      END SELECT
+
+      !Get the column idx of localElementNo for u and v velocities
+      uLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+        & elements(localElementNo)
+      vLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+        & elements(localElementNo)
+
+      ! !Get the x velocity at this element (localElementNo)
+      ! CALL Field_ParameterSetGetLocalElement(dependentField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,localElementNo, &
+      !   & 1,velocityX_P,err,error,*999)
+      !
+      ! !Get the y velocity at this element (localElementNo)
+      ! CALL Field_ParameterSetGetLocalElement(dependentField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,localElementNo, &
+      !   & 2,velocityY_P,err,error,*999)
+
+      !Get pressure at local Element, to be used later
+      CALL Field_ParameterSetGetLocalElement(dependentField,FIELD_W_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,localElementNo, &
+        & 1,elementPressure_P,err,error,*999)
+
+
+      !Loop over adjacent elements and assign the flux term for the corresponding column to the matrix.
+      DO xicIdx = startNic, basis%NUMBER_OF_XI_COORDINATES
+        IF(xicIdx ==0) CYCLE
+        IF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+          & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+
+          IF(numberOfDimensions==2) THEN
+
+            !get the local element number of the adjacent element
+            adjacentLocalElementNo = decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)%ADJACENT_ELEMENTS(1)
+
+            !Find the local columns corresponding to adjacentLocalElementNo
+            uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(adjacentLocalElementNo)
+            vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(adjacentLocalElementNo)
+
+
+            !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+            deltaX_f = - geometricFieldParameters%SURFACE_VECTOR( &
+              & localElementNo,xicIdx,2)   !This is the Component part of the line vector of the line/face.
+            !The above equation is Delta_x = - surfaceAreaVector_y.
+
+            deltaY_f = geometricFieldParameters%SURFACE_VECTOR( &
+              & localElementNo,xicIdx,1)  !This is the off Component part of the line vector of the line/face.
+            !The above equation is Delta_y = surfaceAreaVector_x.
+
+            centreToCentreLengthX_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+              & localElementNo,xicIdx,1)  !this is Delta_x_PF in notes
+
+            centreToCentreLengthY_F = geometricFieldParameters%CENTRE_TO_CENTRE_VEC( &
+              & localElementNo,xicIdx,2)  !this is Delta_y_PF in notes
+
+            elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+            localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+            decompositionLine = decompositionLines%lines(localLine)
+
+            !Get the mass flow rate (M_dot_F), which is the V variable type
+            CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+              & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+            !TODO make sure when assigning the mass flow rate we multiply it by 1 if the element is the first index in surrounding elements and by negative 1 if it is the second index.
+            !Easier is to only assign the mass flow rate for elements that are in the first index of the lines SURROUNDING_ELEMENTS
+
+            IF(decompositionLine%SURROUNDING_ELEMENTS(1) == localElementNo) THEN
+              !do nothing
+            ELSEIF(decompositionLine%SURROUNDING_ELEMENTS(2) == localElementNo) THEN
+              M_dot_F = M_dot_F*(-1)
+            ELSE
+              CALL FlagError("the element and line are not adjacent to eachother",err,error,*999)
+            ENDIF
+
+            !Get local node number of corner nodes and their locations
+            cornerNodeB = domainLines%LINES(localLine)%NODES_IN_LINE(1)
+            cornerNodeC = domainLines%LINES(localLine)%NODES_IN_LINE(2)
+
+            !Get their locations
+            CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+              & 1,xCoordNodeB,err,error,*999)
+            CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+              & 1,xCoordNodeC,err,error,*999)
+            CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+              & 2,yCoordNodeB,err,error,*999)
+            CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+              & 2,yCoordNodeC,err,error,*999)
+
+            !Get the distance vector from point B to point C
+            BCLineVec=[xCoordNodeC - xCoordNodeB, yCoordNodeC - yCoordNodeB]
+
+            !We need node B to be the first node on line reached when rotating around the element in the anticlockwise direction
+            !Assume this is the case and check if it is correct by cross producting the surface vector with the B-C line vector. If the result is positive then we have correctly chosen B
+            crossCheck = deltaY_f * BCLineVec(2) + deltaX_f * BCLineVec(1)
+
+            IF(crossCheck>0) THEN
+              !do nothing
+            ELSE
+              !Swap corner node B and C
+              cornerNodeTemp = cornerNodeB
+              cornerNodeB = cornerNodeC
+              cornerNodeC = cornerNodeB
+            ENDIF
+
+            !Get auxillary cell volume/area
+            volumeAux = (centreToCentreLengthX_F * deltaY_f - centreToCentreLengthY_F * deltaX_f)/2
+
+            IF(DIAGNOSTICS1) THEN
+              IF(volumeAux<0) THEN
+                CALL FlagError("auxillary cell volume is negative which is not allowed",err,error,*999)
+              ENDIF
+            ENDIF
+
+            convectionFlux_P = max(M_dot_F, 0.0_DP)
+
+            convectionFlux_F = -max(-M_dot_F, 0.0_DP)
+            !LEFT HAND SIDE
+
+            IF(component == 1) THEN
+
+              !Get the diffusion constant
+              diffConstant = mu * deltaY_f / (2*volumeAux)
+
+              aU_P = convectionFlux_P + diffConstant * (2 * deltaY_f - deltaX_f)
+
+              aU_F = convectionFlux_F - diffConstant * (2 * deltaY_f - deltaX_f)
+
+              aV_P = diffConstant * deltaY_f
+
+              aV_F = -diffConstant * deltaY_f
+
+            ELSEIF(component==2) THEN
+
+              !Get the diffusion constant
+              diffConstant = mu * deltaX_f / (2*volumeAux)
+
+              aV_P = convectionFlux_P - diffConstant * (2 * deltaX_f - deltaY_f)
+
+              aV_F = convectionFlux_F + diffConstant * (2 * deltaX_f - deltaY_f)
+
+              aU_P = -diffConstant * deltaX_f
+
+              aU_F = diffConstant * deltaX_f
+
+            ENDIF
+
+            !assign matrix values to matrix for current and adjacent element
+
+            CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+
+            CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+
+            CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+
+            CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+
+
+            !Now add parts from elements surrounding the nodes
+            !First do elements surrounding corner node B
+            IF(domainNodes%NODES(cornerNodeB)%BOUNDARY_NODE) THEN
+              !node is a boundary so the velocity will be approximated by the average of the neighbouring lines
+              numberSurroundingLines = domainNodes%NODES(cornerNodeB)%NUMBER_OF_NODE_LINES
+
+              DO surroundingLineIdx = 1, numberSurroundingLines
+                surroundingLineLocalNo = domainNodes%NODES(cornerNodeB)%NODE_LINES(surroundingLineIdx)
+                IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                !TODO make sure this works for a node at the corner of the mesh
+
+                !Find the local columns corresponding to surroundingLineLocalNo
+                uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                IF(component == 1) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                  aU_Bf = -diffConstant/numberSurroundingLines * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+
+                  aV_Bf = -diffConstant/numberSurroundingLines * (centreToCentreLengthY_F)
+
+                ELSEIF(component == 2) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                  aU_Bf = diffConstant/numberSurroundingLines * (centreToCentreLengthX_F)
+
+                  aV_Bf = diffConstant/numberSurroundingLines * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+
+
+                ENDIF
+
+                !assign matrix values to matrix for the surrounding line
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+              ENDDO ! surroundingLineIdx
+
+            ELSE
+              ! node is not a boundary so the corner velocity is approximated as the average of all surrounding elements, so add
+              ! 1/numberSurroundingElements of the diffusion term to each velocity term in the matrix
+              numberSurroundingElements = domainNodes%NODES(cornerNodeB)%NUMBER_OF_SURROUNDING_ELEMENTS
+              DO surroundingElemIdx = 1, numberSurroundingElements
+                surroundingElemLocalNo = domainNodes%NODES(cornerNodeB)%SURROUNDING_ELEMENTS(surroundingElemIdx)
+                !Find the local columns corresponding to surroundingElemLocalNo
+                uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(surroundingElemLocalNo)
+                vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(surroundingElemLocalNo)
+
+                IF(component == 1) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                  aU_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+
+                  aV_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+
+                ELSEIF(component == 2) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                  aU_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+
+                  aV_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+
+
+                ENDIF
+
+                !assign matrix values to matrix for the surrounding Element
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+              ENDDO ! surroundingElemIdx
+
+            ENDIF
+
+            !Repeat the above for cornerNodeC
+            IF(domainNodes%NODES(cornerNodeC)%BOUNDARY_NODE) THEN
+              !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces
+              numberSurroundingLines = domainNodes%NODES(cornerNodeC)%NUMBER_OF_NODE_LINES
+
+              DO surroundingLineIdx = 1, numberSurroundingLines
+                surroundingLineLocalNo = domainNodes%NODES(cornerNodeC)%NODE_LINES(surroundingLineIdx)
+                IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                !TODO make sure this works for a node at the corner of the mesh
+
+                !Find the local columns corresponding to surroundingLinemLocalNo
+                uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                IF(component == 1) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                  aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+
+                  aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+
+                ELSEIF(component == 2) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                  aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+
+                  aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+
+
+                ENDIF
+
+                !assign matrix values to matrix for the surrounding line
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+              ENDDO ! surroundingLineIdx
+
+            ELSE
+              ! node is not a boundary so the corner velocity is approximated as the average of all surrounding elements, so add
+              ! 1/numberSurroundingElements of the diffusion term to each velocity term in the matrix
+              numberSurroundingElements = domainNodes%NODES(cornerNodeC)%NUMBER_OF_SURROUNDING_ELEMENTS
+              DO surroundingElemIdx = 1, numberSurroundingElements
+                surroundingElemLocalNo = domainNodes%NODES(cornerNodeC)%SURROUNDING_ELEMENTS(surroundingElemIdx)
+                !Find the local columns corresponding to surroundingElemLocalNo
+                uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(surroundingElemLocalNo)
+                vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(surroundingElemLocalNo)
+
+                IF(component == 1) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                  aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+
+                  aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+
+                ELSEIF(component == 2) THEN
+
+                  ! diffConstant already calculated above
+                  ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                  aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+
+                  aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+
+
+                ENDIF
+
+                !assign matrix values to matrix for the surrounding Element
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+              ENDDO ! surroundingElemIdx
+
+            ENDIF
+
+            !RIGHT HAND SIDE
+            ! sum the rhs value which is to be added to the rhs vector after this xicIdx loop
+
+            !First get pressure values at neighbouring face
+            CALL Field_ParameterSetGetLocalElement(dependentField,FIELD_W_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+              & adjacentLocalElementNo,1,elementPressure_F,err,error,*999)
+
+            halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+              & localElementNo,xicIdx,1)
+
+            halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+              & localElementNo,xicIdx,2)
+
+            halfLengthTotal = SQRT(halfLengthX_F**2 + halfLengthY_F**2)
+
+            centreToCentreLengthTotal = SQRT(centreToCentreLengthX_F**2 + centreToCentreLengthY_F**2)
+
+            IF(component==1) THEN
+
+              rhsValue = - elementPressure_F*halfLengthTotal*deltaY_f/centreToCentreLengthTotal - &
+                & elementPressure_P*(centreToCentreLengthTotal-halfLengthTotal)*deltaY_f/centreToCentreLengthTotal !- PRESSURE TERMS
+            ELSEIF(component==2) THEN
+
+              rhsValue = elementPressure_F*halfLengthTotal*deltaX_f/centreToCentreLengthTotal + &
+                & elementPressure_P*(centreToCentreLengthTotal-halfLengthTotal)*deltaX_f/centreToCentreLengthTotal !- PRESSURE TERMS
+
+            ELSE
+              CALL FlagError("Only component == 1 or 2 allowed",err,error,*999)
+            ENDIF
+
+            CALL DistributedVector_ValuesAdd(rhsVector%vector,localRow,rhsValue,err,error,*999)
+
+
+          ELSEIF(numberOfDimensions==3) THEN
+            CALL FlagError("3d discretisation needs to be done",err,error,*999)
+          ENDIF
+
+
+
+        ELSEIF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+          & NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
+          ! There is no adjacent element, which means that in this direction is an external boundary face or line.
+
+
+          IF(numberOfDimensions==2) THEN
+
+            elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+
+            localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+
+            !Get x and y components of face area vector in normal direction
+            surfaceAreaVectorX= geometricFieldParameters%SURFACE_VECTOR( &
+              & localElementNo,xicIdx,1)
+
+            surfaceAreaVectorY = geometricFieldParameters%SURFACE_VECTOR( &
+              & localElementNo,xicIdx,2)
+
+            !Get the boundary type of the external line
+            CALL Field_ParameterSetGetLocalLine(BoundaryTypesEquationsSetField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
+              & localLine,1,BoundaryType,err,error,*999)
+
+            SELECT CASE(boundaryType)
+            CASE(BOUNDARY_CONDITION_FREE)
+              !Do nothing
+            CASE(BOUNDARY_CONDITION_FIXED_INLET)
+
+              !Find the local columns corresponding to localLine
+              uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+              vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+
+              !Get x and y components of face area (in direction of line, not as a normal to the surface) (the componenets are in the direction of the line in the anticlockwise direction around the cell) and center to centre distance.
+              deltaX_f = - surfaceAreaVectorY   !This is the x Component part of the line vector of the line/face.
+              !The above equation is Delta_x = - surfaceAreaVector_y.
+
+              deltaY_f = surfaceAreaVectorX  !This is the y Component part of the line vector of the line/face.
+              !The above equation is Delta_y = surfaceAreaVector_x.
+
+              !This is the x direction length from centroid to centre of line
+              halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+                & localElementNo,xicIdx,1)  !this is Delta_x_Pb in notes
+
+              !This is the y direction length from centroid to centre of line
+              halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+                & localElementNo,xicIdx,2)  !this is Delta_y_Pb in notes
+
+              !Get the mass flow rate (M_dot_F), which is the V variable type
+              CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+                & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+
+              !Get local node number of corner nodes and their locations
+              cornerNodeB = domainLines%LINES(localLine)%NODES_IN_LINE(1)
+              cornerNodeC = domainLines%LINES(localLine)%NODES_IN_LINE(2)
+
+              !Get their locations
+              CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+                & 1,xCoordNodeB,err,error,*999)
+              CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+                & 1,xCoordNodeC,err,error,*999)
+              CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeB, &
+                & 2,yCoordNodeB,err,error,*999)
+              CALL Field_ParameterSetGetLocalNode(geometricField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,cornerNodeC, &
+                & 2,yCoordNodeC,err,error,*999)
+
+              !Get the distance vector from point B to point C
+              BCLineVec=[xCoordNodeC - xCoordNodeB, yCoordNodeC - yCoordNodeB]
+
+              !We need node B to be the first node on line reached when rotating around the element in the anticlockwise direction
+              !Assume this is the case and check if it is correct by cross producting the surface vector with the B-C line vector. If the result is positive then we have correctly chosen B
+              crossCheck = deltaY_f * BCLineVec(2) + deltaX_f * BCLineVec(1)
+
+              IF(crossCheck>0) THEN
+                !do nothing
+              ELSE
+                !Swap corner node B and C
+                cornerNodeTemp = cornerNodeB
+                cornerNodeB = cornerNodeC
+                cornerNodeC = cornerNodeB
+              ENDIF
+
+              !Get auxillary cell volume/area
+              volumeAux = (halfLengthX_F * deltaY_f - halfLengthY_F * deltaX_f)/2
+
+              IF(DIAGNOSTICS1) THEN
+                IF(volumeAux<0) THEN
+                  CALL FlagError("auxillary cell volume is negative which is not allowed",err,error,*999)
+                ENDIF
+              ENDIF
+
+              convectionFlux_P = 0
+
+              convectionFlux_F = M_dot_F
+              !LEFT HAND SIDE
+
+              IF(component == 1) THEN
+
+                !Get the diffusion constant
+                diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                aU_P = convectionFlux_P + diffConstant * (2 * deltaY_f - deltaX_f)
+
+                aU_F = convectionFlux_F - diffConstant * (2 * deltaY_f - deltaX_f)
+
+                aV_P = diffConstant * deltaY_f
+
+                aV_F = -diffConstant * deltaY_f
+
+              ELSEIF(component==2) THEN
+
+                !Get the diffusion constant
+                diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                aV_P = convectionFlux_P - diffConstant * (2 * deltaX_f - deltaY_f)
+
+                aV_F = convectionFlux_F + diffConstant * (2 * deltaX_f - deltaY_f)
+
+                aU_P = -diffConstant * deltaX_f
+
+                aU_F = diffConstant * deltaX_f
+
+              ENDIF
+
+              !assign matrix values to matrix for current and adjacent element columns
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+
+
+              !Now add parts from elements surrounding the nodes
+              !First do elements surrounding corner node B
+              IF(domainNodes%NODES(cornerNodeB)%BOUNDARY_NODE) THEN
+                !node is a boundary so the velocity will be approximated by the average of the neighbouring lines
+                numberSurroundingLines = domainNodes%NODES(cornerNodeB)%NUMBER_OF_NODE_LINES
+
+                DO surroundingLineIdx = 1, numberSurroundingLines
+                  surroundingLineLocalNo = domainNodes%NODES(cornerNodeB)%NODE_LINES(surroundingLineIdx)
+                  IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                  !TODO make sure this works for a node at the corner of the mesh
+
+                  !Find the local columns corresponding to surroundingLineLocalNo
+                  uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                    & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                  vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                    & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                  IF(component == 1) THEN
+
+                    ! diffConstant already calculated above
+                    ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                    aU_Bf = -diffConstant/numberSurroundingLines * (2 * halfLengthY_F - halfLengthX_F)
+
+                    aV_Bf = -diffConstant/numberSurroundingLines * (halfLengthY_F)
+
+                  ELSEIF(component == 2) THEN
+
+                    ! diffConstant already calculated above
+                    ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                    aU_Bf = diffConstant/numberSurroundingLines * (halfLengthX_F)
+
+                    aV_Bf = diffConstant/numberSurroundingLines * (2 * halfLengthX_F - halfLengthY_F)
+
+
+                  ENDIF
+
+                  !assign matrix values to matrix for the surrounding line
+                  CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                  CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+                ENDDO ! surroundingLineIdx
+
+              ELSE
+                CALL FlagError("node on boundary line must be a boundary node",err,error,*999)
+              ENDIF
+
+              !Repeat the above for cornerNodeC
+              IF(domainNodes%NODES(cornerNodeC)%BOUNDARY_NODE) THEN
+                !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces
+                numberSurroundingLines = domainNodes%NODES(cornerNodeC)%NUMBER_OF_NODE_LINES
+
+                DO surroundingLineIdx = 1, numberSurroundingLines
+                  surroundingLineLocalNo = domainNodes%NODES(cornerNodeC)%NODE_LINES(surroundingLineIdx)
+                  IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                  !TODO make sure this works for a node at the corner of the mesh
+
+                  !Find the local columns corresponding to surroundingLinemLocalNo
+                  uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                    & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                  vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                    & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                  IF(component == 1) THEN
+
+                    ! diffConstant already calculated above
+                    ! diffConstant = mu * deltaY_f / (2*volumeAux)
+
+                    aU_Bf = diffConstant/numberSurroundingElements * (2 * centreToCentreLengthY_F - centreToCentreLengthX_F)
+
+                    aV_Bf = diffConstant/numberSurroundingElements * (centreToCentreLengthY_F)
+
+                  ELSEIF(component == 2) THEN
+
+                    ! diffConstant already calculated above
+                    ! diffConstant = mu * deltaX_f / (2*volumeAux)
+
+                    aU_Bf = -diffConstant/numberSurroundingElements * (centreToCentreLengthX_F)
+
+                    aV_Bf = -diffConstant/numberSurroundingElements * (2 * centreToCentreLengthX_F - centreToCentreLengthY_F)
+
+
+                  ENDIF
+
+                  !assign matrix values to matrix for the surrounding line
+                  CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uSurrLocalColumnIdx,aU_Bf,err,error,*999)
+
+                  CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vSurrLocalColumnIdx,aV_Bf,err,error,*999)
+
+                ENDDO ! surroundingLineIdx
+
+              ELSE
+                CALL FlagError("node on boundary line must be a boundary node",err,error,*999)
+
+              ENDIF
+
+            CASE(BOUNDARY_CONDITION_FIXED_WALL)
+
+              !Here assume mu_wall = mu_fluid.... TODO make this another user variable.
+
+              !Find the local columns corresponding to localLine
+              uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+              vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+              !This is the x direction length from centroid to centre of line
+              halfLengthX_F = geometricFieldParameters%HALFLENGTH( &
+                & localElementNo,xicIdx,1)  !this is Delta_x_Pb in notes
+
+              !This is the y direction length from centroid to centre of line
+              halfLengthY_F = geometricFieldParameters%HALFLENGTH( &
+                & localElementNo,xicIdx,2)  !this is Delta_y_Pb in notes
+
+              totalFaceArea = SQRT(surfaceAreaVectorX**2 + surfaceAreaVectorY**2)
+
+              faceNormalX = surfaceAreaVectorX / totalFaceArea
+              faceNormalY = surfaceAreaVectorY / totalFaceArea
+
+              halfLengthDOTfaceNormal = halfLengthX_F * faceNormalX + halfLengthY_F * faceNormalY
+
+              diffConstant = mu * totalFaceArea / (halfLengthDOTfaceNormal)
+
+              IF(component==1) THEN
+
+
+                !TODO check that these should be double precision
+                aU_P = diffConstant * (1.0_DP - faceNormalX**2)
+
+                aU_F = - diffConstant * (1.0_DP - faceNormalX**2)
+
+                aV_P = - diffConstant * faceNormalX*faceNormalY
+
+                aV_F = diffConstant * faceNormalX*faceNormalY
+
+
+              ELSEIF(component==2) THEN
+
+                aV_P = diffConstant * (1.0_DP - faceNormalY**2)
+
+                aV_F = - diffConstant * (1.0_DP - faceNormalY**2)
+
+                aU_P = - diffConstant * faceNormalX*faceNormalY
+
+                aU_F = diffConstant * faceNormalX*faceNormalY
+
+              ENDIF
+
+              !assign matrix values to matrix for current element and adjacent boundary line columns
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,aU_P,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,aV_P,err,error,*999)
+
+              CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+
+            CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
+
+              !Get the mass flow rate (M_dot_F), which is the V variable type
+              CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+                & 1,M_dot_F,err,error,*999) ! instead of component, here we have 1, because there is only one component for mass flow rate
+
+              convectionFlux_F = M_dot_F
+
+              vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+              IF(component == 1) THEN
+
+                !Find the local columns corresponding to localLine
+                uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+                aU_F = convectionFlux_F
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,aU_F,err,error,*999)
+
+              ELSEIF(component==2) THEN
+
+                !Find the local columns corresponding to localLine
+                vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+                aV_F = convectionFlux_F
+
+                CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,aV_F,err,error,*999)
+              ELSE
+                CALL FlagError("component must be 1 or 2, 3D is not yet implemented.",err,error,*999)
+              ENDIF
+
+            CASE DEFAULT
+              CALL FlagError("the specified boundary type is not implemented yet for finite volume",err,error,*999)
+            END SELECT
+
+            ! Add pressure terms to the RHS...
+            CALL Field_ParameterSetGetLocalLine(dependentField,FIELD_W_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1,localLine, &
+              & 1,boundaryPressure,err,error,*999)
+
+            IF(component == 1) THEN
+              rhsValue = - boundaryPressure * surfaceAreaVectorX
+            ELSEIF(component == 2) THEN
+              rhsValue = - boundaryPressure * surfaceAreaVectorY
+            ELSE
+              CALL FlagError("3D not implemented so component must be 1 or 2",err,error,*999)
+            ENDIF
+
+            CALL DistributedVector_ValuesAdd(rhsVector%vector,localRow,rhsValue,err,error,*999)
+
+          ELSEIF(numberOfDimensions==3) THEN
+
+            CALL FlagError("3D hasn't yet been discretised or implemented.",err,error,*999)
+            elementLocalFaceNo = basis%xiNormalLocalFace(xicIdx)
+
+            localFace = decompositionElements%elements(localElementNo)%ELEMENT_FACES(elementLocalFaceNo)
+            localColumnIdx=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
+              & faces(localface)%DERIVATIVES(1)%VERSIONS(1)
+            !Calculate values to add
+
+            !Get the boundary type of the external line
+            CALL Field_ParameterSetGetLocalFace(BoundaryTypesEquationsSetField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
+              & localFace,1,BoundaryType,err,error,*999)
+
+            SELECT CASE(boundaryType)
+            CASE(BOUNDARY_CONDITION_FREE)
+
+
+
+
+            rhsValue = rhsValue ! +
+            CASE(BOUNDARY_CONDITION_FIXED_INLET)
+
+
+
+            rhsValue = rhsValue ! +
+            CASE(BOUNDARY_CONDITION_FIXED_WALL)
+
+
+
+
+            rhsValue = rhsValue ! +
+            CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
+
+
+
+            rhsValue = rhsValue ! +
+
+            CASE DEFAULT
+              CALL FlagError("the specified boundary type is not implemented yet for finite volume",err,error,*999)
+            END SELECT
+
+          ENDIF
+        ELSE
+          CALL FlagError("can't have more than one adjacent element in one xi direction",err,error,*999)
+        ENDIF
+
+      ENDDO !xicIdx
+
+    ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_LINE_DOF_TYPE) THEN
+
+
+      !FINBARTOFIX Here we can do a select case statement to check the boundary type and implement the condition.
+      !For example, for outlet condition we will set u_b=u_P at boundary element.
+
+      !the row is for a boundary line, and will be removed, so just add a 1 on the diagonal for the matrix and the value of the velocity on the face as the RHS
+      localLine=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(1,dofIdxForType) !line number of the field parameter
+      component=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(2,dofIdxForType) !component number of the field parameter
+
+      !Find the local columns for the current row
+      ulocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+        & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+      vlocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+        & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+
+      !Get the boundary type of the external line
+      CALL Field_ParameterSetGetLocalLine(BoundaryTypesEquationsSetField,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,1,1, &
+        & localLine,1,BoundaryType,err,error,*999)
+
+      SELECT CASE(boundaryType)
+      CASE(BOUNDARY_CONDITION_FREE)
+        CALL FlagError("Haven't implemented a free boundary condition",err,error,*999)
+      CASE(BOUNDARY_CONDITION_FIXED_INLET)
+        !the boundary line velocity will be set do we do nothing and remove this row in boundary conditions.
+      CASE(BOUNDARY_CONDITION_FIXED_WALL)
+        !the boundary line velocity will be set do we do nothing and remove this row in boundary conditions.
+      CASE(BOUNDARY_CONDITION_FIXED_PRESSURE)
+
+        decompositionLines=>fieldVariable%components(component)%domain%decomposition%topology%lines
+
+        !For fixed pressure we are simply stating that the boundary line velocity is the same as that of the adjacent element.
+        !TODO there should be a faster way to do this which removes a dof.
+
+        IF(decompositionLines%LINES(localLine)%NUMBER_OF_SURROUNDING_ELEMENTS /= 1) THEN
+          CALL FlagError("There are more than one surrounding elements to this boundary line",err,error,*999)
+        ENDIF
+
+        adjacentLocalElementNo = decompositionLines%LINES(localLine)%SURROUNDING_ELEMENTS(1)! get the element adjacent to this boundary line
+
+        !Find the local columns corresponding to adjacentLocalElementNo
+        uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+          & elements(adjacentLocalElementNo)
+        vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+          & elements(adjacentLocalElementNo)
+
+        IF(component==1) THEN
+
+          elementCoeff = -1
+
+          faceCoeff = 1
+
+          CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uLocalColumnIdx,faceCoeff,err,error,*999)
+
+          CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,uAdjLocalColumnIdx,elementCoeff,err,error,*999)
+
+          ! rhsValue = 0 !We don't need to add this to the RHS vector
+        ELSEIF(component==2) THEN
+          elementCoeff= -1
+
+          faceCoeff= 1
+
+          CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vLocalColumnIdx,faceCoeff,err,error,*999)
+
+          CALL DistributedMatrix_ValuesAdd(equationsMatrix%matrix,localRow,vAdjLocalColumnIdx,elementCoeff,err,error,*999)
+
+          ! rhsValue = 0 !We don't need to add this to the RHS vector
+        ENDIF
+
+      CASE DEFAULT
+        CALL FlagError("the specified boundary type is not implemented yet for finite volume",err,error,*999)
+      END SELECT
+
+    ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localRow)==FIELD_FACE_DOF_TYPE) THEN
+
+      CALL FlagError("3D discretization and implementation has not yet been done",err,error,*999)
+      !Do nothing atm, 3D hasn't been set up.
+
+    ELSE
+      CALL FlagError("dof type should be element face or line.",err,error,*999)
+
+    ENDIF
+
+
+    EXITS("NavierStokes_FVVelocityRowEvaluate")
+    RETURN
+999 ERRORSEXITS("NavierStokes_FVVelocityRowEvaluate",err,error)
+    RETURN 1
+  END SUBROUTINE NavierStokes_FVVelocityRowEvaluate
+
 
   !
   !================================================================================================================================
@@ -15760,7 +17826,7 @@ CONTAINS
           IF(.NOT.(face%BOUNDARY_FACE)) CYCLE
 
           ! TODO: this sort of thing should be moved to a more general Basis_FaceNormalGet (or similar) routine
-          xiDirection = 0.0_DP
+          xiDirection = 0
           SELECT CASE(dependentBasis%TYPE)
           CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
             xiDirection(3)=ABS(face%XI_DIRECTION)
