@@ -2664,11 +2664,12 @@ CONTAINS
     INTEGER(INTG) :: componentNumber,globalDof,localDof,neumannDofIdx,myComputationalNodeNumber
     INTEGER(INTG) :: numberOfNeumann,neumannLocalDof,neumannDofNyy
     INTEGER(INTG) :: neumannGlobalDof,neumannNodeNumber,neumannLocalNodeNumber,neumannLocalDerivNumber
+    INTEGER(INTG) :: neumannDofIdxx, neumannGlobalDofCount
     INTEGER(INTG) :: faceIdx,lineIdx,nodeIdx,derivIdx,gaussIdx
     INTEGER(INTG) :: faceNumber,lineNumber
     INTEGER(INTG) :: ms,os,nodeNumber,derivativeNumber,versionNumber
-    LOGICAL :: dependentGeometry
-    REAL(DP) :: integratedValue,phim,phio, integratedValueSum
+    LOGICAL :: dependentGeometry, isFaceNeumann, isFaceIntegrated, isLineNeumann, isLineIntegrated
+    REAL(DP) :: integratedValue,phim,phio
     TYPE(BoundaryConditionsNeumannType), POINTER :: neumannConditions
     TYPE(BASIS_TYPE), POINTER :: basis
     TYPE(FIELD_TYPE), POINTER :: geometricField
@@ -2692,8 +2693,6 @@ CONTAINS
     NULLIFY(interpolatedPoints)
     NULLIFY(interpolatedPointMetrics)
     NULLIFY(integratedValues)
-
-    integratedValueSum = 0.0_DP
 
     neumannConditions=>rhsBoundaryConditions%neumannBoundaryConditions
     !Check that Neumann conditions are associated, otherwise do nothing
@@ -2746,10 +2745,12 @@ CONTAINS
               IF(.NOT.decomposition%CALCULATE_LINES) THEN
                 CALL FlagError("Decomposition does not have lines calculated.",err,error,*999)
               END IF
-              lines=>topology%LINES
+              lines=>topology%LINES ! lines on ELEMENT
               IF(.NOT.ASSOCIATED(lines)) THEN
                 CALL FlagError("Mesh topology lines is not associated.",err,error,*999)
               END IF
+              isLineIntegrated=.FALSE. ! Check if at least one line is integrated for a Neumann node
+                                       ! Otherwise signal error!
               linesLoop: DO lineIdx=1,topology%NODES%NODES(neumannNodeNumber)%NUMBER_OF_NODE_LINES
                 lineNumber=topology%NODES%NODES(neumannNodeNumber)%NODE_LINES(lineIdx)
                 line=>topology%lines%lines(lineNumber)
@@ -2763,7 +2764,7 @@ CONTAINS
                 neumannLocalDerivNumber=0
                 ! Check all nodes in line to find the local numbers for the Neumann DOF, and
                 ! make sure we don't have an integrated_only condition set on the line
-                DO nodeIdx=1,line%BASIS%NUMBER_OF_NODES
+                lineNodesLoop: DO nodeIdx=1,line%BASIS%NUMBER_OF_NODES
                   nodeNumber=line%NODES_IN_LINE(nodeIdx)
                   DO derivIdx=1,line%BASIS%NUMBER_OF_DERIVATIVES(nodeIdx)
                     derivativeNumber=line%DERIVATIVES_IN_LINE(1,derivIdx,nodeIdx)
@@ -2771,19 +2772,34 @@ CONTAINS
                     localDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                       & NODES(nodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
                     globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
+
                     IF(globalDof==neumannGlobalDof) THEN
                       neumannLocalNodeNumber=nodeIdx
                       neumannLocalDerivNumber=derivIdx
+                      CYCLE lineNodesLoop
                     ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
                       CYCLE linesLoop
                     END IF
+
+                    isLineNeumann = .FALSE. ! Check if we are on a Neumann line (i.e. all nodes are Neumann)
+                    DO neumannDofIdxx=1,numberOfNeumann
+                      neumannGlobalDofCount=neumannConditions%setDofs(neumannDofIdxx)
+                      IF(globalDof==neumannGlobalDofCount) THEN
+                        isLineNeumann = .TRUE.
+                        CYCLE
+                      END IF
+                    END DO
+                    IF (.NOT.isLineNeumann) CYCLE linesLoop ! If any node on this face is not Neumann, exit
+
                   END DO
-                END DO
+                END DO lineNodesLoop
+
                 IF(neumannLocalNodeNumber==0) THEN
                   CALL FlagError("Could not find local Neumann node and derivative numbers in line.",err,error,*999)
                 END IF
 
                 ! Now perform actual integration
+                isLineIntegrated=.TRUE.
                 quadratureScheme=>basis%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR
                 IF(.NOT.ASSOCIATED(quadratureScheme)) THEN
                   CALL FlagError("Line basis default quadrature scheme is not associated.",err,error,*999)
@@ -2814,7 +2830,7 @@ CONTAINS
                       CALL FIELD_INTERPOLATED_POINT_METRICS_CALCULATE(COORDINATE_JACOBIAN_LINE_TYPE, &
                         & interpolatedPointMetrics(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
 
-                      !Get basis function values at guass points
+                      !Get basis function values at gauss points
                       phim=quadratureScheme%GAUSS_BASIS_FNS(ms,NO_PART_DERIV,gaussIdx)
                       phio=quadratureScheme%GAUSS_BASIS_FNS(os,NO_PART_DERIV,gaussIdx)
 
@@ -2837,14 +2853,21 @@ CONTAINS
                   END DO
                 END DO
               END DO linesLoop
+
+              IF (.NOT.isLineIntegrated) &
+                & CALL FlagError("No integration has been performed corresponding to a Neumann node: "// &
+                    & "Probably not all dofs on an element line have been marked as Neumann!",err,error,*999)
+
             CASE(3)
               IF(.NOT.decomposition%CALCULATE_FACES) THEN
                 CALL FlagError("Decomposition does not have faces calculated.",err,error,*999)
               END IF
-              faces=>topology%FACES
+              faces=>topology%FACES ! faces on ELEMENT
               IF(.NOT.ASSOCIATED(faces)) THEN
                 CALL FlagError("Mesh topology faces is not associated.",err,error,*999)
               END IF
+              isFaceIntegrated=.FALSE. ! Check if at least one face is integrated for a Neumann node
+                                       ! Otherwise signal error!
               facesLoop: DO faceIdx=1,topology%NODES%NODES(neumannNodeNumber)%NUMBER_OF_NODE_FACES
                 faceNumber=topology%NODES%NODES(neumannNodeNumber)%NODE_FACES(faceIdx)
                 face=>topology%FACES%FACES(faceNumber)
@@ -2858,7 +2881,7 @@ CONTAINS
                 neumannLocalDerivNumber=0
                 ! Check all nodes in the face to find the local numbers for the Neumann DOF, and
                 ! make sure we don't have an integrated_only condition set on the face
-                DO nodeIdx=1,basis%NUMBER_OF_NODES
+                faceNodesLoop: DO nodeIdx=1,basis%NUMBER_OF_NODES
                   nodeNumber=face%NODES_IN_FACE(nodeIdx)
                   DO derivIdx=1,basis%NUMBER_OF_DERIVATIVES(nodeIdx)
                     derivativeNumber=face%DERIVATIVES_IN_FACE(1,derivIdx,nodeIdx)
@@ -2866,19 +2889,33 @@ CONTAINS
                     localDof=rhsVariable%COMPONENTS(componentNumber)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                       & NODES(nodeNumber)%DERIVATIVES(derivativeNumber)%VERSIONS(versionNumber)
                     globalDof=rhsVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localDof)
+
                     IF(globalDof==neumannGlobalDof) THEN
                       neumannLocalNodeNumber=nodeIdx
                       neumannLocalDerivNumber=derivIdx
+                      CYCLE faceNodesLoop
                     ELSE IF(rhsBoundaryConditions%CONDITION_TYPES(globalDof)==BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY) THEN
                       CYCLE facesLoop
                     END IF
+
+                    isFaceNeumann = .FALSE. ! Check if we are on a Neumann face (i.e. all nodes are Neumann)
+                    DO neumannDofIdxx=1,numberOfNeumann
+                      neumannGlobalDofCount=neumannConditions%setDofs(neumannDofIdxx)
+                      IF(globalDof==neumannGlobalDofCount) THEN
+                        isFaceNeumann = .TRUE.
+                        CYCLE
+                      END IF
+                    END DO
+                    IF (.NOT.isFaceNeumann) CYCLE facesLoop ! If any node on this face is not Neumann, exit
+
                   END DO
-                END DO
+                END DO faceNodesLoop
                 IF(neumannLocalNodeNumber==0) THEN
                   CALL FlagError("Could not find local Neumann node and derivative numbers in line.",err,error,*999)
                 END IF
 
                 ! Now perform actual integration
+                isFaceIntegrated=.TRUE.
                 quadratureScheme=>basis%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR
                 IF(.NOT.ASSOCIATED(quadratureScheme)) THEN
                   CALL FlagError("Face basis default quadrature scheme is not associated.",err,error,*999)
@@ -2929,15 +2966,12 @@ CONTAINS
                     ! Add integral term to N matrix
                     CALL DistributedMatrix_ValuesAdd(neumannConditions%integrationMatrix,localDof,neumannDofIdx, &
                       & integratedValue,err,error,*999)
-                    integratedValueSum = integratedValueSum+integratedValue 
                   END DO
                 END DO
               END DO facesLoop
-            WRITE(*,*) "neumannGlobalDof"
-            WRITE(*,*) neumannGlobalDof
-            WRITE(*,*) "Value"
-            WRITE(*,*) integratedValueSum
-            integratedValueSum = 0.0_DP
+              IF (.NOT.isFaceIntegrated) &
+                & CALL FlagError("No integration has been performed corresponding to a Neumann node: "// &
+                    & "Probably not all dofs on an element face have been marked as Neumann!",err,error,*999)
 
             CASE DEFAULT
               CALL FlagError("The dimension is invalid for point Neumann conditions",err,error,*999)

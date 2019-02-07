@@ -4273,7 +4273,7 @@ CONTAINS
         CALL FINITE_ELASTICITY_GAUSS_STRESS_TENSOR(equationsSet,dependentInterpolatedPoint, &
           & materialsInterpolatedPoint,geometricInterpolatedPoint,cauchyStressVoigt,dZdNu,Jznu, &
           & elementNumber,0,numberOfDimensions,ERR,ERROR,*999)
-  
+
         !Convert from Voigt form to tensor form. \TODO needs to be generalised for 2D
         DO nh=1,numberOfDimensions
           DO mh=1,numberOfDimensions
@@ -4738,8 +4738,8 @@ CONTAINS
           & localElementNumber,0,numberOfDimensions,ERR,ERROR,*999)
         
         !Convert from Voigt form to tensor form.
-        DO nh=1,3 
-          DO mh=1,3 
+        DO nh=1,3
+          DO mh=1,3
             cauchyStressTensor(mh,nh)=cauchyStressVoigt(TENSOR_TO_VOIGT3(mh,nh))
           ENDDO
         ENDDO
@@ -6995,7 +6995,7 @@ CONTAINS
     REAL(DP), INTENT(IN) :: DZDNU(3,3) !Deformation gradient tensor at the gauss point
     REAL(DP), INTENT(IN) :: Jznu !Determinant of deformation gradient tensor (AZL)
     INTEGER(INTG), INTENT(IN) :: ELEMENT_NUMBER,GAUSS_POINT_NUMBER !<Element/Gauss point number
-    INTEGER(INTG), INTENT(IN) :: numberOfDimensions 
+    INTEGER(INTG), INTENT(IN) :: numberOfDimensions
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -7017,10 +7017,10 @@ CONTAINS
 
     !AZL = Jznu^(-2/numberOfDim)*F'*F (deformed covariant or right cauchy deformation tensor, C)
     !AZU - deformed contravariant tensor; I3 = det(C)
- 
+
     numberOfDimensions_DP = numberOfDimensions + 0.0_DP
 
-    MOD_DZDNU=DZDNU*Jznu**(-1.0_DP/numberOfDimensions_DP) 
+    MOD_DZDNU=DZDNU*Jznu**(-1.0_DP/numberOfDimensions_DP)
     CALL MatrixTranspose(MOD_DZDNU,MOD_DZDNUT,err,error,*999)
     CALL MatrixProduct(MOD_DZDNUT,MOD_DZDNU,AZL,err,error,*999)
     C=>MATERIALS_INTERPOLATED_POINT%VALUES(:,NO_PART_DERIV)
@@ -7043,14 +7043,14 @@ CONTAINS
       !Calculate isochoric fictitious 2nd Piola tensor (in Voigt form)
       I1 = 0.0_DP
       DO component_idx=1,numberOfDimensions
-        I1=I1+AZL(component_idx,component_idx) 
+        I1=I1+AZL(component_idx,component_idx)
       END DO
       TEMPTERM1=-2.0_DP*C(2)
       TEMPTERM2=2.0_DP*(C(1)+I1*C(2))
       STRESS_TENSOR(1)=TEMPTERM1*AZL(1,1)+TEMPTERM2
       STRESS_TENSOR(2)=TEMPTERM1*AZL(2,2)+TEMPTERM2
       STRESS_TENSOR(3)=TEMPTERM1*AZL(3,3)+TEMPTERM2 ! meaningless if 2D
-      STRESS_TENSOR(4)=TEMPTERM1*AZL(2,1) 
+      STRESS_TENSOR(4)=TEMPTERM1*AZL(2,1)
       STRESS_TENSOR(5)=TEMPTERM1*AZL(3,1) ! meaningless if 2D
       STRESS_TENSOR(6)=TEMPTERM1*AZL(3,2) ! meaningless if 2D
 
@@ -7071,8 +7071,8 @@ CONTAINS
       !Do push-forward of 2nd Piola tensor. 
       CALL FINITE_ELASTICITY_PUSH_STRESS_TENSOR(STRESS_TENSOR,MOD_DZDNU,Jznu,err,error,*999)
       !Calculate isochoric Cauchy tensor (the deviatoric part) and add the volumetric part (the hydrostatic pressure).
-      ONETHIRD_TRACE=SUM(STRESS_TENSOR(1:numberOfDimensions))/numberOfDimensions_DP 
-      STRESS_TENSOR(1:numberOfDimensions)=STRESS_TENSOR(1:numberOfDimensions)-ONETHIRD_TRACE+P 
+      ONETHIRD_TRACE=SUM(STRESS_TENSOR(1:numberOfDimensions))/numberOfDimensions_DP
+      STRESS_TENSOR(1:numberOfDimensions)=STRESS_TENSOR(1:numberOfDimensions)-ONETHIRD_TRACE+P
 
       ! Compute PK2 (just for comparison)
       PK2 = STRESS_TENSOR
@@ -7086,7 +7086,7 @@ CONTAINS
           PK2Tensor(component_idx, dof_idx) = PK2(TENSOR_TO_VOIGT(component_idx,dof_idx, 3))
           sigmaTensor(component_idx, dof_idx) = STRESS_TENSOR(TENSOR_TO_VOIGT(component_idx,dof_idx, 3))
         END DO
-      END DO      
+      END DO
 
       ! Write out PK2
       IF(DIAGNOSTICS1) THEN
