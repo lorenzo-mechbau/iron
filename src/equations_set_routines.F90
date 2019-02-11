@@ -1792,7 +1792,7 @@ CONTAINS
                                               & ROW_INDICES,COLUMN_INDICES,err,error,*999)
                                             !Loop over the non-ghosted rows in the equations set
                                             DO equations_row_number=1,vectorMapping%numberOfRows
-                                              ! Same as other case (BLOCK)  
+                                              ! Same as other case (BLOCK)
                                               RHS_VALUE=0.0_DP
                                               rhs_variable_dof=rhsMapping%equationsRowToRHSDOFMap(equations_row_number)
                                               rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
