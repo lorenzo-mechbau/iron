@@ -2653,6 +2653,10 @@ CONTAINS
 
   !>Calculates integrated Neumann condition values from point values for a boundary conditions variable and
   !>updates the FIELD_INTEGRATED_NEUMANN_SET_TYPE parameter set for the field variable.
+  !>Integration happens on ALL (boundary) lines/faces connected to ALL Neumann nodes.
+  !>This handles integration of e.g. force applied point-wise effectively.
+  !>Distributed-force case needs then additional input (i.e. 0-Neumann_integrated_only condition at nodes
+  !>on lines/faces which do NOT have to be integrated) 
   SUBROUTINE BoundaryConditions_NeumannIntegrate(rhsBoundaryConditions,err,error,*)
 
     !Argument variables
