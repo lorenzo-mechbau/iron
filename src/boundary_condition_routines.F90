@@ -2668,7 +2668,7 @@ CONTAINS
     INTEGER(INTG) :: faceNumber,lineNumber
     INTEGER(INTG) :: ms,os,nodeNumber,derivativeNumber,versionNumber
     LOGICAL :: dependentGeometry
-    REAL(DP) :: integratedValue,phim,phio, integratedValueSum
+    REAL(DP) :: integratedValue,phim,phio
     TYPE(BoundaryConditionsNeumannType), POINTER :: neumannConditions
     TYPE(BASIS_TYPE), POINTER :: basis
     TYPE(FIELD_TYPE), POINTER :: geometricField
@@ -2692,8 +2692,6 @@ CONTAINS
     NULLIFY(interpolatedPoints)
     NULLIFY(interpolatedPointMetrics)
     NULLIFY(integratedValues)
-
-    integratedValueSum = 0.0_DP
 
     neumannConditions=>rhsBoundaryConditions%neumannBoundaryConditions
     !Check that Neumann conditions are associated, otherwise do nothing
@@ -2746,7 +2744,7 @@ CONTAINS
               IF(.NOT.decomposition%CALCULATE_LINES) THEN
                 CALL FlagError("Decomposition does not have lines calculated.",err,error,*999)
               END IF
-              lines=>topology%LINES
+              lines=>topology%LINES ! lines on ELEMENT
               IF(.NOT.ASSOCIATED(lines)) THEN
                 CALL FlagError("Mesh topology lines is not associated.",err,error,*999)
               END IF
@@ -2814,7 +2812,7 @@ CONTAINS
                       CALL FIELD_INTERPOLATED_POINT_METRICS_CALCULATE(COORDINATE_JACOBIAN_LINE_TYPE, &
                         & interpolatedPointMetrics(FIELD_U_VARIABLE_TYPE)%ptr,err,error,*999)
 
-                      !Get basis function values at guass points
+                      !Get basis function values at gauss points
                       phim=quadratureScheme%GAUSS_BASIS_FNS(ms,NO_PART_DERIV,gaussIdx)
                       phio=quadratureScheme%GAUSS_BASIS_FNS(os,NO_PART_DERIV,gaussIdx)
 
@@ -2841,7 +2839,7 @@ CONTAINS
               IF(.NOT.decomposition%CALCULATE_FACES) THEN
                 CALL FlagError("Decomposition does not have faces calculated.",err,error,*999)
               END IF
-              faces=>topology%FACES
+              faces=>topology%FACES ! faces on ELEMENT
               IF(.NOT.ASSOCIATED(faces)) THEN
                 CALL FlagError("Mesh topology faces is not associated.",err,error,*999)
               END IF
@@ -2929,16 +2927,9 @@ CONTAINS
                     ! Add integral term to N matrix
                     CALL DistributedMatrix_ValuesAdd(neumannConditions%integrationMatrix,localDof,neumannDofIdx, &
                       & integratedValue,err,error,*999)
-                    integratedValueSum = integratedValueSum+integratedValue 
                   END DO
                 END DO
               END DO facesLoop
-            WRITE(*,*) "neumannGlobalDof"
-            WRITE(*,*) neumannGlobalDof
-            WRITE(*,*) "Value"
-            WRITE(*,*) integratedValueSum
-            integratedValueSum = 0.0_DP
-
             CASE DEFAULT
               CALL FlagError("The dimension is invalid for point Neumann conditions",err,error,*999)
             END SELECT
