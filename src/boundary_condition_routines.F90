@@ -1616,6 +1616,8 @@ CONTAINS
 
   !> Checks the boundary condition type and sets the boundary condition type and dof type for the boundary conditions.
   !> Makes sure any field parameter sets required are created, and sets the parameter set required array value.
+  !> The distinction made in this function has nothing to do with the actual row/col reduction in the matrix assemble,
+  !> where only Dirichlet dofs are reduced. 
   SUBROUTINE BoundaryConditions_SetConditionType(boundaryConditionsVariable,globalDof,condition,err,error,*)
 
     !Argument variables

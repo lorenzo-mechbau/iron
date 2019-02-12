@@ -1811,7 +1811,7 @@ CONTAINS
                                                   RHS_VALUE=RHS_VALUE+MATRIX_VALUE*DEPENDENT_VALUE
                                                 ENDDO !equations_column_idx
 
-                                                ! CASE block storage above
+                                                ! CASE block storage (=FULL) above
                                                 !Back substitute
                                                 !Loop over the local columns of the equations matrix
                                                 !DO equations_column_idx=1,COLUMN_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
