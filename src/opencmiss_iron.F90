@@ -4194,6 +4194,18 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Field_ParameterSetUpdateFinishObj
   END INTERFACE cmfe_Field_ParameterSetUpdateFinish
 
+  !>Updates the given parameter set with the given value for a particular user face of a field variable component.
+  INTERFACE cmfe_Field_ParameterSetUpdateFace
+    !todo, include the other number and object implementations
+    MODULE PROCEDURE cmfe_Field_ParameterSetUpdateFaceIntgObj
+  END INTERFACE cmfe_Field_ParameterSetUpdateFace
+
+  !>Updates the given parameter set with the given value for a particular user line of a field variable component.
+  INTERFACE cmfe_Field_ParameterSetUpdateLine
+    !todo, include the other number and object implementations
+    MODULE PROCEDURE cmfe_Field_ParameterSetUpdateLineIntgObj
+  END INTERFACE cmfe_Field_ParameterSetUpdateLine
+
   !>Updates the given parameter set with the given value for a particular user node of a field variable component.
   INTERFACE cmfe_Field_ParameterSetUpdateNode
     MODULE PROCEDURE cmfe_Field_ParameterSetUpdateNodeIntgNumber
@@ -4451,6 +4463,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_Field_ParameterSetGetDataPoint,cmfe_Field_ParameterSetUpdateDataPoint
 
   PUBLIC cmfe_Field_ParameterSetUpdateConstant,cmfe_Field_ParameterSetUpdateElement,cmfe_Field_ParameterSetUpdateNode
+
+  PUBLIC cmfe_Field_ParameterSetUpdateLine, cmfe_Field_ParameterSetUpdateFace
 
   PUBLIC cmfe_Field_ParameterSetNodeScaleFactorGet,cmfe_Field_ParameterSetNodeScaleFactorSet
 
@@ -35731,6 +35745,76 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Field_ParameterSetUpdateFinishObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Updates the given parameter set with the given integer value for the face of the field variable component for a field identified by an object.
+  SUBROUTINE cmfe_Field_ParameterSetUpdateFaceIntgObj(field,variableType,fieldSetType,versionNumber, &
+    & derivativeNumber,userElementNumber,userXiDir,componentNumber,value,err)
+    !DLLEXPORT(cmfe_Field_ParameterSetUpdateFaceIntgObj)
+
+    !Argument variables
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The field to update the constant value for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the field to update the constant value for the field parameter set. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The parameter set type of the field to update the constant value for. \see OpenCMISS_FieldParameterSetTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The derivative version number of the field variable component to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The derivative number of the field variable component to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number of the face to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<The user XiDir of the face to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the field variable to update the constant value for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: value !<The value for the field parameter set to update.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Field_ParameterSetUpdateFaceIntgObj",err,error,*999)
+
+    CALL FIELD_PARAMETER_SET_UPDATE_FACE(field%field,variableType,fieldSetType,versionNumber,derivativeNumber, &
+      & userElementNumber,userXiDir,componentNumber,value,err,error,*999)
+
+    EXITS("cmfe_Field_ParameterSetUpdateFaceIntgObj")
+    RETURN
+999 ERRORSEXITS("cmfe_Field_ParameterSetUpdateFaceIntgObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Field_ParameterSetUpdateFaceIntgObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Updates the given parameter set with the given integer value for the line of the field variable component for a field identified by an object.
+  SUBROUTINE cmfe_Field_ParameterSetUpdateLineIntgObj(field,variableType,fieldSetType,versionNumber, &
+    & derivativeNumber,userElementNumber,userXiDir,componentNumber,value,err)
+    !DLLEXPORT(cmfe_Field_ParameterSetUpdateLineIntgObj)
+
+    !Argument variables
+    TYPE(cmfe_FieldType), INTENT(IN) :: field !<The field to update the constant value for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The variable type of the field to update the constant value for the field parameter set. \see OpenCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: fieldSetType !<The parameter set type of the field to update the constant value for. \see OpenCMISS_FieldParameterSetTypes
+    INTEGER(INTG), INTENT(IN) :: versionNumber !<The derivative version number of the field variable component to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: derivativeNumber !<The derivative number of the field variable component to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: userElementNumber !<The user element number of the line to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: userXiDir !<The user XiDir of the line to update for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: componentNumber !<The component number of the field variable to update the constant value for the field parameter set.
+    INTEGER(INTG), INTENT(IN) :: value !<The value for the field parameter set to update.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    ENTERS("cmfe_Field_ParameterSetUpdateLineIntgObj",err,error,*999)
+
+    CALL FIELD_PARAMETER_SET_UPDATE_LINE(field%field,variableType,fieldSetType,versionNumber,derivativeNumber, &
+      & userElementNumber,userXiDir,componentNumber,value,err,error,*999)
+
+    EXITS("cmfe_Field_ParameterSetUpdateLineIntgObj")
+    RETURN
+999 ERRORSEXITS("cmfe_Field_ParameterSetUpdateLineIntgObj",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Field_ParameterSetUpdateLineIntgObj
 
   !
   !================================================================================================================================

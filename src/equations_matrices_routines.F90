@@ -78,8 +78,7 @@ MODULE EquationsMatricesRoutines
   INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_DIAGONAL_STRUCTURE=3 !<Diagonal matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
   INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_NODAL_STRUCTURE=4 !<Nodal matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
   INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE=5 !<Finite element matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
-  INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE=6 !<Finite element matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
-  INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE=7 !<Finite element matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
+  INTEGER(INTG), PARAMETER :: EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE=6 !<Finite element matrix structure. \see EquationsMatricesRoutines_EquationsMatrixStructureTypes,EquationsMatricesRoutines
   !>@}
 
 
@@ -156,7 +155,7 @@ MODULE EquationsMatricesRoutines
   END INTERFACE EquationsMatrices_NonlinearStructureTypeSet
 
   PUBLIC EQUATIONS_MATRIX_NO_STRUCTURE,EQUATIONS_MATRIX_FEM_STRUCTURE,EQUATIONS_MATRIX_DIAGONAL_STRUCTURE, &
-    & EQUATIONS_MATRIX_NODAL_STRUCTURE, EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE, EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE, &
+    & EQUATIONS_MATRIX_NODAL_STRUCTURE, EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE, &
     & EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE
 
   PUBLIC EQUATIONS_MATRIX_UNLUMPED,EQUATIONS_MATRIX_LUMPED
@@ -3943,8 +3942,6 @@ CONTAINS
         equationsMatrix%structureType=EQUATIONS_MATRIX_NODAL_STRUCTURE
       CASE(EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE)
         equationsMatrix%structureType=EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE
-      CASE(EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE)
-        equationsMatrix%structureType=EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE
       CASE(EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE)
         equationsMatrix%structureType=EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE
       CASE DEFAULT
@@ -4338,7 +4335,10 @@ CONTAINS
     INTEGER(INTG) :: columnIdx,component,componentIdx,derivative,derivativeIdx,dofIdx,dummyErr,element,elementIdx, &
       & globalColumn,localColumn,localDOF,localDOFIdx,localNodeIdx,matrixNumber,node,node2,numberOfColumns, &
       & numberOfDerivatives,numberOfVersions,version,versionIdx, localElementNo, localElementNo2, xicIdx, startNic, localFace, &
-      & localLine, numberOfDimensions, elementLocalFaceNo, elementLocalLineNo, adjacentElementIdx
+      & localLine, numberOfDimensions, elementLocalFaceNo, elementLocalLineNo, adjacentElementIdx, uSurrLocalColumnIdx, &
+      & vSurrLocalColumnIdx, surroundingLineLocalNo, surroundingLineIdx, numberSurroundingLines,cornerNode, cornerNodeIdx, &
+      & numberSurroundingElements, surroundingElemLocalNo, surroundingElemIdx, adjacentLocalElementNo, uAdjLocalColumnIdx, &
+      & vAdjLocalColumnIdx, adjLocalColumnIdx, uLocalColumn, vLocalColumn
     INTEGER(INTG), ALLOCATABLE :: columns(:)
     REAL(DP) :: sparsity
     TYPE(BASIS_TYPE), POINTER :: basis
@@ -4359,7 +4359,7 @@ CONTAINS
     TYPE(EquationsMatricesDynamicType), POINTER :: dynamicMatrices
     TYPE(EquationsMatricesLinearType), POINTER :: linearMatrices
     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
-    TYPE(FIELD_TYPE), POINTER :: dependentField
+    TYPE(FIELD_TYPE), POINTER :: dependentField, geometricField
     TYPE(FIELD_DOF_TO_PARAM_MAP_TYPE), POINTER :: dependentDofsParamMapping
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: columnIndicesLists(:)
@@ -4392,6 +4392,8 @@ CONTAINS
     CALL Equations_EquationsSetGet(equations,equationsSet,err,error,*998)
     NULLIFY(dependentField)
     CALL EquationsSet_DependentFieldGet(equationsSet,dependentField,err,error,*998)
+    NULLIFY(geometricField)
+    CALL EquationsSet_GeometricFieldGet(equationsSet,geometricField,err,error,*999)
     matrixNumber=equationsMatrix%matrixNumber
     NULLIFY(dynamicMapping)
     NULLIFY(linearMapping)
@@ -4410,6 +4412,7 @@ CONTAINS
     IF(.NOT.ASSOCIATED(dependentDofsParamMapping)) &
       & CALL FlagError("Dependent dofs parameter mapping is not associated.",err,error,*998)
 
+    numberOfDimensions = geometricField%variables(1)%DIMENSION
     SELECT CASE(equationsMatrix%structureType)
     CASE(EQUATIONS_MATRIX_NO_STRUCTURE)
       CALL FlagError("There is no structure to calculate for a matrix with no structure.",err,error,*998)
@@ -4539,11 +4542,12 @@ CONTAINS
     CASE(EQUATIONS_MATRIX_DIAGONAL_STRUCTURE)
       CALL FlagError("There is not structure to calculate for a diagonal matrix.",err,error,*998)
 
-    CASE(EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE, EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE)
+    CASE(EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE)
+      !FINBARTOFIX pressure FV structure should be different.
+
       SELECT CASE(equationsMatrix%storageType)
       CASE(MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
 
-        numberOfDimensions = fieldVariable%DIMENSION
         !Allocate lists
         ALLOCATE(columnIndicesLists(dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate column indices lists.",err,error,*999)
@@ -4557,20 +4561,44 @@ CONTAINS
           NULLIFY(columnIndicesLists(localDofIdx)%ptr)
         ENDDO !localDofIdx
 
+        domainElements=>fieldVariable%components(1)%domain%topology%elements
+        domainNodes=>fieldVariable%components(1)%domain%topology%nodes
+        IF(numberOfDimensions==2) THEN
+          domainLines=>fieldVariable%components(1)%domain%topology%lines
+          decompositionLines=>fieldVariable%components(1)%domain%decomposition%topology%lines
+        ELSEIF(numberOfDimensions==3) THEN
+          domainFaces=>fieldVariable%components(1)%domain%topology%faces
+          decompositionFaces=>fieldVariable%components(1)%domain%decomposition%topology%faces
+        ENDIF
+        decompositionElements=>fieldVariable%components(1)%domain%decomposition%topology%elements
+
         !First, loop over the rows and calculate the number of non-zeros
         numberOfNonZeros=0
         DO localDOFIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL !This should be the same as number_of_local.
 
           dofIdx=dependentDofsParamMapping%DOF_TYPE(2,localDOFIdx) !value for a particular field dof (localDOFIdx)
 
+          !Set up list
+          CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
+          CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
+          CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,numberOfDimensions*2,err,error,*999)
+          CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
+
           IF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_ELEMENT_DOF_TYPE) THEN
 
             localElementNo=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(1,dofIdx) !element number of the field parameter
-            component=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(2,dofIdx) !component number of the field parameter
-            domainElements=>fieldVariable%components(component)%domain%topology%elements
-            decompositionElements=>fieldVariable%components(component)%domain%decomposition%topology%elements
-            basis=>domainElements%elements(localElementNo)%basis
 
+            !Find the local column for the current row and add it to the indices list. This will be the same as the row number
+            uLocalColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(localElementNo)
+            vLocalColumn=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(localElementNo)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uLocalColumn,err,error,*999)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vLocalColumn,err,error,*999)
+
+            basis=>domainElements%elements(localElementNo)%basis
 
             !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
             SELECT CASE(basis%TYPE)!Assumes all elements have the same basis
@@ -4583,34 +4611,87 @@ CONTAINS
             END SELECT
 
 
-            !Set up list
-            CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-            CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
-            CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,numberOfDimensions*2,err,error,*999)
-            CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-
-            !Find the local column for the current row and add it to the indices list. This will be the same as the row number
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
-              & elements(localElementNo)
-
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
-
-
-            !Loop over adjacent elements to this element so we can add their column number to the list of columns.
+            !Loop over xi indices so we can add the columns for the elements surrounding the lines to the column lists
             DO xicIdx = startNic, basis%NUMBER_OF_XI_COORDINATES
               IF(xicIdx ==0) CYCLE
               IF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
                 & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
 
-                !get the local element number of the adjacent element
-                localElementNo2 = decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)%ADJACENT_ELEMENTS(1)
+                !First add columns for directly adjacent elements
+                adjacentLocalElementNo = decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+                  & ADJACENT_ELEMENTS(1)
 
-                !Find the local column and add it to the indices list
-                localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
-                  & elements(localElementNo2)
-                !globalColumn=fieldVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localColumn)
+                !Find the local columns corresponding to localElementNo2
+                uAdjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(adjacentLocalElementNo)
+                vAdjLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(adjacentLocalElementNo)
 
-                CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+                CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uAdjLocalColumnIdx,err,error,*999)
+
+                CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vAdjLocalColumnIdx,err,error,*999)
+
+                ! We need to add all elements surrounding the corner nodes of the line in this xi direction.
+                IF(numberOfDimensions==2) THEN
+
+                  elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+                  localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+
+                  DO cornerNodeIdx = 1, 2
+                    cornerNode = domainLines%LINES(localLine)%NODES_IN_LINE(cornerNodeIdx)
+
+                    IF(domainNodes%NODES(cornerNode)%BOUNDARY_NODE) THEN
+                      !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces, so add the neighbouring velocities
+                      numberSurroundingLines = domainNodes%NODES(cornerNode)%NUMBER_OF_NODE_LINES
+
+                      DO surroundingLineIdx = 1, numberSurroundingLines
+                        surroundingLineLocalNo = domainNodes%NODES(cornerNode)%NODE_LINES(surroundingLineIdx)
+                        IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                        !TODO make sure this works for a node at the corner of the mesh
+
+                        !Find the local columns corresponding to surroundingLineLocalNo
+                        uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                          & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                        vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                          & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                        !Add the columns for the surrounding lines to the matrix sparsity pattern
+
+                        CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uSurrLocalColumnIdx,err,error,*999)
+
+                        CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vSurrLocalColumnIdx,err,error,*999)
+
+
+                      ENDDO ! surroundingLineIdx
+
+                    ELSE
+                      ! node is not a boundary so the corner velocity is approximated as the average of all surrounding elements,
+                      ! so need values on all adjacent elements to this node
+                      numberSurroundingElements = domainNodes%NODES(cornerNode)%NUMBER_OF_SURROUNDING_ELEMENTS
+                      DO surroundingElemIdx = 1, numberSurroundingElements
+                        surroundingElemLocalNo = domainNodes%NODES(cornerNode)%SURROUNDING_ELEMENTS(surroundingElemIdx)
+                        !Find the local columns corresponding to surroundingElemLocalNo
+                        uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                          & elements(surroundingElemLocalNo)
+                        vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                          & elements(surroundingElemLocalNo)
+
+                        !Add the columns for the surrounding elements to the matrix sparsity pattern
+
+                        CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uSurrLocalColumnIdx,err,error,*999)
+
+                        CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vSurrLocalColumnIdx,err,error,*999)
+
+                      ENDDO ! surroundingElemIdx
+
+                    ENDIF
+
+                  ENDDO ! cornerNodeIdx
+
+                ELSEIF(numberOfDimensions == 3) THEN
+                  CALL FlagError("3D has not yet been implemented for FV",err,error,*999)
+                ENDIF
+
               ELSEIF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
                 & NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
 
@@ -4618,26 +4699,53 @@ CONTAINS
 
                   elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
 
+                  ! This is a boundary line, we want to add the neighbouring lines to the sparsity pattern
                   localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
-                  localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
-                    & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+                  DO cornerNodeIdx = 1, 2
+                    cornerNode = domainLines%LINES(localLine)%NODES_IN_LINE(cornerNodeIdx)
 
-                  CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+                    !node is a boundary so the velocity will be approximated by the average of the neighbouring lines/faces, so add the neighbouring velocities
+                    numberSurroundingLines = domainNodes%NODES(cornerNode)%NUMBER_OF_NODE_LINES
+
+                    DO surroundingLineIdx = 1, numberSurroundingLines
+                      surroundingLineLocalNo = domainNodes%NODES(cornerNode)%NODE_LINES(surroundingLineIdx)
+                      IF(.NOT.domainLines%LINES(surroundingLineLocalNo)%BOUNDARY_LINE) CYCLE !we only want the surrounding lines that are on the boundary
+                      !TODO make sure this works for a node at the corner of the mesh
+                      !Find the local columns corresponding to surroundingLineLocalNo
+                      uSurrLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                        & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+                      vSurrLocalColumnIdx=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                        & lines(surroundingLineLocalNo)%DERIVATIVES(1)%VERSIONS(1)
+
+                      !Add the columns for the surrounding lines to the matrix sparsity pattern
+
+                      CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uSurrLocalColumnIdx,err,error,*999)
+
+                      CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vSurrLocalColumnIdx,err,error,*999)
+
+                    ENDDO ! surroundingLineIdx
+
+
+
+                  ENDDO ! cornerNodeIdx
+
+
                 ELSEIF(numberOfDimensions==3) THEN
 
-                  elementLocalFaceNo = basis%xiNormalLocalFace(xicIdx)
-
-                  localFace = decompositionElements%elements(localElementNo)%ELEMENT_FACES(elementLocalFaceNo)
-                  localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
-                    & faces(localface)%DERIVATIVES(1)%VERSIONS(1)
-
-                  CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+                  CALL FlagError("3D has not yet been implemented for FV",err,error,*999)
+                  ! elementLocalFaceNo = basis%xiNormalLocalFace(xicIdx)
+                  !
+                  ! localFace = decompositionElements%elements(localElementNo)%ELEMENT_FACES(elementLocalFaceNo)
+                  ! localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
+                  !   & faces(localface)%DERIVATIVES(1)%VERSIONS(1)
+                  !
+                  ! CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
                 ENDIF
               ELSE
                 CALL FlagError("can't have more than one adjacent element in one xi direction",err,error,*999)
               ENDIF
 
-            ENDDO !elementIdx
+            ENDDO !xicIdx
 
             ! here I also have to find the dof number of the adjacent boundary faces. and those columns to the list.
 
@@ -4645,55 +4753,55 @@ CONTAINS
             !the row is for a boundary line, so add the column of the adjacent element to the list.
             localLine=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(1,dofIdx) !line number of the field parameter
             component=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(2,dofIdx) !component number of the field parameter
-            domainLines=>fieldVariable%components(component)%domain%topology%lines
-            decompositionLines=>fieldVariable%components(component)%domain%decomposition%topology%lines
-
-            !Set up list
-            CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-            CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
-            CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,2,err,error,*999)
-            CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
 
             !Find the local column for the current row and add it to the indices list. This will be the same as the row number
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+            uLocalColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+              & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+            vLocalColumn=fieldVariable%components(2)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
               & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
 
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+              CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uLocalColumn,err,error,*999)
+
+              CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vLocalColumn,err,error,*999)
 
             !Get the adjacent element to this line (there is only one surrounding element)
             localElementNo = decompositionLines%lines(localLine)%SURROUNDING_ELEMENTS(1)
             !Find the local column and add it to the indices list
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+            uLocalColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
               & elements(localElementNo)
-            !add local column number to list
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+            vLocalColumn=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(localElementNo)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uLocalColumn,err,error,*999)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vLocalColumn,err,error,*999)
 
           ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_FACE_DOF_TYPE) THEN
             !the row is for a boundary face, so add the column of the adjacent element to the list.
             localFace=dependentDofsParamMapping%FACE_DOF2PARAM_MAP(1,dofIdx) !face number of the field parameter
             component=dependentDofsParamMapping%FACE_DOF2PARAM_MAP(2,dofIdx) !component number of the field parameter
-            domainFaces=>fieldVariable%components(component)%domain%topology%faces
-            decompositionFaces=>fieldVariable%components(component)%domain%decomposition%topology%faces
-
-            !Set up list
-            CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-            CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
-            CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,2,err,error,*999)
-            CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
 
             !Find the local column for the current row and add it to the indices list. This will be the same as the row number
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
+            uLocalColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
+              & faces(localFace)%DERIVATIVES(1)%VERSIONS(1)
+            vLocalColumn=fieldVariable%components(2)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
               & faces(localFace)%DERIVATIVES(1)%VERSIONS(1)
 
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uLocalColumn,err,error,*999)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vLocalColumn,err,error,*999)
 
             !Get the adjacent element to this line (there is only one surrounding element)
             localElementNo = decompositionFaces%faces(localFace)%SURROUNDING_ELEMENTS(1)
             !Find the local column and add it to the indices list
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+            uLocalColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
               & elements(localElementNo)
-            !add local column number to list
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+            vLocalColumn=fieldVariable%components(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(localElementNo)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,uLocalColumn,err,error,*999)
+
+            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,vLocalColumn,err,error,*999)
 
           ELSE
             CALL FlagError("EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE should only have element, face or line dofs",err,error,*999)
@@ -4710,8 +4818,8 @@ CONTAINS
         localError="The matrix storage type of "//TRIM(NumberToVString(equationsMatrix%storageType,"*",err,error))//" is invalid."
         CALL FlagError(localError,err,error,*999)
       END SELECT
+    CASE(EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE)
 
-    CASE(EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE)
       SELECT CASE(equationsMatrix%storageType)
       CASE(MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
 
@@ -4723,65 +4831,118 @@ CONTAINS
         IF(err/=0) CALL FlagError("Could not allocate row indices.",err,error,*999)
         rowIndices(1)=1
 
-        !Nullify all columnIndicesLists pointers, doing this before the loop fixes a bug that happens on failure withing the DO localDofIdx loop.
+        !Nullify all columnIndicesLists pointers, doing this before the loop fixes a bug that happens on failure within the DO localDofIdx loop.
         DO localDofIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL
           NULLIFY(columnIndicesLists(localDofIdx)%ptr)
         ENDDO !localDofIdx
 
-        !First, loop over the rows and calculate the number of non-zeros
+        domainElements=>fieldVariable%components(1)%domain%topology%elements
+        domainNodes=>fieldVariable%components(1)%domain%topology%nodes
+        IF(numberOfDimensions==2) THEN
+          domainLines=>fieldVariable%components(1)%domain%topology%lines
+          decompositionLines=>fieldVariable%components(1)%domain%decomposition%topology%lines
+        ELSEIF(numberOfDimensions==3) THEN
+          domainFaces=>fieldVariable%components(1)%domain%topology%faces
+          decompositionFaces=>fieldVariable%components(1)%domain%decomposition%topology%faces
+        ENDIF
+        decompositionElements=>fieldVariable%components(1)%domain%decomposition%topology%elements
+
+        !Loop over the rows and calculate the number of non-zeros
         numberOfNonZeros=0
         DO localDOFIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL !This should be the same as number_of_local.
 
           dofIdx=dependentDofsParamMapping%DOF_TYPE(2,localDOFIdx) !value for a particular field dof (localDOFIdx)
 
-          IF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_LINE_DOF_TYPE) THEN
-            !the row is for a boundary line, so add the column of the row to the list
-            localLine=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(1,dofIdx) !line number of the field parameter
-            component=dependentDofsParamMapping%LINE_DOF2PARAM_MAP(2,dofIdx) !component number of the field parameter
+          !Set up list
+          CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
+          CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
+          CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,numberOfDimensions*2,err,error,*999)
+          CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
 
-            !Set up list
-            CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-            CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
-            CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,2,err,error,*999)
-            CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
+          IF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_ELEMENT_DOF_TYPE) THEN
+
+            localElementNo=dependentDofsParamMapping%ELEMENT_DOF2PARAM_MAP(1,dofIdx) !element number of the field parameter
 
             !Find the local column for the current row and add it to the indices list. This will be the same as the row number
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
-              & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+            localColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+              & elements(localElementNo)
 
             CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+
+            basis=>domainElements%elements(localElementNo)%basis
+
+            !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+            SELECT CASE(basis%TYPE)!Assumes all elements have the same basis
+            CASE(BASIS_SIMPLEX_TYPE)
+              startNic=1
+            CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+              startNic=-basis%NUMBER_OF_XI_COORDINATES
+            CASE DEFAULT
+              !do nothing
+            END SELECT
+
+            !Loop over xi indices so we can add the columns for the elements surrounding the lines to the column lists
+            DO xicIdx = startNic, basis%NUMBER_OF_XI_COORDINATES
+              IF(xicIdx ==0) CYCLE
+              IF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+                & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+
+                !First add columns for directly adjacent elements
+                adjacentLocalElementNo = decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+                  & ADJACENT_ELEMENTS(1)
+
+                !Find the local columns corresponding to localElementNo2
+                adjLocalColumnIdx=fieldVariable%components(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                  & elements(adjacentLocalElementNo)
+
+                CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,adjLocalColumnIdx,err,error,*999)
+
+
+              ELSEIF(decompositionElements%elements(localElementNo)%ADJACENT_ELEMENTS(xicIdx)% &
+                & NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
+
+                IF(numberOfDimensions==2) THEN
+
+                  ! Do nothing, the boundary lines are eliminated from the equation matrix.
+
+                  ! elementLocalLineNo = basis%xiNormalsLocalLine(xicIdx,1)
+                  !
+                  ! ! This is a boundary line, we want to add this line to the sparsity pattern
+                  ! localLine = decompositionElements%elements(localElementNo)%ELEMENT_LINES(elementLocalLineNo)
+                  ! localColumn=fieldVariable%components(1)%PARAM_TO_DOF_MAP%LINE_PARAM2DOF_MAP% &
+                  !   & lines(localLine)%DERIVATIVES(1)%VERSIONS(1)
+                  ! CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+
+                ELSEIF(numberOfDimensions==3) THEN
+                  CALL FlagError("3D has not yet been implemented for FV",err,error,*999)
+                ENDIF
+              ELSE
+                CALL FlagError("can't have more than one adjacent element in one xi direction",err,error,*999)
+              ENDIF
+            ENDDO !xicIdx
+          ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_LINE_DOF_TYPE) THEN
+
+            !Do nothing, the boundary rows will be eliminated.
 
           ELSEIF(dependentDofsParamMapping%DOF_TYPE(1,localDOFIdx)==FIELD_FACE_DOF_TYPE) THEN
 
-            localFace=dependentDofsParamMapping%FACE_DOF2PARAM_MAP(1,dofIdx) !face number of the field parameter
-            component=dependentDofsParamMapping%FACE_DOF2PARAM_MAP(2,dofIdx) !component number of the field parameter
+            !Do nothing the boundary rows will be eliminated
 
-            !Set up list
-            CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-            CALL List_DataTypeSet(columnIndicesLists(localDOFIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
-            CALL List_InitialSizeSet(columnIndicesLists(localDOFIdx)%ptr,2,err,error,*999)
-            CALL List_CreateFinish(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
-
-            !Find the local column for the current row and add it to the indices list. This will be the same as the row number
-            localColumn=fieldVariable%components(component)%PARAM_TO_DOF_MAP%FACE_PARAM2DOF_MAP% &
-              & faces(localFace)%DERIVATIVES(1)%VERSIONS(1)
-
-            CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,localColumn,err,error,*999)
+          ELSE
+            CALL FlagError("EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE should only have element, face or line dofs",err,error,*999)
 
           ENDIF
 
-          CALL List_RemoveDuplicates(columnIndicesLists(localDofIdx)%ptr,err,error,*999)
-          CALL List_NumberOfItemsGet(columnIndicesLists(localDofIdx)%ptr,numberOfColumns,err,error,*999)
+          CALL List_RemoveDuplicates(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
+          CALL List_NumberOfItemsGet(columnIndicesLists(localDOFIdx)%ptr,numberOfColumns,err,error,*999)
           numberOfNonZeros=numberOfNonZeros+numberOfColumns
-          rowIndices(localDofIdx+1)=numberOfNonZeros+1
+          rowIndices(localDOFIdx+1)=numberOfNonZeros+1
         ENDDO !localDOFIdx
+
       CASE DEFAULT
         localError="The matrix storage type of "//TRIM(NumberToVString(equationsMatrix%storageType,"*",err,error))//" is invalid."
         CALL FlagError(localError,err,error,*999)
       END SELECT
-    ! CASE(EQUATIONS_MATRIX_PRESSURE_FV_STRUCTURE)
-    !   localError="The matrix structure for pressure FV hasn't been implemented yet"
-    !   CALL FlagError(localError,err,error,*998)
     CASE DEFAULT
       localError="The matrix structure type of "//TRIM(NumberToVString(equationsMatrix%structureType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*998)
@@ -4822,11 +4983,6 @@ CONTAINS
         CASE(EQUATIONS_MATRIX_DIAGONAL_STRUCTURE)
           CALL FlagError("There is not structure to calculate for a diagonal matrix.",err,error,*998)
         CASE(EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE)
-          DO columnIdx=1,numberOfColumns
-            !columns stores the list of nonzero column indices for each local row (localDOFIdx)
-            columnIndices(rowIndices(localDOFIdx)+columnIdx-1)=columns(columnIdx)
-          ENDDO !columnIdx
-        CASE(EQUATIONS_MATRIX_MASSFLOW_FV_STRUCTURE)
           DO columnIdx=1,numberOfColumns
             !columns stores the list of nonzero column indices for each local row (localDOFIdx)
             columnIndices(rowIndices(localDOFIdx)+columnIdx-1)=columns(columnIdx)

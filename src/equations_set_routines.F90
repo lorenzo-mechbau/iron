@@ -78,6 +78,7 @@ MODULE EQUATIONS_SET_ROUTINES
   USE MPI
 #endif
   USE MULTI_PHYSICS_ROUTINES
+  USE NAVIER_STOKES_EQUATIONS_ROUTINES
   USE ProfilingRoutines
   USE Strings
   USE Timer
@@ -962,8 +963,7 @@ CONTAINS
         CASE(EQUATIONS_SET_FD_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
         CASE(EQUATIONS_SET_FV_SOLUTION_METHOD)
-          !Here make an assemble FV subroutine
-          CALL EquationsSet_AssembleStaticLinearFEM(equationsSet,err,error,*999)!change this to FV
+          CALL EquationsSet_AssembleStaticLinearFV(equationsSet,err,error,*999) !In progress
         CASE(EQUATIONS_SET_GFEM_SOLUTION_METHOD)
           CALL FlagError("Not implemented.",err,error,*999)
         CASE(EQUATIONS_SET_GFV_SOLUTION_METHOD)
@@ -1363,6 +1363,162 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE EquationsSet_AssembleStaticLinearFEM
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Assembles the equations stiffness matrix and rhs for a linear static equations set using the finite volume method.
+  SUBROUTINE EquationsSet_AssembleStaticLinearFV(equationsSet,err,error,*)
+
+    !Argument variables
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet !<A pointer to the equations set to assemble the equations for
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: localElementNo,numberOfTimes, localRowIdx, dofIdxForType, localColumnIdx, xicIdx, component
+    REAL(SP) :: elementUserElapsed,elementSystemElapsed,userElapsed,userTime1(1),userTime2(1),userTime3(1),userTime4(1), &
+      & userTime5(1),userTime6(1),systemElapsed,systemTime1(1),systemTime2(1),systemTime3(1),systemTime4(1), &
+      & systemTime5(1),systemTime6(1), MatrixValue, rhsValue
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowDofsMapping
+    TYPE(EquationsType), POINTER :: equations
+    TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: domainElements
+    TYPE(DOMAIN_FACES_TYPE), POINTER :: domainFaces
+    TYPE(DOMAIN_LINES_TYPE), POINTER :: domainLines
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: decompositionElements
+    TYPE(DECOMPOSITION_LINES_TYPE), POINTER :: decompositionLines
+    TYPE(DECOMPOSITION_FACES_TYPE), POINTER :: decompositionFaces
+    TYPE(EquationsMatricesVectorType), POINTER :: vectorMatrices
+    TYPE(EquationsMappingVectorType), POINTER :: vectorMapping
+    TYPE(EquationsMappingLinearType), POINTER :: linearMapping
+    TYPE(EquationsVectorType), POINTER :: vectorEquations
+    TYPE(FIELD_TYPE), POINTER :: dependentField
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: dependentDofsDomainMapping
+    TYPE(VARYING_STRING) :: localError
+
+
+    ENTERS("EquationsSet_AssembleStaticLinearFV",err,error,*999)
+
+    IF(.NOT.ASSOCIATED(equationsSet)) CALL FlagError("Equations set is not associated.",err,error,*999)
+
+    NULLIFY(dependentField)
+    CALL EquationsSet_DependentFieldGet(equationsSet,dependentField,err,error,*999)
+    NULLIFY(equations)
+    CALL EquationsSet_EquationsGet(equationsSet,equations,err,error,*999)
+    NULLIFY(vectorEquations)
+    CALL Equations_VectorEquationsGet(equations,vectorEquations,err,error,*999)
+    NULLIFY(vectorMatrices)
+    CALL EquationsVector_VectorMatricesGet(vectorEquations,vectorMatrices,err,error,*999)
+    NULLIFY(vectorMapping)
+    CALL EquationsVector_VectorMappingGet(vectorEquations,vectorMapping,err,error,*999)
+    NULLIFY(linearMapping)
+    CALL EquationsMappingVector_LinearMappingGet(vectorMapping,linearMapping,err,error,*999)
+    fieldVariable=>linearMapping%equationsMatrixToVarMaps(1)%variable
+    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*999)
+    dependentDofsDomainMapping=>fieldVariable%DOMAIN_MAPPING
+    IF(.NOT.ASSOCIATED(dependentDofsDomainMapping)) &
+      & CALL FlagError("Dependent dofs domain mapping is not associated.",err,error,*999)
+    ! dependentDofsParamMapping=>fieldVariable%DOF_TO_PARAM_MAP
+    ! IF(.NOT.ASSOCIATED(dependentDofsParamMapping)) &
+    !   & CALL FlagError("Dependent dofs parameter mapping is not associated.",err,error,*999)
+
+    IF(equations%outputType>=EQUATIONS_TIMING_OUTPUT) THEN
+      CALL CPUTimer(USER_CPU,userTime1,err,error,*999)
+      CALL CPUTimer(SYSTEM_CPU,systemTime1,err,error,*999)
+    ENDIF
+    !Initialise the matrices and rhs vector
+
+    CALL EquationsMatrices_VectorValuesInitialise(vectorMatrices,EQUATIONS_MATRICES_LINEAR_ONLY,0.0_DP,err,error,*999)
+
+    !Output timing information if required
+    IF(equations%outputType>=EQUATIONS_TIMING_OUTPUT) THEN
+      CALL CPUTimer(USER_CPU,userTime2,err,error,*999)
+      CALL CPUTimer(SYSTEM_CPU,systemTime2,err,error,*999)
+      userElapsed=userTime2(1)-userTime1(1)
+      systemElapsed=systemTime2(1)-systemTime1(1)
+      CALL Profiling_TimingsOutput(0,"",userElapsed,systemElapsed,err,error,*999)
+      CALL Profiling_TimingsOutput(1,"Setup and initialisation",userElapsed,systemElapsed,err,error,*999)
+      elementUserElapsed=0.0_SP
+      elementSystemElapsed=0.0_SP
+    ENDIF
+    numberOfTimes=0
+
+    !Loop over the rows and assign values to the matrix and RHS for that rows equations, these should be in order of internal then boundary then ghost
+
+    DO localRowIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL
+
+      SELECT CASE(fieldVariable%VARIABLE_TYPE)
+      CASE(FIELD_U_VARIABLE_TYPE)
+        !This is the velocity
+        CALL NavierStokes_FVVelocityRowEvaluate(equationsSet,localRowIdx,err,error,*999)
+      CASE(FIELD_V_VARIABLE_TYPE)
+        !This is the pressure
+        CALL FlagError("pressure row evaluate has not yet been set up",err,error,*999)
+        ! CALL NavierStokes_FVPressureRowEvaluate(equationsSet,localRowIdx,err,error,*999)
+      CASE(FIELD_W_VARIABLE_TYPE)
+        !This is the pressure
+        CALL FlagError("FIELD_W_VARIABLE_TYPE shouldn't be a variable type",err,error,*999)
+      CASE DEFAULT
+        localError="matrices type of "//TRIM(NumberToVString(fieldVariable%VARIABLE_TYPE, &
+          & "*",err,error))// " is invalid."
+        CALL FlagError(localError,err,error,*999)
+      ENDSELECT
+      numberOfTimes=numberOfTimes+1
+
+    ENDDO !localRowIdx
+
+
+    !Output timing information if required
+    IF(equations%outputType>=EQUATIONS_TIMING_OUTPUT) THEN
+      CALL CPUTimer(USER_CPU,userTime3,err,error,*999)
+      CALL CPUTimer(SYSTEM_CPU,systemTime3,err,error,*999)
+      userElapsed=userTime3(1)-userTime2(1)
+      systemElapsed=systemTime3(1)-systemTime2(1)
+      elementUserElapsed=userElapsed
+      elementSystemElapsed=systemElapsed
+      IF(equations%outputType>=EQUATIONS_ELEMENT_MATRIX_OUTPUT) &
+        & CALL Profiling_TimingsOutput(0,"",userElapsed,systemElapsed,err,error,*999)
+      CALL Profiling_TimingsOutput(1,"Internal elements equations assembly",userElapsed,systemElapsed,err,error,*999)
+    ENDIF
+
+    !Output timing information if required
+    IF(equations%outputType>=EQUATIONS_TIMING_OUTPUT) THEN
+      CALL CPUTimer(USER_CPU,userTime5,err,error,*999)
+      CALL CPUTimer(SYSTEM_CPU,systemTime5,err,error,*999)
+      userElapsed=userTime5(1)-userTime3(1)
+      systemElapsed=systemTime5(1)-systemTime3(1)
+      elementUserElapsed=elementUserElapsed+userElapsed
+      elementSystemElapsed=elementSystemElapsed+systemElapsed
+      IF(equations%outputType>=EQUATIONS_ELEMENT_MATRIX_OUTPUT) &
+        & CALL Profiling_TimingsOutput(0,"",userElapsed,systemElapsed,err,error,*999)
+      CALL Profiling_TimingsOutput(1,"Boundary+ghost elements equations assembly",userElapsed,systemElapsed,err,error,*999)
+      IF(numberOfTimes>0) CALL Profiling_TimingsOutput(1,"Average element equations assembly", &
+        & elementUserElapsed/numberOfTimes,elementSystemElapsed/numberOfTimes,err,error,*999)
+    ENDIF
+    !Finalise something?
+
+    ! CALL EquationsMatrices_ElementFinalise(vectorMatrices,err,error,*999)
+
+    !Output timing information if required
+    IF(equations%outputType>=EQUATIONS_TIMING_OUTPUT) THEN
+      CALL CPUTimer(USER_CPU,userTime6,err,error,*999)
+      CALL CPUTimer(SYSTEM_CPU,systemTime6,err,error,*999)
+      userElapsed=userTime6(1)-userTime1(1)
+      systemElapsed=systemTime6(1)-systemTime1(1)
+      CALL Profiling_TimingsOutput(1,"Total equations assembly",userElapsed,systemElapsed,err,error,*999)
+    ENDIF
+    !Output equations matrices and vector if required
+    IF(equations%outputType>=EQUATIONS_MATRIX_OUTPUT) THEN
+      CALL EquationsMatrices_VectorOutput(GENERAL_OUTPUT_TYPE,vectorMatrices,err,error,*999)
+    ENDIF
+
+    EXITS("EquationsSet_AssembleStaticLinearFV")
+    RETURN
+999 ERRORSEXITS("EquationsSet_AssembleStaticLinearFV",err,error)
+    RETURN 1
+
+  END SUBROUTINE EquationsSet_AssembleStaticLinearFV
 
   !
   !================================================================================================================================
@@ -2274,6 +2430,7 @@ CONTAINS
                         ELSE
                           CALL FlagError("The specified equations set field has not been finished.",err,error,*999)
                         ENDIF
+
                       ELSE
                         !Check the user number has not already been used for a field in this region.
                         NULLIFY(FIELD)
@@ -2288,6 +2445,11 @@ CONTAINS
                       ENDIF
                       !Initalise equations set
                       CALL EQUATIONS_SET_INITIALISE(NEW_EQUATIONS_SET,err,error,*999)
+                      IF(.NOT.ASSOCIATED(EQUATIONS_SET_FIELD_FIELD)) THEN
+                        !NEW_EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD=>EQUATIONS_SET_FIELD_FIELD
+                        NEW_EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED=.TRUE.
+                      ENDIF
+
                       !Set default equations set values
                       NEW_EQUATIONS_SET%USER_NUMBER=USER_NUMBER
                       NEW_EQUATIONS_SET%GLOBAL_NUMBER=REGION%EQUATIONS_SETS%NUMBER_OF_EQUATIONS_SETS+1
@@ -4313,7 +4475,7 @@ CONTAINS
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET=>EQUATIONS_SET
       EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FINISHED=.FALSE.
-      EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED=.TRUE.
+      EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_AUTO_CREATED=.FALSE.
       NULLIFY(EQUATIONS_SET%EQUATIONS_SET_FIELD%EQUATIONS_SET_FIELD_FIELD)
     ELSE
       CALL FlagError("Equations set is not associated.",err,error,*999)

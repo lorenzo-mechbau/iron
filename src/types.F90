@@ -731,6 +731,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE DOMAIN_LINES_TYPE
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN !<The pointer to the domain for this lines topology information.
     INTEGER(INTG) :: NUMBER_OF_LINES !<The number of lines in this domain topology.
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_LINES !<The number of lines in this domain topology.
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_LINES !<The number of lines in this domain topology.
     TYPE(DOMAIN_LINE_TYPE), ALLOCATABLE :: LINES(:) !<LINES(nl). The pointer to the array of topology information for the lines of this domain. LINES(nl) contains the topological information for the nl'th local line of the domain.
   END TYPE DOMAIN_LINES_TYPE
 
@@ -755,6 +757,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE DOMAIN_FACES_TYPE
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN !<The pointer to the domain for this faces topology information.
     INTEGER(INTG) :: NUMBER_OF_FACES !<The number of faces in this domain topology.
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_FACES !<The number of faces in this domain topology.
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_FACES !<The number of faces in this domain topology.
     TYPE(DOMAIN_FACE_TYPE), ALLOCATABLE :: FACES(:) !<FACES(nf). The pointer to the array of topology information for the faces of this domain. FACES(nf) contains the topological information for the nf'th local face of the domain.
   END TYPE DOMAIN_FACES_TYPE
 
@@ -1070,7 +1074,9 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   !>Contains the topology information for the lines of a decomposition.
   TYPE DECOMPOSITION_LINES_TYPE
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<The pointer to the decomposition for this lines topology information.
-    INTEGER(INTG) :: NUMBER_OF_LINES !<The number of lines in this decomposition topology.
+    INTEGER(INTG) :: NUMBER_OF_LINES !<The number of lines excluding ghost lines in this decomposition topology.
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_LINES!<The total number of lines in this decomposition topology.
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_LINES !<The number of global lines in this decomposition topology.
     TYPE(DECOMPOSITION_LINE_TYPE), ALLOCATABLE :: LINES(:) !<LINES(nl). The pointer to the array of topology information for the lines of this decomposition. LINES(nl) contains the topological information for the nl'th local line of the decomposition.
   END TYPE DECOMPOSITION_LINES_TYPE
 
@@ -1089,7 +1095,9 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
   !>Contains the topology information for the faces of a decomposition.
   TYPE DECOMPOSITION_FACES_TYPE
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<The pointer to the decomposition for this faces topology information.
-    INTEGER(INTG) :: NUMBER_OF_FACES !<The number of faces in this decomposition topology.
+    INTEGER(INTG) :: NUMBER_OF_FACES !<The number of faces excluding ghost faces in this decomposition topology.
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_FACES !<The total number of faces in this decomposition topology.
+    INTEGER(INTG) :: NUMBER_OF_GLOBAL_FACES !<The number of global faces in this decomposition topology.
     TYPE(DECOMPOSITION_FACE_TYPE), ALLOCATABLE :: FACES(:) !<FACES(nl). The pointer to the array of topology information for the faces of this decomposition. FACES(nl) contains the topological information for the nl'th local face of the decomposition.
   END TYPE DECOMPOSITION_FACES_TYPE
 
@@ -1267,8 +1275,8 @@ END TYPE DOMAIN_ADJACENT_DOMAIN_TYPE
     REAL(DP), ALLOCATABLE :: AREAS(:) !<AREAS(nf). The area of the nf'th face in the field decomposition.
     REAL(DP), ALLOCATABLE :: VOLUMES(:) !<VOLUMES(ne). The volume of the ne'th element in the field decomposition.
     REAL(DP), ALLOCATABLE :: CENTROID_POSITION(:,:) ! CENTROID_POSITION(ne,ncoord) position of the field decomposition's ne'th elements centroid in the global ncoord dimension .
-    REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:) ! HALFLENGTH(ne,nxi) distance from centroid to intersect between face and line from centroid to neighbouring centroid in the nxith direction in the field decomposition.
-    REAL(DP), ALLOCATABLE :: CENTRE_TO_CENTRE_LENGTH(:,:) ! CENTRE_TO_CENTRE_LENGTH(ne,nxi) distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
+    REAL(DP), ALLOCATABLE :: HALFLENGTH(:,:,:) ! HALFLENGTH(ne,nxi,ncoord) vector distance from centroid to intersect between face/line and the line from centroid to neighbouring centroid in the nxith direction in the field decomposition.
+    REAL(DP), ALLOCATABLE :: CENTRE_TO_CENTRE_VEC(:,:,:) ! CENTRE_TO_CENTRE_VEC(ne,nxi,ncoord) vector distance from centroid of element ne to neighbouring centroid in the nxith direction in the field decomposition.
     REAL(DP), ALLOCATABLE :: SURFACE_VECTOR(:,:,:) ! SURFACE_VECTOR(ne,nxi,ncoord) The surface vector of the ne'ths element in the nxi direction, in the field decomposition, ncoord are the x, y z components.
     INTEGER(INTG) :: NUMBER_OF_FIELDS_USING !<The number of fields that use these geometric parameters for their scaling.
     TYPE(FIELD_PTR_TYPE), POINTER :: FIELDS_USING(:) !< FIELDS_USINGS(field_idx). A pointer to the field_idx'th field that uses these geometric parameters for its scaling.

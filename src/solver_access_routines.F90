@@ -43,13 +43,13 @@
 
 !> This module contains all solver access method routines.
 MODULE SolverAccessRoutines
-  
+
   USE BaseRoutines
   USE Kinds
   USE Strings
   USE Types
-  
-#include "macros.h"  
+
+#include "macros.h"
 
   IMPLICIT NONE
 
@@ -74,19 +74,19 @@ MODULE SolverAccessRoutines
   INTERFACE SOLVERS_SOLVER_GET
     MODULE PROCEDURE Solvers_SolverGet
   END INTERFACE SOLVERS_SOLVER_GET
-  
+
   INTERFACE SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_GET
     MODULE PROCEDURE SolverEquations_BoundaryConditionsGet
   END INTERFACE SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_GET
 
   PUBLIC CellMLEquations_SolverGet
-  
+
   PUBLIC Solver_CellMLEquationsGet
 
   PUBLIC SOLVER_CELLML_EQUATIONS_GET
 
   PUBLIC Solver_ControlLoopGet
-  
+
   PUBLIC Solver_SolverEquationsGet
 
   PUBLIC SOLVER_SOLVER_EQUATIONS_GET
@@ -102,7 +102,7 @@ MODULE SolverAccessRoutines
   PUBLIC SolverEquations_BoundaryConditionsGet
 
   PUBLIC SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_GET
-  
+
   PUBLIC SolverEquations_SolverGet
 
   PUBLIC SolverEquations_SolverMappingGet
@@ -124,7 +124,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("CellMLEquations_SolverGet",err,error,*998)
 
     IF(ASSOCIATED(solver)) CALL FlagError("Solver is already associated.",err,error,*998)
@@ -132,15 +132,15 @@ CONTAINS
 
     solver=>cellMLEquations%solver
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("CellML equations solver is not associated.",err,error,*999)
-      
+
     EXITS("CellMLEquations_SolverGet")
     RETURN
 999 NULLIFY(solver)
 998 ERRORSEXITS("CellMLEquations_SolverGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE CellMLEquations_SolverGet
-  
+
   !
   !================================================================================================================================
   !
@@ -154,7 +154,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_CellMLEquationsGet",err,error,*998)
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated.",err,error,*998)
@@ -163,15 +163,15 @@ CONTAINS
 
     cellMLEquations=>solver%CELLML_EQUATIONS
     IF(.NOT.ASSOCIATED(cellMLEquations)) CALL FlagError("Solver CellML equations is not associated.",err,error,*999)
-      
+
     EXITS("Solver_CellMLEquationsGet")
     RETURN
 999 NULLIFY(cellMLEquations)
 998 ERRORSEXITS("Solver_CellMLEquationsGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_CellMLEquationsGet
-  
+
   !
   !================================================================================================================================
   !
@@ -186,7 +186,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(SOLVERS_TYPE), POINTER :: solvers
- 
+
     ENTERS("Solver_ControlLoopGet",err,error,*998)
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated.",err,error,*998)
@@ -197,15 +197,15 @@ CONTAINS
     IF(.NOT.ASSOCIATED(solvers)) CALL FlagError("Solver solvers is not associated.",err,error,*999)
     controlLoop=>solvers%CONTROL_LOOP
     IF(.NOT.ASSOCIATED(controlLoop)) CALL FlagError("Solvers control loop is not associated.",err,error,*999)
-    
+
     EXITS("Solver_ControlLoopGet")
     RETURN
 999 NULLIFY(controlLoop)
 998 ERRORSEXITS("Solver_ControlLoopGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_ControlLoopGet
-  
+
   !
   !================================================================================================================================
   !
@@ -219,7 +219,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_SolverEquationsGet",err,error,*998)
 
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated.",err,error,*998)
@@ -228,19 +228,19 @@ CONTAINS
 
     solverEquations=>solver%SOLVER_EQUATIONS
     IF(.NOT.ASSOCIATED(solverEquations)) CALL FlagError("Solver solver equations is not associated.",err,error,*999)
-      
+
     EXITS("Solver_SolverEquationsGet")
     RETURN
 999 NULLIFY(solverEquations)
 998 ERRORSEXITS("Solver_SolverEquationsGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_SolverEquationsGet
-  
+
   !
   !================================================================================================================================
   !
-  
+
   !>Returns a pointer to the solvers for a solver.
   SUBROUTINE Solver_SolversGet(solver,solvers,err,error,*)
 
@@ -250,27 +250,27 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_SolversGet",err,error,*998)
 
     IF(ASSOCIATED(solvers)) CALL FlagError("Solvers is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver is not associated.",err,error,*999)
-      
+
     solvers=>solver%solvers
     IF(.NOT.ASSOCIATED(solvers)) CALL FlagError("The solver solvers is not associated.",err,error,*999)
-       
+
     EXITS("Solver_SolversGet")
     RETURN
 999 NULLIFY(solvers)
 998 ERRORSEXITS("Solver_SolversGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_SolversGet
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns a pointer to the control loop for a solvers.
   SUBROUTINE Solvers_ControlLoopGet(solvers,controlLoop,err,error,*)
 
@@ -280,27 +280,27 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
+
     ENTERS("Solvers_ControlLoopGet",err,error,*998)
 
     IF(ASSOCIATED(controlLoop)) CALL FlagError("Control loop is already associated.",err,error,*998)
     IF(.NOT.ASSOCIATED(solvers)) CALL FlagError("Solvers is not associated.",err,error,*999)
-      
+
     controlLoop=>solvers%CONTROL_LOOP
     IF(.NOT.ASSOCIATED(controlLoop)) CALL FlagError("The solvers control loop is not associated.",err,error,*999)
-       
+
     EXITS("Solvers_ControlLoopGet")
     RETURN
 999 NULLIFY(controlLoop)
 998 ERRORSEXITS("Solvers_ControlLoopGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solvers_ControlLoopGet
 
   !
   !================================================================================================================================
   !
-  
+
   !>Returns a pointer to the specified solver in the list of solvers.
   SUBROUTINE Solvers_SolverGet(solvers,solverIndex,solver,err,error,*)
 
@@ -312,7 +312,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: localError
- 
+
     ENTERS("Solvers_SolverGet",err,error,*998)
 
     IF(.NOT.ASSOCIATED(solvers)) CALL FlagError("Solvers is not associated.",err,error,*998)
@@ -324,20 +324,20 @@ CONTAINS
       CALL FlagError(localError,err,error,*998)
     ENDIF
     IF(.NOT.ALLOCATED(solvers%solvers)) CALL FlagError("Solvers solvers is not associated.",err,error,*998)
-      
+
     solver=>solvers%solvers(solverIndex)%ptr
     IF(.NOT.ASSOCIATED(solver)) THEN
       localError="The solvers solver is not associated for solver index "// &
         & TRIM(NumberToVString(solverIndex,"*",err,error))//"."
       CALL FlagError(localError,err,error,*999)
     ENDIF
-       
+
     EXITS("Solvers_SolverGet")
     RETURN
 999 NULLIFY(solver)
 998 ERRORSEXITS("Solvers_SolverGet",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solvers_SolverGet
 
   !
@@ -363,19 +363,19 @@ CONTAINS
     boundaryConditions=>solverEquations%BOUNDARY_CONDITIONS
     IF(.NOT.ASSOCIATED(boundaryConditions)) CALL FlagError("Solver equations boundary conditions is not associated.", &
       & err,error,*999)
- 
+
     EXITS("SolverEquations_BoundaryConditionsGet")
     RETURN
 999 ERRORSEXITS("SolverEquations_BoundaryConditionsGet",err,error)
     RETURN 1
 
   END SUBROUTINE SolverEquations_BoundaryConditionsGet
-     
+
   !
   !================================================================================================================================
   !
 
-  !>Gets the solver for solver equations. 
+  !>Gets the solver for solver equations.
   SUBROUTINE SolverEquations_SolverGet(solverEquations,solver,err,error,*)
 
     !Argument variables
@@ -392,7 +392,7 @@ CONTAINS
 
     solver=>solverEquations%solver
     IF(.NOT.ASSOCIATED(solver)) CALL FlagError("Solver equations solver is not associated.",err,error,*999)
- 
+
     EXITS("SolverEquations_SolverGet")
     RETURN
 998 NULLIFY(solver)
@@ -400,12 +400,12 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SolverEquations_SolverGet
-     
+
   !
   !================================================================================================================================
   !
 
-  !>Gets the solver mapping for solver equations. 
+  !>Gets the solver mapping for solver equations.
   SUBROUTINE SolverEquations_SolverMappingGet(solverEquations,solverMapping,err,error,*)
 
     !Argument variables
@@ -423,7 +423,7 @@ CONTAINS
 
     solverMapping=>solverEquations%SOLVER_MAPPING
     IF(.NOT.ASSOCIATED(solverMapping)) CALL FlagError("Solver equations solver mapping is not associated.",err,error,*999)
- 
+
     EXITS("SolverEquations_SolverMappingGet")
     RETURN
 998 NULLIFY(solverMapping)
@@ -431,12 +431,12 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SolverEquations_SolverMappingGet
-     
+
   !
   !================================================================================================================================
   !
 
-  !>Gets the solver matrices for solver equations. 
+  !>Gets the solver matrices for solver equations.
   SUBROUTINE SolverEquations_SolverMatricesGet(solverEquations,solverMatrices,err,error,*)
 
     !Argument variables
@@ -454,7 +454,7 @@ CONTAINS
 
     solverMatrices=>solverEquations%SOLVER_MATRICES
     IF(.NOT.ASSOCIATED(solverMatrices)) CALL FlagError("Solver equations solver matrices is not associated.",err,error,*999)
- 
+
     EXITS("SolverEquations_SolverMatricesGet")
     RETURN
 998 NULLIFY(solverMatrices)
@@ -462,7 +462,7 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SolverEquations_SolverMatricesGet
-     
+
   !
   !================================================================================================================================
   !
