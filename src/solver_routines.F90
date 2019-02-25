@@ -21547,6 +21547,8 @@ CONTAINS
 
     ENTERS("SOLVER_SOLUTION_UPDATE",ERR,ERROR,*999)
 
+    CALL FlagError("Global to local map for the columns has not been filled!",err,error,*999)
+
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
         SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS

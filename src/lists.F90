@@ -122,7 +122,7 @@ MODULE LISTS
     MODULE PROCEDURE LIST_DETACH_AND_DESTROY_DP2
   END INTERFACE LIST_DETACH_AND_DESTROY
 
-  !>Detaches the list values from a list and returns them as a pointer to a array of base type before destroying the list \see Lists.
+  !>Detaches the list values from a list and returns them as a pointer to an array of base type before destroying the list \see Lists.
   INTERFACE List_DetachAndDestroy
     MODULE PROCEDURE LIST_DETACH_AND_DESTROY_INTG1
     MODULE PROCEDURE LIST_DETACH_AND_DESTROY_INTG2
