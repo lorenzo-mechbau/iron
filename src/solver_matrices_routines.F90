@@ -877,21 +877,27 @@ CONTAINS
                                       & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                       & COUPLING_COEFFICIENTS(solver_row_idx)
                                     !Loop over the columns of the equations matrix
+                                    WRITE(*,*) "Column loop for row"
+                                    WRITE(*,*) solver_row_number
                                     DO equations_column_number=1,equationsMatrix%numberOfColumns
                                       !Loop over the solution columns this equations column is mapped to
                                       DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                         & equations_column_number)%NUMBER_OF_SOLVER_COLS
                                         solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                           & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                        WRITE(*,*) solver_column_number
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
                                           & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
                                           & COUPLING_COEFFICIENTS(solver_column_idx)
+                                        WRITE(*,*) column_coupling_coefficient
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
                                           & (equations_column_number-1)*vectorMatrices%totalNumberOfRows)* &
                                           & row_coupling_coefficient*column_coupling_coefficient
+                                        WRITE(*,*) VALUE
                                         CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
                                           & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
+                                        WRITE(*,*) "Value added"
                                       ENDDO !solver_column_idx
                                     ENDDO !equations_column_number
                                   ENDDO !solver_row_idx

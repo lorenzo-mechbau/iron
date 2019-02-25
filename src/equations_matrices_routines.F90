@@ -46,6 +46,7 @@ MODULE EquationsMatricesRoutines
 
   USE BaseRoutines
   USE BasisRoutines
+  USE ComputationEnvironment
   USE DistributedMatrixVector
   USE EquationsAccessRoutines
   USE EquationsMappingAccessRoutines
@@ -4339,6 +4340,7 @@ CONTAINS
       & vSurrLocalColumnIdx, surroundingLineLocalNo, surroundingLineIdx, numberSurroundingLines,cornerNode, cornerNodeIdx, &
       & numberSurroundingElements, surroundingElemLocalNo, surroundingElemIdx, adjacentLocalElementNo, uAdjLocalColumnIdx, &
       & vAdjLocalColumnIdx, adjLocalColumnIdx, uLocalColumn, vLocalColumn
+    INTEGER(INTG) :: numberOfComputationalNodes
     INTEGER(INTG), ALLOCATABLE :: columns(:)
     REAL(DP) :: sparsity
     TYPE(BASIS_TYPE), POINTER :: basis
@@ -4366,6 +4368,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: dummyError,localError
 
     ENTERS("EquationsMatrix_StructureCalculate",err,error,*998)
+
+    numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
 
     numberOfNonZeros=0
 
@@ -4974,24 +4979,27 @@ CONTAINS
             columnIndices(rowIndices(localDOFIdx)+columnIdx-1)=columns(columnIdx)
             !GLOBAL TO LOCAL columns!!!
             IF(ASSOCIATED(linearMapping).OR.ASSOCIATED(dynamicMapping)) THEN
-              CALL FlagError("Global to local map for the columns has not been filled!",err,error,*998)
-              !Therefore this is wrong:
-              !localDOF = columns(columnIdx)
-
-              IF(ASSOCIATED(dynamicMatrices)) THEN
-                localColumn=vectorMatrices%vectorMapping%dynamicMapping &
-                  & %equationsMatrixToVarMaps(1)%columnDOFSMapping%global_to_local_map &
-                  & (columns(columnIdx))%LOCAL_NUMBER(1)
-                localDOF = localColumn
-                !Column to dof mapping?
-                !localDOF=vectorMatrices%vectorMapping%dynamicMapping%equationsMatrixToVarMaps(1)%columnToDOFMap(localColumn)
+              IF(numberOfComputationalNodes==1) THEN
+                localDOF = columns(columnIdx)
               ELSE
-                localColumn=vectorMatrices%vectorMapping%linearMapping%equationsMatrixToVarMaps(1)%columnDOFSMapping% &
-                  & global_To_Local_Map(columns(columnIdx))%LOCAL_NUMBER(1)
-                localDOF = localColumn
-              END IF
-            ENDIF
+                CALL FlagError("Global to local map for the columns has not been filled!",err,error,*998)
+                !Therefore this is wrong:
+                !localDOF = columns(columnIdx)
 
+                IF(ASSOCIATED(dynamicMatrices)) THEN
+                  localColumn=vectorMatrices%vectorMapping%dynamicMapping &
+                    & %equationsMatrixToVarMaps(1)%columnDOFSMapping%global_to_local_map &
+                    & (columns(columnIdx))%LOCAL_NUMBER(1)
+                  localDOF = localColumn
+                  !Column to dof mapping?
+                  !localDOF=vectorMatrices%vectorMapping%dynamicMapping%equationsMatrixToVarMaps(1)%columnToDOFMap(localColumn)
+                ELSE
+                  localColumn=vectorMatrices%vectorMapping%linearMapping%equationsMatrixToVarMaps(1)%columnDOFSMapping% &
+                    & global_To_Local_Map(columns(columnIdx))%LOCAL_NUMBER(1)
+                  localDOF = localColumn
+                END IF ! dynamic matrix or not
+              END IF ! Number of Computational nodes
+            END IF ! There is a mapping
             dofIdx=dependentDofsParamMapping%DOF_TYPE(2,localDOF)
             node=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(3,dofIdx)
             component=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(4,dofIdx)

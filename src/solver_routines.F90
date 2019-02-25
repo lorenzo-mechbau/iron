@@ -21531,7 +21531,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: column_number,equations_set_idx,local_number,solver_matrix_idx,variable_dof_idx,variable_idx,variable_type, &
-      & interface_condition_idx
+      & interface_condition_idx,numberOfComputationalNodes
     REAL(DP) :: additive_constant,VALUE,coupling_coefficient
     REAL(DP), POINTER :: VARIABLE_DATA(:)
     TYPE(DistributedVectorType), POINTER :: SOLVER_VECTOR
@@ -21547,7 +21547,11 @@ CONTAINS
 
     ENTERS("SOLVER_SOLUTION_UPDATE",ERR,ERROR,*999)
 
-    CALL FlagError("Global to local map for the columns has not been filled!",err,error,*999)
+    numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
+
+    IF (numberOfComputationalNodes>1) &
+      & CALL FlagError("Global to local map for the columns has not been filled!",err,error,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
       IF(SOLVER%SOLVER_FINISHED) THEN
@@ -21587,7 +21591,11 @@ CONTAINS
                                   & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%VARIABLE_TO_SOLVER_COL_MAPS( &
                                   & variable_idx)%ADDITIVE_CONSTANTS(variable_dof_idx)
                                 VALUE=VARIABLE_DATA(variable_dof_idx)*coupling_coefficient+additive_constant
-                                local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(column_number)%LOCAL_NUMBER(1)
+                                IF (numberOfComputationalNodes==1) THEN
+                                  local_number=column_number
+                                ELSE
+                                  local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(column_number)%LOCAL_NUMBER(1)
+                                END IF
                                 CALL DistributedVector_ValuesSet(SOLVER_VECTOR,local_number,VALUE,ERR,ERROR,*999)
                               ENDIF
                             ENDDO !variable_dof_idx
@@ -21619,7 +21627,11 @@ CONTAINS
                                 & INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%LAGRANGE_VARIABLE_TO_SOLVER_COL_MAP% &
                                 & ADDITIVE_CONSTANTS(variable_dof_idx)
                               VALUE=VARIABLE_DATA(variable_dof_idx)*coupling_coefficient+additive_constant
-                              local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(column_number)%LOCAL_NUMBER(1)
+                              IF (numberOfComputationalNodes==1) THEN
+                                local_number=column_number
+                              ELSE
+                                local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(column_number)%LOCAL_NUMBER(1)
+                              END IF
                               CALL DistributedVector_ValuesSet(SOLVER_VECTOR,local_number,VALUE,ERR,ERROR,*999)
                             ENDIF
                           ENDDO !variable_dof_idx
