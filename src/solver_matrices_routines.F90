@@ -45,6 +45,7 @@
 MODULE SOLVER_MATRICES_ROUTINES
 
   USE BaseRoutines
+  USE ComputationEnvironment
   USE DistributedMatrixVector
   USE INTERFACE_CONDITIONS_CONSTANTS
   USE ISO_VARYING_STRING
@@ -210,7 +211,7 @@ CONTAINS
                     IF(SOLVER_MATRIX%STORAGE_TYPE/=DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE.AND. &
                       & SOLVER_MATRIX%STORAGE_TYPE/=DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE) THEN
                       CALL SOLVER_MATRIX_STRUCTURE_CALCULATE(SOLVER_MATRIX,NUMBER_OF_NON_ZEROS,ROW_INDICES, &
-                        & COLUMN_INDICES,ERR,ERROR,*999)                  
+                        & COLUMN_INDICES,ERR,ERROR,*999)
                       CALL DistributedMatrix_NumberOfNonZerosSet(SOLVER_MATRIX%MATRIX,NUMBER_OF_NON_ZEROS, &
                         & ERR,ERROR,*999)
                       CALL DistributedMatrix_StorageLocationsSet(SOLVER_MATRIX%MATRIX,ROW_INDICES,COLUMN_INDICES, &
@@ -814,7 +815,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: equations_column_idx,equations_column_number,equations_row_number,EQUATIONS_STORAGE_TYPE, &
-      & solver_column_idx,solver_column_number,solver_row_idx,solver_row_number
+      & solver_column_idx,solver_column_number,solver_row_idx,solver_row_number, computationalNodeNumber
     INTEGER(INTG), POINTER :: COLUMN_INDICES(:),ROW_INDICES(:)
     REAL(DP) :: column_coupling_coefficient,row_coupling_coefficient,VALUE
     REAL(DP), POINTER :: EQUATIONS_MATRIX_DATA(:)
@@ -828,6 +829,9 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
     ENTERS("SOLVER_MATRIX_EQUATIONS_MATRIX_ADD",ERR,ERROR,*999)
+
+    computationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    IF(ERR/=0) GOTO 999
 
     NULLIFY(EQUATIONS_MATRIX_DATA)
     NULLIFY(COLUMN_INDICES)
@@ -877,31 +881,37 @@ CONTAINS
                                       & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                       & COUPLING_COEFFICIENTS(solver_row_idx)
                                     !Loop over the columns of the equations matrix
+IF (computationalNodeNumber==0) THEN
                                     WRITE(*,*) "Column loop for row"
                                     WRITE(*,*) solver_row_number
+END IF
                                     DO equations_column_number=1,equationsMatrix%numberOfColumns
                                       !Loop over the solution columns this equations column is mapped to
                                       DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                         & equations_column_number)%NUMBER_OF_SOLVER_COLS
                                         solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                           & equations_column_number)%SOLVER_COLS(solver_column_idx)
-                                        WRITE(*,*) solver_column_number
-                                        column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
-                                          & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
-                                          & COUPLING_COEFFICIENTS(solver_column_idx)
-                                        WRITE(*,*) column_coupling_coefficient
+IF (computationalNodeNumber==0) THEN
+                                    WRITE(*,*) solver_column_number
+END IF
+
+!                                        column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
+!                                          & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
+!                                          & COUPLING_COEFFICIENTS(solver_column_idx)
+!                                        WRITE(*,*) column_coupling_coefficient
                                         !Add in the solver matrix value
-                                        VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
-                                          & (equations_column_number-1)*vectorMatrices%totalNumberOfRows)* &
-                                          & row_coupling_coefficient*column_coupling_coefficient
-                                        WRITE(*,*) VALUE
-                                        CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
-                                          & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
-                                        WRITE(*,*) "Value added"
+!                                        VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
+!                                          & (equations_column_number-1)*vectorMatrices%totalNumberOfRows)* &
+!                                          & row_coupling_coefficient*column_coupling_coefficient
+!                                        WRITE(*,*) VALUE
+!                                        CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
+!                                          & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
+!                                        WRITE(*,*) "Value added"
                                       ENDDO !solver_column_idx
                                     ENDDO !equations_column_number
                                   ENDDO !solver_row_idx
                                 ENDDO !equations_row_number
+STOP
                               CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                                 !Loop over the rows of the equations matrix
                                 DO equations_row_number=1,vectorMatrices%numberOfRows
