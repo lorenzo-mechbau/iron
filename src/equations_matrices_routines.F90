@@ -4320,7 +4320,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: numberOfNonZeros !<On return the number of non-zeros in the matrix
     INTEGER(INTG), POINTER :: rowIndices(:) !<On return a pointer to row location indices in compressed row format. The pointer must be NULL on entry and the calling routine is responsible for deallocation.
     INTEGER(INTG), POINTER :: columnIndices(:) !<On return a pointer to the column location indices in compressed row format. The pointer must be NULL on entry and the calling routine is responsible for deallocation.
-    TYPE(LinkedList), POINTER :: list(:) 
+    TYPE(LinkedList), POINTER :: list(:)
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -4347,11 +4347,11 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: columnIndicesLists(:)
     TYPE(VARYING_STRING) :: dummyError,localError
-    
+
     ENTERS("EquationsMatrix_StructureCalculate",err,error,*998)
 
     numberOfNonZeros=0
-    
+
     IF(.NOT.ASSOCIATED(equationsMatrix)) CALL FlagError("Equations matrix is not associated.",err,error,*998)
     IF(ASSOCIATED(rowIndices)) CALL FlagError("Row indices is already associated.",err,error,*998)
     IF(ASSOCIATED(columnIndices)) CALL FlagError("Column indices is already associated.",err,error,*998)
@@ -4385,7 +4385,7 @@ CONTAINS
       CALL EquationsMappingVector_LinearMappingGet(vectorMapping,linearMapping,err,error,*999)
       fieldVariable=>linearMapping%equationsMatrixToVarMaps(matrixNumber)%variable
     ENDIF
-    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*998)          
+    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*998)
     dependentDofsDomainMapping=>fieldVariable%DOMAIN_MAPPING
     IF(.NOT.ASSOCIATED(dependentDofsDomainMapping)) &
       & CALL FlagError("Dependent dofs domain mapping is not associated.",err,error,*998)
@@ -4399,7 +4399,7 @@ CONTAINS
     CASE(EQUATIONS_MATRIX_FEM_STRUCTURE)
       SELECT CASE(equationsMatrix%storageType)
       CASE(MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
-        
+
         !Allocate lists
         ALLOCATE(columnIndicesLists(dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate column indices lists.",err,error,*999)
@@ -4407,7 +4407,7 @@ CONTAINS
         ALLOCATE(rowIndices(dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL+1),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate row indices.",err,error,*999)
         rowIndices(1)=1
-        
+
         !First, loop over the rows and calculate the number of non-zeros
         numberOfNonZeros=0
         DO localDOFIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL
@@ -4418,7 +4418,7 @@ CONTAINS
           dofIdx=dependentDofsParamMapping%DOF_TYPE(2,localDOFIdx) !value for a particular field dof (localDOFIdx)
           node=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(3,dofIdx) !node number of the field parameter
           component=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(4,dofIdx) !component number of the field parameter
-          domainNodes=>fieldVariable%components(component)%domain%topology%nodes          
+          domainNodes=>fieldVariable%components(component)%domain%topology%nodes
           !Set up list
           NULLIFY(columnIndicesLists(localDOFIdx)%ptr)
           CALL List_CreateStart(columnIndicesLists(localDOFIdx)%ptr,err,error,*999)
@@ -4442,9 +4442,9 @@ CONTAINS
                   localColumn=fieldVariable%components(componentIdx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
                     & nodes(node2)%derivatives(derivative)%versions(version)
                   globalColumn=fieldVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localColumn)
-                  
+
                   CALL List_ItemAdd(columnIndicesLists(localDOFIdx)%ptr,globalColumn,err,error,*999)
-                  
+
                 ENDDO !derivative
               ENDDO !localNodeIdx
             ENDDO !componentIdx
@@ -4454,12 +4454,12 @@ CONTAINS
           numberOfNonZeros=numberOfNonZeros+numberOfColumns
           rowIndices(localDOFIdx+1)=numberOfNonZeros+1
         ENDDO !localDOFIdx
-        
+
       CASE DEFAULT
         localError="The matrix storage type of "//TRIM(NumberToVString(equationsMatrix%storageType,"*",err,error))//" is invalid."
         CALL FlagError(localError,err,error,*999)
       END SELECT
-      
+
     CASE(EQUATIONS_MATRIX_NODAL_STRUCTURE)
       SELECT CASE(equationsMatrix%storageType)
       CASE(MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -4470,7 +4470,7 @@ CONTAINS
         ALLOCATE(rowIndices(dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL+1),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate row indices.",err,error,*999)
         rowIndices(1)=1
-        
+
         !First, loop over the rows and calculate the number of non-zeros
         numberOfNonZeros=0
         DO localDofIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL
@@ -4482,13 +4482,13 @@ CONTAINS
           node=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(3,dofIdx)!node number (node) of the field parameter
           component=dependentDofsParamMapping%NODE_DOF2PARAM_MAP(4,dofIdx)!component number (component) of the field parameter
           domainNodes=>fieldVariable%components(component)%domain%topology%NODES
-          
+
           !Set up list
           NULLIFY(columnIndicesLists(localDofIdx)%ptr)
           CALL List_CreateStart(columnIndicesLists(localDofIdx)%ptr,err,error,*999)
-          CALL List_DataTypeSet(columnIndicesLists(localDofIdx)%ptr,LIST_INTG_TYPE,err,error,*999)          
+          CALL List_DataTypeSet(columnIndicesLists(localDofIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
           CALL List_InitialSizeSet(columnIndicesLists(localDofIdx)%ptr,fieldVariable%NUMBER_OF_COMPONENTS* &
-            & fieldVariable%maxNumberElementInterpolationParameters,err,error,*999)          
+            & fieldVariable%maxNumberElementInterpolationParameters,err,error,*999)
           CALL List_CreateFinish(columnIndicesLists(localDofIdx)%ptr,err,error,*999)
           !Loop over all components, nodes, derivatives and versions
           DO componentIdx=1,fieldVariable%NUMBER_OF_COMPONENTS
@@ -4502,23 +4502,23 @@ CONTAINS
                 globalColumn=fieldVariable%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(localColumn)
                 
                 CALL List_ItemAdd(columnIndicesLists(localDofIdx)%ptr,globalColumn,err,error,*999)
-                
+
               ENDDO !versionIdx
             ENDDO !derivativeIdx
-          ENDDO !componentIdx            
+          ENDDO !componentIdx
           CALL List_RemoveDuplicates(columnIndicesLists(localDofIdx)%ptr,err,error,*999)
           CALL List_NumberOfItemsGet(columnIndicesLists(localDofIdx)%ptr,numberOfColumns,err,error,*999)
           numberOfNonZeros=numberOfNonZeros+numberOfColumns
           rowIndices(localDofIdx+1)=numberOfNonZeros+1
         ENDDO !localDofIdx
-        
+
       CASE DEFAULT
         localError="The matrix storage type of "//TRIM(NumberToVString(equationsMatrix%storageType,"*",err,error))//" is invalid."
         CALL FlagError(localError,err,error,*999)
       END SELECT
-      
+
     CASE(EQUATIONS_MATRIX_DIAGONAL_STRUCTURE)
-      CALL FlagError("There is not structure to calculate for a diagonal matrix.",err,error,*998)
+      CALL FlagError("There is no structure to calculate for a diagonal matrix.",err,error,*998)
     CASE DEFAULT
       localError="The matrix structure type of "//TRIM(NumberToVString(equationsMatrix%structureType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*998)
@@ -4527,15 +4527,15 @@ CONTAINS
     IF(numberOfNonZeros>0) THEN
       !Allocate and setup the column locations
       ALLOCATE(columnIndices(numberOfNonZeros),STAT=err)
-      IF(err/=0) CALL FlagError("Could not allocate column indices.",err,error,*999)        
+      IF(err/=0) CALL FlagError("Could not allocate column indices.",err,error,*999)
       ALLOCATE(list(dependentDofsDomainMapping%NUMBER_OF_GLOBAL),STAT=err)
       IF(err/=0) CALL FlagError("Could not allocate list.",err,error,*999)
       
-      DO localDOFIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL          
+      DO localDOFIdx=1,dependentDofsDomainMapping%TOTAL_NUMBER_OF_LOCAL
         CALL List_DetachAndDestroy(columnIndicesLists(localDOFIdx)%ptr,numberOfColumns,columns,err,error,*999)        
         DO columnIdx=1,numberOfColumns
           !columns stores the list of nonzero column indices for each local row (localDOFIdx)
-          columnIndices(rowIndices(localDOFIdx)+columnIdx-1)=columns(columnIdx)             
+          columnIndices(rowIndices(localDOFIdx)+columnIdx-1)=columns(columnIdx)
           !global to local columns
           IF(ASSOCIATED(linearMapping).OR.ASSOCIATED(dynamicMapping)) THEN
             IF(ASSOCIATED(dynamicMatrices)) THEN
@@ -4662,7 +4662,7 @@ CONTAINS
     NULLIFY(nonlinearMapping)
     CALL EquationsMappingVector_NonlinearMappingGet(vectorMapping,nonlinearMapping,err,error,*998)
     fieldVariable=>nonlinearMapping%jacobianToVarMap(matrixNumber)%VARIABLE
-    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*998)          
+    IF(.NOT.ASSOCIATED(fieldVariable)) CALL FlagError("Dependent field variable is not associated.",err,error,*998)
     dependentDofsDomainMapping=>fieldVariable%DOMAIN_MAPPING
     IF(.NOT.ASSOCIATED(dependentDofsDomainMapping)) &
       & CALL FlagError("Dependent dofs domain mapping is not associated.",err,error,*998)
@@ -4952,3 +4952,4 @@ CONTAINS
   !
  
 END MODULE EquationsMatricesRoutines
+
