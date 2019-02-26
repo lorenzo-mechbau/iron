@@ -2473,7 +2473,7 @@ CONTAINS
                             !\TODO this search is slow, improve search method.
                             DO receiveGhostIdx = 1, numberDofsReceived
                               IF(dofsReceived(receiveGhostIdx,1)==globalDof) THEN
-                                solver_global_dof = dofsReceived(receiveGhostIdx,2)
+                                solver_global_dof = dofsReceived(receiveGhostIdx,2)!-1???
                                 fromRankIdx = dofsReceived(receiveGhostIdx,3)
                                 receiveGhostCount(fromRankIdx) = receiveGhostCount(fromRankIdx) + 1
                                 !Allocate COL_DOMAIN_MAPPING receive ghost indices from the rank that sends this dof
