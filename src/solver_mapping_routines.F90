@@ -1928,7 +1928,8 @@ CONTAINS
             ALLOCATE(COL_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(COL_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate column dofs mapping local to global.",ERR,ERROR,*999)
             !Calculate the column mappings
-            NUMBER_OF_COLUMNS=TOTAL_NUMBER_OF_LOCAL_SOLVER_DOFS
+            ! Caused runtime error @diagnostics
+            NUMBER_OF_COLUMNS=NUMBER_OF_GLOBAL_SOLVER_DOFS!TOTAL_NUMBER_OF_LOCAL_SOLVER_DOFS
 
             !Initialise
             DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
@@ -2485,7 +2486,7 @@ CONTAINS
                             IF(.NOT.ghostFound) CALL FlagError("ghost dof did not find the rank it should be sent from", &
                               & ERR,ERROR,*999)
 
-                          ELSE
+                          ELSE ! not a ghost dof
                             ! Here we check whether the dof is a boundary dof, if it is then
                             ! we add the globalDof, solver_global_dof and localDof to dofsToRankLists.
                             solver_global_dof=solver_global_dof+1
@@ -2513,11 +2514,11 @@ CONTAINS
                               ENDDO ! rank_idx
                               IF(.NOT.ghostFound) CALL FlagError("boundary dof did not find a rank to send to",ERR,ERROR,*999)
 
-                            ELSE
+                            ELSE ! internal dof
                               COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL = COL_DOMAIN_MAPPING%NUMBER_OF_INTERNAL+1
                             ENDIF
 
-                          ENDIF
+                          ENDIF ! doftype
 
                           solver_local_dof=solver_local_dof+1
 
@@ -3638,7 +3639,9 @@ CONTAINS
         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Equations sets rows to solver rows mappings:",ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "        Number of equations set rows = ",vectorMapping% &
          & totalNumberOfRows,ERR,ERROR,*999)
-        DO row_idx=1,vectorMapping%totalNumberOfRows
+!       See also comment above. EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS allocated as numberOfRows
+        DO row_idx=1,vectorMapping%numberOfRows
+!        DO row_idx=1,vectorMapping%totalNumberOfRows
           CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Equations set row : ",row_idx,ERR,ERROR,*999)
           CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of solver rows mapped to   = ",SOLVER_MAPPING% &
             & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(row_idx)%NUMBER_OF_SOLVER_ROWS, &
