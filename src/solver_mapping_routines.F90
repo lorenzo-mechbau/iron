@@ -2334,9 +2334,11 @@ CONTAINS
 
             IF(ALLOCATED(numberOfLocalDofsPerRank)) DEALLOCATE(numberOfLocalDofsPerRank)
 
-            ! dof_type = 1 for internal or boundary. dof_type = 2 for ghost.
+            ! dof_type = 1 for internal or boundary
+            ! dof_type = 2 for ghost.
             ! This loops through internal/boundary dofs first and adds them to dofsToRankLists for the rank to send them to.
-            ! After the dof_type=1 loop, the globalDof numbers and relevant solver_global_dof numbers that are to be sent to each domain are communicated,
+            ! After the dof_type=1 loop, the globalDof numbers
+            ! and relevant solver_global_dof numbers that are to be sent to each domain are communicated,
             ! thus, each rank knows what dofs it is to receive and from which ranks they receive them.
             DO dof_type=1,2
 
@@ -2851,8 +2853,8 @@ CONTAINS
                                 & ERR,ERROR,*999)
 
                             ELSE
-                              !check whether the dof is a boundary dof, if it is then
-                              ! add the globalDof, solver_global_dof and localDof to dofsToRankLists
+                              !Check whether the dof is a boundary dof, if it is then
+                              !add the globalDof, solver_global_dof and localDof to dofsToRankLists
                               solver_global_dof=solver_global_dof+1
 
                               ! if this is a boundary dof

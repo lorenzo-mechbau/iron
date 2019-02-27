@@ -218,6 +218,7 @@ CONTAINS
                         & ERR,ERROR,*999)
                       IF(ASSOCIATED(ROW_INDICES)) DEALLOCATE(ROW_INDICES)
                       IF(ASSOCIATED(COLUMN_INDICES)) DEALLOCATE(COLUMN_INDICES)
+                      STOP
                     ENDIF
                     CALL DistributedMatrix_SymmetryTypeSet(SOLVER_MATRIX%matrix,SOLVER_MATRIX%symmetryType,err,error,*999)
                     CALL DistributedMatrix_CreateFinish(SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
@@ -894,7 +895,6 @@ END IF
 IF (computationalNodeNumber==0) THEN
                                     WRITE(*,*) solver_column_number
 END IF
-
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
                                           & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
                                           & COUPLING_COEFFICIENTS(solver_column_idx)
@@ -906,7 +906,9 @@ END IF
                                         WRITE(*,*) VALUE
                                         CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
                                           & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
+IF (computationalNodeNumber==0) THEN
                                         WRITE(*,*) "Value added"
+END IF
                                       ENDDO !solver_column_idx
                                     ENDDO !equations_column_number
                                   ENDDO !solver_row_idx
