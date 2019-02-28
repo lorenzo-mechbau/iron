@@ -218,7 +218,7 @@ CONTAINS
                         & ERR,ERROR,*999)
                       IF(ASSOCIATED(ROW_INDICES)) DEALLOCATE(ROW_INDICES)
                       IF(ASSOCIATED(COLUMN_INDICES)) DEALLOCATE(COLUMN_INDICES)
-                      STOP
+                     ! STOP
                     ENDIF
                     CALL DistributedMatrix_SymmetryTypeSet(SOLVER_MATRIX%matrix,SOLVER_MATRIX%symmetryType,err,error,*999)
                     CALL DistributedMatrix_CreateFinish(SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
@@ -882,7 +882,7 @@ CONTAINS
                                       & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                       & COUPLING_COEFFICIENTS(solver_row_idx)
                                     !Loop over the columns of the equations matrix
-IF (computationalNodeNumber==0) THEN
+IF (computationalNodeNumber==110) THEN
                                     WRITE(*,*) "Column loop for row"
                                     WRITE(*,*) solver_row_number
 END IF
@@ -892,7 +892,7 @@ END IF
                                         & equations_column_number)%NUMBER_OF_SOLVER_COLS
                                         solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                           & equations_column_number)%SOLVER_COLS(solver_column_idx)
-IF (computationalNodeNumber==0) THEN
+IF (computationalNodeNumber==110) THEN
                                     WRITE(*,*) solver_column_number
 END IF
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
@@ -903,17 +903,19 @@ END IF
                                         VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
                                           & (equations_column_number-1)*vectorMatrices%totalNumberOfRows)* &
                                           & row_coupling_coefficient*column_coupling_coefficient
+IF (computationalNodeNumber==110) THEN
                                         WRITE(*,*) VALUE
+END IF
                                         CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
                                           & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
-IF (computationalNodeNumber==0) THEN
+IF (computationalNodeNumber==110) THEN
                                         WRITE(*,*) "Value added"
 END IF
                                       ENDDO !solver_column_idx
                                     ENDDO !equations_column_number
                                   ENDDO !solver_row_idx
                                 ENDDO !equations_row_number
-STOP
+!STOP
                               CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                                 !Loop over the rows of the equations matrix
                                 DO equations_row_number=1,vectorMatrices%numberOfRows

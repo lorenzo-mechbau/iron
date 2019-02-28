@@ -13076,8 +13076,10 @@ CONTAINS
                                           DO equations_row_number=1,vectorMapping%totalNumberOfRows
                                             !Get the dynamic contribution to the the RHS values
                                             rhs_variable_dof=rhsMapping%equationsRowToRHSDofMap(equations_row_number)
-                                            rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
-                                            rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                            !rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
+                                            !rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                            ! %dof_types is now local
+                                            rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_variable_dof)
                                             !Apply boundary conditions
                                             SELECT CASE(rhs_boundary_condition)
                                             CASE(BOUNDARY_CONDITION_DOF_FREE)
@@ -13130,10 +13132,12 @@ CONTAINS
                                                       & DEPENDENT_BOUNDARY_CONDITIONS,ERR,ERROR,*999)
                                                     variable_dof=dynamicMapping%equationsRowToVariableDOFMaps( &
                                                       & equations_row_number)
-                                                    variable_global_dof=VARIABLE_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
+                                                    !variable_global_dof=VARIABLE_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
+                                                    ! %dof_types is now local
+                                                    !variable_boundary_condition=DEPENDENT_BOUNDARY_CONDITIONS%DOF_TYPES( &
+                                                    !  & variable_global_dof)
                                                     variable_boundary_condition=DEPENDENT_BOUNDARY_CONDITIONS%DOF_TYPES( &
-                                                      & variable_global_dof)
-
+                                                      & variable_dof)
                                                     IF(variable_boundary_condition==BOUNDARY_CONDITION_DOF_FIXED) THEN
                                                       SELECT CASE(DYNAMIC_SOLVER%DEGREE)
                                                       CASE(SOLVER_DYNAMIC_FIRST_DEGREE)
@@ -14674,8 +14678,10 @@ CONTAINS
                                           ENDDO !solver_row_idx
                                         ENDIF
                                         rhs_variable_dof=rhsMapping%equationsRowToRHSDofMap(equations_row_number)
-                                        rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
-                                        rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                        !rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
+                                        !rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                        ! %dof_types is now local
+                                        rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_variable_dof)
                                         !Apply boundary conditions
                                         SELECT CASE(rhs_boundary_condition)
                                         CASE(BOUNDARY_CONDITION_DOF_FREE)
@@ -14715,9 +14721,12 @@ CONTAINS
                                                 & DEPENDENT_BOUNDARY_CONDITIONS,ERR,ERROR,*999)
                                               variable_dof=linearMapping%equationsRowToVariableDOFMaps( &
                                                 & equations_row_number,variable_idx)
-                                              variable_global_dof=VARIABLE_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
+                                              !variable_global_dof=VARIABLE_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
+                                              ! %dof_types is now local
+                                              !variable_boundary_condition=DEPENDENT_BOUNDARY_CONDITIONS%DOF_TYPES( &
+                                              !  & variable_global_dof)
                                               variable_boundary_condition=DEPENDENT_BOUNDARY_CONDITIONS%DOF_TYPES( &
-                                                & variable_global_dof)
+                                                & variable_dof)
                                               IF(variable_boundary_condition==BOUNDARY_CONDITION_DOF_FIXED) THEN
                                                 DEPENDENT_VALUE=DEPENDENT_PARAMETERS(variable_idx)%ptr(variable_dof)
                                                 IF(ABS(DEPENDENT_VALUE)>=ZERO_TOLERANCE) THEN

@@ -704,13 +704,18 @@ CONTAINS
             ENDDO !solver_matrix_idx
 
             !Allocate the equations row to solver rows maps
+            !ALLOCATE(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
+            !  & vectorMapping%numberOfRows),STAT=ERR)
+            !Reset to TOTALNumberOfRows (error @solver_routines)
             ALLOCATE(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
-              & vectorMapping%numberOfRows),STAT=ERR)
+              & vectorMapping%totalNumberOfRows),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate equations set to solver map equations row to solver rows maps.", &
               & ERR,ERROR,*999)
 
             !\TODO double check that this should be numberOfRows, not totalNumberOfRows
-            DO equations_row_number=1,vectorMapping%numberOfRows
+            !Reset to TOTALNumberOfRows (error @solver_routines)
+            !DO equations_row_number=1,vectorMapping%numberOfRows
+            DO equations_row_number=1,vectorMapping%totalNumberOfRows
               !Initialise
               CALL SolverMapping_EquatsRowToSolRowsMapInitialise(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                 & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number),ERR,ERROR,*999)
@@ -950,7 +955,7 @@ CONTAINS
               ELSE
                 !Note that in this case these mappings are set to zero since these equation rows don't appear in the solver matrices
 
-                !Set the mappingsrank
+                !Set the mappings rank
                 SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS( &
                   & localRow)%NUMBER_OF_SOLVER_ROWS=0
                 !Now set up any interface condition rows to solver rows that affect this equations set.
@@ -3641,9 +3646,8 @@ CONTAINS
         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"      Equations sets rows to solver rows mappings:",ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "        Number of equations set rows = ",vectorMapping% &
          & totalNumberOfRows,ERR,ERROR,*999)
-!       See also comment above. EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS allocated as numberOfRows
-        DO row_idx=1,vectorMapping%numberOfRows
-!        DO row_idx=1,vectorMapping%totalNumberOfRows
+!        DO row_idx=1,vectorMapping%numberOfRows
+        DO row_idx=1,vectorMapping%totalNumberOfRows
           CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Equations set row : ",row_idx,ERR,ERROR,*999)
           CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"          Number of solver rows mapped to   = ",SOLVER_MAPPING% &
             & EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(row_idx)%NUMBER_OF_SOLVER_ROWS, &
