@@ -1628,7 +1628,7 @@ END IF
   !================================================================================================================================
   !
 
-  !>Calculates the structure (sparsity) of the solver matrix from the soluton mapping.
+  !>Calculates the structure (sparsity) of the solver matrix from the solution mapping.
   SUBROUTINE SOLVER_MATRIX_STRUCTURE_CALCULATE(SOLVER_MATRIX,NUMBER_OF_NON_ZEROS,ROW_INDICES,COLUMN_INDICES,ERR,ERROR,*)
 
     !Argument variables
