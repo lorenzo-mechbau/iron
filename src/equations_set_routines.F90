@@ -1805,6 +1805,7 @@ CONTAINS
     INTEGER(INTG) :: equations_column_idx,equations_column_number,equations_matrix_idx,equations_row_number, &
       & EQUATIONS_STORAGE_TYPE,rhs_boundary_condition,rhs_global_dof,rhs_variable_dof,rhsVariableType,variable_dof,VARIABLE_TYPE
     INTEGER(INTG), POINTER :: COLUMN_INDICES(:),ROW_INDICES(:)
+    INTEGER(INTG) :: myComputationalNodeNumber, eqColLocalIdx, domain_idx
     REAL(DP) :: DEPENDENT_VALUE,MATRIX_VALUE,RHS_VALUE,SOURCE_VALUE
     REAL(DP), POINTER :: DEPENDENT_PARAMETERS(:),equationsMatrixData(:),sourceVectorData(:)
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: RHS_BOUNDARY_CONDITIONS
@@ -1831,6 +1832,8 @@ CONTAINS
     NULLIFY(sourceVectorData)
 
     ENTERS("EQUATIONS_SET_BACKSUBSTITUTE",err,error,*999)
+
+    myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
 
     IF(ASSOCIATED(equationsSet)) THEN
       IF(equationsSet%EQUATIONS_SET_FINISHED) THEN
@@ -1956,15 +1959,37 @@ CONTAINS
                                               SELECT CASE(rhs_boundary_condition)
                                               CASE(BOUNDARY_CONDITION_DOF_FREE)
                                                 !Back substitute
-                                                !Loop over the local columns of the equations matrix
+                                                !Loop over the global columns of the equations matrix in the selected row
                                                 DO equations_column_idx=ROW_INDICES(equations_row_number), &
-                                                  ROW_INDICES(equations_row_number+1)-1
+                                                  & ROW_INDICES(equations_row_number+1)-1
+                                                   ! Get the GLOBAL column index
                                                   equations_column_number=COLUMN_INDICES(equations_column_idx)
-                                                  variable_dof=equations_column_idx-ROW_INDICES(equations_row_number)+1
-                                                  MATRIX_VALUE=equationsMatrixData(equations_column_idx)
-                                                  DEPENDENT_VALUE=DEPENDENT_PARAMETERS(variable_dof)
-                                                  RHS_VALUE=RHS_VALUE+MATRIX_VALUE*DEPENDENT_VALUE
-                                                ENDDO !equations_column_idx
+                                                  ! Get the LOCAL column index for all domains
+                                                  DO domain_idx=1,COLUMN_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP &
+                                                    & (equations_column_number)%NUMBER_OF_DOMAINS
+                                                    ! Select the current domain (=rank)
+                                                    IF (COLUMN_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP  &
+                                                      & (equations_column_number)%DOMAIN_NUMBER(domain_idx) &
+                                                      & == myComputationalNodeNumber) THEN
+                                                      ! Get the local dof on the current domain
+                                                      eqColLocalIdx = &
+                                                        & COLUMN_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP &
+                                                        & (equations_column_number)%LOCAL_NUMBER(domain_idx)
+                                                      ! We do not consider ghosts
+                                                      IF (eqColLocalIdx <= &
+                                                        & COLUMN_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL) THEN
+                                                        ! Local dof on rhs
+                                                        variable_dof=eqColLocalIdx!equations_column_number
+                                                        ! original line: delete!
+                                                        ! variable_dof = equations_column_idx-ROW_INDICES(equations_row_number)+1
+                                                         ! Global dof in matrix
+                                                        MATRIX_VALUE=equationsMatrixData(equations_column_idx)
+                                                        DEPENDENT_VALUE=DEPENDENT_PARAMETERS(variable_dof)
+                                                        RHS_VALUE=RHS_VALUE+MATRIX_VALUE*DEPENDENT_VALUE
+                                                      END IF
+                                                    END IF
+                                                  END DO
+                                                END DO !equations_column_idx
                                               CASE(BOUNDARY_CONDITION_DOF_FIXED)
                                                 !Do nothing
                                               CASE(BOUNDARY_CONDITION_DOF_MIXED)
