@@ -4321,7 +4321,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Caclulates the matrix structure (sparsity) for an equations matrix.
+  !>Calculates the matrix structure (sparsity) for an equations matrix.
   SUBROUTINE EquationsMatrix_StructureCalculate(equationsMatrix,numberOfNonZeros,rowIndices,columnIndices,list,err,error,*)
 
     !Argument variables
@@ -4416,9 +4416,6 @@ CONTAINS
     dependentDofsParamMapping=>fieldVariable%DOF_TO_PARAM_MAP
     IF(.NOT.ASSOCIATED(dependentDofsParamMapping)) &
       & CALL FlagError("Dependent dofs parameter mapping is not associated.",err,error,*998)
-
-    ! Comment to be deleted
-    ! WRITE(*,*) dependentDofsParamMapping%DOF_TYPE
 
     numberOfDimensions = geometricField%variables(1)%DIMENSION
     SELECT CASE(equationsMatrix%structureType)
@@ -4547,7 +4544,7 @@ CONTAINS
       END SELECT
 
     CASE(EQUATIONS_MATRIX_DIAGONAL_STRUCTURE)
-      CALL FlagError("There is not structure to calculate for a diagonal matrix.",err,error,*998)
+      CALL FlagError("There is no structure to calculate for a diagonal matrix.",err,error,*998)
 
     CASE(EQUATIONS_MATRIX_VELOCITY_FV_STRUCTURE)
       !FINBARTOFIX pressure FV structure should be different.

@@ -11779,7 +11779,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: CONVERGED_REASON,global_row,local_row,NUMBER_ITERATIONS,STORAGE_TYPE
+    INTEGER(INTG) :: CONVERGED_REASON,global_row,local_row,NUMBER_ITERATIONS,STORAGE_TYPE, ID
     REAL(DP) :: RESIDUAL_NORM,SOLVER_VALUE,VALUE
     REAL(DP), POINTER :: RHS_DATA(:)
     TYPE(DistributedVectorType), POINTER :: rhsVector,SOLVER_VECTOR
@@ -11805,6 +11805,7 @@ CONTAINS
             IF(ASSOCIATED(SOLVER_MATRICES)) THEN
               IF(SOLVER_MATRICES%NUMBER_OF_MATRICES==1) THEN
                 SOLVER_MATRIX=>SOLVER_MATRICES%matrices(1)%ptr
+!                CALL DistributedMatrix_Output(ID,SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
                 IF(ASSOCIATED(SOLVER_MATRIX)) THEN
                   rhsVector=>SOLVER_MATRICES%RHS_VECTOR
                   IF(ASSOCIATED(rhsVector)) THEN

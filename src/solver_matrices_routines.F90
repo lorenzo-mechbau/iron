@@ -817,7 +817,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: equations_column_idx,equations_column_number,equations_row_number,EQUATIONS_STORAGE_TYPE, &
       & solver_column_idx,solver_column_number,solver_row_idx,solver_row_number, computationalNodeNumber
-    INTEGER(INTG), POINTER :: COLUMN_INDICES(:),ROW_INDICES(:)
+    INTEGER(INTG), POINTER :: COLUMN_INDICES(:),ROW_INDICES(:),rowIndicesGet(:),columnIndicesGet(:)
     REAL(DP) :: column_coupling_coefficient,row_coupling_coefficient,VALUE
     REAL(DP), POINTER :: EQUATIONS_MATRIX_DATA(:)
     TYPE(DistributedMatrixType), POINTER :: EQUATIONS_DISTRIBUTED_MATRIX,SOLVER_DISTRIBUTED_MATRIX
@@ -882,35 +882,46 @@ CONTAINS
                                       & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                       & COUPLING_COEFFICIENTS(solver_row_idx)
                                     !Loop over the columns of the equations matrix
-IF (computationalNodeNumber==110) THEN
-                                    WRITE(*,*) "Column loop for row"
-                                    WRITE(*,*) solver_row_number
-END IF
+! Remove the following once we solve the problem of adding values causing a malloc
+!IF (computationalNodeNumber==110) THEN
+!                                    CALL DistributedMatrix_NumberOfNonZerosGet(SOLVER_MATRIX%MATRIX,solver_column_number, &
+!                                      & ERR,ERROR,*999)
+!CALL DistributedMatrix_StorageLocationsGet(SOLVER_MATRIX%MATRIX,rowIndicesGet,columnIndicesGet, &
+!                                      & ERR,ERROR,*999)
+!                                    WRITE(*,*) "Nonzeros:"
+!                                    WRITE(*,*) solver_column_number
+!                                    WRITE(*,*) "Rowindget:"
+!                                    WRITE(*,*) rowIndicesGet
+!                                    WRITE(*,*) "Colindget:"
+!                                    WRITE(*,*) columnIndicesGet
+!                                    WRITE(*,*) "Column loop for row"
+!                                    WRITE(*,*) solver_row_number
+!                                    WRITE(*,*) "---"
+!END IF
                                     DO equations_column_number=1,equationsMatrix%numberOfColumns
                                       !Loop over the solution columns this equations column is mapped to
                                       DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                         & equations_column_number)%NUMBER_OF_SOLVER_COLS
                                         solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
                                           & equations_column_number)%SOLVER_COLS(solver_column_idx)
-IF (computationalNodeNumber==110) THEN
-                                    WRITE(*,*) solver_column_number
-END IF
+!IF (computationalNodeNumber==110) THEN
+!                                    WRITE(*,*) solver_column_number
+!END IF
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
                                           & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
                                           & COUPLING_COEFFICIENTS(solver_column_idx)
-!                                        WRITE(*,*) column_coupling_coefficient
                                        !Add in the solver matrix value
                                         VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
                                           & (equations_column_number-1)*vectorMatrices%totalNumberOfRows)* &
                                           & row_coupling_coefficient*column_coupling_coefficient
-IF (computationalNodeNumber==110) THEN
-                                        WRITE(*,*) VALUE
-END IF
+!IF (computationalNodeNumber==110) THEN
+!                                        WRITE(*,*) VALUE
+!END IF
                                         CALL DistributedMatrix_ValuesAdd(SOLVER_DISTRIBUTED_MATRIX, &
                                           & solver_row_number,solver_column_number,VALUE,ERR,ERROR,*999)
-IF (computationalNodeNumber==110) THEN
-                                        WRITE(*,*) "Value added"
-END IF
+!IF (computationalNodeNumber==110) THEN
+!                                        WRITE(*,*) "Value added"
+!END IF
                                       ENDDO !solver_column_idx
                                     ENDDO !equations_column_number
                                   ENDDO !solver_row_idx
@@ -1727,7 +1738,7 @@ END IF
                               CALL FlagError("Equations matrix is not assocaited.",ERR,ERROR,*999)
                             ENDIF
                           ELSE
-                            CALL FlagError("Equations to solver matrix map is not assocaited.",ERR,ERROR,*999)
+                            CALL FlagError("Equations to solver matrix map is not associated.",ERR,ERROR,*999)
                           ENDIF
                         ENDDO !equations_matrix_idx
                       ELSE
