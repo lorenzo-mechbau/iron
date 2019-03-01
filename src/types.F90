@@ -131,8 +131,34 @@ MODULE Types
     INTEGER(C_INT), ALLOCATABLE :: LIST_C_INT2(:,:) !<The integer data (dimension > 1) for integer lists.
   END TYPE LIST_TYPE
 
+
   !
-  !================================================================================================================================
+  !=====================================================================================================================
+  !
+  ! Hash Table type
+  !
+  TYPE HashTableType
+    !PRIVATE ! derived-type definition can be accessed outside (public), but not the components (below)
+
+    LOGICAL :: hashTableFinished !<Is .TRUE. if the table has finished being created, .FALSE. if not.
+
+    INTEGER(INTG), ALLOCATABLE :: vecTKey(:)   ! The hash vector of keys
+    INTEGER(INTG), ALLOCATABLE :: vecTVal(:)   ! The hash vector of indices of values
+
+    INTEGER(INTG), ALLOCATABLE :: vecSKey(:)   ! The original vector of keys
+
+    ! List of values
+    TYPE(List_Type), POINTER :: listSVal
+    ! Array of list of values to allow for multiple data
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: arrayOfListSVal(:)
+
+
+    INTEGER(INTG) :: n !<The number of items currently in the table (number of keys)
+    INTEGER(INTG) :: p !<The prime number required from the table algorithm
+  END TYPE HashTableType
+
+  !
+  !=======================================================================================================================
   !
   ! Quadrature types
   !
@@ -896,6 +922,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(DistributedMatrixType), POINTER :: distributedMatrix !<A pointer to the distributed matrix
     INTEGER(INTG) :: baseTagNumber !<The base number for the MPI tag numbers that will be used to communicate the distributed matrix data amongst the domains. The base tag number can be thought of as the identification number for the distributed matrix object.
     TYPE(MATRIX_TYPE), POINTER :: matrix !<A pointer to the matrix to store the rows corresponding to this domain.
+    TYPE(HashTableType), POINTER :: columnHashTable !< The hash table for ltg columns
   END TYPE DistributedMatrixCMISSType
 
   !>Contains information for a PETSc distributed matrix
