@@ -1188,7 +1188,7 @@ CONTAINS
       END IF
     END IF
 
-    STOP
+!    STOP
 
 ! end my hash_implementation
 
@@ -3819,11 +3819,11 @@ CONTAINS
       petscColIndex(1)=columnIndex-1
       petscValue(1)=value
       IF(petscMatrix%useOverrideMatrix) THEN
-        CALL Petsc_MatSetValue(petscMatrix%overrideMatrix,petscMatrix%globalRowNumbers(rowIndex),columnIndex-1, &
-          & value,PETSC_ADD_VALUES,err,error,*999) !PETSc uses 0 based indices
+        CALL Petsc_MatSetValue(petscMatrix%overrideMatrix,petscMatrix%globalRowNumbers(rowIndex),petscColIndex(1), &
+          & petscValue(1),PETSC_ADD_VALUES,err,error,*999) !PETSc uses 0 based indices
       ELSE
-        CALL Petsc_MatSetValue(petscMatrix%matrix,petscMatrix%globalRowNumbers(rowIndex),columnIndex-1, &
-          & value,PETSC_ADD_VALUES,err,error,*999) !PETSc uses 0 based indices
+        CALL Petsc_MatSetValue(petscMatrix%matrix,petscMatrix%globalRowNumbers(rowIndex),petscColIndex(1), &
+          & petscValue(1),PETSC_ADD_VALUES,err,error,*999) !PETSc uses 0 based indices
       ENDIF
     CASE DEFAULT
       localError="The distributed matrix library type of "// &
