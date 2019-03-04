@@ -11792,7 +11792,12 @@ CONTAINS
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
+    INTEGER(INTG) :: numberOfComputationalNodes
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_SOLVE",ERR,ERROR,*999)
+
+    numberOfComputationalNodes = ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+    IF(ERR/=0) GOTO 999  
 
     IF(ASSOCIATED(LINEAR_ITERATIVE_SOLVER)) THEN
       LINEAR_SOLVER=>LINEAR_ITERATIVE_SOLVER%LINEAR_SOLVER
@@ -11852,7 +11857,12 @@ CONTAINS
                                 CALL Petsc_KSPSetInitialGuessNonZero(LINEAR_ITERATIVE_SOLVER%KSP,.FALSE.,ERR,ERROR,*999)
                               CASE(SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD)
                                 !Make sure the solver vector contains the current dependent field values
-                                CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                                IF (numberOfComputationalNodes>1) THEN
+                                  CALL FlagError("SOLVER_SOLUTION_UPDATE requires gtl column map!!",ERR,ERROR,*999)   
+                                  STOP
+                                ELSE
+                                  CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                                END IF
                                 !Tell PETSc that the solution vector is nonzero
                                 CALL Petsc_KSPSetInitialGuessNonZero(LINEAR_ITERATIVE_SOLVER%KSP,.TRUE.,ERR,ERROR,*999)
                               CASE(SOLVER_SOLUTION_INITIALISE_NO_CHANGE)
@@ -16337,6 +16347,8 @@ CONTAINS
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
+    INTEGER(INTG) :: numberOfComputationalNodes
+
     ENTERS("SOLVER_QUASI_NEWTON_LINESEARCH_SOLVE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
@@ -16365,7 +16377,12 @@ CONTAINS
                           CALL DistributedVector_AllValuesSet(SOLVER_VECTOR,0.0_DP,ERR,ERROR,*999)
                         CASE(SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD)
                           !Make sure the solver vector contains the current dependent field values
-                          CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                          IF (numberOfComputationalNodes>1) THEN
+                            CALL FlagError("SOLVER_SOLUTION_UPDATE requires gtl column map!!",ERR,ERROR,*999)   
+                            STOP
+                          ELSE
+                            CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                          END IF
                         CASE(SOLVER_SOLUTION_INITIALISE_NO_CHANGE)
                           !Do nothing
                         CASE DEFAULT
@@ -19087,6 +19104,8 @@ CONTAINS
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
+    INTEGER(INTG) :: numberOfComputationalNodes
+
     ENTERS("SOLVER_NEWTON_LINESEARCH_SOLVE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
@@ -19115,7 +19134,12 @@ CONTAINS
                           CALL DistributedVector_AllValuesSet(SOLVER_VECTOR,0.0_DP,ERR,ERROR,*999)
                         CASE(SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD)
                           !Make sure the solver vector contains the current dependent field values
-                          CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                          IF (numberOfComputationalNodes>1) THEN
+                            CALL FlagError("SOLVER_SOLUTION_UPDATE requires gtl column map!!",ERR,ERROR,*999)   
+                            STOP
+                          ELSE
+                            CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+                          END IF
                         CASE(SOLVER_SOLUTION_INITIALISE_NO_CHANGE)
                           !Do nothing
                         CASE DEFAULT

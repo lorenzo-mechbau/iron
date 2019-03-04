@@ -5943,7 +5943,7 @@ CONTAINS
     !Set the defaults
     distributedVector%cmiss%baseTagNumber=0
     SELECT CASE(distributedVector%ghostingType)
-    CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
+    CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) ! default case
       distributedVector%cmiss%n=distributedVector%domainMapping%TOTAL_NUMBER_OF_LOCAL
     CASE(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE)
       distributedVector%cmiss%n=distributedVector%domainMapping%NUMBER_OF_LOCAL
@@ -6787,7 +6787,7 @@ CONTAINS
       NULLIFY(cmissVector)
       CALL DistributedVector_CMISSVectorGet(distributedVector,cmissVector,err,error,*999)
       SELECT CASE(ghostingType)
-      CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
+      CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) ! default case
         cmissVector%n=domainMapping%TOTAL_NUMBER_OF_LOCAL
       CASE(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE)
         cmissVector%N=domainMapping%NUMBER_OF_LOCAL
@@ -6799,7 +6799,7 @@ CONTAINS
       NULLIFY(petscVector)
       CALL DistributedVector_PETScVectorGet(distributedVector,petscVector,err,error,*999)
       SELECT CASE(ghostingType)
-      CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
+      CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE) ! default case
         petscVector%n=domainMapping%TOTAL_NUMBER_OF_LOCAL
       CASE(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE)
         petscVector%n=domainMapping%NUMBER_OF_LOCAL

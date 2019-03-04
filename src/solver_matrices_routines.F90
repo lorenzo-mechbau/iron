@@ -214,6 +214,7 @@ CONTAINS
                         & COLUMN_INDICES,ERR,ERROR,*999)
                       CALL DistributedMatrix_NumberOfNonZerosSet(SOLVER_MATRIX%MATRIX,NUMBER_OF_NON_ZEROS, &
                         & ERR,ERROR,*999)
+                      CALL DistributedMatrix_GhostingTypeSet(SOLVER_MATRIX%MATRIX,1, ERR,ERROR,*999)
                       CALL DistributedMatrix_StorageLocationsSet(SOLVER_MATRIX%MATRIX,ROW_INDICES,COLUMN_INDICES, &
                         & ERR,ERROR,*999)
                       IF(ASSOCIATED(ROW_INDICES)) DEALLOCATE(ROW_INDICES)
@@ -222,6 +223,7 @@ CONTAINS
                     ENDIF
                     CALL DistributedMatrix_SymmetryTypeSet(SOLVER_MATRIX%matrix,SOLVER_MATRIX%symmetryType,err,error,*999)
                     CALL DistributedMatrix_CreateFinish(SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
+                    !CALL SOLVER_MATRIX_FORM(SOLVER_MATRIX,ERR,ERROR,*999)
                     !Allocate the distributed solver vector
                     CALL DistributedVector_CreateStart(COLUMN_DOMAIN_MAP,SOLVER_MATRICES%MATRICES(matrix_idx)% &
                          & PTR%SOLVER_VECTOR,ERR,ERROR,*999)
@@ -2375,7 +2377,7 @@ CONTAINS
                         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                       END SELECT                        
                     ENDDO !interface_condition_idx
-                    !Loop over the rows to calculate the number of non-zeros and setup the row indicces
+                    !Loop over the rows to calculate the number of non-zeros and setup the row indices
                     DO solver_row_number=1,SOLVER_MAPPING%NUMBER_OF_ROWS
                       CALL LIST_REMOVE_DUPLICATES(COLUMN_INDICES_LISTS(solver_row_number)%PTR,ERR,ERROR,*999)
                       CALL LIST_NUMBER_OF_ITEMS_GET(COLUMN_INDICES_LISTS(solver_row_number)%PTR,NUMBER_OF_COLUMNS,ERR,ERROR,*999)
