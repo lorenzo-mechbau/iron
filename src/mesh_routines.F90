@@ -7352,6 +7352,8 @@ CONTAINS
                           ENDIF
                         ENDDO !domain_idx2
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+                        WRITE(*,*)"Ghost:"                       
+                        WRITE(*,*)node_idx
                       ENDDO !domain_idx
                     ENDIF
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -7427,6 +7429,8 @@ CONTAINS
                     DEALLOCATE(ALL_DOMAINS)
                   ENDDO !node_idx
 
+STOP
+
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   NUMBER_OF_NODES_PER_DOMAIN=FLOOR(REAL(MESH_TOPOLOGY%NODES%numberOfNodes,DP)/ &
                     & REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP))
@@ -7497,7 +7501,7 @@ CONTAINS
                               ENDDO !version_idx
                             ENDDO !derivative_idx
                           ELSE
-                            !The node as already been assigned to a domain so it must be a ghost node in this domain
+                            !The node has already been assigned to a domain so it must be a ghost node in this domain
                             CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                           ENDIF
                         ELSE
@@ -7508,10 +7512,8 @@ CONTAINS
                     ENDIF
 
                     !Reset the number of domains for each node, this will be increased for each ghost.
-                    !Shouldn't this be 0???
                     NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=1
                     DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
-
 
                   ENDDO !node_idx
                   DEALLOCATE(NUMBER_INTERNAL_NODES)
