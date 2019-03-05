@@ -214,7 +214,6 @@ CONTAINS
                         & COLUMN_INDICES,ERR,ERROR,*999)
                       CALL DistributedMatrix_NumberOfNonZerosSet(SOLVER_MATRIX%MATRIX,NUMBER_OF_NON_ZEROS, &
                         & ERR,ERROR,*999)
-                      CALL DistributedMatrix_GhostingTypeSet(SOLVER_MATRIX%MATRIX,1, ERR,ERROR,*999)
                       CALL DistributedMatrix_StorageLocationsSet(SOLVER_MATRIX%MATRIX,ROW_INDICES,COLUMN_INDICES, &
                         & ERR,ERROR,*999)
                       IF(ASSOCIATED(ROW_INDICES)) DEALLOCATE(ROW_INDICES)
@@ -223,10 +222,12 @@ CONTAINS
                     ENDIF
                     CALL DistributedMatrix_SymmetryTypeSet(SOLVER_MATRIX%matrix,SOLVER_MATRIX%symmetryType,err,error,*999)
                     CALL DistributedMatrix_CreateFinish(SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
-                    !CALL SOLVER_MATRIX_FORM(SOLVER_MATRIX,ERR,ERROR,*999)
                     !Allocate the distributed solver vector
                     CALL DistributedVector_CreateStart(COLUMN_DOMAIN_MAP,SOLVER_MATRICES%MATRICES(matrix_idx)% &
                          & PTR%SOLVER_VECTOR,ERR,ERROR,*999)
+                    ! Change to number of local size.
+                    CALL DistributedVector_GhostingTypeSet(SOLVER_MATRICES%MATRICES(matrix_idx)%PTR%SOLVER_VECTOR, &
+                      & DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE,ERR,ERROR,*999)
                     CALL DistributedVector_LibraryTypeSet(SOLVER_MATRIX%SOLVER_VECTOR,SOLVER_MATRICES%matrixLibraryType, &
                       & ERR,ERROR,*999)
                     CALL DistributedVector_DataTypeSet(SOLVER_MATRIX%SOLVER_VECTOR,MATRIX_VECTOR_DP_TYPE,ERR,ERROR,*999)
@@ -249,6 +250,10 @@ CONTAINS
 !!TODO: what to do if there is no RHS
               !Allocate the distributed rhs vector
               CALL DistributedVector_CreateStart(ROW_DOMAIN_MAP,SOLVER_MATRICES%RHS_VECTOR,ERR,ERROR,*999)
+              !No ghosts in row mapping, then no need to change as below:
+              !Total n. of local = n. of local
+              !CALL DistributedVector_GhostingTypeSet(SOLVER_MATRICES%RHS_VECTOR, &
+              !  & DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE,ERR,ERROR,*999)
               CALL DistributedVector_LibraryTypeSet(SOLVER_MATRICES%RHS_VECTOR,SOLVER_MATRICES%matrixLibraryType,ERR,ERROR,*999)
               CALL DistributedVector_DataTypeSet(SOLVER_MATRICES%RHS_VECTOR,MATRIX_VECTOR_DP_TYPE,ERR,ERROR,*999)
               CALL DistributedVector_CreateFinish(SOLVER_MATRICES%RHS_VECTOR,ERR,ERROR,*999)

@@ -1905,8 +1905,9 @@ CONTAINS
                                             DO equations_row_number=1,vectorMapping%numberOfRows
                                               RHS_VALUE=0.0_DP
                                               rhs_variable_dof=rhsMapping%equationsRowToRHSDOFMap(equations_row_number)
-                                              rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
-                                              rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                              !rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
+                                              !rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                              rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_variable_dof)
                                               !For free RHS DOFs, set the right hand side field values by multiplying the
                                               !row by the dependent variable value
                                               SELECT CASE(rhs_boundary_condition)
@@ -1954,8 +1955,9 @@ CONTAINS
                                             DO equations_row_number=1,vectorMapping%numberOfRows
                                               RHS_VALUE=0.0_DP
                                               rhs_variable_dof=rhsMapping%equationsRowToRHSDOFMap(equations_row_number)
-                                              rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
-                                              rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                              !rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
+                                              !rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                              rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_variable_dof)
                                               SELECT CASE(rhs_boundary_condition)
                                               CASE(BOUNDARY_CONDITION_DOF_FREE)
                                                 !Back substitute
@@ -2166,8 +2168,9 @@ CONTAINS
                             IF(ASSOCIATED(residualVariable)) THEN
                               DO row_idx=1,vectorMapping%numberOfRows
                                 variable_dof=rhsMapping%equationsRowToRHSDOFMap(row_idx)
-                                rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
-                                rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                !rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_dof)
+                                !rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(rhs_global_dof)
+                                rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%DOF_TYPES(variable_dof)
                                 SELECT CASE(rhs_boundary_condition)
                                 CASE(BOUNDARY_CONDITION_DOF_FREE)
                                   !Add residual to field value

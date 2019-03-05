@@ -1014,6 +1014,9 @@ CONTAINS
     CALL Matrix_CreateStart(distributedMatrix%cmiss%matrix,err,error,*999)
     CALL Matrix_DataTypeSet(distributedMatrix%cmiss%matrix,MATRIX_VECTOR_DP_TYPE,err,error,*999)
     CALL Matrix_StorageTypeSet(distributedMatrix%cmiss%matrix,MATRIX_BLOCK_STORAGE_TYPE,err,error,*999)
+
+    ! Differently than for solver matrix, rowDomainMapping for EquationsMatrix has different
+    ! TOTAL_NUMBER_OF_LOCAL and NUMBER_OF_LOCAL!
     SELECT CASE(distributedMatrix%ghostingType)
     CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
       CALL Matrix_SizeSet(distributedMatrix%cmiss%matrix,rowDomainMapping%TOTAL_NUMBER_OF_LOCAL, &
@@ -2828,6 +2831,8 @@ CONTAINS
     !Set the defaults
     SELECT CASE(distributedMatrix%ghostingType)
     CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
+      ! In the solver ROW mapping, TOTAL_NUMBER_OF_LOCAL=NUMBER_OF_LOCAL
+      ! since no ghosts are considered (cf. structure of petsc matrix)
       distributedMatrix%petsc%m=rowDomainMapping%TOTAL_NUMBER_OF_LOCAL
     CASE(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE)
       distributedMatrix%petsc%m=rowDomainMapping%NUMBER_OF_LOCAL
@@ -2836,7 +2841,10 @@ CONTAINS
         & TRIM(NumberToVString(distributedMatrix%ghostingType,"*",err,error))//" is invalid."
       CALL FlagError(localError,err,error,*999)
     END SELECT
-    distributedMatrix%petsc%n=columnDomainMapping%TOTAL_NUMBER_OF_LOCAL
+    !distributedMatrix%petsc%n=columnDomainMapping%TOTAL_NUMBER_OF_LOCAL
+    !Each local petsc matrix stores mxN elements with N=sum n_i
+    !Then %n should NOT include ghosts!
+    distributedMatrix%petsc%n=columnDomainMapping%NUMBER_OF_LOCAL
     distributedMatrix%petsc%globalM=rowDomainMapping%NUMBER_OF_GLOBAL
     distributedMatrix%petsc%globalN=columnDomainMapping%NUMBER_OF_GLOBAL
     distributedMatrix%petsc%storageType=DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE

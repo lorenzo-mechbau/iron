@@ -7508,6 +7508,7 @@ CONTAINS
                     ENDIF
 
                     !Reset the number of domains for each node, this will be increased for each ghost.
+                    !Shouldn't this be 0???
                     NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=1
                     DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
 
