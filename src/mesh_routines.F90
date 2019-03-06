@@ -7354,6 +7354,9 @@ CONTAINS
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                       ENDDO !domain_idx
                     ENDIF
+                    ! Ghosts that could NOT be boundary are added.
+
+
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate node global to local map local number.",ERR,ERROR,*999)
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -7500,7 +7503,9 @@ CONTAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
 
-                    ELSE !Boundary node
+                    ELSE !Node on the bdry plane
+                      ! This part below has been copied from develop but %number of domains
+                      ! is here MAX number of domains...
                       NUMBER_OF_DOMAINS=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS
                       DO domain_idx=1,NUMBER_OF_DOMAINS
                         domain_no=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(domain_idx)
