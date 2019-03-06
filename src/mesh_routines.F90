@@ -4534,6 +4534,7 @@ CONTAINS
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                       ENDDO !domain_idx
                     ENDIF
+
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
                     IF(ERR/=0) CALL FlagError("Could not allocate node global to local map local number.",ERR,ERROR,*999)
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -4600,6 +4601,22 @@ CONTAINS
                     DEALLOCATE(ALL_DOMAINS)
                   ENDDO !node_idx
 
+                  ! These should be ONLY nodes that cannot be confused with bdry
+                  IF(ERR/=0) GOTO 999
+                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                    IF (domain_idx==myComputationalNodeNumber) THEN
+                      WRITE(*,*) "Domain"
+                      WRITE(*,*) myComputationalNodeNumber
+                      DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                        WRITE(*,*) GHOST_NODES(no_ghost_node)
+                      END DO
+                    END IF
+                    DEALLOCATE(GHOST_NODES)
+                  END DO
+
+STOP
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   NUMBER_OF_NODES_PER_DOMAIN=FLOOR(REAL(MESH_TOPOLOGY%NODES%numberOfNodes,DP)/ &
                     & REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP))
