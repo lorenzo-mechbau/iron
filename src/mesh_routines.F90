@@ -7252,7 +7252,7 @@ CONTAINS
     INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:),GHOST_NODES(:)
     LOGICAL :: BOUNDARY_DOMAIN
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST
-    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:)
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:), GHOST_NODES_BDRY_LIST(:) 
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -7352,8 +7352,6 @@ CONTAINS
                           ENDIF
                         ENDDO !domain_idx2
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
-                        WRITE(*,*)"Ghost:"                       
-                        WRITE(*,*)node_idx
                       ENDDO !domain_idx
                     ENDIF
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -7429,7 +7427,34 @@ CONTAINS
                     DEALLOCATE(ALL_DOMAINS)
                   ENDDO !node_idx
 
-STOP
+
+                  ! These should be ONLY nodes that cannot be confused with bdry
+                  IF (.FALSE.) THEN
+                    DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                      CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                      CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,  &
+                        & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                      IF (domain_idx==myComputationalNodeNumber) THEN
+                        WRITE(*,*) "Domain"
+                        WRITE(*,*) myComputationalNodeNumber
+                        DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                          WRITE(*,*) GHOST_NODES(no_ghost_node)
+                        END DO
+                      END IF
+                      DEALLOCATE(GHOST_NODES)
+                    END DO
+                  END IF 
+! UP TO HERE CORRESPOND!!! CHECK AFTER BDRY!!!
+                  ALLOCATE(GHOST_NODES_BDRY_LIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate ghost nodes list.",ERR,ERROR,*999)
+                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    NULLIFY(GHOST_NODES_BDRY_LIST(domain_idx)%PTR)
+                    CALL LIST_CREATE_START(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,INT(MESH_TOPOLOGY%NODES%numberOfNodes/2), &
+                      & ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                  ENDDO !domain_idx
 
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   NUMBER_OF_NODES_PER_DOMAIN=FLOOR(REAL(MESH_TOPOLOGY%NODES%numberOfNodes,DP)/ &
@@ -7503,10 +7528,12 @@ STOP
                           ELSE
                             !The node has already been assigned to a domain so it must be a ghost node in this domain
                             CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+                            CALL LIST_ITEM_ADD(GHOST_NODES_BDRY_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                           ENDIF
                         ELSE
                           !The node as already been assigned to a domain so it must be a ghost node in this domain
                           CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+                          CALL LIST_ITEM_ADD(GHOST_NODES_BDRY_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                         ENDIF
                       ENDDO !domain_idx
                     ENDIF
@@ -7517,6 +7544,22 @@ STOP
 
                   ENDDO !node_idx
                   DEALLOCATE(NUMBER_INTERNAL_NODES)
+
+                  ! Check new ghost nodes at bdry locations
+                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_BDRY_LIST(domain_idx)%PTR, &
+                      & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                    IF (domain_idx==myComputationalNodeNumber) THEN
+                      WRITE(*,*) "Domain"
+                      WRITE(*,*) myComputationalNodeNumber
+                      DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                        WRITE(*,*) GHOST_NODES(no_ghost_node)
+                      END DO
+                    END IF
+                    DEALLOCATE(GHOST_NODES)
+                  END DO
+STOP
 
                   !Calculate ghost node and dof mappings
                   DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
