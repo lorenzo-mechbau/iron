@@ -4602,21 +4602,22 @@ CONTAINS
                   ENDDO !node_idx
 
                   ! These should be ONLY nodes that cannot be confused with bdry
-                  IF(ERR/=0) GOTO 999
-                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                    CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
-                    CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
-                    IF (domain_idx==myComputationalNodeNumber) THEN
-                      WRITE(*,*) "Domain"
-                      WRITE(*,*) myComputationalNodeNumber
-                      DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
-                        WRITE(*,*) GHOST_NODES(no_ghost_node)
-                      END DO
-                    END IF
-                    DEALLOCATE(GHOST_NODES)
-                  END DO
-
-STOP
+                  IF(.FALSE.) THEN
+                    DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                      CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                      CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR, &
+                        & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                      IF (domain_idx==myComputationalNodeNumber) THEN
+                        WRITE(*,*) "Domain"
+                        WRITE(*,*) myComputationalNodeNumber
+                        DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                          WRITE(*,*) GHOST_NODES(no_ghost_node)
+                        END DO
+                      END IF
+                      DEALLOCATE(GHOST_NODES)
+                    END DO
+                  END IF
+  
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   NUMBER_OF_NODES_PER_DOMAIN=FLOOR(REAL(MESH_TOPOLOGY%NODES%numberOfNodes,DP)/ &
                     & REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP))
