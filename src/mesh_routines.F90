@@ -7249,7 +7249,7 @@ CONTAINS
       & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,myComputationalNodeNumber,numberOfComputationalNodes,component_idx
     INTEGER(INTG), ALLOCATABLE :: LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:),NODE_COUNT(:),NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:)
-    INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:),GHOST_NODES(:)
+    INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:),GHOST_NODES(:),numberOfDomainsNodesArray(:)
     LOGICAL :: BOUNDARY_DOMAIN
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:), GHOST_NODES_BDRY_LIST(:) 
@@ -7284,6 +7284,9 @@ CONTAINS
                   IF(ERR/=0) GOTO 999
 
                   !Calculate the local and global numbers and set up the mappings
+                  ALLOCATE(numberOfDomainsNodesArray(MESH_TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate numberOfDomainsNodesArray.",ERR,ERROR,*999)
+                  numberOfDomainsNodesArray = 0
                   ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(MESH_TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate node mapping global to local map.",ERR,ERROR,*999)
                   NODES_MAPPING%NUMBER_OF_GLOBAL=MESH_TOPOLOGY%NODES%numberOfNodes
@@ -7354,7 +7357,7 @@ CONTAINS
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                       ENDDO !domain_idx
                     ENDIF
-                    ! Ghosts that could NOT be boundary are added.
+                    ! All ghosts that do not lie on boundary planes are added.
 
 
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -7374,6 +7377,9 @@ CONTAINS
                         IF(ERR/=0) CALL FlagError("Could not allocate dof global to local map local type.",ERR,ERROR,*999)
                       ENDDO !version_idx
                     ENDDO !derivative_idx
+
+                    ! Was:
+                    !IF(NUMBER_OF_DOMAINS==1) THEN
                     IF(MAX_NUMBER_DOMAINS==1) THEN
 
                       !Node is an internal node
@@ -7403,6 +7409,7 @@ CONTAINS
                       ENDIF
                       !Node is on the boundary plane of computational domains
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=MAX_NUMBER_DOMAINS
+                      numberOfDomainsNodesArray(node_idx) = NUMBER_OF_DOMAINS
                       DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
                         DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
                           ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
@@ -7447,7 +7454,7 @@ CONTAINS
                       DEALLOCATE(GHOST_NODES)
                     END DO
                   END IF 
-! UP TO HERE CORRESPOND!!! CHECK AFTER BDRY!!!
+
                   ALLOCATE(GHOST_NODES_BDRY_LIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate ghost nodes list.",ERR,ERROR,*999)
                   DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
@@ -7466,7 +7473,9 @@ CONTAINS
                   IF(ERR/=0) CALL FlagError("Could not allocate node domain",ERR,ERROR,*999)
                   DOMAIN%NODE_DOMAIN=-1
                   DO node_idx=1,MESH_TOPOLOGY%NODES%numberOfNodes
+                    !WRITE(*,*)"Internal nodes:"
                     IF(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS==1) THEN !Internal node
+                      !WRITE(*,*)node_idx
                       domain_no=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(1)
                       DOMAIN%NODE_DOMAIN(node_idx)=domain_no
                       LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
@@ -7479,10 +7488,12 @@ CONTAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
                     ELSEIF(boundaryPlane(node_idx)/=1) THEN
-                      !boundary nodes that aren't on the boundary plane get assigned as boundary nodes.
-                      !Allocate the node to this domain
-
+                      !Nodes on boundary elements 
+                      !that aren't on the boundary plane are assigned as boundary nodes.
+                      !Allocate the node to this domain:
                       !the domain number is that of any adjacent element
+                      !WRITE(*,*)"Nodes on bdry elements but not on bdry plane are bdry nodes:"
+                      !WRITE(*,*)node_idx
                       adjacent_element=MESH_TOPOLOGY%NODES%NODES(node_idx)%surroundingElements(1)
                       domain_no=DECOMPOSITION%ELEMENT_DOMAIN(adjacent_element)
                       DOMAIN%NODE_DOMAIN(node_idx)=domain_no
@@ -7504,14 +7515,19 @@ CONTAINS
                       ENDDO !derivative_idx
 
                     ELSE !Node on the bdry plane
-                      ! This part below has been copied from develop but %number of domains
-                      ! is here MAX number of domains...
-                      NUMBER_OF_DOMAINS=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS
+                      ! FA: %NUMBER_OF_DOMAINS is MAX number of domains. 
+                      ! Changed the loop and IF below using number_of_domains.
+                      !NUMBER_OF_DOMAINS=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS
+                      NUMBER_OF_DOMAINS=numberOfDomainsNodesArray(node_idx)
                       DO domain_idx=1,NUMBER_OF_DOMAINS
                         domain_no=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(domain_idx)
                         IF(DOMAIN%NODE_DOMAIN(node_idx)<0) THEN
+                          ! load balancing
                           IF((NUMBER_INTERNAL_NODES(domain_no)+NUMBER_BOUNDARY_NODES(domain_no)<NUMBER_OF_NODES_PER_DOMAIN).OR. &
-                            & (domain_idx==NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS)) THEN
+                            ! This would be wrong?
+                            ! Node should be assigned as bdry only to domains which are surrounding.
+                            !& (domain_idx==NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS)) THEN
+                            & (domain_idx==numberOfDomainsNodesArray(node_idx))) THEN
                             !Allocate the node to this domain
                             DOMAIN%NODE_DOMAIN(node_idx)=domain_no
                             NUMBER_BOUNDARY_NODES(domain_no)=NUMBER_BOUNDARY_NODES(domain_no)+1
@@ -7536,7 +7552,7 @@ CONTAINS
                             CALL LIST_ITEM_ADD(GHOST_NODES_BDRY_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                           ENDIF
                         ELSE
-                          !The node as already been assigned to a domain so it must be a ghost node in this domain
+                          !The node has already been assigned to a domain so it must be a ghost node in this domain
                           CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                           CALL LIST_ITEM_ADD(GHOST_NODES_BDRY_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                         ENDIF
@@ -7545,26 +7561,34 @@ CONTAINS
 
                     !Reset the number of domains for each node, this will be increased for each ghost.
                     NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=1
-                    DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
+                    !Reset the number of domains for each dof, this will be increased for each ghost.
+                    DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
+                      DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+                        ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+                        DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
+                      END DO
+                    END DO
 
                   ENDDO !node_idx
                   DEALLOCATE(NUMBER_INTERNAL_NODES)
 
-                  ! Check new ghost nodes at bdry locations
-                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-                    CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_BDRY_LIST(domain_idx)%PTR,ERR,ERROR,*999)
-                    CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_BDRY_LIST(domain_idx)%PTR, &
-                      & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
-                    IF (domain_idx==myComputationalNodeNumber) THEN
-                      WRITE(*,*) "Domain"
-                      WRITE(*,*) myComputationalNodeNumber
-                      DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
-                        WRITE(*,*) GHOST_NODES(no_ghost_node)
-                      END DO
-                    END IF
-                    DEALLOCATE(GHOST_NODES)
-                  END DO
-STOP
+                  ! Check new ghost nodes:
+                  IF (.FALSE.) THEN
+                    DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                      CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                      CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR, &
+                        & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                      IF (domain_idx==myComputationalNodeNumber) THEN
+                        WRITE(*,*) "Domain"
+                        WRITE(*,*) myComputationalNodeNumber
+                        DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                          WRITE(*,*) GHOST_NODES(no_ghost_node)
+                        END DO
+                      END IF
+                      DEALLOCATE(GHOST_NODES)
+                    END DO
+                  END IF
+                  !STOP
 
                   !Calculate ghost node and dof mappings
                   DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
