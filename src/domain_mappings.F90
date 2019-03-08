@@ -223,7 +223,7 @@ CONTAINS
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains.",ERR,ERROR,*999)
       ADJACENT_DOMAINS=0
       
-      ! loop over global elements
+      ! loop over global members of the mapping
       DO global_number=1,DOMAIN_MAPPING%NUMBER_OF_GLOBAL
         !-------- If necessary, reset global domain index so that my computational node is in the first index position ------------
         !find out current domain index of my computational node
@@ -254,7 +254,7 @@ CONTAINS
             & DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(MY_DOMAIN_INDEX)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(MY_DOMAIN_INDEX) = TEMP
         ENDIF
-        
+
         !set the global adjacent_domains array to 1 for domains that share the current element
         DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
@@ -263,7 +263,7 @@ CONTAINS
             ADJACENT_DOMAINS(domain_no,domain_no2)=1
           ENDDO !domain_idx2
         ENDDO !domain_idx
-        
+
         !loop over domains where current element is
         DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
@@ -307,7 +307,7 @@ CONTAINS
           ENDIF
         ENDDO !domain_no2
       ENDDO !domain_no
-      
+
       ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
       ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(TOTAL_NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
@@ -473,13 +473,13 @@ CONTAINS
               DOMAIN_MAPPING%DOMAIN_LIST(DOMAIN_MAPPING%BOUNDARY_FINISH+NUMBER_GHOST)=local_number
               
               ! add local number of ghost element to receive list of domain from which to receive
-              CALL LIST_ITEM_ADD(GHOST_RECEIVE_LISTS(ADJACENT_DOMAIN_MAP(RECEIVE_FROM_DOMAIN))%PTR,local_number,ERR,ERROR,*999)              
+              CALL LIST_ITEM_ADD(GHOST_RECEIVE_LISTS(ADJACENT_DOMAIN_MAP(RECEIVE_FROM_DOMAIN))%PTR,local_number,ERR,ERROR,*999)
             CASE DEFAULT
               LOCAL_ERROR="The domain local type of "//TRIM(NUMBER_TO_VSTRING(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP( &
                 & global_number)%LOCAL_TYPE(domain_idx),"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
             END SELECT
-            
+
           ELSE IF(SEND_GLOBAL.AND.local_type==DOMAIN_LOCAL_GHOST) THEN
             local_number2=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(1) !The local number for this node
             CALL LIST_ITEM_ADD(GHOST_SEND_LISTS(ADJACENT_DOMAIN_MAP(domain_no))%PTR,local_number2,ERR,ERROR,*999)            
