@@ -17290,7 +17290,14 @@ CONTAINS
         IF(ERR/=0) CALL FlagError("Could not allocate geometric field parameters.",ERR,ERROR,*999)
         IF(FIELD%DECOMPOSITION%CALCULATE_LINES) THEN
           FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES=FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
-          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES),STAT=ERR)
+          !ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES),STAT=ERR)
+          ! Also lenghths of adj lines are computed, then allocate to total number of lines.
+          !This fixes the error for Hermite elements at:
+          !LENGTH2=LENGTH2+GEOMETRIC_FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(adjacent_local_node_line_idx)
+          !since adjacent lines could be ghost lines.
+          !...For -np 2!!!
+          ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%DECOMPOSITION%TOPOLOGY%LINES%TOTAL_NUMBER_OF_LINES), &
+            & STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate lengths.",ERR,ERROR,*999)
           FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS=0.0_DP
         ENDIF
@@ -39453,6 +39460,9 @@ CONTAINS
                         !Find a line of the correct Xi direction going through this node
                         FOUND=.FALSE.
                         DO node_line_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES
+                          !Node lines should include ghosts? Changed in mesh_routines.
+                          !DECOMPOSITION_LINES%LINES is allocated as TOTAL_NUMBER_OF_LOCAL,
+                          !then it makes sense.
                           local_node_line_idx=DOMAIN_NODES%NODES(node_idx)%NODE_LINES(node_line_idx)
                           IF(DECOMPOSITION_LINES%LINES(local_node_line_idx)%XI_DIRECTION==xi_direction) THEN
                             FOUND=.TRUE.
