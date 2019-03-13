@@ -2310,7 +2310,7 @@ CONTAINS
             solver_local_dof=0
 
             !Assume the adjacent domains for the solver matrix (COL_DOMAIN_MAPPING) is the same as for the first dependant variable
-            !>TODO, this wont work if different dependant variables have different adjacent domains.
+            !>TODO, this wont work if different dependent variables have different adjacent domains.
             !>TODO, loop through adjacent domains of each solver variable and map them to adjacent domains for the column domain mapping.
             COL_DOFS_MAPPING=>SOLVER_MAPPING%VARIABLES_LIST(solver_matrix_idx)%VARIABLES(1)% &
               & VARIABLE%DOMAIN_MAPPING

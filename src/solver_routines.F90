@@ -21628,6 +21628,7 @@ CONTAINS
                                 IF (numberOfComputationalNodes==1) THEN
                                   local_number=column_number
                                 ELSE
+                                  ! Global_to_local_map taken out.
                                   local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(column_number)%LOCAL_NUMBER(1)
                                 END IF
                                 CALL DistributedVector_ValuesSet(SOLVER_VECTOR,local_number,VALUE,ERR,ERROR,*999)

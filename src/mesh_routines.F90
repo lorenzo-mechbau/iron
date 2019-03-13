@@ -1260,7 +1260,6 @@ CONTAINS
       !Calculate the line topology
       IF(DECOMPOSITION%CALCULATE_LINES)THEN
         CALL DECOMPOSITION_TOPOLOGY_LINES_CALCULATE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
-        !STOP
       ENDIF
       !Calculate the face topology
       IF(DECOMPOSITION%CALCULATE_FACES) THEN
@@ -2649,8 +2648,10 @@ CONTAINS
     DECOMPOSITION_LINES%NUMBER_OF_LINES=LINES_MAPPING%NUMBER_OF_LOCAL
     DECOMPOSITION_LINES%TOTAL_NUMBER_OF_LINES=LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
     DECOMPOSITION_LINES%NUMBER_OF_GLOBAL_LINES=LINES_MAPPING%NUMBER_OF_GLOBAL
+    !Changed to total number of lines:
+    !Scaling for Hermite elements requires lengths of lines adjacent to a node,
+    !which could be ghost lines.
     !DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
-    !Changed to total number of lines! Error @Hermite elements becomes a Petsc error for -np 4!
     DO local_line_idx=1,DOMAIN_LINES%TOTAL_NUMBER_OF_LINES
       CALL DECOMPOSITION_TOPOLOGY_LINE_INITIALISE(DECOMPOSITION_LINES%LINES(local_line_idx),ERR,ERROR,*999)
       CALL DOMAIN_TOPOLOGY_LINE_INITIALISE(DOMAIN_LINES%LINES(local_line_idx),ERR,ERROR,*999)
@@ -2878,10 +2879,11 @@ CONTAINS
                       DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES=0
                     ENDDO !node_idx
                     DEALLOCATE(NODES_NUMBER_OF_LINES)
-                    !DO local_line_idx=1,DOMAIN_LINES%TOTAL_NUMBER_OF_LINES
-                    !Changed to total number of lines in the analogous loop above.
-                    !Change here does not affect result.
-                    DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
+                    !Changed to total number of lines as in the analogous loop above.
+                    !Since this loop is entered only for further mesh components,
+                    !it has not been tested yet.
+                    !DO local_line_idx=1,DOMAIN_LINES%NUMBER_OF_LINES
+                    DO local_line_idx=1,DOMAIN_LINES%TOTAL_NUMBER_OF_LINES
                       DOMAIN_LINE=>DOMAIN_LINES%LINES(local_line_idx)
                       BASIS=>DOMAIN_LINE%BASIS
                       DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES
@@ -7649,7 +7651,6 @@ CONTAINS
                       DEALLOCATE(GHOST_NODES)
                     END DO
                   END IF
-                  !STOP
 
                   !Calculate ghost node and dof mappings
                   DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1

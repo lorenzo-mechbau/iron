@@ -9557,7 +9557,9 @@ CONTAINS
             ENDIF
             DO component_idx=startComponentIdx,endComponentIdx
               LINES_TOPOLOGY=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%LINES
-              IF(LINE_NUMBER>0.AND.LINE_NUMBER<=LINES_TOPOLOGY%NUMBER_OF_LINES) THEN
+              !IF(LINE_NUMBER>0.AND.LINE_NUMBER<=LINES_TOPOLOGY%NUMBER_OF_LINES) THEN
+              !Consider ghosts as well.
+              IF(LINE_NUMBER>0.AND.LINE_NUMBER<=LINES_TOPOLOGY%TOTAL_NUMBER_OF_LINES) THEN
                 BASIS=>LINES_TOPOLOGY%LINES(LINE_NUMBER)%BASIS
                 INTERPOLATION_PARAMETERS%BASES(component_idx)%PTR=>BASIS
                 IF(component_idx==1) THEN
@@ -17290,12 +17292,11 @@ CONTAINS
         IF(ERR/=0) CALL FlagError("Could not allocate geometric field parameters.",ERR,ERROR,*999)
         IF(FIELD%DECOMPOSITION%CALCULATE_LINES) THEN
           FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES=FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
-          !ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES),STAT=ERR)
-          ! Also lenghths of adj lines are computed, then allocate to total number of lines.
-          !This fixes the error for Hermite elements at:
+          !Also lengths of adjacent lines must be computed, then allocate to total number of lines.
+          !This fixes the error for Hermite elements at (computation of scalings):
           !LENGTH2=LENGTH2+GEOMETRIC_FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(adjacent_local_node_line_idx)
-          !since adjacent lines could be ghost lines.
-          !...For -np 2!!!
+          !since lines adjacent to a node could be ghost lines.
+          !ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%GEOMETRIC_FIELD_PARAMETERS%NUMBER_OF_LINES),STAT=ERR)
           ALLOCATE(FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(FIELD%DECOMPOSITION%TOPOLOGY%LINES%TOTAL_NUMBER_OF_LINES), &
             & STAT=ERR)
           IF(ERR/=0) CALL FlagError("Could not allocate lengths.",ERR,ERROR,*999)
@@ -17655,7 +17656,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the line lengths from the parameters of a geomhttps://www.google.com/search?client=ubuntu&channel=fs&q=symplectic&ie=utf-8&oe=utf-8etric field. Old CMISS name LINSCA
+  !>Calculates the line lengths from the parameters of a geometric field. Old CMISS name LINSCA
+  !>https://www.google.com/search?client=ubuntu&channel=fs&q=symplectic&ie=utf-8&oe=utf-8
   SUBROUTINE Field_GeometricParametersLineLengthsCalculate(FIELD,ERR,ERROR,*)
 
     !Argument variables
@@ -17716,7 +17718,9 @@ CONTAINS
               MAXIMUM_LENGTH_DIFFERENCE=0.0_DP
               MAXIMUM_DIFFERENCE_LINE=1
               !Loop over the lines
-              DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
+              !DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
+              !Compute lengths of ghost lines as well.
+              DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%TOTAL_NUMBER_OF_LINES
                 CALL FIELD_INTERPOLATION_PARAMETERS_LINE_GET(FIELD_VALUES_SET_TYPE,nl, &
                   & INTERPOLATION_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
                 OLD_LINE_LENGTH=FIELD%GEOMETRIC_FIELD_PARAMETERS%LENGTHS(nl)
@@ -17794,7 +17798,9 @@ CONTAINS
       CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Maximum difference line = ",MAXIMUM_DIFFERENCE_LINE,ERR,ERROR,*999)
       CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"  Number of lines = ",FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES, &
         & ERR,ERROR,*999)
-      DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
+      !Include ghosts.
+!     DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%NUMBER_OF_LINES
+      DO nl=1,FIELD%DECOMPOSITION%TOPOLOGY%LINES%TOTAL_NUMBER_OF_LINES
         CALL WRITE_STRING_FMT_TWO_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Line ",nl,"(I8)"," length = ",FIELD% &
           & GEOMETRIC_FIELD_PARAMETERS% LENGTHS(nl),"*",ERR,ERROR,*999)
       ENDDO !nl
@@ -39460,7 +39466,7 @@ CONTAINS
                         !Find a line of the correct Xi direction going through this node
                         FOUND=.FALSE.
                         DO node_line_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_NODE_LINES
-                          !Node lines should include ghosts? Changed in mesh_routines.
+                          !Node lines should include ghosts: Changes made in mesh_routines.
                           !DECOMPOSITION_LINES%LINES is allocated as TOTAL_NUMBER_OF_LOCAL,
                           !then it makes sense.
                           local_node_line_idx=DOMAIN_NODES%NODES(node_idx)%NODE_LINES(node_line_idx)
