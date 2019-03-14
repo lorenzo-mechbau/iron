@@ -4500,6 +4500,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: numberOfComputationalNodes
 
     ENTERS("DOMAIN_MAPPINGS_INITIALISE",ERR,ERROR,*999)
 
@@ -4507,6 +4508,10 @@ CONTAINS
       IF(ASSOCIATED(DOMAIN%MAPPINGS)) THEN
         CALL FlagError("Domain already has mappings associated.",ERR,ERROR,*999)
       ELSE
+
+        numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+        IF(ERR/=0) GOTO 999
+
         ALLOCATE(DOMAIN%MAPPINGS,STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate domain mappings.",ERR,ERROR,*999)
         DOMAIN%MAPPINGS%DOMAIN=>DOMAIN
@@ -4538,12 +4543,18 @@ CONTAINS
         CASE(3)
           IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
             !FIXTHIS
-            CALL FlagError("3D is not yet implemented for line mappings",ERR,ERROR,*999)
+            !If 1 node no need to compute line mapping
+            IF (numberOfComputationalNodes>1) THEN
+              CALL FlagError("3D is not yet implemented for line mappings",ERR,ERROR,*999)
             !FIXTHIS The below subroutine needs to be modified for 3D models and DECOMPOSITION_TOPOLOGY_LINES_CALCULATE needs to be updated
             !Or a DomainMappings_3DLinesInitialise and DomainMappings_3DLinesCalculate should be created to create the lines in 3D models
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            !DomainMappings_LinesInitialise just calls mapping initialise so no need to modify.
+              CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
             !FIXTHIS change this to 3D lines calculate and create the subroutine
-            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+              CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+            ELSE
+              CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            END IF
           ENDIF
           !else do nothing
           IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
