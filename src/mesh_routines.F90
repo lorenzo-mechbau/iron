@@ -1272,7 +1272,9 @@ CONTAINS
                   CASE(1)
                     CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999)! merge into topology lines and generalise
                   CASE(3)
-                    CALL FlagError("3D is not yet implemented for line mappings!!",ERR,ERROR,*999)
+                    CALL DomainMappings_3DLinesCalculate(DOMAIN,ERR,ERROR,*999)! merge into topology lines and generalise
+                    !STOP
+                    !CALL FlagError("3D is not yet implemented for line mappings!!",ERR,ERROR,*999)
                   END SELECT
                   DOMAIN_LINES=>DOMAIN%TOPOLOGY%LINES
                   ALLOCATE(DOMAIN_LINES%LINES(DOMAIN%MAPPINGS%LINES%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
@@ -2512,7 +2514,8 @@ CONTAINS
       & surrounding_element_basis_local_line_idx,element_local_node_idx,basis_local_line_node_idx,derivative_idx,version_idx, &
       & local_line_idx,surrounding_element_local_line_idx,node_idx,local_node_idx,elem_idx,line_end_node_idx,basis_node_idx, &
       & NODES_IN_LINE(4),LINE_NUMBER,COUNT, xicIdx,elementLocalNo, &
-      & elementGlobalNo, componentIdx, startNic, lineBasisLocalNo, lineGlobalNo, lineGlobalNo2, lineIdx, lineLocalNo
+      & elementGlobalNo, componentIdx, startNic, lineBasisLocalNo, lineGlobalNo, lineGlobalNo2, lineIdx, lineLocalNo, &
+      & numberOfCoord3DStart, numberOfCoord3DEnd, xicIdx2
     INTEGER(INTG), ALLOCATABLE :: NODES_NUMBER_OF_LINES(:)
     INTEGER(INTG), POINTER :: TEMP_LINES(:,:),NEW_TEMP_LINES(:,:)
     LOGICAL :: FOUND
@@ -2600,70 +2603,90 @@ CONTAINS
 
       elementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
 
+      !TWO normal directions per line in 3D, ONE in 2D
+      IF(DECOMPOSITION%numberOfDimensions==3) THEN
+       numberOfCoord3DStart = startNic
+       numberOfCoord3DEnd   = MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+      ELSE
+       numberOfCoord3DStart = 1
+       numberOfCoord3DEnd   = 1
+      END IF
+
       DO xicIdx = startNic,MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
-        IF(xicIdx ==0) CYCLE
+        !Double loop for 3D only
+        DO xicIdx2 = numberOfCoord3DStart, numberOfCoord3DEnd
 
-        SELECT CASE(DECOMPOSITION%numberOfDimensions)
-        CASE(1)
-          lineBasisLocalNo=1
-        CASE(2)
-          lineBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,1)
-        ENDSELECT
+          IF(xicIdx ==0 .OR. xicIdx2==0) CYCLE
 
-        NODES_IN_LINE=0
-        DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo)
-          NODES_IN_LINE(basis_local_line_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
-            & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,lineBasisLocalNo))
-        ENDDO !basis_local_line_node_idx
+          SELECT CASE(DECOMPOSITION%numberOfDimensions)
+          CASE(1)
+            lineBasisLocalNo=1
+          CASE(2)
+            lineBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,1)
+          CASE(3)
+            lineBasisLocalNo=BASIS%xiNormalsLocalLine(xicIdx,xicIdx2)
+            IF (lineBasisLocalNo==0) CYCLE
+          ENDSELECT
 
-        !Try and find a previously created line that matches in the adjacent elements
-        FOUND=.FALSE.
-        node_idx=NODES_IN_LINE(1)
-        DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
-          surroundingElementLocalNo=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
-          IF(surroundingElementLocalNo/=elementLocalNo) THEN
-            IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%ELEMENT_LINES)) THEN
-              BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%BASIS
-              DO surrounding_element_basis_local_line_idx=1,BASIS2%NUMBER_OF_LOCAL_LINES
-                local_line_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)% &
-                  & ELEMENT_LINES(surrounding_element_basis_local_line_idx)
-                IF(ALL(NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo))== &
-                  & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo),local_line_idx))) THEN
-                  FOUND=.TRUE.
-                  EXIT
-                ENDIF
-              ENDDO !surrounding_element_basis_local_line_idx
-              IF(FOUND) EXIT
-            ENDIF
-          ENDIF
-        ENDDO !elem_idx
-
-        IF(FOUND) THEN
-          !Line has already been created
-          DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)=local_line_idx
-        ELSE
-
-          lineGlobalNo=MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx)
-
-          !Find the line local number
-          DO lineIdx = 1,LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
-            lineGlobalNo2 = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(lineIdx)
-
-            IF(lineGlobalNo == lineGlobalNo2) THEN
-              lineLocalNo=lineIdx
-              EXIT
-            ENDIF
-          ENDDO !lineIdx
-          DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)=lineLocalNo
-          TEMP_LINES(:,lineLocalNo)=NODES_IN_LINE
-
-          DO basis_local_line_node_idx=1,SIZE(NODES_IN_LINE,1)
-            IF(NODES_IN_LINE(basis_local_line_node_idx)/=0) &
-              & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))= &
-              & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))+1
+          NODES_IN_LINE=0
+          DO basis_local_line_node_idx=1,BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo)
+            NODES_IN_LINE(basis_local_line_node_idx)=DOMAIN_ELEMENT%ELEMENT_NODES( &
+              & BASIS%NODE_NUMBERS_IN_LOCAL_LINE(basis_local_line_node_idx,lineBasisLocalNo))
           ENDDO !basis_local_line_node_idx
 
-        ENDIF
+          !Try and find a previously created line that matches in the adjacent elements
+          FOUND=.FALSE.
+          node_idx=NODES_IN_LINE(1)
+          DO elem_idx=1,DOMAIN_NODES%NODES(node_idx)%NUMBER_OF_SURROUNDING_ELEMENTS
+            surroundingElementLocalNo=DOMAIN_NODES%NODES(node_idx)%SURROUNDING_ELEMENTS(elem_idx)
+            IF(surroundingElementLocalNo/=elementLocalNo) THEN
+              IF(ALLOCATED(DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%ELEMENT_LINES)) THEN
+                BASIS2=>DOMAIN_ELEMENTS%ELEMENTS(surroundingElementLocalNo)%BASIS
+                DO surrounding_element_basis_local_line_idx=1,BASIS2%NUMBER_OF_LOCAL_LINES
+                  local_line_idx=DECOMPOSITION_ELEMENTS%ELEMENTS(surroundingElementLocalNo)% &
+                    & ELEMENT_LINES(surrounding_element_basis_local_line_idx)
+                  IF(ALL(NODES_IN_LINE(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo))== &
+                    & TEMP_LINES(1:BASIS%NUMBER_OF_NODES_IN_LOCAL_LINE(lineBasisLocalNo),local_line_idx))) THEN
+                    FOUND=.TRUE.
+                    EXIT
+                  ENDIF
+                ENDDO !surrounding_element_basis_local_line_idx
+                IF(FOUND) EXIT
+              ENDIF
+            ENDIF
+          ENDDO !elem_idx
+
+          IF(FOUND) THEN
+            !Line has already been created
+            DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)=local_line_idx
+          ELSE
+
+          IF(DECOMPOSITION%numberOfDimensions==3) THEN
+            lineGlobalNo=MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdx,xicIdx2)
+          ELSE
+            lineGlobalNo=MESH_TOPOLOGY%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(xicIdx)
+          END IF
+            !Find the line local number
+            DO lineIdx = 1,LINES_MAPPING%TOTAL_NUMBER_OF_LOCAL
+              lineGlobalNo2 = LINES_MAPPING%LOCAL_TO_GLOBAL_MAP(lineIdx)
+
+              IF(lineGlobalNo == lineGlobalNo2) THEN
+                lineLocalNo=lineIdx
+                EXIT
+              ENDIF
+            ENDDO !lineIdx
+            DECOMPOSITION_ELEMENT%ELEMENT_LINES(lineBasisLocalNo)=lineLocalNo
+            TEMP_LINES(:,lineLocalNo)=NODES_IN_LINE
+
+            DO basis_local_line_node_idx=1,SIZE(NODES_IN_LINE,1)
+              IF(NODES_IN_LINE(basis_local_line_node_idx)/=0) &
+                & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))= &
+                & NODES_NUMBER_OF_LINES(NODES_IN_LINE(basis_local_line_node_idx))+1
+            ENDDO !basis_local_line_node_idx
+
+          ENDIF
+
+        ENDDO !xicIdx2
       ENDDO !xicIdx
     ENDDO !elementLocalNo
 
@@ -4558,40 +4581,23 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*999)
 
-        !Map the local face numbers to the global numbers
+        !Initialise lines
+        IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) &
+          & CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999) ! leave here
+
+        !Map the local line numbers to the global numbers:
+        !All moved to DECOMPOSITION_TOPOLOGY_CALCULATE
         SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
         CASE(1)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999) ! leave here
-            !CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999) ! merge into topology and generalise
-          ENDIF
+          !IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) &
+          !  & CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999) ! moved to topology
         CASE(2)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)! leave here
-            !CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)! merge into topology and generalise
-          ENDIF
-          !else do nothing
+          !IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) &
+          !  & CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999) ! moved to topology
         CASE(3)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            !FIXTHIS
-            !If 1 node no need to compute line mapping but needs fixing
-            IF (numberOfComputationalNodes>1) THEN
-              CALL FlagError("3D is not yet implemented for line mappings",ERR,ERROR,*999)
-            !FIXTHIS The below subroutine needs to be modified for 3D models and DECOMPOSITION_TOPOLOGY_LINES_CALCULATE needs to be updated
-            !Or a DomainMappings_3DLinesInitialise and DomainMappings_3DLinesCalculate should be created to create the lines in 3D models
-            !DomainMappings_LinesInitialise just calls mapping initialise so no need to modify.
-            !  CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            !FIXTHIS change this to 3D lines calculate and create the subroutine
-            !  CALL DomainMappings_3DLinesCalculate(DOMAIN,ERR,ERROR,*999)
-            ELSE
-              CALL FlagError("3D is not yet implemented for line mappings also 1 rank.",ERR,ERROR,*999)
-              !CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            END IF
-          ENDIF
-          !else do nothing
+          !IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) &
+          !  & CALL DomainMappings_3DLinesCalculate(DOMAIN,ERR,ERROR,*999) ! moved to topology
           IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
-            !FIXTHIS
-            ! CALL FlagError("3D is not yet implemented for face mappings",ERR,ERROR,*999)
             !FIXTHIS The below subroutine needs to be tested for 3D models and DECOMPOSITION_TOPOLOGY_FACES_CALCULATE needs to be updated
             CALL DomainMappings_FacesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
             CALL DomainMappings_FacesCalculate(DOMAIN,ERR,ERROR,*999)
@@ -6244,7 +6250,7 @@ CONTAINS
         onOtherDomain = .FALSE.
 
 
-        ! determine if any of this lines adjacent elements are boundary elements, that is the case if it is a boundary line.
+        ! determine if any of this lines adjacent elements are boundary elements
         DO adjacentElementIdx=1,topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements
           adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
 
@@ -7303,6 +7309,1395 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Calculates the local/global 3D line mappings for a domain decomposition.
+  SUBROUTINE DomainMappings_3DLinesCalculate(domain,err,error,*)
+
+    !Argument variables
+    TYPE(DOMAIN_TYPE), POINTER :: domain !<A pointer to the domain to calculate the Line dofs for.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: myComputationalNodeNumber,numberComputationalNodes,componentIdx,numberBoundaryElementLinesList, &
+      & lineGlobalNo, lineCount, elementGlobalNo, elementLocalNo, startNic, xicIdx, elementIdx, xicIdx2, &
+      & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementLocalNo, I, J, adjacentElementGlobalNo2, &
+      & arrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
+      & numberNonBoundaryPlaneAndLocalLines(2), numberLocalLines, numberAdjacentDomains, MPI_IERROR, numberSharedLines,  &
+      & numberLinesWithThatSetOfDomains, sharedLineIdx2, boundaryElementLinesIdx2, domainToAssignLinesToIdx, sharedLineIdx,&
+      & domainToAssignLinesTo, adjacentDomainIdx2, numberLocalLinesOnRank, numberNonBoundaryLinesOnRank, &
+      & numberSharedLinesOnRank, numberInCurrentSetToClaim, ghostLineIdx, ghostLineGlobalNo, ghostDomain, &
+      & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfLinesToReceive, internalLinesIdx, &
+      & boundaryLinesIdx, localLineNo, domainListInternalIdx, domainListBoundaryIdx, internalLineGlobalNo, boundaryLineGlobalNo, &
+      & domainListGhostIdx, dummyErr, numberBoundaryPlaneLines, domainNo3, lineIdx, &
+      & boundaryElementLinesIdx, basisLocalLineIdx2, &
+      & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, meshNodeNo, surroundingElemIdx, basisLocalLineIdx, &
+      & normalToFaceIdx, normalToFaceIdx2, xicIdxArr(2), xicIdx2Arr(2), numberOfAdjacentElements, adjElementsIdx, &
+      & surrElsIdx
+    !
+    INTEGER(INTG), ALLOCATABLE :: internalLines(:), integerArray(:), boundaryElementLines(:), sendRequestHandle(:), &
+      & numberNonBoundaryPlaneAndLocalLinesOnRank(:,:), receiveRequestHandle(:), boundaryElementLinesDomain(:), &
+      & numberLinesInDomain(:),adjacentDomains(:), localAndAdjacentDomains(:), boundaryLines(:), &
+      & sendRequestHandle0(:), sendRequestHandle1(:), ghostLinesDomains(:,:), sendBuffer(:,:), numberToSendToDomain(:), &
+      & receiveBuffer(:), lineOnBoundaryPlane(:), integerArray2D(:,:), extraAdjacentDomains(:), &
+      & tempArray(:)
+    TYPE(MESH_TYPE), POINTER :: mesh
+    TYPE(MeshComponentTopologyType), POINTER :: topology
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: linesMapping
+    TYPE(LIST_TYPE), POINTER :: internalLinesList, boundaryElementLinesList, adjacentDomainsList, &
+      & localAndAdjacentDomainsList, boundaryLinesList, ghostLinesDomainsList,extraAdjacentDomainsList
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfLineList(:), sharedLinesList(:), sendBufferList(:), localGhostSendIndices(:), &
+       & localGhostReceiveIndices(:), domainsOfBoundaryPlaneLineList(:)
+    REAL(DP) :: numberLines, optimalNumberLinesPerDomain, totalNumberLines, portionToDistribute, numberLinesAboveOptimum
+    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found
+    TYPE(VARYING_STRING) :: dummyError, localError
+
+    ENTERS("DomainMappings_3DLinesCalculate",err,error,*999)
+
+
+    !FIXTHIS shouldn't be indented, we want something like this... IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
+    !Also fix typecase on subroutine calls. And but allocate parts in DomainMappings_LinesInitialise subroutine
+    IF(.NOT.ASSOCIATED(domain)) CALL FlagError("domain is not associated.",err,error,*999)
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS)) CALL FlagError("domain%MAPPINGS is not associated.",err,error,*999)
+    linesMapping=>domain%MAPPINGS%LINES
+
+    IF(.NOT.ASSOCIATED(domain%MAPPINGS%ELEMENTS)) CALL FlagError("domain%MAPPINGS%ELEMENTS is not associated.",err,error,*999)
+    elementsMapping=>domain%MAPPINGS%ELEMENTS
+    IF(.NOT.ASSOCIATED(domain%decomposition)) CALL FlagError("domain%decomposition is not associated.",err,error,*999)
+    decomposition=>domain%decomposition
+    IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*999)
+    mesh=>domain%mesh
+    componentIdx=domain%MESH_COMPONENT_NUMBER
+    topology=>mesh%topology(componentIdx)%PTR
+
+    numberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(err,error)
+    IF(err/=0) GOTO 999
+    myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
+    IF(err/=0) GOTO 999
+
+    IF(DIAGNOSTICS1) THEN
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+        & "  numberComputationalNodes: ",numberComputationalNodes,err,error,*999)
+
+    ENDIF
+
+
+    ! create list for internal Lines
+    NULLIFY(internalLinesList)
+    CALL LIST_CREATE_START(internalLinesList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(internalLinesList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(internalLinesList,elementsMapping%NUMBER_OF_LOCAL*2,err,error,*999)
+    CALL LIST_CREATE_FINISH(internalLinesList,err,error,*999)
+
+
+    !determine start Nic for basis directions, i.e quads have (-3,-2,-1,1,2,3), tets have (1,2,3,4)
+    !Assumes all elements have the same basis
+    !>TODO Do not assume this assumption!!!
+    SELECT CASE(topology%ELEMENTS%ELEMENTS(1)%BASIS%TYPE)
+    CASE(BASIS_SIMPLEX_TYPE)
+      startNic=1
+    CASE(BASIS_LAGRANGE_HERMITE_TP_TYPE)
+      startNic=-topology%ELEMENTS%ELEMENTS(1)%BASIS%NUMBER_OF_XI_COORDINATES
+    CASE DEFAULT
+      !do nothing
+    END SELECT
+
+
+!>>.............. Topology equations should be in its own subroutine eventually
+
+
+
+    CALL DomainTopology_AssignGlobalLinesInitialise(domain,err,error,*999)
+    !could seperate the following into seperate subroutines
+    !CALL DomainTopology_AssignGlobalLinesAndSurroundingElements(topology,err,error,*999)
+    !CALL DomainTopology_AssignGlobalLines(topology,err,error,*999)
+    !Assign global numbers to each line
+    lineCount=0
+
+    !FIXTHIS, change number order so that it is -2,2,-1,1
+    DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
+      basisLocalLine: DO basisLocalLineIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+
+        ! TWO faces per line in 3D
+        xicIdxArr = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(:,basisLocalLineIdx)
+
+      ! DO xicIdx = startNic,topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+        IF(xicIdxArr(1)==0 .OR. xicIdxArr(2)==0) CYCLE
+          ! adjacent element in dir 0 is the same element
+        numberOfAdjacentElements = 0
+        DO adjElementsIdx=1,3 ! 2 normal directions + diagonal
+          !Get adjacent in direction xi1 or xi2
+          IF (adjElementsIdx /= 3) THEN
+            normalToFaceIdx=adjElementsIdx
+            IF(topology%ELEMENTS%ELEMENTS(elementGlobalNo)%ADJACENT_ELEMENTS(xicIdxArr(normalToFaceIdx))% &
+              & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+              adjacentElementGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)% &
+                & ADJACENT_ELEMENTS(xicIdxArr(normalToFaceIdx))%ADJACENT_ELEMENTS(1)
+              numberOfAdjacentElements = numberOfAdjacentElements+1
+            ELSE
+              CYCLE
+            END IF
+          ! Needs to check also diagonal ("horse" one xi1 + one xi2) if we reached this point:
+          ! i.e. 2 adj elements xi1 and xi2 whose lines are not numbered yet:
+          ! line could belong to diagonal element.
+          ELSE IF (adjElementsIdx == 3 .AND. numberOfAdjacentElements==2) THEN
+            ! This element was checked already
+            adjacentElementGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)% &
+              & ADJACENT_ELEMENTS(xicIdxArr(1))%ADJACENT_ELEMENTS(1)
+            !Check for a diagonal element
+            IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)% &
+              & ADJACENT_ELEMENTS(xicIdxArr(2))%NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+              adjacentElementGlobalNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)% &
+                & ADJACENT_ELEMENTS(xicIdxArr(2))%ADJACENT_ELEMENTS(1)
+            END IF
+          ELSE
+            CYCLE
+          END IF
+
+          !Check if line is already numbered from previous element
+          IF(adjacentElementGlobalNo<=elementGlobalNo) THEN
+            IF(adjElementsIdx/=3) THEN
+              DO basisLocalLineIdx2 = 1, topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+            ! TWO faces per line in 3D
+                xicIdx2Arr = topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo) &
+                  & %BASIS%localLineXiNormals(:,basisLocalLineIdx2)
+                DO normalToFaceIdx2=1,2
+                  IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS(xicIdx2Arr(normalToFaceIdx2))% &
+                    & NUMBER_OF_ADJACENT_ELEMENTS==1) THEN
+                    IF(topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%ADJACENT_ELEMENTS &
+                      (xicIdx2Arr(normalToFaceIdx2))%ADJACENT_ELEMENTS(1)==elementGlobalNo) THEN
+                      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))= &
+                        & topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%GLOBAL_ELEMENT_3DLINES &
+                        & (xicIdx2Arr(1),xicIdx2Arr(2))
+                      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(2),xicIdxArr(1)) = &
+                        & topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))
+                      ! Line is numbered: next line
+                      CYCLE basisLocalLine
+                    ENDIF
+                  END IF
+                END DO !normalToFaceIdx2
+              END DO !basisLocalLine2
+            ! case diagonal
+            !>TODO check!!!
+            ELSE IF (adjElementsIdx == 3 .AND. numberOfAdjacentElements==2) THEN
+              topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))= &
+                & topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%GLOBAL_ELEMENT_3DLINES &
+                & (-xicIdxArr(1),-xicIdxArr(2))
+               topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(2),xicIdxArr(1))= &
+                 & topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))
+              CYCLE basisLocalLine
+            END IF
+          END IF
+        ENDDO
+        !We did not cycle basisLocalLine, so line is new (boundary or adjacent to new elements)
+        lineCount=lineCount+1
+        topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))=lineCount
+        topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(2),xicIdxArr(1))=lineCount
+      ENDDO basisLocalLine! basisLocalLineIdx
+    ENDDO ! elementGlobalNo
+
+    IF (DIAGNOSTICS1) THEN
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+        & "number of lines: ",lineCount,err,error,*999)
+      DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+          & "Element ",elementGlobalNo,err,error,*999)
+        DO basisLocalLineIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+
+          xicIdxArr = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(:,basisLocalLineIdx)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+            & "  Local line number ",basisLocalLineIdx,err,error,*999)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, &
+            & "  Global line no.   ", &
+            & topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2)),err,error,*999)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, &
+            & "  Normal1  ", &
+            & xicIdxArr(1),err,error,*999)
+          CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, &
+            & "  Normal2  ", &
+            & xicIdxArr(2),err,error,*999)
+        ENDDO
+      END DO
+    ENDIF
+
+    !FIXTHIS This doesn't neccessarily need to be using a type, could just use allocatable local arrays
+    ALLOCATE(topology%lines)
+    topology%lines%numberOfLines=lineCount
+    ALLOCATE(topology%lines%lines(lineCount))
+
+
+    !Iterate through the elements to allocate surrounding elements This should be done in an initialise subroutine
+    DO lineGlobalNo = 1,topology%lines%numberOfLines
+
+      ALLOCATE(topology%lines%lines(lineGlobalNo)%surroundingElements(4))
+      topology%lines%lines(lineGlobalNo)%surroundingElements=-1
+      topology%lines%lines(lineGlobalNo)%globalNumber=lineGlobalNo
+      topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements=0
+
+    ENDDO
+
+
+    !Iterate through the elements to assign them as neighbouring elements of the lines
+    DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
+      !Iterate through the lines of this element
+      DO basisLocalLineIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdxArr = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(:,basisLocalLineIdx)
+
+        lineGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))
+
+        DO surrElsIdx=1,4
+          IF(topology%lines%lines(lineGlobalNo)%surroundingElements(surrElsIdx)==-1) THEN
+            topology%lines%lines(lineGlobalNo)%surroundingElements(surrElsIdx)=elementGlobalNo
+            topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements=topology%lines%lines(lineGlobalNo)% &
+              & numberOfSurroundingElements+1
+            EXIT
+          END IF
+        END DO
+      ENDDO ! basisLocalLineIdx
+    ENDDO ! elementGlobalNo
+
+    DO lineGlobalNo = 1,topology%lines%numberOfLines
+
+      IF(topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements<=3) THEN !==1 2D
+        !The line is an external line
+        topology%lines%lines(lineGlobalNo)%externalLine=.TRUE.
+      ELSEIF(topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements==4) THEN !==2 2D
+        topology%lines%lines(lineGlobalNo)%externalLine=.FALSE.
+      ELSE
+        localError="A Line can have 4 surrounding elements max., not "//TRIM(NumberToVString( &
+          & topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements,"*",err,error))
+        CALL FlagError(localError,err,error,*999)
+      ENDIF
+
+    ENDDO
+!<<.............. Topology equations should be in their own subroutine eventually
+
+    !allocate temporary array for the global numbers of the boundary elements
+    ALLOCATE(tempArray(elementsMapping%NUMBER_OF_BOUNDARY))
+    tempArray=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START: &
+      & elementsMapping%BOUNDARY_FINISH))
+
+    ! determine interior Lines
+    ! loop over interior elements
+    DO elementIdx = elementsMapping%INTERNAL_START,elementsMapping%INTERNAL_FINISH
+      elementLocalNo = elementsMapping%DOMAIN_LIST(elementIdx)
+      elementGlobalNo = elementsMapping%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
+
+      !WRITE(*,*) "elementGlobalNo"
+      !WRITE(*,*) elementGlobalNo
+
+      ! loop over Lines of element
+      DO basisLocalLineIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdxArr = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(:,basisLocalLineIdx)
+
+        lineGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))
+
+        onOtherDomain = .FALSE.
+
+
+        ! determine if any of this lines adjacent elements are boundary elements
+        DO adjacentElementIdx=1,topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements
+          adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
+
+          !tempArray holds the global element numbers of the boundary elements of this rank
+          IF (SORTED_ARRAY_CONTAINS_ELEMENT(tempArray,adjacentElementGlobalNo,err,error)) THEN
+
+            onOtherDomain = .TRUE.
+            EXIT
+          ENDIF
+
+        ENDDO
+
+        !If line is not on a boundary element it is an internal line.
+        IF (.NOT. onOtherDomain) THEN
+          ! add Line to internal Line list
+          CALL LIST_ITEM_ADD(internalLinesList, lineGlobalNo,err,error,*999)
+        ENDIF
+      ENDDO
+    ENDDO
+
+    IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+
+
+    ! sort list by global line number store number of internal lines in lineMapping
+    CALL LIST_REMOVE_DUPLICATES(internalLinesList,err,error,*999)
+    CALL LIST_DETACH_AND_DESTROY(internalLinesList,linesMapping%NUMBER_OF_INTERNAL,&
+    & integerArray,err,error,*999)
+    ALLOCATE(internalLines(linesMapping%NUMBER_OF_INTERNAL))
+    internalLines=integerArray(1:linesMapping%NUMBER_OF_INTERNAL)
+    ! why do we need to go through integerArray?
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    IF (DIAGNOSTICS1) THEN
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+        & "number internal lines: ",linesMapping%NUMBER_OF_INTERNAL,err,error,*999)
+      DO I=1,linesMapping%NUMBER_OF_INTERNAL
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global line no. ", &
+          & internalLines(I),err,error,*999)
+      ENDDO
+    ENDIF
+
+    IF (numberComputationalNodes==1) THEN
+      linesMapping%TOTAL_NUMBER_OF_LOCAL=linesMapping%NUMBER_OF_INTERNAL
+      linesMapping%NUMBER_OF_LOCAL=linesMapping%NUMBER_OF_INTERNAL
+      linesMapping%NUMBER_OF_GLOBAL=linesMapping%NUMBER_OF_INTERNAL
+      linesMapping%NUMBER_OF_DOMAINS=1
+      linesMapping%NUMBER_OF_INTERNAL=linesMapping%NUMBER_OF_INTERNAL
+      linesMapping%NUMBER_OF_BOUNDARY=0
+      linesMapping%NUMBER_OF_GHOST=0
+
+      linesMapping%INTERNAL_START=1
+      linesMapping%INTERNAL_FINISH=linesMapping%INTERNAL_START+linesMapping%NUMBER_OF_INTERNAL-1
+      linesMapping%BOUNDARY_START=linesMapping%INTERNAL_FINISH+1
+      linesMapping%BOUNDARY_FINISH=linesMapping%BOUNDARY_START+linesMapping%NUMBER_OF_BOUNDARY-1
+      linesMapping%GHOST_START=linesMapping%BOUNDARY_FINISH+1
+      linesMapping%GHOST_FINISH=linesMapping%GHOST_START+linesMapping%NUMBER_OF_GHOST-1
+
+      linesMapping%NUMBER_OF_ADJACENT_DOMAINS=0
+      ! allocate ADJACENT_DOMAINS
+      ALLOCATE(linesMapping%ADJACENT_DOMAINS(linesMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+      IF(err/=0) CALL FlagError("Could not allocate adjacent domains array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(linesMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+      DO adjacentDomainIdx=1,linesMapping%NUMBER_OF_ADJACENT_DOMAINS
+        linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER = 0
+        linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = 0
+        linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = 0
+        linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
+      END DO
+      ALLOCATE(linesMapping%LOCAL_TO_GLOBAL_MAP(linesMapping%TOTAL_NUMBER_OF_LOCAL), STAT=err)
+      IF(err/=0) CALL FlagError("Could not allocate lines mapping local to global map with size "//&
+        & TRIM(NUMBER_TO_VSTRING(linesMapping%TOTAL_NUMBER_OF_LOCAL,"*",err,error))//".",err,error,*999)
+      ALLOCATE(linesMapping%DOMAIN_LIST(linesMapping%TOTAL_NUMBER_OF_LOCAL), STAT=err)
+      IF(err/=0) CALL FlagError("Could not allocate lines mapping domain list with size "//&
+        & TRIM(NUMBER_TO_VSTRING(linesMapping%TOTAL_NUMBER_OF_LOCAL,"*",err,error))//".",err,error,*999)
+
+      DO internalLinesIdx=1,linesMapping%TOTAL_NUMBER_OF_LOCAL
+        linesMapping%LOCAL_TO_GLOBAL_MAP(internalLinesIdx)=internalLinesIdx
+        linesMapping%DOMAIN_LIST(internalLinesIdx)=internalLinesIdx
+      END DO
+    ELSE
+      CALL FlagError("3D lines not ready for parallel runs yet!!!",err,error,*999)
+    END IF
+
+    !Correct at least up to here.
+    IF (.FALSE.) THEN
+    ! create list for lines on boundary elements (global line numbers)
+    NULLIFY(boundaryElementLinesList)
+    CALL LIST_CREATE_START(boundaryElementLinesList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(boundaryElementLinesList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(boundaryElementLinesList,elementsMapping%NUMBER_OF_LOCAL,err,error,*999)
+    CALL LIST_CREATE_FINISH(boundaryElementLinesList,err,error,*999)
+
+    ! loop over boundary elements
+    DO elementIdx = elementsMapping%BOUNDARY_START,elementsMapping%BOUNDARY_FINISH
+      elementLocalNo = elementsMapping%DOMAIN_LIST(elementIdx)
+      elementGlobalNo = elementsMapping%LOCAL_TO_GLOBAL_MAP(elementLocalNo)
+
+      ! loop over Lines of element
+      DO basisLocalLineIdx = 1, topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_LOCAL_LINES
+        xicIdxArr = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%localLineXiNormals(:,basisLocalLineIdx)
+
+        lineGlobalNo=topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES(xicIdxArr(1),xicIdxArr(2))
+
+
+        ! if global line is not contained in internal lines list (it shouldn't -> otherwise error)
+        IF (.NOT. SORTED_ARRAY_CONTAINS_ELEMENT(internalLines,lineGlobalNo,err,error)) THEN
+
+          ! Add line to boundary lines list
+          ! Important! Lines on boundary elements can be boundary or ghost lines.
+          IF(elementIdx<=elementsMapping%BOUNDARY_FINISH) THEN
+            CALL LIST_ITEM_ADD(boundaryElementLinesList,lineGlobalNo,err,error,*999)
+          ENDIF
+        ELSE
+          localError="global line number  "//TRIM(NumberToVString(lineGlobalNo,"*",err,error))// &
+          & " is contained in internal lines when it should be a boundary line."
+          CALL FlagError(localError,err,error,*999)
+        ENDIF
+      ENDDO
+    ENDDO
+
+    ! Sort list by global line number and remove duplicates
+    CALL LIST_REMOVE_DUPLICATES(boundaryElementLinesList,err,error,*999)
+
+    ! count number of lines that lie on boundary elements
+    CALL LIST_DETACH_AND_DESTROY(boundaryElementLinesList,numberBoundaryElementLinesList,integerArray,&
+      & err,error,*999)
+    ALLOCATE(boundaryElementLines(numberBoundaryElementLinesList))
+    boundaryElementLines = integerArray(1:numberBoundaryElementLinesList)
+
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    !Allocate the array whose value will be 1 if that index of boundaryElementLines is on the boundary plane
+    ALLOCATE(lineOnBoundaryPlane(numberBoundaryElementLinesList))
+    lineOnBoundaryPlane=-1
+
+    ! Allocate lists of foreign domains in which boundary element lines are present.
+    ! These will be the domains that have the relevant line as a ghost or boundary
+    ALLOCATE(domainsOfLineList(numberBoundaryElementLinesList),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate domain list.",err,error,*999)
+
+    ! Allocate lists of foreign domains that share a boundary plane with the boundary element line
+    ALLOCATE(domainsOfBoundaryPlaneLineList(numberBoundaryElementLinesList),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate domain list.",err,error,*999)
+
+    DO I=1, numberBoundaryElementLinesList
+      NULLIFY(domainsOfBoundaryPlaneLineList(I)%PTR)
+      CALL LIST_CREATE_START(domainsOfBoundaryPlaneLineList(I)%PTR,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(domainsOfBoundaryPlaneLineList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(domainsOfBoundaryPlaneLineList(I)%PTR,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS+1,err,error,*999)
+      CALL LIST_CREATE_FINISH(domainsOfBoundaryPlaneLineList(I)%PTR,err,error,*999)
+    ENDDO
+
+    DO I=1, numberBoundaryElementLinesList
+      NULLIFY(domainsOfLineList(I)%PTR)
+      CALL LIST_CREATE_START(domainsOfLineList(I)%PTR,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(domainsOfLineList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(domainsOfLineList(I)%PTR,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS+1,err,error,*999)
+      CALL LIST_CREATE_FINISH(domainsOfLineList(I)%PTR,err,error,*999)
+    ENDDO
+
+
+    !Counter for number of lines on the boundary plane
+    numberBoundaryPlaneLines=0
+
+    ! fill domainsOfBoundaryPlaneLineList with all foreign domains for each boundary plane line
+    ! domainsOf BoundaryPlaneLineList only includes the domains which are physically on the boundary plane
+
+    !Allocate temporary array for global numbers of ghost elements
+    ALLOCATE(tempArray(elementsMapping%NUMBER_OF_GHOST))
+    tempArray=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START: &
+      & elementsMapping%GHOST_FINISH))
+
+    ! loop over boundary element lines indices
+    DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
+      lineGlobalNo=boundaryElementLines(boundaryElementLinesIdx)
+
+      ! loop over adjacent elements of this line
+      DO adjacentElementIdx=1,topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements
+        adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
+
+
+        ! If adjacent element is among the ghost elements, i.e is also on another domain.
+        ! The tempArray has the global numbers of the ghost elements from ghost start in index 1
+        ! to ghost finish in the final index, therefore we can get the element idx from the index in the array.
+        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(tempArray,adjacentElementGlobalNo,arrayIndex, &
+          & err,error)) THEN
+
+          adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%GHOST_START + arrayIndex-1)
+
+          ! determine domain of adjacentElementLocalNo
+          DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+              & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+
+              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+              ! now it was found that lineGlobalNo is also on the boundary plane of domain domainNo, add to list
+              CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+
+              lineOnBoundaryPlane(boundaryElementLinesIdx)=1
+              numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
+
+              !now check if any of the adjacent elements to this adjacent element is on another domain.
+              !If it is add it to the domainsOfLineList for this lines index,
+              !the rest of domainsOfLineList gets assigned in the following section
+              DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES
+              !Fix this, atm iterating through nodes then surrounding elems of those nodes
+              !is the only way to find surrounding elems (including diagonal elems)
+                meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
+                DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
+                  adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
+
+                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                  !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+
+                  IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
+
+                    CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
+                  ENDIF
+                ENDDO !surroundingElemIdx
+              ENDDO !nodeIdx
+            ENDIF
+          ENDDO  ! adjacentDomainIdx
+        ENDIF
+      ENDDO  ! adjacentElementIdx
+    ENDDO  ! boundaryElementLinesIdx
+
+    IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+
+
+    ALLOCATE(tempArray(elementsMapping%NUMBER_OF_BOUNDARY))
+    tempArray=elementsMapping%LOCAL_TO_GLOBAL_MAP(elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START: &
+      & elementsMapping%BOUNDARY_FINISH))
+
+    ! loop over boundary element line indices and assign to each line the domains that have it as a ghost or boundary line
+    DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
+      lineGlobalNo=boundaryElementLines(boundaryElementLinesIdx)
+
+      ! loop over adjacent elements of this line
+      DO adjacentElementIdx=1,topology%lines%lines(lineGlobalNo)%numberOfSurroundingElements
+        adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
+
+
+        ! if adjacent element is among the boundary or ghost elements, i.e is also on another domain.
+        !The tempArray has the global numbers
+        !of the boundary elements from boundary start in index 1 to boundary finish in the final index,
+        !therefore we can get the element idx from the index in the array.
+        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(tempArray,adjacentElementGlobalNo,arrayIndex, &
+          & err,error)) THEN
+
+          adjacentElementLocalNo = elementsMapping%DOMAIN_LIST(elementsMapping%BOUNDARY_START + arrayIndex-1)
+
+          ! determine domain of adjacentElementLocalNo
+          DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+
+            domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+
+            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+              & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
+
+              ! now it was found that lineGlobalNo is also on domain domainNo, add to list
+              CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+            ENDIF
+          ENDDO  ! adjacentDomainIdxDomainMappings_LinesCalculate
+        ENDIF
+
+
+      ENDDO  ! adjacentElementIdx
+    ENDDO  ! boundaryElementLinesIdx
+
+    IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
+
+
+    !AdjacentDomainsList holds the domains that share a boundary plane
+    !(If the domain only shares a boundary plane node, but not a line it is not in adjacentDomainsList )
+    NULLIFY(adjacentDomainsList)
+    CALL LIST_CREATE_START(adjacentDomainsList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(adjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_CREATE_FINISH(adjacentDomainsList,err,error,*999)
+
+    !extraAdjeacent Domains holds the domains which share ghost/boundary elements with the current domain
+    NULLIFY(extraAdjacentDomainsList)
+    CALL LIST_CREATE_START(extraAdjacentDomainsList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(extraAdjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_CREATE_FINISH(extraAdjacentDomainsList,err,error,*999)
+
+    ! remove duplicate entries for the domains for the lines
+    DO I=1, numberBoundaryElementLinesList
+      CALL LIST_REMOVE_DUPLICATES(domainsOfBoundaryPlaneLineList(I)%PTR,err,error,*999)
+      CALL LIST_REMOVE_DUPLICATES(domainsOfLineList(I)%PTR,err,error,*999)
+
+      ! add adjacent domains to adjacentDomainsList
+      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(I)%PTR,numberDomains,err,error,*999)
+      DO J=1,numberDomains
+        CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(I)%PTR,J,adjacentDomain,err,error,*999)
+        CALL LIST_ITEM_ADD(adjacentDomainsList,adjacentDomain,err,error,*999)
+      ENDDO
+
+      ! add adjacent domains to extraAdjacentDomainsList
+      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfLineList(I)%PTR,numberDomains,err,error,*999)
+      DO J=1,numberDomains
+        CALL LIST_ITEM_GET(domainsOfLineList(I)%PTR,J,extraAdjacentDomain,err,error,*999)
+        CALL LIST_ITEM_ADD(extraAdjacentDomainsList,extraAdjacentDomain,err,error,*999)
+      ENDDO
+    ENDDO
+
+    ! determine distinct list of adjacent domains
+    CALL LIST_REMOVE_DUPLICATES(adjacentDomainsList,err,error,*999)
+    CALL LIST_REMOVE_DUPLICATES(extraAdjacentDomainsList,err,error,*999)
+
+    ! create sorted list that contains local domain and all adjacent domains that share a boundary plane
+    NULLIFY(localAndAdjacentDomainsList)
+    CALL LIST_CREATE_START(localAndAdjacentDomainsList,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(localAndAdjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_CREATE_FINISH(localAndAdjacentDomainsList,err,error,*999)
+    CALL LIST_ITEM_ADD(localAndAdjacentDomainsList,myComputationalNodeNumber,err,error,*999)
+    CALL LIST_APPENDLIST(localAndAdjacentDomainsList,adjacentDomainsList,err,error,*999)
+    CALL LIST_SORT(localAndAdjacentDomainsList,err,error,*999)
+
+    !numberAdjacentDomains is the number of domains that share a boundary plane line with the local domain
+    CALL LIST_DETACH_AND_DESTROY(adjacentDomainsList,numberAdjacentDomains,integerArray,err,error,*999)
+    ALLOCATE(adjacentDomains(numberAdjacentDomains))
+    adjacentDomains = integerArray(1:numberAdjacentDomains)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    !numberExtraAdjacentDomains is the number of domains that will share ghost/boundary lines with the local domain
+    CALL LIST_DETACH_AND_DESTROY(extraAdjacentDomainsList,numberExtraAdjacentDomains,integerArray,err,error,*999)
+    ALLOCATE(extraAdjacentDomains(numberExtraAdjacentDomains))
+    extraAdjacentDomains = integerArray(1:numberExtraAdjacentDomains)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    !numberLocalAndAdjacentDomains equals numberAdjacentDomains + 1, adding one for the local domain
+    CALL LIST_DETACH_AND_DESTROY(localAndAdjacentDomainsList,numberLocalAndAdjacentDomains,integerArray,&
+      & err,error,*999)
+    ALLOCATE(localAndAdjacentDomains(numberLocalAndAdjacentDomains))
+    localAndAdjacentDomains = integerArray(1:numberLocalAndAdjacentDomains)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    ! create list for each adjacent domain with shared lines at the boundary plane
+    ALLOCATE(sharedLinesList(numberAdjacentDomains),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate shared lines list.",err,error,*999)
+
+    DO adjacentDomainIdx=1,numberAdjacentDomains
+      NULLIFY(sharedLinesList(adjacentDomainIdx)%PTR)
+      CALL LIST_CREATE_START(sharedLinesList(adjacentDomainIdx)%PTR,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(sharedLinesList(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_CREATE_FINISH(sharedLinesList(adjacentDomainIdx)%PTR,err,error,*999)
+    ENDDO
+
+    ! fill sharedLinesList
+    DO I=1,numberBoundaryElementLinesList
+
+      ! loop over adjacent domains of line I
+      CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(I)%PTR,numberDomains,err,error,*999)
+      DO J=1,numberDomains
+        CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(I)%PTR,J,adjacentDomain,err,error,*999)
+
+        ! get index of sharedLinesList
+        IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(adjacentDomains,&
+          & adjacentDomain,adjacentDomainIdx,err,error)) THEN
+
+          ! add line to sharedLineslist of domain adjacentDomainIdx
+          CALL LIST_ITEM_ADD(sharedLinesList(adjacentDomainIdx)%PTR,I,err,error,*999)
+        ENDIF
+      ENDDO
+    ENDDO
+
+
+    ! Determine total number of lines on all ranks
+
+    ! Load balancing to eventually assign boundary lines
+    ! count number of lines where boundary plane lines are counted as the resp. fraction such that the sum is 1 for all processes
+    numberLines = REAL(linesMapping%NUMBER_OF_INTERNAL,DP)
+
+    DO I=1,numberBoundaryElementLinesList
+      IF(lineOnBoundaryPlane(I)==1) THEN
+        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(I)%PTR,numberDomains,err,error,*999)
+        numberLines = numberLines + 1.0_DP/(REAL(numberDomains,DP)+1.0_DP)
+      ELSE
+        numberLines = numberLines + 1.0_DP
+      ENDIF
+    ENDDO
+
+    ! allreduce number of lines
+    CALL MPI_ALLREDUCE(numberLines,totalNumberLines,1,MPI_DOUBLE,MPI_SUM, &
+      & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+    linesMapping%NUMBER_OF_GLOBAL = NINT(totalNumberLines)
+
+
+    ! compute average number per domain
+    linesMapping%NUMBER_OF_DOMAINS = elementsMapping%NUMBER_OF_DOMAINS
+    optimalNumberLinesPerDomain = REAL(linesMapping%NUMBER_OF_GLOBAL,DP) / linesMapping%NUMBER_OF_DOMAINS
+
+    ! exchange number of local lines among adjacent ranks
+    numberLocalLines = linesMapping%NUMBER_OF_INTERNAL + numberBoundaryElementLinesList
+    !First entry is the number of local lines, not including boundary plane or ghost lines
+    !Second entry is the number of local lines, including the boundary plane but not ghosts
+    numberNonBoundaryPlaneAndLocalLines(1) = numberLocalLines-numberBoundaryPlaneLines
+    numberNonBoundaryPlaneAndLocalLines(2) = numberLocalLines
+
+    ! allocate request handles
+    ALLOCATE(sendRequestHandle(numberLocalAndAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberAdjacentDomains+1,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(receiveRequestHandle(numberLocalAndAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate receiveRequestHandle array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberLocalAndAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    ! allocate receive buffer (2 entries for interior and totally stored local lines, adjacent domains + local domain)
+    ALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank(2,numberAdjacentDomains+1), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate numberNonBoundaryPlaneAndLocalLinesOnRank array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(2*(numberLocalAndAdjacentDomains),"*",err,error))//".",err,error,*999)
+
+    ! commit send commands
+    DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
+      adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
+
+      CALL MPI_ISEND(numberNonBoundaryPlaneAndLocalLines, 2, MPI_INT, adjacentDomain, 0, &
+        & computationalEnvironment%mpiCommunicator, sendRequestHandle(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+    ENDDO
+
+    ! commit receive commands
+    DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
+      adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
+      CALL MPI_IRECV(numberNonBoundaryPlaneAndLocalLinesOnRank(:,adjacentDomainIdx), 2, MPI_INT, adjacentDomain, 0, &
+        & computationalEnvironment%mpiCommunicator, receiveRequestHandle(adjacentDomainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
+    ENDDO
+
+    ! wait for all communication to finish
+    CALL MPI_WAITALL(numberLocalAndAdjacentDomains, sendRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    CALL MPI_WAITALL(numberLocalAndAdjacentDomains, receiveRequestHandle, MPI_STATUSES_IGNORE, MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    ! assign boundary lines to domains
+    ! allocate boundaryElementLinesDomain
+    ALLOCATE(boundaryElementLinesDomain(numberBoundaryElementLinesList), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate boundaryElementLinesDomain array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberBoundaryElementLinesList,"*",err,error))//".",err,error,*999)
+    boundaryElementLinesDomain = -1
+
+    ALLOCATE(numberLinesInDomain(numberLocalAndAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate numberLinesInDomain array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberLocalAndAdjacentDomains,"*",err,error))//".",err,error,*999)
+    numberLinesInDomain = 0
+
+
+
+    ! add local domain to domain list of each line
+    DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
+      CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+        & myComputationalNodeNumber,err,error,*999)
+      CALL LIST_SORT(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,err,error,*999)
+      !Assign local domain to the boundary lines that are not on the boundary plane
+      IF(lineOnBoundaryPlane(boundaryElementLinesIdx) == -1) THEN
+        boundaryElementLinesDomain(boundaryElementLinesIdx) = myComputationalNodeNumber
+      ENDIF
+    ENDDO
+
+    ! add local domain to domain list of each line
+    DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
+      CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,myComputationalNodeNumber,err,error,*999)
+      CALL LIST_SORT(domainsOfLineList(boundaryElementLinesIdx)%PTR,err,error,*999)
+    ENDDO
+
+
+    ! loop over adjacent domains
+    DO adjacentDomainIdx=1,numberAdjacentDomains
+      adjacentDomain = adjacentDomains(adjacentDomainIdx)
+
+
+      ! loop over adjacent lines on that adjacent domain
+      CALL LIST_NUMBER_OF_ITEMS_GET(sharedLinesList(adjacentDomainIdx)%PTR,numberSharedLines,err,error,*999)
+      DO sharedLineIdx = 1,numberSharedLines
+        CALL LIST_ITEM_GET(sharedLinesList(adjacentDomainIdx)%PTR,sharedLineIdx,boundaryElementLinesIdx,&
+          & err,error,*999)
+
+
+
+        ! if line was not yet assigned to a domain (This array was initialised earlier in the subroutine to be -1)
+        IF (boundaryElementLinesDomain(boundaryElementLinesIdx) == -1) THEN
+          ! note: this line is shared by the domains in domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx) (includes local domain)
+
+          numberLinesWithThatSetOfDomains = 0
+
+          ! loop over all further lines to find other lines that are shared by the same domains, count total number of them
+          DO sharedLineIdx2 = sharedLineIdx,numberSharedLines
+            CALL LIST_ITEM_GET(sharedLinesList(adjacentDomainIdx)%PTR,sharedLineIdx2,boundaryElementLinesIdx2,&
+              & err,error,*999)
+
+            IF (boundaryElementLinesDomain(boundaryElementLinesIdx2) == -1) THEN
+
+              !if the domain list of each boundary line is equal then add 1 to the number of lines with that set of domains.
+              IF (LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+                & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+
+                numberLinesWithThatSetOfDomains = numberLinesWithThatSetOfDomains+1
+              ENDIF
+            ENDIF
+          ENDDO
+
+          ! get first of the shared domains
+          numberLinesInDomain = 0
+          domainToAssignLinesToIdx = 1
+          CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainToAssignLinesToIdx, &
+            & domainToAssignLinesTo,err,error,*999)
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+            & numberDomains,err,error,*999)
+
+          ! again loop over all further lines with the same domains, assign them to domains
+          DO sharedLineIdx2 = sharedLineIdx,numberSharedLines
+            CALL LIST_ITEM_GET(sharedLinesList(adjacentDomainIdx)%PTR,sharedLineIdx2,boundaryElementLinesIdx2,&
+                & err,error,*999)
+
+            !if the domain list of each boundary line is equal
+            IF(LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+              & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+
+
+              !FIXTHIS should iterate DO domainToAssignLinesToIdx = 1,2 for lines,
+              !leave as is for now so it is more similar to what it should be done for nodes.
+              DO
+
+                ! find index for numberNonBoundaryPlaneAndLocalLinesOnRank that corresponds to domain domainToAssignLinesTo
+                adjacentDomainIdx2 = 1
+                DO I=1,numberLocalAndAdjacentDomains
+                  adjacentDomain = localAndAdjacentDomains(I)
+                  IF (adjacentDomain == domainToAssignLinesTo) THEN
+                    adjacentDomainIdx2 = I
+                    EXIT
+                  ENDIF
+                ENDDO
+
+                ! compute the number of lines that this domain will get from the current set of lines
+                numberLocalLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(2,adjacentDomainIdx2)
+                numberNonBoundaryLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(1,adjacentDomainIdx2)
+
+                numberLinesAboveOptimum = numberLocalLinesOnRank - optimalNumberLinesPerDomain
+                numberSharedLinesOnRank = numberLocalLinesOnRank - numberNonBoundaryLinesOnRank
+
+                ! compute the portion of each line that adjacent domain should get from other domains
+                ! E.g. if portionToDistribute=0.4 that means that 4 out of 10 shared lines of the adjacent domain should be assigned to other domains and 6 should remain their own
+                portionToDistribute = numberLinesAboveOptimum / numberSharedLinesOnRank
+
+                ! compute the number of lines from the current set of lines that have the same domains that should belong to adjacent domain
+                numberInCurrentSetToClaim = NINT((1.0 - portionToDistribute) * numberLinesWithThatSetOfDomains)
+
+                ! if there weren't enough lines assigned to adjacent domain domainToAssignLinesToIdx yet, the domain which will claim this line is found
+                IF (numberLinesInDomain(domainToAssignLinesToIdx) < numberInCurrentSetToClaim) THEN
+                  EXIT
+                ELSE
+                  ! if there are no further domainDOFS_MAPPINGs, exit trying to find the next domain
+                  IF (domainToAssignLinesToIdx == numberDomains) EXIT
+
+                  ! now that domain has got enough lines, get the next domain
+                  domainToAssignLinesToIdx = domainToAssignLinesToIdx + 1
+                  CALL LIST_ITEM_GET(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR, &
+                    & domainToAssignLinesToIdx, domainToAssignLinesTo,err,error,*999)
+                ENDIF
+              ENDDO
+
+              ! assign line sharedLineIdx2 to domain domainToAssignLinesTo
+              boundaryElementLinesDomain(boundaryElementLinesIdx2) = domainToAssignLinesTo
+
+              ! increment count of lines that this domain has claimed in the current set
+              numberLinesInDomain(domainToAssignLinesToIdx) = numberLinesInDomain(domainToAssignLinesToIdx) + 1
+
+            ENDIF
+          ENDDO  ! sharedLineIdx2
+        ENDIF  ! line not yet assigned to domain
+
+      ENDDO  ! sharedLineIdx
+    ENDDO  ! adjacentDomainIdx
+
+    ! End load balancing
+    ! fill local numbering arrays
+
+    ! create list to hold boundary lines
+    NULLIFY(boundaryLinesList)
+    CALL LIST_CREATE_START(boundaryLinesList,err,error,*999)
+    CALL LIST_DATA_DIMENSION_SET(boundaryLinesList,1,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(boundaryLinesList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(boundaryLinesList,CEILING(elementsMapping%NUMBER_OF_LOCAL*0.2),err,error,*999)
+    CALL LIST_CREATE_FINISH(boundaryLinesList,err,error,*999)
+
+    ! count number of boundary lines from boundary and boundary plane lines
+    DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
+      domainNo = boundaryElementLinesDomain(boundaryElementLinesIdx)
+
+      ! if line is a boundary lines and stays on own domain
+      IF (domainNo == myComputationalNodeNumber) THEN
+        CALL LIST_ITEM_ADD(boundaryLinesList,boundaryElementLinesIdx,err,error,*999)
+      ENDIF
+    ENDDO
+
+    ! extract arrays of local boundary lines
+    CALL LIST_DETACH_AND_DESTROY(boundaryLinesList, linesMapping%NUMBER_OF_BOUNDARY, integerArray, err,error,*999)
+    ALLOCATE(boundaryLines(linesMapping%NUMBER_OF_BOUNDARY))
+    boundaryLines=integerArray(1:linesMapping%NUMBER_OF_BOUNDARY)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+
+    ! Create list of ghost lines with their home domain
+    NULLIFY(ghostLinesDomainsList)
+    CALL LIST_CREATE_START(ghostLinesDomainsList,err,error,*999)
+    CALL LIST_DATA_DIMENSION_SET(ghostLinesDomainsList,2,err,error,*999)
+    CALL LIST_DATA_TYPE_SET(ghostLinesDomainsList,LIST_INTG_TYPE,err,error,*999)
+    CALL LIST_INITIAL_SIZE_SET(ghostLinesDomainsList,MAX(1,numberBoundaryElementLinesList),err,error,*999)
+    CALL LIST_CREATE_FINISH(ghostLinesDomainsList,err,error,*999)
+
+    ! Now exchange the boundary lines that the current domain owns to domains with these lines as ghost lines
+    ! allocate send buffers
+    ALLOCATE(sendBufferList(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendBufferList array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(sendRequestHandle0(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle0 array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(sendRequestHandle1(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendRequestHandle1 array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+
+    DO I=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+      NULLIFY(sendBufferList(I)%PTR)
+      CALL LIST_CREATE_START(sendBufferList(I)%PTR,err,error,*999)
+      CALL LIST_DATA_DIMENSION_SET(sendBufferList(I)%PTR,1,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(sendBufferList(I)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(sendBufferList(I)%PTR,10,err,error,*999)
+      CALL LIST_CREATE_FINISH(sendBufferList(I)%PTR,err,error,*999)
+    ENDDO
+
+    ! Add own boundary and boundary plane lines that are ghost lines on other domains
+    ! to send buffer for the domains that they will be sent to.
+
+    ! loop over boundary (and boundary plane) lines
+    DO boundaryElementLinesIdx=1, numberBoundaryElementLinesList
+      lineGlobalNo=boundaryElementLines(boundaryElementLinesIdx)
+
+      ! get the domain that owns the line
+      domainNo = boundaryElementLinesDomain(boundaryElementLinesIdx)
+
+      ! only add to send buffer if it is owned by own domain
+      IF (domainNo == myComputationalNodeNumber) THEN
+
+        !Loop over adjacent domains
+        DO domainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+
+          domainNo2 = elementsMapping%ADJACENT_DOMAINS(DomainIdx)%DOMAIN_NUMBER
+
+          !If domainNo2 has lineGlobalNo as a ghost line we assign it to sendbufferList of domainNo2 which has index domainIdx
+          CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfLineList(boundaryElementLinesIdx)%PTR,numberDomains, &
+            & err,error,*999)
+          DO I=1,numberDomains
+            CALL LIST_ITEM_GET(domainsOfLineList(boundaryElementLinesIdx)%PTR,I, &
+              & domainNo3,err,error,*999)
+
+            IF (domainNo2 == domainNo3) THEN
+              CALL LIST_ITEM_ADD(sendBufferList(domainIdx)%PTR, lineGlobalNo, err,error,*999)
+            ENDIF
+          ENDDO !I
+        ENDDO !DomainIdx
+      ENDIF
+    ENDDO
+
+    ! remove duplicates and sort list
+
+    maximumNumberToSend = 0
+    DO domainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+      domainNo = elementsMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER
+
+      CALL LIST_REMOVE_DUPLICATES(sendBufferList(domainIdx)%PTR,err,error,*999)
+      CALL LIST_NUMBER_OF_ITEMS_GET(sendBufferList(domainIdx)%PTR,numberToSend,err,error,*999)
+      maximumNumberToSend = MAX(maximumNumberToSend,numberToSend)
+    ENDDO
+
+    ALLOCATE(sendBuffer(maximumNumberToSend,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate sendBuffer array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(maximumNumberToSend,"*",err,error))//"x"//&
+      & TRIM(NUMBER_TO_VSTRING(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(numberToSendToDomain(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate numberToSendToDomain array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS,"*",err,error))//".",err,error,*999)
+
+    ! commit send calls
+    DO domainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+      domainNo = elementsMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER
+      CALL LIST_DETACH_AND_DESTROY(sendBufferList(domainIdx)%PTR,numberToSendToDomain(domainIdx),&
+        & integerArray,err,error,*999)
+      sendBuffer(1:numberToSendToDomain(domainIdx),domainIdx) = integerArray(1:numberToSendToDomain(domainIdx))
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+
+      ! number of lines to be send to domain
+      CALL MPI_ISEND(numberToSendToDomain(domainIdx),1,MPI_INT,domainNo,0, &
+        & computationalEnvironment%mpiCommunicator, sendRequestHandle0(domainIdx), MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+
+      ! actual global line numbers to send
+      IF (numberToSendToDomain(domainIdx) > 0) THEN
+        CALL MPI_ISEND(sendBuffer(1:numberToSendToDomain(domainIdx),domainIdx),numberToSendToDomain(domainIdx), &
+          & MPI_INT,domainNo,1,computationalEnvironment%mpiCommunicator, sendRequestHandle1(domainIdx), MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
+      ENDIF
+    ENDDO
+
+    ! receive number of lines to receive
+    DO domainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
+      domainNo = elementsMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER
+
+      CALL MPI_RECV(numberOfLinesToReceive,1,MPI_INT,domainNo,0,computationalEnvironment%mpiCommunicator,MPI_STATUS_IGNORE, &
+        & MPI_IERROR)
+      CALL MPI_ERROR_CHECK("MPI_RECV",MPI_IERROR,err,error,*999)
+
+      IF (numberOfLinesToReceive>0) THEN
+        ALLOCATE(receiveBuffer(numberOfLinesToReceive), STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate receiveBuffer array with size "//&
+          & TRIM(NUMBER_TO_VSTRING(numberOfLinesToReceive,"*",err,error))//".",err,error,*999)
+
+        CALL MPI_RECV(receiveBuffer,numberOfLinesToReceive,MPI_INT,domainNo,1, &
+          & computationalEnvironment%mpiCommunicator,MPI_STATUS_IGNORE,MPI_IERROR)
+        CALL MPI_ERROR_CHECK("MPI_RECV",MPI_IERROR,err,error,*999)
+
+        ! store received ghost lines with domain in ghostLinesDomainsList
+        DO I=1,numberOfLinesToReceive
+          ghostLineGlobalNo = receiveBuffer(I)
+          ghostDomain = domainNo
+          CALL LIST_ITEM_ADD(ghostLinesDomainsList,[ghostLineGlobalNo,ghostDomain],err,error,*999)
+        ENDDO
+
+
+        IF(ALLOCATED(receiveBuffer)) DEALLOCATE(receiveBuffer)
+
+      ENDIF
+    ENDDO
+
+    ! wait for all communication to finish (Not needed because we use a MPI_RECV not an MPI_IRECV)
+    !CALL MPI_WAITALL(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS, sendRequestHandle0, MPI_STATUSES_IGNORE, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    !CALL MPI_WAITALL(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS, sendRequestHandle1, MPI_STATUSES_IGNORE, MPI_IERROR)
+    !CALL MPI_ERROR_CHECK("MPI_WAITALL",MPI_IERROR,err,error,*999)
+
+    !ghostLinesDomains is size (2,number of ghost) where:
+    !- the first  entry is the global line number and
+    !- the second entry is the domain number of the domain that owns the line
+    CALL LIST_SORT(ghostLinesDomainsList,err,error,*999)
+    CALL LIST_DETACH_AND_DESTROY(ghostLinesDomainsList,linesMapping%NUMBER_OF_GHOST,integerArray2D,err,error,*999)
+    ALLOCATE(ghostLinesDomains(2,linesMapping%NUMBER_OF_GHOST))
+    ghostLinesDomains(1,1:linesMapping%NUMBER_OF_GHOST)=integerArray2D(1,1:linesMapping%NUMBER_OF_GHOST)
+    ghostLinesDomains(2,1:linesMapping%NUMBER_OF_GHOST)=integerArray2D(2,1:linesMapping%NUMBER_OF_GHOST)
+
+    IF(ALLOCATED(integerArray2D)) DEALLOCATE(integerArray2D)
+
+
+    !From here on we use numberExtraAdjacentDomains not numberAdjacentDomains
+    !because we want the number of domains that communicate ghost/boundary lines
+
+    ! initialize linesMapping%ADJACENT_DOMAINS. Here we want the number of domains that will send/recieve lines with this rank
+    linesMapping%NUMBER_OF_ADJACENT_DOMAINS = numberExtraAdjacentDomains
+
+    ! allocate ADJACENT_DOMAINS
+    ALLOCATE(linesMapping%ADJACENT_DOMAINS(numberExtraAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate adjacent domains array with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberExtraAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    DO adjacentDomainIdx=1,numberExtraAdjacentDomains
+      adjacentDomain = extraAdjacentDomains(adjacentDomainIdx)
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER = adjacentDomain
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = 0
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = 0
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
+    ENDDO
+
+    ! store number of local and total number of local lines
+    linesMapping%NUMBER_OF_LOCAL = linesMapping%NUMBER_OF_INTERNAL + linesMapping%NUMBER_OF_BOUNDARY
+    linesMapping%TOTAL_NUMBER_OF_LOCAL = linesMapping%NUMBER_OF_LOCAL + linesMapping%NUMBER_OF_GHOST
+
+    linesMapping%INTERNAL_START=1
+    linesMapping%INTERNAL_FINISH=linesMapping%INTERNAL_START+linesMapping%NUMBER_OF_INTERNAL-1
+    linesMapping%BOUNDARY_START=linesMapping%INTERNAL_FINISH+1
+    linesMapping%BOUNDARY_FINISH=linesMapping%BOUNDARY_START+linesMapping%NUMBER_OF_BOUNDARY-1
+    linesMapping%GHOST_START=linesMapping%BOUNDARY_FINISH+1
+    linesMapping%GHOST_FINISH=linesMapping%GHOST_START+linesMapping%NUMBER_OF_GHOST-1
+
+    ! allocate LOCAL_TO_GLOBAL_MAP
+    ALLOCATE(linesMapping%LOCAL_TO_GLOBAL_MAP(linesMapping%TOTAL_NUMBER_OF_LOCAL), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate lines mapping local to global map with size "//&
+      & TRIM(NUMBER_TO_VSTRING(linesMapping%TOTAL_NUMBER_OF_LOCAL,"*",err,error))//".",err,error,*999)
+
+    ! allocate DOMAIN_LIST
+    ALLOCATE(linesMapping%DOMAIN_LIST(linesMapping%TOTAL_NUMBER_OF_LOCAL), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate lines mapping domain list with size "//&
+      & TRIM(NUMBER_TO_VSTRING(linesMapping%TOTAL_NUMBER_OF_LOCAL,"*",err,error))//".",err,error,*999)
+
+    ! create lists for local ghost send and receive indices
+    ALLOCATE(localGhostSendIndices(numberExtraAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate localGhostSendIndices with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberExtraAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    ALLOCATE(localGhostReceiveIndices(numberExtraAdjacentDomains), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate localGhostReceiveIndices with size "//&
+      & TRIM(NUMBER_TO_VSTRING(numberExtraAdjacentDomains,"*",err,error))//".",err,error,*999)
+
+    DO adjacentDomainIdx=1,numberExtraAdjacentDomains
+
+      ! create list for local ghost send indices
+      NULLIFY(localGhostSendIndices(adjacentDomainIdx)%PTR)
+      CALL LIST_CREATE_START(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
+      CALL LIST_DATA_DIMENSION_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(localGhostSendIndices(adjacentDomainIdx)%PTR,MAX(1,numberBoundaryElementLinesList),&
+        & err,error,*999)
+      CALL LIST_CREATE_FINISH(localGhostSendIndices(adjacentDomainIdx)%PTR,err,error,*999)
+
+      ! create list for local ghost receive indices
+      NULLIFY(localGhostReceiveIndices(adjacentDomainIdx)%PTR)
+      CALL LIST_CREATE_START(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
+      CALL LIST_DATA_DIMENSION_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,1,err,error,*999)
+      CALL LIST_DATA_TYPE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,LIST_INTG_TYPE,err,error,*999)
+      CALL LIST_INITIAL_SIZE_SET(localGhostReceiveIndices(adjacentDomainIdx)%PTR,MAX(1,numberBoundaryElementLinesList),&
+        & err,error,*999)
+      CALL LIST_CREATE_FINISH(localGhostReceiveIndices(adjacentDomainIdx)%PTR,err,error,*999)
+    ENDDO
+
+    ! internalLines contains the global numbers of the internal lines
+
+    ! loop over internal and boundary lines and assign local line numbers
+    internalLinesIdx = 1
+    boundaryLinesIdx = 1
+    localLineNo = 1
+    domainListInternalIdx = linesMapping%INTERNAL_START
+    domainListBoundaryIdx = linesMapping%BOUNDARY_START
+    DO WHILE(internalLinesIdx <= linesMapping%NUMBER_OF_INTERNAL &
+      & .OR. boundaryLinesIdx <= linesMapping%NUMBER_OF_BOUNDARY)
+
+      ! get next internal or boundary line, ascending with global line number,
+      ! if there are no more internal or boundary lines, set to -1
+      IF (boundaryLinesIdx <= linesMapping%NUMBER_OF_BOUNDARY) THEN
+        boundaryElementLinesIdx = boundaryLines(boundaryLinesIdx)
+        boundaryLineGlobalNo = boundaryElementLines(boundaryElementLinesIdx)
+      ELSE
+        boundaryLineGlobalNo = -1
+      ENDIF
+
+      IF (internalLinesIdx <= linesMapping%NUMBER_OF_INTERNAL) THEN
+        internalLineGlobalNo = internalLines(internalLinesIdx)
+      ELSE
+        internalLineGlobalNo = -1
+      ENDIF
+
+      IF ((internalLineGlobalNo < boundaryLineGlobalNo .AND. internalLineGlobalNo /= -1) &
+        & .OR. boundaryLineGlobalNo == -1) THEN
+        ! the next line is an internal line
+        linesMapping%DOMAIN_LIST(domainListInternalIdx) = localLineNo
+        linesMapping%LOCAL_TO_GLOBAL_MAP(localLineNo) = internalLineGlobalNo
+        domainListInternalIdx = domainListInternalIdx + 1
+        internalLinesIdx = internalLinesIdx + 1
+
+      ELSE
+        ! the next line is a boundary line
+        linesMapping%DOMAIN_LIST(domainListBoundaryIdx) = localLineNo
+        linesMapping%LOCAL_TO_GLOBAL_MAP(localLineNo) = boundaryLineGlobalNo
+        domainListBoundaryIdx = domainListBoundaryIdx + 1
+        boundaryLinesIdx = boundaryLinesIdx + 1
+
+
+        ! update LOCAL_GHOST_SEND_INDICES
+
+        ! loop over the domains where this line is present
+        CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfLineList(boundaryElementLinesIdx)%PTR, numberDomains, err,error,*999)
+        DO I=1,numberDomains
+          ! get domain no
+          CALL LIST_ITEM_GET(domainsOfLineList(boundaryElementLinesIdx)%PTR,I,domainNo,err,error,*999)
+          IF (domainNo /= myComputationalNodeNumber) THEN
+
+
+            found=.FALSE.
+            ! go to entry in ADJACENT_DOMAINS array for domainNo, at index adjacentDomainIdx
+            DO adjacentDomainIdx =1,numberExtraAdjacentDomains
+              IF (extraAdjacentDomains(adjacentDomainIdx) == domainNo) THEN
+                found=.TRUE.
+
+
+                EXIT
+              ENDIF
+            ENDDO
+            IF(.NOT.found) THEN
+              localError="Domain number "//TRIM(NumberToVString(domainNo,"*",err,error))// &
+              & " was not found in the list of adjacent domains."
+              CALL FlagError(localError,err,error,*999)
+            ENDIF
+
+            CALL LIST_ITEM_ADD(localGhostSendIndices(adjacentDomainIdx)%PTR,localLineNo,err,error,*999)
+          ENDIF
+        ENDDO
+
+        domainNo = boundaryElementLinesDomain(boundaryElementLinesIdx)
+
+      ENDIF
+      localLineNo = localLineNo + 1
+    ENDDO
+
+    domainListGhostIdx = linesMapping%GHOST_START
+    ! loop over ghost lines
+    DO ghostLineIdx = 1,linesMapping%NUMBER_OF_GHOST
+      ghostLineGlobalNo = ghostLinesDomains(1,ghostLineIdx)
+      ghostDomain = ghostLinesDomains(2,ghostLineIdx)
+
+      linesMapping%DOMAIN_LIST(domainListGhostIdx) = localLineNo
+      linesMapping%LOCAL_TO_GLOBAL_MAP(domainListGhostIdx) = ghostLineGlobalNo
+      domainListGhostIdx = domainListGhostIdx + 1
+      localLineNo = localLineNo + 1
+
+      ! update LOCAL_GHOST_RECEIVE_INDICES
+
+
+      ! find entry ADJACENT_DOMAINS array for domainNo
+      adjacentDomainEntryFound = .FALSE.
+      DO adjacentDomainIdx=1,linesMapping%NUMBER_OF_ADJACENT_DOMAINS
+        IF (linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER == ghostDomain) THEN
+
+
+          CALL LIST_ITEM_ADD(localGhostReceiveIndices(adjacentDomainIdx)%PTR,localLineNo-1,err,error,*999)
+
+          adjacentDomainEntryFound = .TRUE.
+          EXIT
+        ENDIF
+      ENDDO ! adjacentDomainIdx
+
+    ENDDO  ! ghostLineIdx
+
+    DO adjacentDomainIdx=1,numberExtraAdjacentDomains
+      ! create localGhostSendIndices for the adjacent domain
+      CALL LIST_DETACH_AND_DESTROY(localGhostSendIndices(adjacentDomainIdx)%PTR, &
+        & linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS,integerArray,err,error,*999)
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES = &
+        & integerArray(1:linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS)
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+      ! create localGhostReceiveIndices for the adjacent domain
+      CALL LIST_DETACH_AND_DESTROY(localGhostReceiveIndices(adjacentDomainIdx)%PTR, &
+        & linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS,integerArray,err,error,*999)
+      linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES = &
+        & integerArray(1:linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+      IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+    ENDDO
+
+
+    ! exchange NUMBER_OF_DOMAIN_LOCAL and NUMBER_OF_DOMAIN_GHOST
+    ! allocate number_of_domain_local
+    ALLOCATE(linesMapping%NUMBER_OF_DOMAIN_LOCAL(0:numberComputationalNodes-1),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_LOCAL.",err,error,*999)
+
+    linesMapping%NUMBER_OF_DOMAIN_LOCAL(myComputationalNodeNumber) = linesMapping%NUMBER_OF_LOCAL
+
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,linesMapping%&
+      & NUMBER_OF_DOMAIN_LOCAL(0:numberComputationalNodes-1), &
+      & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,err,error,*999)
+
+    ! allocate number_of_domain_ghost
+    ALLOCATE(linesMapping%NUMBER_OF_DOMAIN_GHOST(0:numberComputationalNodes-1),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate NUMBER_OF_DOMAIN_GHOST.",err,error,*999)
+
+    linesMapping%NUMBER_OF_DOMAIN_GHOST(myComputationalNodeNumber) = linesMapping%NUMBER_OF_GHOST
+
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,linesMapping%&
+      & NUMBER_OF_DOMAIN_GHOST(0:numberComputationalNodes-1), &
+      & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,err,error,*999)
+
+
+    !The following ADJACENT_DOMAINS_PTR and ADJACENT_DOMAINS_LIST assignment will have to be done in a local way when everything is moved to local not global.
+
+    !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
+    !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
+    ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
+    linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+
+    ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
+    linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+
+
+    END IF ! Skip everything below internal lines if ranks>1
+
+    !Diagnostics
+
+    !IF(DIAGNOSTICS1) THEN
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Line mappings :",ERR,ERROR,*999)
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Local to global map :",ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Domain No = ",myComputationalNodeNumber,ERR,ERROR,*999)
+      DO lineIdx=1,linesMapping%TOTAL_NUMBER_OF_LOCAL
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Local line = ",lineIdx,ERR,ERROR,*999)
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Global line = ", &
+          & linesMapping%LOCAL_TO_GLOBAL_MAP(lineIdx),ERR,ERROR,*999)
+      ENDDO !lineIdx
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Internal lines :",ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of internal lines = ", &
+        & linesMapping%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,linesMapping%NUMBER_OF_INTERNAL,8,8, &
+        & linesMapping%DOMAIN_LIST(linesMapping%INTERNAL_START:linesMapping%INTERNAL_FINISH), &
+        & '("    Internal lines:",8(X,I7))','(19X,8(X,I7))',ERR,ERROR,*999)
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Boundary lines :",ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of boundary lines = ", &
+        & linesMapping%NUMBER_OF_BOUNDARY,ERR,ERROR,*999)
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,linesMapping%NUMBER_OF_BOUNDARY,8,8, &
+        & linesMapping%DOMAIN_LIST(linesMapping%BOUNDARY_START:linesMapping%BOUNDARY_FINISH), &
+        & '("    Boundary lines:",8(X,I7))','(19X,8(X,I7))',ERR,ERROR,*999)
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Ghost lines :",ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of ghost lines = ", &
+        & linesMapping%NUMBER_OF_GHOST,ERR,ERROR,*999)
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,linesMapping%NUMBER_OF_GHOST,8,8, &
+        & linesMapping%DOMAIN_LIST(linesMapping%GHOST_START:linesMapping%GHOST_FINISH), &
+        & '("    Ghost lines   :",8(X,I7))','(19X,8(X,I7))',ERR,ERROR,*999)
+      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
+        & linesMapping%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
+
+      DO domainIdx=1,linesMapping%NUMBER_OF_ADJACENT_DOMAINS
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domainIdx,ERR,ERROR,*999)
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &
+          & linesMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER,ERR,ERROR,*999)
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of send ghosts    = ", &
+          & linesMapping%ADJACENT_DOMAINS(domainIdx)%NUMBER_OF_SEND_GHOSTS,ERR,ERROR,*999)
+        CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,linesMapping%ADJACENT_DOMAINS(domainIdx)% &
+          & NUMBER_OF_SEND_GHOSTS,6,6,linesMapping%ADJACENT_DOMAINS(domainIdx)%LOCAL_GHOST_SEND_INDICES, &
+          & '("      Local send ghost indicies       :",6(X,I7))','(39X,6(X,I7))',ERR,ERROR,*999)
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of recieve ghosts = ", &
+          & linesMapping%ADJACENT_DOMAINS(domainIdx)%NUMBER_OF_RECEIVE_GHOSTS,ERR,ERROR,*999)
+        CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,linesMapping%ADJACENT_DOMAINS(domainIdx)% &
+          & NUMBER_OF_RECEIVE_GHOSTS,6,6,linesMapping%ADJACENT_DOMAINS(domainIdx)%LOCAL_GHOST_RECEIVE_INDICES, &
+          & '("      Local receive ghost indicies    :",6(X,I7))','(39X,6(X,I7))',ERR,ERROR,*999)
+      ENDDO !domainIdx
+    !ENDIF
+
+    ! deallocate arrays
+    IF(ALLOCATED(boundaryElementLines)) DEALLOCATE(boundaryElementLines)
+    IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
+    IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
+    IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
+    IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+    IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
+    IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
+    IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
+    IF(ALLOCATED(internalLines)) DEALLOCATE(internalLines)
+    IF(ALLOCATED(boundaryLines)) DEALLOCATE(boundaryLines)
+    IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+    IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+    IF(ALLOCATED(ghostLinesDomains)) DEALLOCATE(ghostLinesDomains)
+    IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
+    IF(ALLOCATED(numberToSendToDomain)) DEALLOCATE(numberToSendToDomain)
+    IF(ALLOCATED(domainsOfLineList)) DEALLOCATE(domainsOfLineList)
+    IF(ALLOCATED(lineOnBoundaryPlane)) DEALLOCATE(lineOnBoundaryPlane)
+    IF(ALLOCATED(sharedLinesList)) DEALLOCATE(sharedLinesList)
+    IF(ALLOCATED(extraAdjacentDomains)) DEALLOCATE(extraAdjacentDomains)
+    IF(ALLOCATED(domainsOfBoundaryPlaneLineList)) DEALLOCATE(domainsOfBoundaryPlaneLineList)
+
+    EXITS("DomainMappings_3DLinesCalculate")
+    RETURN
+    !FIXTHIS need to make sure I am deallocating the pointers that I assign in the subroutine.
+  !998 IF(ALLOCATED(DOMAINS%MAPPINGS)) DEALLOCATE(Domains)
+  !FIXTHIS Not sure if i need to deallocate linesMapping%ADJACENT_DOMAINS here
+   !IF(ALLOCATED(linesMapping%ADJACENT_DOMAINS)) DEALLOCATE(linesMapping%ADJACENT_DOMAINS)
+  999 IF(ASSOCIATED(domain%mesh%topology)) CALL DomainTopology_AssignGlobalLinesFinalise(domain,dummyErr,dummyError,*998)
+      IF(ALLOCATED(boundaryElementLines)) DEALLOCATE(boundaryElementLines)
+      IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
+      IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
+      IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
+      IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+      IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
+      IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
+      IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
+      IF(ALLOCATED(internalLines)) DEALLOCATE(internalLines)
+      IF(ALLOCATED(boundaryLines)) DEALLOCATE(boundaryLines)
+      IF(ALLOCATED(sendRequestHandle0)) DEALLOCATE(sendRequestHandle0)
+      IF(ALLOCATED(sendRequestHandle1)) DEALLOCATE(sendRequestHandle1)
+      IF(ALLOCATED(ghostLinesDomains)) DEALLOCATE(ghostLinesDomains)
+      IF(ALLOCATED(sendBuffer)) DEALLOCATE(sendBuffer)
+      IF(ALLOCATED(numberToSendToDomain)) DEALLOCATE(numberToSendToDomain)
+      IF(ALLOCATED(domainsOfLineList)) DEALLOCATE(domainsOfLineList)
+      IF(ALLOCATED(lineOnBoundaryPlane)) DEALLOCATE(lineOnBoundaryPlane)
+      IF(ALLOCATED(sharedLinesList)) DEALLOCATE(sharedLinesList)
+      IF(ALLOCATED(extraAdjacentDomains)) DEALLOCATE(extraAdjacentDomains)
+      IF(ALLOCATED(domainsOfBoundaryPlaneLineList)) DEALLOCATE(domainsOfBoundaryPlaneLineList)
+  998 ERRORSEXITS("DomainMappings_3DLinesCalculate",err,error)
+    RETURN 1
+  END SUBROUTINE DomainMappings_3DLinesCalculate
+  !
+  !================================================================================================================================
+  !
+
   !>Calculates the local/global node and dof mappings for a domain decomposition.
   SUBROUTINE DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,err,ERROR,*)
 
@@ -8078,7 +9473,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: startNic, elementGlobalNo, componentIdx
+    INTEGER(INTG) :: startNic, finNic, elementGlobalNo, componentIdx
     TYPE(MESH_TYPE), POINTER :: mesh
     TYPE(MeshComponentTopologyType), POINTER :: topology
 
@@ -8104,11 +9499,20 @@ CONTAINS
     END SELECT
 
     DO elementGlobalNo = 1,topology%ELEMENTS%NUMBER_OF_ELEMENTS
-      ALLOCATE(topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(startNic:topology%ELEMENTS% &
-        & ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES),STAT=err)
-      IF(err/=0) CALL FlagError("Could not allocate topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES", &
-      & err,error,*999)
-      topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES=0
+      finNic = topology%ELEMENTS%ELEMENTS(elementGlobalNo)%BASIS%NUMBER_OF_XI_COORDINATES
+      IF(domain%number_of_dimensions == 3) THEN
+        !Number 3d lines as a sym matrix
+        ALLOCATE(topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES &
+          & (startNic:finNic,startNic:finNic),STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES", &
+        & err,error,*999)
+        topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES=0
+      ELSE ! 1 or 2D
+        ALLOCATE(topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES(startNic:finNic),STAT=err)
+        IF(err/=0) CALL FlagError("Could not allocate topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES", &
+        & err,error,*999)
+        topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES=0
+      END IF
     ENDDO
 
     EXITS("DomainTopology_AssignGlobalLinesInitialise")
@@ -8181,13 +9585,25 @@ CONTAINS
     IF(.NOT.ASSOCIATED(domain%mesh)) CALL FlagError("domain%mesh is not associated.",err,error,*999)
     componentIdx=domain%MESH_COMPONENT_NUMBER
 
-    DO elementGlobalNo = 1,domain%mesh%topology(componentIdx)%PTR%ELEMENTS%NUMBER_OF_ELEMENTS
-      IF(ALLOCATED(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES)) THEN
-        DEALLOCATE(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES)
-      ELSE
-        CALL FlagError("topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES is not associated",err,error,*999)
-      ENDIF
-    ENDDO
+    IF(domain%number_of_dimensions == 3) THEN
+      DO elementGlobalNo = 1,domain%mesh%topology(componentIdx)%PTR%ELEMENTS%NUMBER_OF_ELEMENTS
+        IF(ALLOCATED(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES)) THEN
+          DEALLOCATE(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES)
+        ELSE
+          CALL FlagError("topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_3DLINES is not associated", &
+            & err,error,*999)
+        ENDIF
+      ENDDO
+    ELSE ! 1 or 2D
+      DO elementGlobalNo = 1,domain%mesh%topology(componentIdx)%PTR%ELEMENTS%NUMBER_OF_ELEMENTS
+        IF(ALLOCATED(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES)) THEN
+          DEALLOCATE(domain%mesh%topology(componentIdx)%PTR%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES)
+        ELSE
+          CALL FlagError("topology%ELEMENTS%ELEMENTS(elementGlobalNo)%GLOBAL_ELEMENT_LINES is not associated",err,error,*999)
+        ENDIF
+      ENDDO
+    END IF
+
 
     DO lineGlobalNo=1,domain%mesh%topology(componentIdx)%PTR%lines%numberOfLines
       IF(ASSOCIATED(domain%mesh%topology(componentIdx)%PTR%lines%lines(lineGlobalNo)%surroundingElements)) THEN
