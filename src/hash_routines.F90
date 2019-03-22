@@ -91,6 +91,8 @@ MODULE HashRoutines
   PUBLIC :: HashTable_ValuesSetAndInsert, HashTable_CreateStart, HashTable_CreateFinish, HashTable_AdditionalValuesSet
   ! Table get values
   PUBLIC :: HashTable_GetKey, HashTable_GetValue
+  ! Table create steps
+  PUBLIC:: HashTable_ListInitialise, HashTable_Insert, HashTable_AdditionalValuesInit
 
 CONTAINS
 
@@ -1207,6 +1209,8 @@ END SUBROUTINE
 !      LIST%SORT_ORDER=LIST_SORT_ASCENDING_TYPE
 !      LIST%SORT_METHOD=LIST_HEAP_SORT_METHOD
 
+    ! Make mutable
+      CALL List_MutableSet(table%listSVal,.TRUE., err, error, *999)
     ! Let us create a list of intg of dim listSizeY
       CALL List_DataDimensionSet(table%listSVal,listSizeY, err, error, *999)
     ! Initial size listSizeX
@@ -1485,7 +1489,7 @@ END SUBROUTINE
     ! related to Lists
     INTEGER(INTG) :: listSize
 
-    TYPE(VARYING_STRING) :: dummyError !<The error string.
+    TYPE(VARYING_STRING) :: dummyError, localError
     INTEGER(INTG)        :: dummyErr
     ! generic
     INTEGER(INTG) :: i,k,j
@@ -1540,7 +1544,12 @@ END SUBROUTINE
     ! Check that size of list corresponds to key size
      IF (ASSOCIATED(table%listSVal)) THEN
        CALL List_NumberOfItemsGet(table%listSVal, listSize,err, error, *999)
-       IF(table%n /= listSize)  CALL FlagError("Keys and list of values have different size!",err,error,*999)
+       IF(table%n /= listSize)  THEN
+         localError="Keys and list of values have different size: "//TRIM(NumberToVString( &
+           & table%n,"*",err,error))//" and "//TRIM(NumberToVString(listSize,"*",err,error))
+         CALL FlagError(localError,err,error,*999)
+!        CALL FlagError("Keys and list of values have different size!",err,error,*999)
+       END IF
      END IF       
   
 

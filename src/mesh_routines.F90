@@ -53,9 +53,10 @@ MODULE MESH_ROUTINES
   USE COORDINATE_ROUTINES
   USE DataProjectionAccessRoutines
   USE DOMAIN_MAPPINGS
-  USE Kinds
+  USE HashRoutines
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
+  USE Kinds
   USE Lists
   USE MeshAccessRoutines
 #ifndef NOMPIMOD
@@ -4233,10 +4234,13 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,adjacent_element,domain_no,domain_idx,ne,nn,np,NUMBER_OF_DOMAINS, &
-      & NUMBER_OF_ADJACENT_ELEMENTS,myComputationalNodeNumber,component_idx
-    INTEGER(INTG), ALLOCATABLE :: ADJACENT_ELEMENTS(:),DOMAINS(:),LOCAL_ELEMENT_NUMBERS(:)
+      & NUMBER_OF_ADJACENT_ELEMENTS,myComputationalNodeNumber,component_idx, domainLocalType, &
+      & numberOfHashKeys
+    INTEGER(INTG), ALLOCATABLE :: ADJACENT_ELEMENTS(:),DOMAINS(:),LOCAL_ELEMENT_NUMBERS(:), &
+      & hashKeysArray(:), hashValuesArray(:), integerArray(:)
+    INTEGER(INTG), ALLOCATABLE :: hashValuesMatrix(:,:),hashValuesSubMatrix(:,:)
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST
-    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: ADJACENT_ELEMENTS_LIST(:)
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: ADJACENT_ELEMENTS_LIST(:), hashKeysList(:)!, hashValuesList(:)
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -4260,6 +4264,11 @@ CONTAINS
               !Calculate the local and global numbers and set up the mappings
               ALLOCATE(ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate element mapping global to local map.",ERR,ERROR,*999)
+              !ALLOCATE(ELEMENTS_MAPPING%domainMappingHashes(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+              !Should be only local!
+              ALLOCATE(ELEMENTS_MAPPING%domainMappingHashes(1),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate hash tables.",ERR,ERROR,*999)
+
               ELEMENTS_MAPPING%NUMBER_OF_GLOBAL=MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%NUMBER_OF_ELEMENTS
               !Loop over the global elements and calculate local numbers
               ALLOCATE(LOCAL_ELEMENT_NUMBERS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
@@ -4267,13 +4276,36 @@ CONTAINS
               LOCAL_ELEMENT_NUMBERS=0
               ALLOCATE(ADJACENT_ELEMENTS_LIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate adjacent elements list.",ERR,ERROR,*999)
+
+              !ALLOCATE(hashKeysList(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+              ALLOCATE(hashKeysList(1),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate hash keys list.",ERR,ERROR,*999)
+!              ALLOCATE(hashValuesList(ELEMENTS_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
+!              IF(ERR/=0) CALL FlagError("Could not allocate hashValuesList.",ERR,ERROR,*999)
+              ALLOCATE(hashValuesMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1,MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate hashValuesMatrix.",ERR,ERROR,*999)
+              hashValuesMatrix=0
+
               DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+
                 NULLIFY(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR)
                 CALL LIST_CREATE_START(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
                 CALL LIST_INITIAL_SIZE_SET(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,MAX(INT(MESH%NUMBER_OF_ELEMENTS/2),1), &
                   & ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+
+                !NULLIFY(hashKeysList(domain_idx)%PTR)
+                !CALL LIST_CREATE_START(hashKeysList(domain_idx)%PTR,ERR,ERROR,*999)
+                !CALL LIST_DATA_TYPE_SET(hashKeysList(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                NULLIFY(hashKeysList(1)%PTR)
+                CALL LIST_CREATE_START(hashKeysList(1)%PTR,ERR,ERROR,*999)
+                CALL LIST_DATA_TYPE_SET(hashKeysList(1)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                !CALL LIST_INITIAL_SIZE_SET(hashKeysList(domain_idx)%PTR,MAX(INT(MESH%NUMBER_OF_ELEMENTS/2),1), &
+                !  & ERR,ERROR,*999)
+                !CALL LIST_CREATE_FINISH(hashKeysList(domain_idx)%PTR,ERR,ERROR,*999)
+                CALL LIST_CREATE_FINISH(hashKeysList(1)%PTR,ERR,ERROR,*999)
+
               ENDDO !domain_idx
 
               DO ne=1,MESH%NUMBER_OF_ELEMENTS
@@ -4282,12 +4314,21 @@ CONTAINS
                 LOCAL_ELEMENT_NUMBERS(domain_no)=LOCAL_ELEMENT_NUMBERS(domain_no)+1
                 !Calculate the adjacent elements to the computational domains and the adjacent domain numbers themselves
                 BASIS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%BASIS
+
                 NULLIFY(ADJACENT_DOMAINS_LIST)
                 CALL LIST_CREATE_START(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(ADJACENT_DOMAINS_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
                 CALL LIST_INITIAL_SIZE_SET(ADJACENT_DOMAINS_LIST,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
                 CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domain_no,ERR,ERROR,*999)
+
+                !NULLIFY(hashValuesList(ne)%PTR)
+                !CALL LIST_CREATE_START(hashValuesList(ne)%PTR,ERR,ERROR,*999)
+                !CALL LIST_DATA_TYPE_SET(hashValuesList(ne)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                !CALL List_MutableSet(hashValuesList(ne)%PTR,.TRUE., err, error, *999)
+                !CALL LIST_INITIAL_SIZE_SET(hashValuesList(ne)%PTR,4,ERR,ERROR,*999)
+                !CALL LIST_CREATE_FINISH(hashValuesList(ne)%PTR,ERR,ERROR,*999)
+
                 DO nn=1,BASIS%NUMBER_OF_NODES
                   np=MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS%ELEMENTS(ne)%MESH_ELEMENT_NODES(nn)
                   DO no_adjacent_element=1,MESH%TOPOLOGY(component_idx)%PTR%NODES%NODES(np)%numberOfSurroundingElements
@@ -4310,17 +4351,44 @@ CONTAINS
                 IF(ERR/=0) CALL FlagError("Could not allocate element global to local map local type.",ERR,ERROR,*999)
                 ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(ne)%NUMBER_OF_DOMAINS=1
                 ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(ne)%LOCAL_NUMBER(1)=LOCAL_ELEMENT_NUMBERS(domain_no)
+
                 ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(ne)%DOMAIN_NUMBER(1)=DECOMPOSITION%ELEMENT_DOMAIN(ne)
                 IF(NUMBER_OF_DOMAINS==1) THEN
                   !Element is an internal element
                   ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(ne)%LOCAL_TYPE(1)=DOMAIN_LOCAL_INTERNAL
+                  domainLocalType = DOMAIN_LOCAL_INTERNAL
                 ELSE
                   !Element is on the boundary of computational domains
                   ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(ne)%LOCAL_TYPE(1)=DOMAIN_LOCAL_BOUNDARY
+                  domainLocalType = DOMAIN_LOCAL_BOUNDARY
                 ENDIF
+                !Add local element
+                !This info should be collected in a different way once gtl does not exist any more!
+                hashValuesMatrix(2:4,ne)= &
+                    & [domain_no,LOCAL_ELEMENT_NUMBERS(domain_no),domainLocalType]
+                hashValuesMatrix(1,ne)=1
+
+                !CALL LIST_ITEM_ADD (hashValuesList(ne)%PTR, &
+                !  & 1,err,error,*999) ! First element is number of domains
+                !CALL LIST_ITEM_ADD (hashValuesList(ne)%PTR, &
+                !  & domain_no,err,error,*999)
+                !CALL LIST_ITEM_ADD (hashValuesList(ne)%PTR, &
+                !  & LOCAL_ELEMENT_NUMBERS(domain_no),err,error,*999)
+                !CALL LIST_ITEM_ADD (hashValuesList(ne)%PTR, &
+                !  & domainLocalType,err,error,*999)
+                !CALL LIST_ITEM_ADD (hashKeysList(domain_no)%PTR, ne, err, error,*999)
+                IF(domain_no==myComputationalNodeNumber) THEN
+                  CALL LIST_ITEM_ADD (hashKeysList(1)%PTR, ne, err, error,*999)
+                END IF
+                  !This info should be collected in a different way once gtl does not exist any more!
+                !  hashValuesMatrix(2:4,sizeOfKeyList)= &
+                !    & [domain_no,LOCAL_ELEMENT_NUMBERS(domain_no),domainLocalType]
+                !  hashValuesMatrix(1,sizeOfKeyList)=1
+                !END IF
               ENDDO !ne
 
               !Compute ghost element mappings
+              !Hash: we can keep adding keys because new elements are ghosts => no risk of doubles
               DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
                 CALL LIST_REMOVE_DUPLICATES(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,ERR,ERROR,*999)
                 CALL LIST_DETACH_AND_DESTROY(ADJACENT_ELEMENTS_LIST(domain_idx)%PTR,NUMBER_OF_ADJACENT_ELEMENTS, &
@@ -4337,12 +4405,89 @@ CONTAINS
                   ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(adjacent_element)%LOCAL_TYPE( &
                     & ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(adjacent_element)%NUMBER_OF_DOMAINS)= &
                     & DOMAIN_LOCAL_GHOST
+                  !Add keys and values to the table
+                  !hash_t(domain_idx)_Skey(idx)=adjacent_element !check for double entry? (no)
+                  !CALL LIST_ITEM_ADD(hashKeysList(domain_idx)%PTR,adjacent_element,ERR,ERROR,*999)
+                  !This info should be collected in a different way once gtl does not exist any more!
+                  hashValuesMatrix(hashValuesMatrix(1,adjacent_element)*3+2:4,adjacent_element)= &
+                    & [domain_idx,LOCAL_ELEMENT_NUMBERS(domain_idx),DOMAIN_LOCAL_GHOST]
+                  hashValuesMatrix(1,adjacent_element)=hashValuesMatrix(1,adjacent_element)+1
+                  IF(domain_idx==myComputationalNodeNumber) THEN
+                    CALL LIST_ITEM_ADD (hashKeysList(1)%PTR, adjacent_element, err, error,*999)
+                  END IF
+                  !hashValuesMatrix(hashValuesMatrix(1,sizeOfKeyList)*3+2:4,sizeOfKeyList)= &
+                  !    & [domain_idx,LOCAL_ELEMENT_NUMBERS(domain_idx),DOMAIN_LOCAL_GHOST]
+                  !  hashValuesMatrix(1,sizeOfKeyList)=hashValuesMatrix(1,adjacent_element)+1
+                  !END IF
+
+!                  CALL LIST_ITEM_ADD (hashValuesList(adjacent_element)%PTR, &
+!                    & domain_idx,err,error,*999)
+!                  CALL LIST_ITEM_ADD (hashValuesList(adjacent_element)%PTR, &
+!                    & LOCAL_ELEMENT_NUMBERS(domain_idx),err,error,*999)
+!                  CALL LIST_ITEM_ADD (hashValuesList(adjacent_element)%PTR, &
+!                    & DOMAIN_LOCAL_GHOST,err,error,*999)
+                  !Change number of domains
+!                  CALL LIST_ITEM_GET (hashValuesList(adjacent_element)%PTR, &
+!                    & 1,numberOfDomainsElement,err,error,*999)
+!                  CALL LIST_ITEM_SET (hashValuesList(adjacent_element)%PTR, &
+!                    & 1,numberOfDomainsElement+1,err,error,*999)
+
                 ENDDO !no_adjacent_element
                 IF(ALLOCATED(ADJACENT_ELEMENTS)) DEALLOCATE(ADJACENT_ELEMENTS)
+
               ENDDO !domain_idx
 
               DEALLOCATE(ADJACENT_ELEMENTS_LIST)
               DEALLOCATE(LOCAL_ELEMENT_NUMBERS)
+
+              !Transfer the lists to a matrix
+              !DO ne = 1, MESH%NUMBER_OF_ELEMENTS
+              !  CALL LIST_DETACH_AND_DESTROY(hashValuesList(ne)%PTR,numberOfValues, &
+              !    & integerArray,ERR,ERROR,*999)
+              !  ALLOCATE(hashValuesArray(numberOfValues))
+              !  hashValuesArray=integerArray(1:numberOfValues)
+              !  IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+              !  DO rowMat = 1,numberOfValues
+              !    hashValuesMatrix(rowMat,ne)=hashValuesArray(rowMat)
+              !  END DO
+              !  DEALLOCATE(hashValuesArray)
+              !END DO
+
+              CALL LIST_DETACH_AND_DESTROY(hashKeysList(1)%PTR,numberOfHashKeys, &
+                & integerArray,ERR,ERROR,*999)
+
+              ALLOCATE(hashKeysArray(numberOfHashKeys))
+              hashKeysArray=integerArray(1:numberOfHashKeys)
+              IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+
+              WRITE(*,*) "NofKeys"
+              WRITE(*,*) numberOfHashKeys
+              WRITE(*,*) "HashKarray"
+              WRITE(*,*) hashKeysArray
+
+              ALLOCATE(hashValuesSubMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1,numberOfHashKeys),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate hashValuesMatrix.",ERR,ERROR,*999)
+              hashValuesSubMatrix=0
+
+              hashValuesSubMatrix = hashValuesMatrix(:,hashKeysArray)
+              WRITE(*,*) "HashVmatrix1"
+              WRITE(*,*) hashValuesSubMatrix(:,1)
+              WRITE(*,*) "HashVmatrix2"
+              WRITE(*,*) hashValuesSubMatrix(:,2)
+
+              !Finally compute the table
+              NULLIFY(ELEMENTS_MAPPING%domainMappingHashes(1)%PTR)
+              CALL HashTable_CreateStart(ELEMENTS_MAPPING%domainMappingHashes(1)%PTR,ERR,ERROR,*999)
+              ! define some parameters here if needed
+              CALL HashTable_CreateFinish(ELEMENTS_MAPPING%domainMappingHashes(1)%PTR,ERR,ERROR,*999)
+
+              CALL HashTable_ValuesSetAndInsert(ELEMENTS_MAPPING%domainMappingHashes(1)%PTR, &
+                & hashKeysArray,hashValuesSubMatrix, .FALSE., ERR, ERROR, *999)
+
+              IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
+              IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
+              IF(ALLOCATED(hashValuesMatrix)) DEALLOCATE(hashValuesMatrix)
+              IF(ALLOCATED(hashKeysList)) DEALLOCATE(hashKeysList)
 
               !Calculate element local to global maps from global to local map
               CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(ELEMENTS_MAPPING,ERR,ERROR,*999)
@@ -4435,6 +4580,12 @@ CONTAINS
     RETURN
 999 IF(ALLOCATED(DOMAINS)) DEALLOCATE(DOMAINS)
     IF(ALLOCATED(ADJACENT_ELEMENTS)) DEALLOCATE(ADJACENT_ELEMENTS)
+    IF(ALLOCATED(LOCAL_ELEMENT_NUMBERS)) DEALLOCATE(LOCAL_ELEMENT_NUMBERS)
+    IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
+    IF(ALLOCATED(hashValuesArray)) DEALLOCATE(hashValuesArray)
+    IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
+    IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
+    IF(ALLOCATED(hashValuesMatrix)) DEALLOCATE(hashValuesMatrix)
     IF(ASSOCIATED(DOMAIN%MAPPINGS%ELEMENTS)) CALL DOMAIN_MAPPINGS_ELEMENTS_FINALISE(DOMAIN%MAPPINGS,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("DOMAIN_MAPPINGS_ELEMENTS_CALCULATE",ERR,ERROR)
     RETURN 1
@@ -4579,6 +4730,7 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_NODES_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
+        STOP ! testing hash tables
         CALL DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*999)
 
         !Initialise lines
