@@ -9521,16 +9521,6 @@ CONTAINS
                   CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(NODES_MAPPING,ERR,ERROR,*999)
                   CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(DOFS_MAPPING,ERR,ERROR,*999)
 
-                  !Destroy here global-to-local nodes since not needed afterwards.
-                  !Els and dofs still needed @FIELD_MAPPINGS_CALCULATE
-                  IF(ALLOCATED(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP)) THEN
-                    DO node_idx=1,SIZE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP,1)
-                      CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_FINALISE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP &
-                      & (node_idx),ERR,ERROR,*999)
-                    ENDDO !node
-                    DEALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP)
-                  ENDIF
-
                 ELSE
                   CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
                 ENDIF
@@ -9689,6 +9679,16 @@ CONTAINS
           & NUMBER_OF_RECEIVE_GHOSTS,6,6,DOFS_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_RECEIVE_INDICES, &
           & '("      Local receive ghost indicies    :",6(X,I7))','(39X,6(X,I7))',ERR,ERROR,*999)
       ENDDO !domain_idx
+    ENDIF
+
+    !Destroy here global-to-local nodes since not needed afterwards.
+    !Els and dofs still needed @FIELD_MAPPINGS_CALCULATE
+    IF(ALLOCATED(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP)) THEN
+      DO node_idx=1,SIZE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP,1)
+        CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_FINALISE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP &
+          & (node_idx),ERR,ERROR,*999)
+      ENDDO !node
+      DEALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP)
     ENDIF
 
     EXITS("DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE")
