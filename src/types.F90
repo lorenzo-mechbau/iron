@@ -929,7 +929,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(DistributedMatrixType), POINTER :: distributedMatrix !<A pointer to the distributed matrix
     INTEGER(INTG) :: baseTagNumber !<The base number for the MPI tag numbers that will be used to communicate the distributed matrix data amongst the domains. The base tag number can be thought of as the identification number for the distributed matrix object.
     TYPE(MATRIX_TYPE), POINTER :: matrix !<A pointer to the matrix to store the rows corresponding to this domain.
-    TYPE(HashTableType), POINTER :: columnHashTable !< The hash table for ltg columns
+    TYPE(HashTableType), POINTER :: columnHashTable !< The hash table for ltg columns. This is a test: delete me!
   END TYPE DistributedMatrixCMISSType
 
   !>Contains information for a PETSc distributed matrix
