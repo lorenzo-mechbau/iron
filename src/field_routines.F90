@@ -53,6 +53,7 @@ MODULE FIELD_ROUTINES
   USE DistributedMatrixVector
   USE DOMAIN_MAPPINGS
   USE FieldAccessRoutines
+  USE HashRoutines
   USE Kinds
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
@@ -5332,6 +5333,8 @@ CONTAINS
             FIELD%FIELD_FINISHED=.TRUE.
             !Calculate dof mappings
             CALL FIELD_MAPPINGS_CALCULATE(FIELD,ERR,ERROR,*999)
+            !Test hash table implementation
+            STOP
             !Set up the geometric parameters
             CALL FIELD_GEOMETRIC_PARAMETERS_INITIALISE(FIELD,ERR,ERROR,*999)
             !Initialise the scalings
@@ -11131,7 +11134,8 @@ CONTAINS
       & PreviousLineGlobalNo, LineLocalNo, LineGlobalNo, LocalInternalLineIdx, LineReceiveIdx, MaxNumberDerivativesAtGhostLine, &
       & LineStartGlobalNo, LineStopGlobalNo, LocalLineIdx, LineOnCurrentComputationalNodeGlobalNo, GhostLineNo, &
       & MaximumNumberLinesSend, MaximumNumberLinesReceive, LineSendIdx, FirstGhostLineLocalNo, LastGhostLineLocalNo, &
-      & MaximumNumberLinesCommunicate, numberOfInternalExternalLines, globalDofStartNumberLine
+      & MaximumNumberLinesCommunicate, numberOfInternalExternalLines, globalDofStartNumberLine, &
+      & numberOfHashKeys, indexHash
 
     INTEGER(INTG), ALLOCATABLE :: VARIABLE_LOCAL_DOFS_OFFSETS(:),VARIABLE_GHOST_DOFS_OFFSETS(:), &
         & localDataParamCount(:),ghostDataParamCount(:), NumberBreaksNode(:), RowOffsetNode(:), DofTable(:), IntegerArray(:), &
@@ -11142,7 +11146,10 @@ CONTAINS
         & NumberDerivativesAtGhostFace(:), FaceDofSpecification(:,:), ReceiveRequestHandle2(:), SendRequestHandle2(:), &
         & numberOfInternalAndBoundaryExternalFacesOnRank(:), dofGlobalNumberFromFaceLocalNumber(:), NumberBreaksLine(:), &
         & NumberBreaksDoubleLine(:), RowOffsetLine(:), RowOffsetZeroBasedLine(:), LineDofSpecification(:,:), &
-        & numberOfInternalAndBoundaryExternalLinesOnRank(:), NumberDerivativesAtGhostLine(:), dofGlobalNumberFromLineLocalNumber(:)
+        & numberOfInternalAndBoundaryExternalLinesOnRank(:), NumberDerivativesAtGhostLine(:), &
+        & dofGlobalNumberFromLineLocalNumber(:), &
+        & hashKeysArray(:), hashValuesArray(:), hashIntegerArray(:), &
+        & hashValuesMatrix(:,:),hashValuesSubMatrix(:,:), hashArray (:)
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: decompositionTopology
     TYPE(DOMAIN_TYPE), POINTER :: domain
@@ -11155,9 +11162,11 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR, localError
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(LIST_TYPE), POINTER :: BoundaryDofLocalNosList
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: hashKeysList(:)!, hashValuesList(:)
     LOGICAL :: CurrentNodeIsInternal, AdjacentDomainFound, NodeIsOnCurrentAdjacentDomain, CurrentElementIsInternal, &
       & ElementIsOnCurrentAdjacentDomain, CurrentFaceIsInternal, FaceIsOnCurrentAdjacentDomain, BoundaryFaceNumbersCalculated, &
-      & BoundaryLineNumbersCalculated, CurrentLineIsInternal, LineIsOnCurrentAdjacentDomain
+      & BoundaryLineNumbersCalculated, CurrentLineIsInternal, LineIsOnCurrentAdjacentDomain, &
+      & isHashFound
 
     ENTERS("FIELD_MAPPINGS_CALCULATE",ERR,ERROR,*999)
 
@@ -15792,6 +15801,22 @@ CONTAINS
             ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate variable dofs mapping global to local map.",ERR,ERROR,*999)
             FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL=FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS
+
+            !Allocate hash table
+            ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%domainMappingHashes(1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate hash tables.",ERR,ERROR,*999)
+            ALLOCATE(hashKeysList(1),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate hash keys list.",ERR,ERROR,*999)
+            ALLOCATE(hashValuesMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1, &
+              & FIELD_VARIABLE_DOFS_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
+            IF(ERR/=0) CALL FlagError("Could not allocate hashValuesMatrix.",ERR,ERROR,*999)
+            hashValuesMatrix=0
+
+            NULLIFY(hashKeysList(1)%PTR)
+            CALL LIST_CREATE_START(hashKeysList(1)%PTR,ERR,ERROR,*999)
+            CALL LIST_DATA_TYPE_SET(hashKeysList(1)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+            CALL LIST_CREATE_FINISH(hashKeysList(1)%PTR,ERR,ERROR,*999)
+
           ENDIF
           !The ordering of the DOFs with respect to components is arbitrary. Allow for two orderings: The first ordering is that
           !all the DOFs from one component are processed before all the DOFs of the next component. This is known as "separated"
@@ -15834,6 +15859,7 @@ CONTAINS
                         & ERR,ERROR,*999)
                       !A constant dof is mapped to all domains.
                       FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%NUMBER_OF_DOMAINS=NUMBER_OF_DOMAINS
+                      !Add values and key
                       DO domain_idx=1,NUMBER_OF_DOMAINS
                         domain_no=domain_idx-1
                         FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_NUMBER(domain_idx)= &
@@ -15841,8 +15867,19 @@ CONTAINS
                         FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%DOMAIN_NUMBER(domain_idx)=domain_no
                         FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)%LOCAL_TYPE(domain_idx)= &
                           & DOMAIN_LOCAL_INTERNAL
+
+                        !This info should be collected in a different way once gtl does not exist any more!
+                        !VARIABLE_LOCAL_DOFS_OFFSETS and local numbering most probably WRONG!
+                        hashValuesMatrix(domain_idx*3-1:domain_idx*3+1,variable_global_ny)= &
+                          & [domain_no,1+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no),DOMAIN_LOCAL_INTERNAL]
                       ENDDO !domain_idx
-                    ENDIF
+                      CALL LIST_ITEM_ADD (hashKeysList(1)%PTR, variable_global_ny, err, error,*999)
+                      hashValuesMatrix(1,variable_global_ny)=NUMBER_OF_DOMAINS
+                      !Delete WRITE statements!!!
+                      WRITE (*,*) "Constant global ny"
+                      WRITE (*,*) variable_global_ny
+
+                    ENDIF !associated dofs mapping
                     constant_nyy=constant_nyy+1
                     !Setup dof to parameter map
                     FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny)=FIELD_CONSTANT_DOF_TYPE
@@ -15875,6 +15912,27 @@ CONTAINS
                         variable_global_ny=ny+VARIABLE_GLOBAL_DOFS_OFFSET
                         CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(FIELD_VARIABLE_DOFS_MAPPING% &
                           & GLOBAL_TO_LOCAL_MAP(variable_global_ny),ERR,ERROR,*999)
+
+                        !Copy hash of ELEMENTS (global# ny) to field dofs mapping (global# variable_global_ny)
+                        CALL HashTable_GetKey(DOFS_MAPPING%domainMappingHashes(1)%PTR, &
+                          ny, indexHash, isHashFound, ERR, ERROR, *999)
+                        IF (isHashFound) THEN
+                          CALL HashTable_GetValue(DOFS_MAPPING%domainMappingHashes(1)%PTR, &
+                            & indexHash, hashArray, ERR, ERROR, *999)
+                          !Add local offset (probably WRONG) to total local
+                          DO domain_idx=1,hashArray(1)
+                            domain_no=hashArray(domain_idx*3-1)
+                            hashArray(domain_idx*3) = &
+                              & hashArray(domain_idx*3)+VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          END DO
+                          hashValuesMatrix(:,variable_global_ny)=hashArray
+                          CALL LIST_ITEM_ADD (hashKeysList(1)%PTR, variable_global_ny, err, error,*999)
+                          IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
+                          !Write statements to delete!
+                          WRITE (*,*) "Element global ny"
+                          WRITE (*,*) variable_global_ny
+                        END IF
+
                         NUMBER_OF_DOMAINS=DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS
                         ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(variable_global_ny)% &
                           & LOCAL_NUMBER(NUMBER_OF_DOMAINS),STAT=ERR)
@@ -15909,7 +15967,7 @@ CONTAINS
                     VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                       & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                       & elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST
-                  ELSE
+                  ELSE !domain_type_idx==2 (ghost)
                     !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                     !dofs are at the end of the local dofs.
                     !Adjust the ghost offsets
@@ -15934,6 +15992,20 @@ CONTAINS
                               & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
                           ENDIF
                         ENDDO !domain_idx
+                        ! Redo for hash:
+                        DO domain_idx=1,hashValuesMatrix(1,variable_global_ny) ! number of domains
+                          domain_no=hashValuesMatrix(domain_idx*3-1,variable_global_ny)
+                          IF(hashValuesMatrix(domain_idx*3+1,variable_global_ny) &
+                            & == DOMAIN_LOCAL_GHOST) THEN
+                            hashValuesMatrix(domain_idx*3,variable_global_ny) = &
+                              & hashValuesMatrix(domain_idx*3,variable_global_ny)+ &
+                              & VARIABLE_GHOST_DOFS_OFFSETS(domain_no)
+                          ELSE
+                            hashValuesMatrix(domain_idx*3,variable_global_ny) = &
+                              & hashValuesMatrix(domain_idx*3,variable_global_ny)+ &
+                              & VARIABLE_LOCAL_DOFS_OFFSETS(domain_no)
+                          END IF
+                        ENDDO !domain_idx
                       ENDIF
                     ENDDO !ny (global)
                     start_idx=elementsMapping%NUMBER_OF_LOCAL+1
@@ -15941,7 +16013,7 @@ CONTAINS
                     !Adjust the local offsets
                     VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
                       & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_GHOST
-                  ENDIF
+                  ENDIF ! local or ghost
                   !Adjust the global offset
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL
                   !Handle local dofs domain mapping
@@ -15956,6 +16028,7 @@ CONTAINS
                     !Setup reverse parameter to dof map
                     FIELD_COMPONENT%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(element_idx)=variable_local_ny
                   ENDDO !element_idx
+
                 CASE(FIELD_FACE_BASED_INTERPOLATION)
                   !!!!!
                   CALL FlagError("FIELD_FACE_BASED_INTERPOLATION is not implemented here",ERR,ERROR,*999)
@@ -16739,9 +16812,43 @@ CONTAINS
                 & VARIABLE_TYPE,"*",ERR,ERROR))//"."
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
+
+          !Compute hash table and local to global
           IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
+            !If we created the values needed for the table, create it.
+            CALL LIST_NUMBER_OF_ITEMS_GET(hashKeysList(1)%PTR,numberOfHashKeys,ERR,ERROR,*999)
+            IF (numberOfHashKeys /=0) THEN
+              CALL LIST_DETACH_AND_DESTROY(hashKeysList(1)%PTR,numberOfHashKeys, &
+                & hashIntegerArray,ERR,ERROR,*999)
+
+              ALLOCATE(hashKeysArray(numberOfHashKeys))
+              hashKeysArray=hashIntegerArray(1:numberOfHashKeys)
+              IF(ALLOCATED(hashIntegerArray)) DEALLOCATE(hashIntegerArray)
+              ALLOCATE(hashValuesSubMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1,numberOfHashKeys),STAT=ERR)
+              IF(ERR/=0) CALL FlagError("Could not allocate hashValuesMatrix.",ERR,ERROR,*999)
+              hashValuesSubMatrix=0
+
+              hashValuesSubMatrix = hashValuesMatrix(:,hashKeysArray)
+
+              !Finally compute the table
+              NULLIFY(FIELD_VARIABLE_DOFS_MAPPING%domainMappingHashes(1)%PTR)
+              CALL HashTable_CreateStart(FIELD_VARIABLE_DOFS_MAPPING%domainMappingHashes(1)% &
+                & PTR,ERR,ERROR,*999)
+              ! define some parameters here if needed
+              CALL HashTable_CreateFinish(FIELD_VARIABLE_DOFS_MAPPING%domainMappingHashes(1)% &
+                & PTR,ERR,ERROR,*999)
+
+              CALL HashTable_ValuesSetAndInsert(FIELD_VARIABLE_DOFS_MAPPING%domainMappingHashes(1)%PTR, &
+                & hashKeysArray,hashValuesSubMatrix, .FALSE., ERR, ERROR, *999)
+
+              IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
+              IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
+              IF(ALLOCATED(hashValuesMatrix)) DEALLOCATE(hashValuesMatrix)
+              IF(ALLOCATED(hashKeysList)) DEALLOCATE(hashKeysList)
+            END IF !Hash table computed
+
             CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(FIELD_VARIABLE_DOFS_MAPPING,ERR,ERROR,*999)
-          ENDIF
+          ENDIF ! dofs mapping associated
         ENDDO !variable_idx
         IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)
         IF(ALLOCATED(VARIABLE_GHOST_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS)
@@ -16785,7 +16892,60 @@ CONTAINS
                 CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,2,2,2,FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP% &
                   & ELEMENT_DOF2PARAM_MAP(:,element_nyy),'("          DOF 2 Parameters :",2(X,I8))','(28X,2(X,I8))',ERR,ERROR,*999)
               ENDDO !element_nyy
-            ENDIF
+            END IF ! any element dof
+
+            ! Check hash table for element dofs
+            CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"      Hash Element DOFs:",ERR,ERROR,*999)
+            DO variable_local_ny=1,FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS
+              IF (FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny) &
+                & == FIELD_ELEMENT_BASED_INTERPOLATION) THEN
+                element_nyy= FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_local_ny)
+                CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Param2dof map Local Number"// &
+                  & " on rank for element-based:", &
+                  & variable_local_ny,ERR,ERROR,*999)
+                CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Global Number (=key) for element-based:", &
+                  & element_nyy,ERR,ERROR,*999)
+                !Error!
+                !- local number of dof2param map is CORRECT
+                !- local number of ltg map (calculated from gtl map) is WRONG due to wrong offset.
+                CALL HashTable_GetKey(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING &
+                  & %domainMappingHashes(1)%PTR, element_nyy, indexHash, isHashFound, ERR, ERROR, *999)
+                IF (isHashFound) THEN
+                  CALL HashTable_GetValue(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING% &
+                    & domainMappingHashes(1)%PTR, indexHash, hashArray, ERR, ERROR, *999)
+                  CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,SIZE(hashArray,1),1,3,hashArray(:), &
+                    &'("      El-based On number of domains :",(X,I8))','(28X,3(X,I8))',ERR,ERROR,*999)
+                ELSE
+                  CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"      Error! Not found in hash!",ERR,ERROR,*999)
+                END IF
+              END IF
+            END DO
+
+            ! Check hash table for constant dofs
+            CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"      Hash Const DOFs:",ERR,ERROR,*999)
+            !DO element_nyy = 1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_GLOBAL_DOFS
+            DO variable_local_ny=1,FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS
+              IF (FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%DOF_TYPE(1,variable_local_ny) &
+                & == FIELD_CONSTANT_INTERPOLATION) THEN
+                element_nyy= FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(variable_local_ny)
+                CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Param2dof map Local Number"// &
+                  & " on rank for constant-based:", &
+                  & variable_local_ny,ERR,ERROR,*999)
+                CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Global Number (=key) for constant-based:", &
+                  & element_nyy,ERR,ERROR,*999)
+                CALL HashTable_GetKey(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING &
+                  & %domainMappingHashes(1)%PTR, element_nyy, indexHash, isHashFound, ERR, ERROR, *999)
+                IF (isHashFound) THEN
+                  CALL HashTable_GetValue(FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING% &
+                    & domainMappingHashes(1)%PTR, indexHash, hashArray, ERR, ERROR, *999)
+                  CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,SIZE(hashArray,1),1,3,hashArray(:), &
+                    &'("     Con-based On number of domains :",(X,I8))','(28X,3(X,I8))',ERR,ERROR,*999)
+                ELSE
+                  CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"      Error! Not found in hash!",ERR,ERROR,*999)
+                END IF
+              END IF
+            END DO
+
             CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"      Number of face DOFs = ",FIELD%VARIABLES(variable_idx)% &
               & DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS,ERR,ERROR,*999)
             IF(FIELD%VARIABLES(variable_idx)%DOF_TO_PARAM_MAP%NUMBER_OF_FACE_DOFS>0) THEN
@@ -16946,6 +17106,12 @@ CONTAINS
     RETURN
 999 IF(ALLOCATED(VARIABLE_LOCAL_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_LOCAL_DOFS_OFFSETS)
     IF(ALLOCATED(VARIABLE_GHOST_DOFS_OFFSETS)) DEALLOCATE(VARIABLE_GHOST_DOFS_OFFSETS)
+    IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
+    IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
+    IF(ALLOCATED(hashValuesMatrix)) DEALLOCATE(hashValuesMatrix)
+    IF(ALLOCATED(hashKeysList)) DEALLOCATE(hashKeysList)
+    IF(ALLOCATED(hashArray)) DEALLOCATE (hashArray)
+
     ERRORSEXITS("FIELD_MAPPINGS_CALCULATE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE FIELD_MAPPINGS_CALCULATE
