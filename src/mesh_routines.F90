@@ -6205,9 +6205,9 @@ CONTAINS
       & lineGlobalNo, lineCount, elementGlobalNo, elementLocalNo, startNic, xicIdx, elementIdx, xicIdx2, &
       & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementLocalNo, I, J, adjacentElementGlobalNo2, &
       & arrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
-      & numberNonBoundaryPlaneAndLocalLines(2), numberLocalLines, numberAdjacentDomains, MPI_IERROR, numberSharedLines,  &
+      & numberNonBoundaryPlaneAndTotalLocalLines(2), numberTotalLocalLines, numberAdjacentDomains, MPI_IERROR, numberSharedLines,  &
       & numberLinesWithThatSetOfDomains, sharedLineIdx2, boundaryElementLinesIdx2, domainToAssignLinesToIdx, sharedLineIdx,&
-      & domainToAssignLinesTo, adjacentDomainIdx2, numberLocalLinesOnRank, numberNonBoundaryLinesOnRank, &
+      & domainToAssignLinesTo, adjacentDomainIdx2, numberTotalLocalLinesOnRank, numberNonBoundaryLinesOnRank, &
       & numberSharedLinesOnRank, numberInCurrentSetToClaim, ghostLineIdx, ghostLineGlobalNo, ghostDomain, &
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfLinesToReceive, internalLinesIdx, &
       & boundaryLinesIdx, localLineNo, domainListInternalIdx, domainListBoundaryIdx, internalLineGlobalNo, boundaryLineGlobalNo, &
@@ -6216,7 +6216,7 @@ CONTAINS
       & extraAdjacentDomain, numberExtraAdjacentDomains,nodeIdx, meshNodeNo, surroundingElemIdx, basisLocalLineIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalLines(:), integerArray(:), boundaryElementLines(:), sendRequestHandle(:), &
-      & numberNonBoundaryPlaneAndLocalLinesOnRank(:,:), receiveRequestHandle(:), boundaryElementLinesDomain(:), &
+      & numberNonBoundaryPlaneAndTotalLocalLinesOnRank(:,:), receiveRequestHandle(:), boundaryElementLinesDomain(:), &
       & numberLinesInDomain(:),adjacentDomains(:), localAndAdjacentDomains(:), boundaryLines(:), &
       & sendRequestHandle0(:), sendRequestHandle1(:), ghostLinesDomains(:,:), sendBuffer(:,:), numberToSendToDomain(:), &
       & receiveBuffer(:), lineOnBoundaryPlane(:), integerArray2D(:,:), extraAdjacentDomains(:), &
@@ -6756,11 +6756,11 @@ CONTAINS
     optimalNumberLinesPerDomain = REAL(linesMapping%NUMBER_OF_GLOBAL,DP) / linesMapping%NUMBER_OF_DOMAINS
 
     ! exchange number of local lines among adjacent ranks
-    numberLocalLines = linesMapping%NUMBER_OF_INTERNAL + numberBoundaryElementLinesList
+    numberTotalLocalLines = linesMapping%NUMBER_OF_INTERNAL + numberBoundaryElementLinesList
     !First entry is the number of local lines, not including boundary plane or ghost lines
-    !Second entry is the number of local lines, including the boundary plane but not ghosts
-    numberNonBoundaryPlaneAndLocalLines(1) = numberLocalLines-numberBoundaryPlaneLines
-    numberNonBoundaryPlaneAndLocalLines(2) = numberLocalLines
+    !Second entry is the total number of local lines, including the boundary plane
+    numberNonBoundaryPlaneAndTotalLocalLines(1) = numberTotalLocalLines-numberBoundaryPlaneLines
+    numberNonBoundaryPlaneAndTotalLocalLines(2) = numberTotalLocalLines
 
     ! allocate request handles
     ALLOCATE(sendRequestHandle(numberLocalAndAdjacentDomains), STAT=err)
@@ -6772,15 +6772,15 @@ CONTAINS
       & TRIM(NUMBER_TO_VSTRING(numberLocalAndAdjacentDomains,"*",err,error))//".",err,error,*999)
 
     ! allocate receive buffer (2 entries for interior and totally stored local lines, adjacent domains + local domain)
-    ALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank(2,numberAdjacentDomains+1), STAT=err)
-    IF(err/=0) CALL FlagError("Could not allocate numberNonBoundaryPlaneAndLocalLinesOnRank array with size "//&
+    ALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank(2,numberAdjacentDomains+1), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate numberNonBoundaryPlaneAndTotalLocalLinesOnRank array with size "//&
       & TRIM(NUMBER_TO_VSTRING(2*(numberLocalAndAdjacentDomains),"*",err,error))//".",err,error,*999)
 
     ! commit send commands
     DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
       adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
 
-      CALL MPI_ISEND(numberNonBoundaryPlaneAndLocalLines, 2, MPI_INT, adjacentDomain, 0, &
+      CALL MPI_ISEND(numberNonBoundaryPlaneAndTotalLocalLines, 2, MPI_INT, adjacentDomain, 0, &
         & computationalEnvironment%mpiCommunicator, sendRequestHandle(adjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
     ENDDO
@@ -6788,7 +6788,7 @@ CONTAINS
     ! commit receive commands
     DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
       adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
-      CALL MPI_IRECV(numberNonBoundaryPlaneAndLocalLinesOnRank(:,adjacentDomainIdx), 2, MPI_INT, adjacentDomain, 0, &
+      CALL MPI_IRECV(numberNonBoundaryPlaneAndTotalLocalLinesOnRank(:,adjacentDomainIdx), 2, MPI_INT, adjacentDomain, 0, &
         & computationalEnvironment%mpiCommunicator, receiveRequestHandle(adjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
     ENDDO
@@ -6889,7 +6889,7 @@ CONTAINS
               !leave as is for now so it is more similar to what it should be done for nodes.
               DO
 
-                ! find index for numberNonBoundaryPlaneAndLocalLinesOnRank that corresponds to domain domainToAssignLinesTo
+                ! find index for numberNonBoundaryPlaneAndTotalLocalLinesOnRank that corresponds to domain domainToAssignLinesTo
                 adjacentDomainIdx2 = 1
                 DO I=1,numberLocalAndAdjacentDomains
                   adjacentDomain = localAndAdjacentDomains(I)
@@ -6900,11 +6900,11 @@ CONTAINS
                 ENDDO
 
                 ! compute the number of lines that this domain will get from the current set of lines
-                numberLocalLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(2,adjacentDomainIdx2)
-                numberNonBoundaryLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(1,adjacentDomainIdx2)
+                numberTotalLocalLinesOnRank = numberNonBoundaryPlaneAndTotalLocalLinesOnRank(2,adjacentDomainIdx2)
+                numberNonBoundaryLinesOnRank = numberNonBoundaryPlaneAndTotalLocalLinesOnRank(1,adjacentDomainIdx2)
 
-                numberLinesAboveOptimum = numberLocalLinesOnRank - optimalNumberLinesPerDomain
-                numberSharedLinesOnRank = numberLocalLinesOnRank - numberNonBoundaryLinesOnRank
+                numberLinesAboveOptimum = numberTotalLocalLinesOnRank - optimalNumberLinesPerDomain
+                numberSharedLinesOnRank = numberTotalLocalLinesOnRank - numberNonBoundaryLinesOnRank
 
                 ! compute the portion of each line that adjacent domain should get from other domains
                 ! E.g. if portionToDistribute=0.4 that means that 4 out of 10 shared lines of the adjacent domain should be assigned to other domains and 6 should remain their own
@@ -7412,7 +7412,7 @@ CONTAINS
     IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
     IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
     IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
-    IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+    IF(ALLOCATED(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)
     IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
     IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
     IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
@@ -7440,7 +7440,7 @@ CONTAINS
       IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
       IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
       IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
-      IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+      IF(ALLOCATED(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)
       IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
       IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
       IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
@@ -7475,9 +7475,9 @@ CONTAINS
       & lineGlobalNo, lineCount, elementGlobalNo, elementLocalNo, startNic, xicIdx, elementIdx, xicIdx2, &
       & adjacentElementIdx, adjacentElementGlobalNo, adjacentElementLocalNo, I, J, adjacentElementGlobalNo2, &
       & arrayIndex, adjacentDomainIdx, domainNo, numberDomains, adjacentDomain, numberLocalAndAdjacentDomains, &
-      & numberNonBoundaryPlaneAndLocalLines(2), numberLocalLines, numberAdjacentDomains, MPI_IERROR, numberSharedLines,  &
+      & numberNonBoundaryPlaneAndTotalLocalLines(2), numberTotalLocalLines, numberAdjacentDomains, MPI_IERROR, numberSharedLines,  &
       & numberLinesWithThatSetOfDomains, sharedLineIdx2, boundaryElementLinesIdx2, domainToAssignLinesToIdx, sharedLineIdx,&
-      & domainToAssignLinesTo, adjacentDomainIdx2, numberLocalLinesOnRank, numberNonBoundaryLinesOnRank, &
+      & domainToAssignLinesTo, adjacentDomainIdx2, numberTotalLocalLinesOnRank, numberNonBoundaryLinesOnRank, &
       & numberSharedLinesOnRank, numberInCurrentSetToClaim, ghostLineIdx, ghostLineGlobalNo, ghostDomain, &
       & domainIdx, domainNo2, maximumNumberToSend, numberToSend, numberOfLinesToReceive, internalLinesIdx, &
       & boundaryLinesIdx, localLineNo, domainListInternalIdx, domainListBoundaryIdx, internalLineGlobalNo, boundaryLineGlobalNo, &
@@ -7488,7 +7488,7 @@ CONTAINS
       & surrElsIdx
     !
     INTEGER(INTG), ALLOCATABLE :: internalLines(:), integerArray(:), boundaryElementLines(:), sendRequestHandle(:), &
-      & numberNonBoundaryPlaneAndLocalLinesOnRank(:,:), receiveRequestHandle(:), boundaryElementLinesDomain(:), &
+      & numberNonBoundaryPlaneAndTotalLocalLinesOnRank(:,:), receiveRequestHandle(:), boundaryElementLinesDomain(:), &
       & numberLinesInDomain(:),adjacentDomains(:), localAndAdjacentDomains(:), boundaryLines(:), &
       & sendRequestHandle0(:), sendRequestHandle1(:), ghostLinesDomains(:,:), sendBuffer(:,:), numberToSendToDomain(:), &
       & receiveBuffer(:), lineOnBoundaryPlane(:), integerArray2D(:,:), extraAdjacentDomains(:), &
@@ -7894,6 +7894,7 @@ CONTAINS
     ALLOCATE(domainsOfBoundaryPlaneLineList(numberBoundaryElementLinesList),STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate domain list.",err,error,*999)
 
+    !I should be replaced!
     DO I=1, numberBoundaryElementLinesList
       NULLIFY(domainsOfBoundaryPlaneLineList(I)%PTR)
       CALL LIST_CREATE_START(domainsOfBoundaryPlaneLineList(I)%PTR,err,error,*999)
@@ -7931,7 +7932,7 @@ CONTAINS
         adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
 
 
-        ! If adjacent element is among the ghost elements, i.e is also on another domain.
+        ! If adjacent element is among the ghost elements, i.e. is also on another domain.
         ! The tempArray has the global numbers of the ghost elements from ghost start in index 1
         ! to ghost finish in the final index, therefore we can get the element idx from the index in the array.
         IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(tempArray,adjacentElementGlobalNo,arrayIndex, &
@@ -8023,20 +8024,21 @@ CONTAINS
     IF(ALLOCATED(tempArray)) DEALLOCATE(tempArray)
 
 
-    !AdjacentDomainsList holds the domains that share a boundary plane
+    !AdjacentDomainsList holds the FOREIGN domains that share a boundary plane
     !(If the domain only shares a boundary plane node, but not a line it is not in adjacentDomainsList )
     NULLIFY(adjacentDomainsList)
     CALL LIST_CREATE_START(adjacentDomainsList,err,error,*999)
     CALL LIST_DATA_TYPE_SET(adjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
     CALL LIST_CREATE_FINISH(adjacentDomainsList,err,error,*999)
 
-    !extraAdjeacent Domains holds the domains which share ghost/boundary elements with the current domain
+    !extraAdjacent Domains holds the FOREIGN domains which share ghost/boundary elements with the current domain
     NULLIFY(extraAdjacentDomainsList)
     CALL LIST_CREATE_START(extraAdjacentDomainsList,err,error,*999)
     CALL LIST_DATA_TYPE_SET(extraAdjacentDomainsList,LIST_INTG_TYPE,err,error,*999)
     CALL LIST_CREATE_FINISH(extraAdjacentDomainsList,err,error,*999)
 
     ! remove duplicate entries for the domains for the lines
+    !Replace I,J!!!
     DO I=1, numberBoundaryElementLinesList
       CALL LIST_REMOVE_DUPLICATES(domainsOfBoundaryPlaneLineList(I)%PTR,err,error,*999)
       CALL LIST_REMOVE_DUPLICATES(domainsOfLineList(I)%PTR,err,error,*999)
@@ -8100,6 +8102,7 @@ CONTAINS
     ENDDO
 
     ! fill sharedLinesList
+    ! I,J???
     DO I=1,numberBoundaryElementLinesList
 
       ! loop over adjacent domains of line I
@@ -8121,35 +8124,46 @@ CONTAINS
     ! Determine total number of lines on all ranks
 
     ! Load balancing to eventually assign boundary lines
-    ! count number of lines where boundary plane lines are counted as the resp. fraction such that the sum is 1 for all processes
-    numberLines = REAL(linesMapping%NUMBER_OF_INTERNAL,DP)
+    ! count number of lines on this rank:
+    ! (1) internal +
+    ! (2) on bdry element but NOT on bdry plane +
+    ! (3) on bdry plane (FRACTION shared with other shared domains: the sum for this line is 1 for all processes):
+    ! eg 1/2 on rank 0 1/2 on rank 1
+    numberLines = REAL(linesMapping%NUMBER_OF_INTERNAL,DP) !(1)
 
     DO I=1,numberBoundaryElementLinesList
       IF(lineOnBoundaryPlane(I)==1) THEN
         CALL LIST_NUMBER_OF_ITEMS_GET(domainsOfBoundaryPlaneLineList(I)%PTR,numberDomains,err,error,*999)
-        numberLines = numberLines + 1.0_DP/(REAL(numberDomains,DP)+1.0_DP)
+        numberLines = numberLines + 1.0_DP/(REAL(numberDomains,DP)+1.0_DP) ! (3) (FOREIGN domains + local)
       ELSE
-        numberLines = numberLines + 1.0_DP
+        numberLines = numberLines + 1.0_DP !(2)
       ENDIF
     ENDDO
 
     ! allreduce number of lines
     CALL MPI_ALLREDUCE(numberLines,totalNumberLines,1,MPI_DOUBLE,MPI_SUM, &
       & computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    !MPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm, ierror)
     CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
     linesMapping%NUMBER_OF_GLOBAL = NINT(totalNumberLines)
 
-
-    ! compute average number per domain
+    ! compute average (=optimal) number per domain
     linesMapping%NUMBER_OF_DOMAINS = elementsMapping%NUMBER_OF_DOMAINS
     optimalNumberLinesPerDomain = REAL(linesMapping%NUMBER_OF_GLOBAL,DP) / linesMapping%NUMBER_OF_DOMAINS
 
-    ! exchange number of local lines among adjacent ranks
-    numberLocalLines = linesMapping%NUMBER_OF_INTERNAL + numberBoundaryElementLinesList
+    ! exchange number of total local lines among adjacent ranks
+    !numberTotalLocalLines should be numberInternalAndBoundaryElementLines!!!
+    !...and below should also be changed then.
+    numberTotalLocalLines = linesMapping%NUMBER_OF_INTERNAL + numberBoundaryElementLinesList
     !First entry is the number of local lines, not including boundary plane or ghost lines
-    !Second entry is the number of local lines, including the boundary plane but not ghosts
-    numberNonBoundaryPlaneAndLocalLines(1) = numberLocalLines-numberBoundaryPlaneLines
-    numberNonBoundaryPlaneAndLocalLines(2) = numberLocalLines
+    !Second entry is the total number of local lines, including the boundary plane
+    !Naming:
+    !number...AndTotalLocalLines = what is in (2)
+    !numberNonBoundaryPlaneAndTotalLocalLines = what is in (2) - b. plane lines = what is in (1)
+    numberNonBoundaryPlaneAndTotalLocalLines(1) = numberTotalLocalLines-numberBoundaryPlaneLines !no ghosts
+    numberNonBoundaryPlaneAndTotalLocalLines(2) = numberTotalLocalLines !some could be ghosts
+
+    !numberNonBoundaryPlaneAndTotalLocalLines: this quantity is sent-rcvd to adj domains
 
     ! allocate request handles
     ALLOCATE(sendRequestHandle(numberLocalAndAdjacentDomains), STAT=err)
@@ -8161,23 +8175,24 @@ CONTAINS
       & TRIM(NUMBER_TO_VSTRING(numberLocalAndAdjacentDomains,"*",err,error))//".",err,error,*999)
 
     ! allocate receive buffer (2 entries for interior and totally stored local lines, adjacent domains + local domain)
-    ALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank(2,numberAdjacentDomains+1), STAT=err)
-    IF(err/=0) CALL FlagError("Could not allocate numberNonBoundaryPlaneAndLocalLinesOnRank array with size "//&
+    ALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank(2,numberAdjacentDomains+1), STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate numberNonBoundaryPlaneAndTotalLocalLinesOnRank array with size "//&
       & TRIM(NUMBER_TO_VSTRING(2*(numberLocalAndAdjacentDomains),"*",err,error))//".",err,error,*999)
 
     ! commit send commands
     DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
       adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
 
-      CALL MPI_ISEND(numberNonBoundaryPlaneAndLocalLines, 2, MPI_INT, adjacentDomain, 0, &
+      CALL MPI_ISEND(numberNonBoundaryPlaneAndTotalLocalLines, 2, MPI_INT, adjacentDomain, 0, &
         & computationalEnvironment%mpiCommunicator, sendRequestHandle(adjacentDomainIdx), MPI_IERROR)
+      !MPI_ISEND(BUF, COUNT, DATATYPE, DEST, TAG, COMM, REQUEST, IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
     ENDDO
 
     ! commit receive commands
     DO adjacentDomainIdx=1,numberLocalAndAdjacentDomains
       adjacentDomain = localAndAdjacentDomains(adjacentDomainIdx)
-      CALL MPI_IRECV(numberNonBoundaryPlaneAndLocalLinesOnRank(:,adjacentDomainIdx), 2, MPI_INT, adjacentDomain, 0, &
+      CALL MPI_IRECV(numberNonBoundaryPlaneAndTotalLocalLinesOnRank(:,adjacentDomainIdx), 2, MPI_INT, adjacentDomain, 0, &
         & computationalEnvironment%mpiCommunicator, receiveRequestHandle(adjacentDomainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,err,error,*999)
     ENDDO
@@ -8201,8 +8216,6 @@ CONTAINS
       & TRIM(NUMBER_TO_VSTRING(numberLocalAndAdjacentDomains,"*",err,error))//".",err,error,*999)
     numberLinesInDomain = 0
 
-
-
     ! add local domain to domain list of each line
     DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
       CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
@@ -8220,6 +8233,7 @@ CONTAINS
       CALL LIST_SORT(domainsOfLineList(boundaryElementLinesIdx)%PTR,err,error,*999)
     ENDDO
 
+    !Complicated loop to be revised
 
     ! loop over adjacent domains
     DO adjacentDomainIdx=1,numberAdjacentDomains
@@ -8278,7 +8292,7 @@ CONTAINS
               !leave as is for now so it is more similar to what it should be done for nodes.
               DO
 
-                ! find index for numberNonBoundaryPlaneAndLocalLinesOnRank that corresponds to domain domainToAssignLinesTo
+                ! find index for numberNonBoundaryPlaneAndTotalLocalLinesOnRank that corresponds to domain domainToAssignLinesTo
                 adjacentDomainIdx2 = 1
                 DO I=1,numberLocalAndAdjacentDomains
                   adjacentDomain = localAndAdjacentDomains(I)
@@ -8289,11 +8303,11 @@ CONTAINS
                 ENDDO
 
                 ! compute the number of lines that this domain will get from the current set of lines
-                numberLocalLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(2,adjacentDomainIdx2)
-                numberNonBoundaryLinesOnRank = numberNonBoundaryPlaneAndLocalLinesOnRank(1,adjacentDomainIdx2)
+                numberTotalLocalLinesOnRank = numberNonBoundaryPlaneAndTotalLocalLinesOnRank(2,adjacentDomainIdx2)
+                numberNonBoundaryLinesOnRank = numberNonBoundaryPlaneAndTotalLocalLinesOnRank(1,adjacentDomainIdx2)
 
-                numberLinesAboveOptimum = numberLocalLinesOnRank - optimalNumberLinesPerDomain
-                numberSharedLinesOnRank = numberLocalLinesOnRank - numberNonBoundaryLinesOnRank
+                numberLinesAboveOptimum = numberTotalLocalLinesOnRank - optimalNumberLinesPerDomain
+                numberSharedLinesOnRank = numberTotalLocalLinesOnRank - numberNonBoundaryLinesOnRank
 
                 ! compute the portion of each line that adjacent domain should get from other domains
                 ! E.g. if portionToDistribute=0.4 that means that 4 out of 10 shared lines of the adjacent domain should be assigned to other domains and 6 should remain their own
@@ -8340,7 +8354,7 @@ CONTAINS
     CALL LIST_INITIAL_SIZE_SET(boundaryLinesList,CEILING(elementsMapping%NUMBER_OF_LOCAL*0.2),err,error,*999)
     CALL LIST_CREATE_FINISH(boundaryLinesList,err,error,*999)
 
-    ! count number of boundary lines from boundary and boundary plane lines
+    ! count number of boundary lines from boundary element lines
     DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
       domainNo = boundaryElementLinesDomain(boundaryElementLinesIdx)
 
@@ -8365,7 +8379,9 @@ CONTAINS
     CALL LIST_INITIAL_SIZE_SET(ghostLinesDomainsList,MAX(1,numberBoundaryElementLinesList),err,error,*999)
     CALL LIST_CREATE_FINISH(ghostLinesDomainsList,err,error,*999)
 
-    ! Now exchange the boundary lines that the current domain owns to domains with these lines as ghost lines
+    ! Expression _boundary lines_ must be clarified!
+    ! b. lines vs. Lines on b. elems vs. Lines on b. plane
+    ! Now exchange the boundary lines (=that the current domain owns) to domains with these lines as ghost lines
     ! allocate send buffers
     ALLOCATE(sendBufferList(elementsMapping%NUMBER_OF_ADJACENT_DOMAINS), STAT=err)
     IF(err/=0) CALL FlagError("Could not allocate sendBufferList array with size "//&
@@ -8388,10 +8404,10 @@ CONTAINS
       CALL LIST_CREATE_FINISH(sendBufferList(I)%PTR,err,error,*999)
     ENDDO
 
-    ! Add own boundary and boundary plane lines that are ghost lines on other domains
-    ! to send buffer for the domains that they will be sent to.
+    ! Add own boundary element lines (= bdry lines) that are ghost lines on other domains
+    ! to send buffer for the domains that they will be sent to as ghost lines.
 
-    ! loop over boundary (and boundary plane) lines
+    ! loop over boundary element lines
     DO boundaryElementLinesIdx=1, numberBoundaryElementLinesList
       lineGlobalNo=boundaryElementLines(boundaryElementLinesIdx)
 
@@ -8449,8 +8465,7 @@ CONTAINS
       sendBuffer(1:numberToSendToDomain(domainIdx),domainIdx) = integerArray(1:numberToSendToDomain(domainIdx))
       IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
-
-      ! number of lines to be send to domain
+      ! number of lines to be sent to domain
       CALL MPI_ISEND(numberToSendToDomain(domainIdx),1,MPI_INT,domainNo,0, &
         & computationalEnvironment%mpiCommunicator, sendRequestHandle0(domainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
@@ -8502,7 +8517,7 @@ CONTAINS
 
     !ghostLinesDomains is size (2,number of ghost) where:
     !- the first  entry is the global line number and
-    !- the second entry is the domain number of the domain that owns the line
+    !- the second entry is the domain number of the domain that owns the line (as local)
     CALL LIST_SORT(ghostLinesDomainsList,err,error,*999)
     CALL LIST_DETACH_AND_DESTROY(ghostLinesDomainsList,linesMapping%NUMBER_OF_GHOST,integerArray2D,err,error,*999)
     ALLOCATE(ghostLinesDomains(2,linesMapping%NUMBER_OF_GHOST))
@@ -8515,7 +8530,7 @@ CONTAINS
     !From here on we use numberExtraAdjacentDomains not numberAdjacentDomains
     !because we want the number of domains that communicate ghost/boundary lines
 
-    ! initialize linesMapping%ADJACENT_DOMAINS. Here we want the number of domains that will send/recieve lines with this rank
+    ! initialize linesMapping%ADJACENT_DOMAINS. Here we want the number of domains that will send/receive lines with this rank
     linesMapping%NUMBER_OF_ADJACENT_DOMAINS = numberExtraAdjacentDomains
 
     ! allocate ADJACENT_DOMAINS
@@ -8663,7 +8678,7 @@ CONTAINS
     domainListGhostIdx = linesMapping%GHOST_START
     ! loop over ghost lines
     DO ghostLineIdx = 1,linesMapping%NUMBER_OF_GHOST
-      ghostLineGlobalNo = ghostLinesDomains(1,ghostLineIdx)
+      ghostLineGlobalNo = ghostLinesDomains(1,ghostLineIdx) !(1)
       ghostDomain = ghostLinesDomains(2,ghostLineIdx)
 
       linesMapping%DOMAIN_LIST(domainListGhostIdx) = localLineNo
@@ -8672,12 +8687,12 @@ CONTAINS
       localLineNo = localLineNo + 1
 
       ! update LOCAL_GHOST_RECEIVE_INDICES
-
+      ! ghosts in the current domain (1) that are to be received from (=they belong to) an ADJACENT domain (2)
 
       ! find entry ADJACENT_DOMAINS array for domainNo
       adjacentDomainEntryFound = .FALSE.
       DO adjacentDomainIdx=1,linesMapping%NUMBER_OF_ADJACENT_DOMAINS
-        IF (linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER == ghostDomain) THEN
+        IF (linesMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER == ghostDomain) THEN !(2)
 
 
           CALL LIST_ITEM_ADD(localGhostReceiveIndices(adjacentDomainIdx)%PTR,localLineNo-1,err,error,*999)
@@ -8706,7 +8721,6 @@ CONTAINS
 
     ENDDO
 
-
     ! exchange NUMBER_OF_DOMAIN_LOCAL and NUMBER_OF_DOMAIN_GHOST
     ! allocate number_of_domain_local
     ALLOCATE(linesMapping%NUMBER_OF_DOMAIN_LOCAL(0:numberComputationalNodes-1),STAT=err)
@@ -8714,9 +8728,14 @@ CONTAINS
 
     linesMapping%NUMBER_OF_DOMAIN_LOCAL(myComputationalNodeNumber) = linesMapping%NUMBER_OF_LOCAL
 
-    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,linesMapping%&
-      & NUMBER_OF_DOMAIN_LOCAL(0:numberComputationalNodes-1), &
+!The “in place” option for intracommunicators is specified by passing the value
+!MPI_IN_PLACE to the argument sendbuf at all processes. sendcount and sendtype are ignored.
+!Then the input data of each process is assumed to be in the area where that process would
+!receive its own contribution to the receive buffer.
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER, &
+      &linesMapping%NUMBER_OF_DOMAIN_LOCAL(0:numberComputationalNodes-1), &
       & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    !MPI_ALLGATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm)
     CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,err,error,*999)
 
     ! allocate number_of_domain_ghost
@@ -8801,7 +8820,7 @@ CONTAINS
     IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
     IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
     IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
-    IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+    IF(ALLOCATED(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)
     IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
     IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
     IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
@@ -8829,7 +8848,7 @@ CONTAINS
       IF(ALLOCATED(adjacentDomains)) DEALLOCATE(adjacentDomains)
       IF(ALLOCATED(sendRequestHandle)) DEALLOCATE(sendRequestHandle)
       IF(ALLOCATED(receiveRequestHandle)) DEALLOCATE(receiveRequestHandle)
-      IF(ALLOCATED(numberNonBoundaryPlaneAndLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndLocalLinesOnRank)
+      IF(ALLOCATED(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)) DEALLOCATE(numberNonBoundaryPlaneAndTotalLocalLinesOnRank)
       IF(ALLOCATED(localAndAdjacentDomains)) DEALLOCATE(localAndAdjacentDomains)
       IF(ALLOCATED(boundaryElementLinesDomain)) DEALLOCATE(boundaryElementLinesDomain)
       IF(ALLOCATED(numberLinesInDomain)) DEALLOCATE(numberLinesInDomain)
