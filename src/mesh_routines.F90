@@ -1004,7 +1004,8 @@ CONTAINS
               DO ComputationalNodeNo=0,NumberComputationalNodes-1
                 IF(ELEMENT_COUNT(ComputationalNodeNo)==0) THEN
                   LOCAL_ERROR="Invalid decomposition. There are no elements in computational node "// &
-                    & TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))//"."
+                    & TRIM(NUMBER_TO_VSTRING(ComputationalNodeNo,"*",ERR,ERROR))//"." // &
+                    & "If you want to test SetDecompositionDistributed old_global must be turned off."
                   CALL FlagWarning(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
               END DO !ComputationalNodeNo
@@ -1297,7 +1298,7 @@ CONTAINS
 
           ! fill send buffer
           ElementToSendNo = 1
-          DO J=1,ListSize
+          DO J=1,ListSize ! = global number of els
             CALL List_ItemGet(DECOMPOSITION%GlobalElementDomain,J,GlobalElementNoDomainPair,ERR,ERROR,*999)
             GlobalElementNo = GlobalElementNoDomainPair(1)
             Domain = GlobalElementNoDomainPair(2)
@@ -1427,7 +1428,6 @@ CONTAINS
       !  ENDDO
       !ENDIF
     ENDIF
-
 
     ! compute total number of elements
     ELEMENTS_MAPPING%NUMBER_OF_GLOBAL = 0
