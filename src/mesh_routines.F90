@@ -6655,42 +6655,9 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_NODES_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
 
+        ! FA: Assigned the following pointer to ensure that the elements mappings 
+        !is available through domain as well as decomposition.
         DOMAIN%MAPPINGS%ELEMENTS=>DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
-
-        !This case statement may have to be moved into the IF (USE_NEW_LOCAL_IMPLEMENTATION) part.
-        !Map the local face numbers to the global numbers
-        SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
-        CASE(1)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999)
-          ENDIF
-        CASE(2)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
-          ENDIF
-          !else do nothing
-        CASE(3)
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
-            !FIXTHIS
-            CALL FlagError("3D is not yet implemented for line mappings",ERR,ERROR,*999)
-            !FIXTHIS The below subroutine needs to be modified for 3D models and DECOMPOSITION_TOPOLOGY_LINES_CALCULATE needs to be updated
-            !Or a DomainMappings_3DLinesInitialise and DomainMappings_3DLinesCalculate should be created to create the lines in 3D models
-            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            !FIXTHIS change this to 3D lines calculate and create the subroutine
-            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
-          ENDIF
-          !else do nothing
-          IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
-            !FIXTHIS
-            ! CALL FlagError("3D is not yet implemented for face mappings",ERR,ERROR,*999)
-            !FIXTHIS The below subroutine needs to be tested for 3D models and DECOMPOSITION_TOPOLOGY_FACES_CALCULATE needs to be updated
-            CALL DomainMappings_FacesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
-            CALL DomainMappings_FacesCalculate(DOMAIN,ERR,ERROR,*999)
-          ENDIF
-          !else do nothing
-        END SELECT
 
         IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
           CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999) ! also sets number of dofs
@@ -6913,7 +6880,43 @@ CONTAINS
             & TRIM(NUMBER_TO_VSTRING(DOFS_NUMBER_OF_GLOBAL_NEW,"*",ERR,ERROR))//" vs. "//&
             & TRIM(NUMBER_TO_VSTRING(DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL,"*",ERR,ERROR)),ERR,ERROR,*999)
           ENDIF
+
         ENDIF
+
+        !This case statement may have to be moved into the IF (USE_NEW_LOCAL_IMPLEMENTATION) part.
+        !Map the local face numbers to the global numbers
+        SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
+        CASE(1)
+          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
+            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+          ENDIF
+        CASE(2)
+          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
+            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+          ENDIF
+          !else do nothing
+        CASE(3)
+          IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) THEN
+            !FIXTHIS
+            CALL FlagError("3D is not yet implemented for line mappings",ERR,ERROR,*999)
+            !FIXTHIS The below subroutine needs to be modified for 3D models and DECOMPOSITION_TOPOLOGY_LINES_CALCULATE needs to be updated
+            !Or a DomainMappings_3DLinesInitialise and DomainMappings_3DLinesCalculate should be created to create the lines in 3D models
+            CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            !FIXTHIS change this to 3D lines calculate and create the subroutine
+            CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)
+          ENDIF
+          !else do nothing
+          IF(DOMAIN%DECOMPOSITION%CALCULATE_FACES) THEN
+            !FIXTHIS
+            ! CALL FlagError("3D is not yet implemented for face mappings",ERR,ERROR,*999)
+            !FIXTHIS The below subroutine needs to be tested for 3D models and DECOMPOSITION_TOPOLOGY_FACES_CALCULATE needs to be updated
+            CALL DomainMappings_FacesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999)
+            CALL DomainMappings_FacesCalculate(DOMAIN,ERR,ERROR,*999)
+          ENDIF
+          !else do nothing
+        END SELECT
 
       ENDIF
     ELSE
@@ -7318,6 +7321,8 @@ CONTAINS
                   ENDDO
                 ENDIF
 
+!STOP
+
                 ! initialize NODES_MAPPING%ADJACENT_DOMAINS
                 NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NumberAdjacentDomains
 
@@ -7465,6 +7470,7 @@ CONTAINS
                       & " nodes ",ERR,ERROR,*999)
                     !PRINT *, MyComputationalNodeNumber, ": domain ", AdjacentDomain, " has ",NumberSharedNodes," nodes "
                     DO SharedNodeIdx = 1,NumberSharedNodes
+
                       CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,BoundaryAndGhostNodeIdx,&
                         & ERR,ERROR,*999)
                       GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
