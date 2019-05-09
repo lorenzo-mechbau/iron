@@ -357,6 +357,8 @@ MODULE LISTS
 
   PUBLIC LIST_DETACH_AND_DESTROY
 
+  PUBLIC LIST_EQUAL
+
   PUBLIC List_Destroy,List_DetachAndDestroy
 
   PUBLIC LIST_ITEM_ADD
@@ -2648,6 +2650,120 @@ CONTAINS
   !================================================================================================================================
   !
 
+  SUBROUTINE LIST_EQUAL(LIST,LIST2,LIST_EQUAL,ERR,ERROR,*)
+!  FUNCTION (LIST,LIST2,ERR,ERROR)
+
+    !Argument Variables
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The pointer to the list
+    TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST2 !<The pointer to the 2nd list to compare to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Function Variable
+    LOGICAL, INTENT(OUT) :: LIST_EQUAL  !< if the lists are equal
+    !Local Variables
+    INTEGER(INTG) :: I, J
+
+    ENTERS("LIST_EQUAL",ERR,ERROR,*999)
+    LIST_EQUAL = .FALSE.
+
+    IF(ASSOCIATED(LIST)) THEN
+      IF(LIST%LIST_FINISHED) THEN
+        IF(ASSOCIATED(LIST2)) THEN
+          IF(LIST2%LIST_FINISHED) THEN
+            IF(LIST%DATA_TYPE/=LIST2%DATA_TYPE) THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
+            IF(LIST%DATA_DIMENSION/=LIST2%DATA_DIMENSION) THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
+            IF(LIST%NUMBER_IN_LIST/=LIST2%NUMBER_IN_LIST)  THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
+
+            IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_INTG(I) /= LIST2%LIST_INTG(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_INTG2(J,I) /= LIST2%LIST_INTG2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_SP(I) /= LIST2%LIST_SP(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_SP2(J,I) /= LIST2%LIST_SP2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSEIF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
+              IF(LIST%DATA_DIMENSION==1) THEN
+                DO I=1,LIST%NUMBER_IN_LIST
+                  IF (LIST%LIST_DP(I) /= LIST2%LIST_DP(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
+                ENDDO
+              ELSE
+                DO J=1,LIST%DATA_DIMENSION
+                  DO I=1,LIST%NUMBER_IN_LIST
+                    IF (LIST%LIST_DP2(J,I) /= LIST2%LIST_DP2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
+                  ENDDO
+                ENDDO
+              ENDIF
+            ELSE
+              CALL FlagError("List type is invalid.",ERR,ERROR,*999)
+            ENDIF
+            LIST_EQUAL = .TRUE.
+
+          ELSE
+            CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("List2 is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("List has not been finished.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("List is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("LIST_EQUAL")
+    RETURN
+999 ERRORSEXITS("LIST_EQUAL",ERR,ERROR)
+    RETURN 1
+  !END FUNCTION LIST_EQUAL
+  END SUBROUTINE LIST_EQUAL
+  !
+  !================================================================================================================================
+  !
   !>Removes duplicate entries from a list. A side effect of this is that the list is sorted.
   SUBROUTINE LIST_REMOVE_DUPLICATES(LIST,ERR,ERROR,*)
 
