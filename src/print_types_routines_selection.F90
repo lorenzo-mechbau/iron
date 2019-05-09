@@ -77,7 +77,6 @@ END FUNCTION GetPrintIndent
     PRINT*, "Print TYPE(DOMAIN_MAPPING_TYPE), POINTER :: Variable with maximum depth ",MaxDepth,", maximum array length:", &
       & MaxArrayLength
     CALL Print_DOMAIN_MAPPING_TYPE(Variable, 1, MaxDepth, MaxArrayLength)
-    
   END SUBROUTINE Print_DOMAIN_MAPPING
 
 !
