@@ -2755,7 +2755,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  FUNCTION LIST_EQUAL(LIST,LIST2,ERR,ERROR)
+  SUBROUTINE LIST_EQUAL(LIST,LIST2,isListEqual,ERR,ERROR,*)
+!  FUNCTION (LIST,LIST2,ERR,ERROR)
 
     !Argument Variables
     TYPE(LIST_TYPE), POINTER, INTENT(INOUT) :: LIST !<The pointer to the list
@@ -2763,62 +2764,88 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Function Variable
-    LOGICAL :: LIST_EQUAL  !< if the lists are equal
+    LOGICAL, INTENT(OUT) :: isListEqual  !< if the lists are equal
     !Local Variables
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
     INTEGER(INTG) :: I, J
 
     ENTERS("LIST_EQUAL",ERR,ERROR,*999)
-    LIST_EQUAL = .FALSE.
+    isListEqual = .FALSE.
 
     IF(ASSOCIATED(LIST)) THEN
       IF(LIST%LIST_FINISHED) THEN
         IF(ASSOCIATED(LIST2)) THEN
           IF(LIST2%LIST_FINISHED) THEN
-            IF(LIST%DATA_TYPE/=LIST2%DATA_TYPE) RETURN
-            IF(LIST%DATA_DIMENSION/=LIST2%DATA_DIMENSION) RETURN
-            IF(LIST%NUMBER_IN_LIST/=LIST2%NUMBER_IN_LIST) RETURN
+            IF(LIST%DATA_TYPE/=LIST2%DATA_TYPE) THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
+            IF(LIST%DATA_DIMENSION/=LIST2%DATA_DIMENSION) THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
+            IF(LIST%NUMBER_IN_LIST/=LIST2%NUMBER_IN_LIST)  THEN
+              EXITS("LIST_EQUAL")
+              RETURN
+            END IF
 
             IF(LIST%DATA_TYPE==LIST_INTG_TYPE) THEN
               IF(LIST%DATA_DIMENSION==1) THEN
                 DO I=1,LIST%NUMBER_IN_LIST
-                  IF (LIST%LIST_INTG(I) /= LIST2%LIST_INTG(I)) RETURN
+                  IF (LIST%LIST_INTG(I) /= LIST2%LIST_INTG(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
                 ENDDO
               ELSE
                 DO J=1,LIST%DATA_DIMENSION
                   DO I=1,LIST%NUMBER_IN_LIST
-                    IF (LIST%LIST_INTG2(J,I) /= LIST2%LIST_INTG2(J,I)) RETURN
+                    IF (LIST%LIST_INTG2(J,I) /= LIST2%LIST_INTG2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
                   ENDDO
                 ENDDO
               ENDIF
             ELSEIF(LIST%DATA_TYPE==LIST_SP_TYPE) THEN
               IF(LIST%DATA_DIMENSION==1) THEN
                 DO I=1,LIST%NUMBER_IN_LIST
-                  IF (LIST%LIST_SP(I) /= LIST2%LIST_SP(I)) RETURN
+                  IF (LIST%LIST_SP(I) /= LIST2%LIST_SP(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
                 ENDDO
               ELSE
                 DO J=1,LIST%DATA_DIMENSION
                   DO I=1,LIST%NUMBER_IN_LIST
-                    IF (LIST%LIST_SP2(J,I) /= LIST2%LIST_SP2(J,I)) RETURN
+                    IF (LIST%LIST_SP2(J,I) /= LIST2%LIST_SP2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
                   ENDDO
                 ENDDO
               ENDIF
             ELSEIF(LIST%DATA_TYPE==LIST_DP_TYPE) THEN
               IF(LIST%DATA_DIMENSION==1) THEN
                 DO I=1,LIST%NUMBER_IN_LIST
-                  IF (LIST%LIST_DP(I) /= LIST2%LIST_DP(I)) RETURN
+                  IF (LIST%LIST_DP(I) /= LIST2%LIST_DP(I)) THEN
+                    EXITS("LIST_EQUAL")
+                    RETURN
+                  END IF
                 ENDDO
               ELSE
                 DO J=1,LIST%DATA_DIMENSION
                   DO I=1,LIST%NUMBER_IN_LIST
-                    IF (LIST%LIST_DP2(J,I) /= LIST2%LIST_DP2(J,I)) RETURN
+                    IF (LIST%LIST_DP2(J,I) /= LIST2%LIST_DP2(J,I)) THEN
+                      EXITS("LIST_EQUAL")
+                      RETURN
+                    END IF
                   ENDDO
                 ENDDO
               ENDIF
             ELSE
               CALL FlagError("List type is invalid.",ERR,ERROR,*999)
             ENDIF
-            LIST_EQUAL = .TRUE.
+            isListEqual = .TRUE.
 
           ELSE
             CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
@@ -2836,8 +2863,9 @@ CONTAINS
     EXITS("LIST_EQUAL")
     RETURN
 999 ERRORSEXITS("LIST_EQUAL",ERR,ERROR)
-    RETURN
-  END FUNCTION LIST_EQUAL
+    RETURN 1
+  !END FUNCTION LIST_EQUAL
+  END SUBROUTINE LIST_EQUAL
 
   !
   !================================================================================================================================

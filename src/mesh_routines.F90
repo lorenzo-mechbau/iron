@@ -4931,7 +4931,7 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
-    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found
+    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found, isListEqual
     TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_FacesCalculate",err,error,*999)
@@ -5563,8 +5563,9 @@ CONTAINS
             IF (boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx2) == -1) THEN
 
               !if the domain list of each boundary face is equal then add 1 to the number of faces with that set of domains.
-              IF (LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
-                & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
+              CALL LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+                & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,isListEqual,err,error,*999)
+              IF (isListEqual) THEN
 
                 numberFacesWithThatSetOfDomains = numberFacesWithThatSetOfDomains+1
               ENDIF
@@ -5585,8 +5586,9 @@ CONTAINS
                 & err,error,*999)
 
             !if the domain list of each boundary face is equal
-            IF(LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
-              & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
+            CALL LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+              & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,isListEqual,err,error,*999)
+            IF(isListEqual) THEN
 
 
               !FIXTHIS should iterate DO domainToAssignFacesToIdx = 1,2 for faces, leave as is for now so it is more similar to what it should be for nodes.
@@ -6231,7 +6233,7 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfLineList(:), sharedLinesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneLineList(:)
     REAL(DP) :: numberLines, optimalNumberLinesPerDomain, totalNumberLines, portionToDistribute, numberLinesAboveOptimum
-    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found
+    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found, isListEqual
     TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_2DLinesCalculate",err,error,*999)
@@ -6859,8 +6861,9 @@ CONTAINS
             IF (boundaryElementLinesDomain(boundaryElementLinesIdx2) == -1) THEN
 
               !if the domain list of each boundary line is equal then add 1 to the number of lines with that set of domains.
-              IF (LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
-                & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+              CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+                & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,isListEqual,err,error,*999)
+              IF (isListEqual) THEN
 
                 numberLinesWithThatSetOfDomains = numberLinesWithThatSetOfDomains+1
               ENDIF
@@ -6881,8 +6884,9 @@ CONTAINS
                 & err,error,*999)
 
             !if the domain list of each boundary line is equal
-            IF(LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
-              & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+            CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+              & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,isListEqual,err,error,*999) 
+            IF(isListEqual) THEN
 
 
               !FIXTHIS should iterate DO domainToAssignLinesToIdx = 1,2 for lines,
@@ -7503,7 +7507,7 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfLineList(:), sharedLinesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneLineList(:)
     REAL(DP) :: numberLines, optimalNumberLinesPerDomain, totalNumberLines, portionToDistribute, numberLinesAboveOptimum
-    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, found
+    LOGICAL :: onOtherDomain,adjacentDomainEntryFound, isListEqual, found
     TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_3DLinesCalculate",err,error,*999)
@@ -8262,8 +8266,9 @@ CONTAINS
             IF (boundaryElementLinesDomain(boundaryElementLinesIdx2) == -1) THEN
 
               !if the domain list of each boundary line is equal then add 1 to the number of lines with that set of domains.
-              IF (LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
-                & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+              CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+                & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,isListEqual,err,error,*999)
+              IF (isListEqual) THEN
 
                 numberLinesWithThatSetOfDomains = numberLinesWithThatSetOfDomains+1
               ENDIF
@@ -8284,8 +8289,9 @@ CONTAINS
                 & err,error,*999)
 
             !if the domain list of each boundary line is equal
-            IF(LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
-              & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,err,error)) THEN
+            CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR, &
+              & domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx2)%PTR,isListEqual,err,error,*999) 
+            IF(isListEqual) THEN
 
 
               !FIXTHIS should iterate DO domainToAssignLinesToIdx = 1,2 for lines,
