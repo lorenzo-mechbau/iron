@@ -2650,7 +2650,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  SUBROUTINE LIST_EQUAL(LIST,LIST2,LIST_EQUAL,ERR,ERROR,*)
+  SUBROUTINE LIST_EQUAL(LIST,LIST2,isListEqual,ERR,ERROR,*)
 !  FUNCTION (LIST,LIST2,ERR,ERROR)
 
     !Argument Variables
@@ -2659,12 +2659,12 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Function Variable
-    LOGICAL, INTENT(OUT) :: LIST_EQUAL  !< if the lists are equal
+    LOGICAL, INTENT(OUT) :: isListEqual  !< if the lists are equal
     !Local Variables
     INTEGER(INTG) :: I, J
 
     ENTERS("LIST_EQUAL",ERR,ERROR,*999)
-    LIST_EQUAL = .FALSE.
+    isListEqual = .FALSE.
 
     IF(ASSOCIATED(LIST)) THEN
       IF(LIST%LIST_FINISHED) THEN
@@ -2740,7 +2740,7 @@ CONTAINS
             ELSE
               CALL FlagError("List type is invalid.",ERR,ERROR,*999)
             ENDIF
-            LIST_EQUAL = .TRUE.
+            isListEqual = .TRUE.
 
           ELSE
             CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
