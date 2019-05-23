@@ -2457,7 +2457,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_INTG,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:)=LIST_VALUES(1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
@@ -2515,7 +2515,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_INTG2,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:,:)=LIST_VALUES(:,1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
@@ -2572,7 +2572,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_SP,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:)=LIST_VALUES(1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
@@ -2629,7 +2629,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_SP2,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:,:)=LIST_VALUES(:,1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
@@ -2686,7 +2686,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_DP,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:)=LIST_VALUES(1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
@@ -2744,7 +2744,7 @@ CONTAINS
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_DP2,LIST_VALUES)
               !Following line should fix the problem:
-              LIST_VALUES(:,:)=LIST_VALUES(:,1:NUMBER_IN_LIST)
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
 
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
