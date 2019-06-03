@@ -11567,7 +11567,7 @@ CONTAINS
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,no_computational_node,no_ghost_node,adjacent_element,ghost_node, &
       & NUMBER_OF_NODES_PER_DOMAIN,domain_idx,domain_idx2,domain_no,node_idx,derivative_idx,version_idx,ny,NUMBER_OF_DOMAINS, &
       & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,myComputationalNodeNumber,numberOfComputationalNodes, &
-      & component_idx, diffNumberDomains
+      & component_idx, diffNumberDomains, domainDiffIdx
     INTEGER(INTG), ALLOCATABLE :: LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:),NODE_COUNT(:),NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:)
     INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:), diffDomains(:), &
@@ -11762,6 +11762,7 @@ CONTAINS
                           DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=MAX_NUMBER_DOMAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
+                      domainDiffIdx = 0
                       DO domain_idx=1,MAX_NUMBER_DOMAINS
 
                         IF (domain_idx<=NUMBER_OF_DOMAINS) THEN
@@ -11769,7 +11770,8 @@ CONTAINS
                           domain_no=DOMAINS(domain_idx)
                         ELSE
                           !Then the remaining ones:
-                          domain_no=diffDomains(domain_idx)
+                          domainDiffIdx = domainDiffIdx+1
+                          domain_no=diffDomains(domainDiffIdx)
                         END IF
 
                         !LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
