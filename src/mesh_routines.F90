@@ -403,7 +403,7 @@ CONTAINS
                   newDecomposition%CALCULATE_LINES=.True.
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(2)
-                  newDecomposition%CALCULATE_LINES=.True.
+                  newDecomposition%CALCULATE_LINES=.FALSE. ! lines are correct in FV_merged!!!
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(3)
                   !\todo calculate lines in 3D when needed
@@ -6660,7 +6660,7 @@ CONTAINS
         DOMAIN%MAPPINGS%ELEMENTS=>DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
 
         IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
-          CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999) ! also sets number of dofs
+          CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999) ! also sets number of DOFs!!
 
           ! output nodes mapping from new implementation
 
@@ -6718,6 +6718,7 @@ CONTAINS
 
         IF (USE_NEW_LOCAL_IMPLEMENTATION .AND. USE_OLD_GLOBAL_IMPLEMENTATION) THEN
           ! backup the DOMAIN%MAPPINGS%NODES and %DOFS to compare to old implementation
+          ! Elements stored in TWO different places!!! (see below)
           NODES_MAPPING_NEW = DOMAIN%MAPPINGS%NODES
           DOFS_MAPPING_NEW = DOMAIN%MAPPINGS%DOFS
           DOFS_NUMBER_OF_LOCAL_NEW = DOMAIN%MAPPINGS%DOFS%NUMBER_OF_LOCAL
@@ -6734,7 +6735,10 @@ CONTAINS
         ENDIF
 
         IF (USE_OLD_GLOBAL_IMPLEMENTATION) THEN
-          CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)    ! sets DECOMPOSITION%DOMAIN(.)%MAPPINGS%ELEMENTS, new implementation sets DECOMPOSITION%ELEMENTS_MAPPING in DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE
+          CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
+          ! OLD implementation sets: DECOMPOSITION%DOMAIN(.)%MAPPINGS%ELEMENTS
+          ! NEW implementation sets: DECOMPOSITION%ELEMENTS_MAPPING in DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE
+          ! (ELEMENTS_MAPPING not in type.F90 in OLD)
           CALL DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*999)
         ENDIF
 
@@ -6941,36 +6945,54 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes,component_idx,NumberBoundaryAndGhostNodes, &
-      & BoundaryNodesListIndex, AdjacentElementLocalNo, BoundaryAndGhostNodeIdx, AdjacentElementIdx, AdjacentElementGlobalNo, &
+    INTEGER(INTG) :: MyComputationalNodeNumber,NumberComputationalNodes,component_idx,numberBoundaryPlaneNodes, &
+      & BoundaryNodesListIndex, AdjacentElementLocalNo, boundaryPlaneNodeIdx, AdjacentElementIdx, AdjacentElementGlobalNo, &
       & AdjacentDomainIdx, ElementGlobalNo, ElementLocalNo, I, J, nn, NodeGlobalNo, DomainNo, NumberDomains, DomainIdx, &
-      & ElementIdx, ArrayIndex, TotalNumberInternalNodes, TotalNumberBoundaryAndGhostNodes, NumberAdjacentDomains, &
-      & AdjacentDomain, MPI_IERROR, SharedNode, SharedNodeIdx, NumberSharedNodes, NumberLocalNodes, SharedNodeIdx2, &
-      & NumberInteriorAndLocalNodes(2), NumberSharedNodesOnRank, NumberLocalAndAdjacentDomains, DomainToAssignNodesToIdx,&
+      & ElementIdx, ArrayIndex, TotalNumberInternalNodes, TotalnumberBoundaryPlaneNodes, NumberAdjacentDomains, &
+      & AdjacentDomain, MPI_IERROR, SharedNode, SharedNodeIdx, NumberSharedNodes, NumberBPandLocalNodes, SharedNodeIdx2, &
+      & NumberLocalAndBPandLocalNodes(2), NumberSharedNodesOnRank, NumberLocalAndAdjacentDomains, DomainToAssignNodesToIdx,&
       & DomainToAssignNodesTo, BoundaryNodeGlobalNo, BoundaryNodesIdx, DomainListBoundaryIdx, DomainListGhostIdx, DomainListIdx, &
       & DomainListInternalIdx, GhostNodeGlobalNo, GhostNodeIdx, GlobalNodeNo, InternalNodeGlobalNo, InternalNodesIdx, &
-      & LocalNodeNo, NumberInCurrentSetToClaim, NumberInteriorNodesOnRank, NumberLocalNodesOnRank, NumberToSend, &
-      & NumberNodesWithThatSetOfDomains, BoundaryAndGhostNodeIdx2, MaximumNumberToSend, NumberOfNodesToReceive, NumberGhostNodes, &
-      & GhostDomain, GhostElementIdx, DomainNo2, AdjacentDomainIdx2, NodeIdx, DerivativeIdx, NodeLocalNo
+      & LocalNodeNo, NumberInCurrentSetToClaim, NumberLocalNodesOnRank, NumberBPandLocalNodesOnRank, NumberToSend, &
+      & NumberNodesWithThatSetOfDomains, boundaryPlaneNodeIdx2, MaximumNumberToSend, NumberOfNodesToReceive, NumberGhostNodes, &
+      & GhostDomain, GhostElementIdx, DomainNo1, DomainNo2, AdjacentDomainIdx2, NodeIdx, DerivativeIdx, NodeLocalNo, &
+      & DUMMY_ERR, &
+      & NUMBER_OF_DOMAINS, MAX_NUMBER_DOMAINS, domainIdx1, domainIdx2, &
+      & boundaryAndBPNodeIdx, boundaryNotBPNodeIdx, numberBNotBPNodes, &
+      & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains
 
-    INTEGER(INTG), ALLOCATABLE :: BoundaryAndGhostNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
-      & NumberInteriorAndLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryAndGhostNodesDomain(:), &
-      & NumberNodesInDomain(:), GhostNodes(:), InternalNodes(:), BoundaryNodes(:), IntegerArray(:), ReceiveBuffer(:), &
-      & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:)
+    INTEGER(INTG), ALLOCATABLE :: BoundaryPlaneNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
+      & NumberLocalAndBPandLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryPlaneNodesDomain(:), &
+      & NumberNodesInDomain(:), GhostNodesIdx(:), InternalNodes(:), &
+      & BoundaryNodes(:), BoundaryNodesIdxArray(:), IntegerArray(:), ReceiveBuffer(:), &
+      & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:), &
+      & LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:), NUMBER_INTERNAL_NODES(:), &
+      & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:), DOMAINS(:), ALL_DOMAINS(:), &
+      & GHOST_NODES(:),numberOfDomainsNodesArray(:), AllAdjacentDomains(:), LocalAndAllAdjacentDomains(:)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES_MAPPING
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS_MAPPING
-    TYPE(LIST_TYPE), POINTER :: InternalNodesList, BoundaryAndGhostNodesList, AdjacentDomainsList, LocalAndAdjacentDomainsList, &
-      & BoundaryNodesList, GhostNodesList, GhostNodesDomainsList
-    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: DomainsOfNodeList(:), SharedNodesList(:), LocalGhostSendIndices(:), &
+    TYPE(LIST_TYPE), POINTER :: InternalNodesList, BoundaryPlaneNodesList, AdjacentDomainsList, LocalAndAdjacentDomainsList, &
+      & BoundaryNodesList, BoundaryNodesIdxList, GhostNodesIdxList, GhostNodesDomainsList, &
+      & ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST, &
+      & AllAdjacentDomainsList, LocalAndAllAdjacentDomainsList
+
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: DomainsOfBPNodeList(:), DomainsOfBAndBPNodeList(:), &
+      & AllDomainsOfBPNodeList(:), AllDomainsOfBAndBPNodeList(:), &
+      & SharedNodesList(:), LocalGhostSendIndices(:), &
       & LocalGhostReceiveIndices(:), SendBufferList(:), NewLocalGhostSendIndices, NewLocalGhostReceiveIndices
+
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:), ghostNodesBoundaryList(:)
+
     REAL(DP) :: OptimalNumberNodesPerDomain, NumberNodes, TotalNumberNodes, NumberNodesAboveOptimum, PortionToDistribute
 
-    LOGICAL :: OnOtherDomain,NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain,AdacentDomainEntryFound
+    LOGICAL :: OnOtherDomain,NodeIsOnBoundaryPlaneOnThatDomain,AdacentDomainEntryFound, isListEqual, &
+      & isElementLocal, boundaryDomain, isNodeNotBP
     TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: NewAdjacentDomain
+    TYPE(VARYING_STRING) :: DUMMY_ERROR
     !LOGICAL :: DIAGNOSTICS1 = .TRUE.
     !LOGICAL :: DIAGNOSTICS2 = .TRUE.
 
@@ -6980,184 +7002,300 @@ CONTAINS
       IF(ASSOCIATED(DOMAIN%MAPPINGS)) THEN
         IF(ASSOCIATED(DOMAIN%MAPPINGS%NODES)) THEN
           NODES_MAPPING=>DOMAIN%MAPPINGS%NODES
-          IF(ASSOCIATED(DOMAIN%DECOMPOSITION)) THEN
-            DECOMPOSITION=>DOMAIN%DECOMPOSITION
-            IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
-              ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING
-              IF(ASSOCIATED(DOMAIN%MESH)) THEN
-                MESH=>DOMAIN%MESH
-                component_idx=DOMAIN%MESH_COMPONENT_NUMBER
-                TOPOLOGY=>MESH%TOPOLOGY(component_idx)%PTR
+          IF(ASSOCIATED(DOMAIN%MAPPINGS%DOFS)) THEN
+            DOFS_MAPPING=>DOMAIN%MAPPINGS%DOFS
+            IF(ASSOCIATED(DOMAIN%DECOMPOSITION)) THEN
+              DECOMPOSITION=>DOMAIN%DECOMPOSITION
+              IF(ASSOCIATED(DECOMPOSITION%ELEMENTS_MAPPING)) THEN
+                ELEMENTS_MAPPING=>DECOMPOSITION%ELEMENTS_MAPPING ! NEW one!
+                IF(ASSOCIATED(DOMAIN%MESH)) THEN
+                  MESH=>DOMAIN%MESH
 
-                NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
-                MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
-                IF(ERR/=0) GOTO 999
+                  component_idx=DOMAIN%MESH_COMPONENT_NUMBER
+                  TOPOLOGY=>MESH%TOPOLOGY(component_idx)%PTR
 
-                IF(DIAGNOSTICS1) THEN
-                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                    & "  NumberComputationalNodes: ",NumberComputationalNodes,ERR,ERROR,*999)
+                  NumberComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+                  IF(ERR/=0) GOTO 999
+                  MyComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+                  IF(ERR/=0) GOTO 999
 
-                ENDIF
+                  IF(DIAGNOSTICS1) THEN
+                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+                      & "  NumberComputationalNodes: ",NumberComputationalNodes,ERR,ERROR,*999)
+                  ENDIF
 
-                ! create list for internal nodes
-                NULLIFY(InternalNodesList)
-                CALL LIST_CREATE_START(InternalNodesList,ERR,ERROR,*999)
-                CALL LIST_DATA_TYPE_SET(InternalNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
-                CALL LIST_INITIAL_SIZE_SET(InternalNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL*2,ERR,ERROR,*999)
-                CALL LIST_CREATE_FINISH(InternalNodesList,ERR,ERROR,*999)
-
-                ! determine interior and boundary nodes
-                ! loop over interior elements
-                DO ElementIdx = ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%INTERNAL_FINISH
-                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
-                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
-
-                  ! loop over nodes of element
-                  DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
-                    NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
-
-                    ! add node to internal nodes list
-                    CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
-                  ENDDO
-                ENDDO
-
-                ! loop over boundary and ghost elements
-                DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
-                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
-                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
-
-                  ! loop over nodes of element
-                  DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
-                    NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
-
-
-                    IF (DIAGNOSTICS2) &
-                      CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "//TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
+                  !Calculate the local and global numbers and set up the mappings
+                  ALLOCATE(numberOfDomainsNodesArray(TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate numberOfDomainsNodesArray.",ERR,ERROR,*999)
+                  numberOfDomainsNodesArray = 0
+                  NODES_MAPPING%NUMBER_OF_GLOBAL=TOPOLOGY%NODES%numberOfNodes
+                  ALLOCATE(LOCAL_NODE_NUMBERS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate local node numbers.",ERR,ERROR,*999)
+                  LOCAL_NODE_NUMBERS=0
+                  DOFS_MAPPING%NUMBER_OF_GLOBAL=TOPOLOGY%DOFS%numberOfDofs
+                  ALLOCATE(LOCAL_DOF_NUMBERS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate local dof numbers.",ERR,ERROR,*999)
+                  LOCAL_DOF_NUMBERS=0
+                  ALLOCATE(GHOST_NODES_LIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate ghost nodes list.",ERR,ERROR,*999)
+                  DO domainIdx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    NULLIFY(GHOST_NODES_LIST(domainIdx)%PTR)
+                    CALL LIST_CREATE_START(GHOST_NODES_LIST(domainIdx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(GHOST_NODES_LIST(domainIdx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(GHOST_NODES_LIST(domainIdx)%PTR,INT(TOPOLOGY%NODES%numberOfNodes/2), &
                       & ERR,ERROR,*999)
-                      !PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
+                    CALL LIST_CREATE_FINISH(GHOST_NODES_LIST(domainIdx)%PTR,ERR,ERROR,*999)
+                  ENDDO !domainIdx
+                  ALLOCATE(NUMBER_INTERNAL_NODES(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate number of internal nodes.",ERR,ERROR,*999)
+                  NUMBER_INTERNAL_NODES=0
+                  ALLOCATE(NUMBER_BOUNDARY_NODES(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate number of boundary nodes.",ERR,ERROR,*999)
+                  NUMBER_BOUNDARY_NODES=0
 
-                    OnOtherDomain = .FALSE.
+                  ! Create list for internal nodes
+                  NULLIFY(InternalNodesList)
+                  CALL LIST_CREATE_START(InternalNodesList,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(InternalNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(InternalNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL*2,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(InternalNodesList,ERR,ERROR,*999)
 
-                    ! loop over adjacent elements of this node
-                    DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
-                      AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
+                  ! Create list for ghost nodes (idx in BPNodes array)
+                  NULLIFY(GhostNodesIdxList)
+                  CALL LIST_CREATE_START(GhostNodesIdxList,ERR,ERROR,*999)
+                  CALL LIST_DATA_DIMENSION_SET(GhostNodesIdxList,1,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(GhostNodesIdxList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(GhostNodesIdxList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(GhostNodesIdxList,ERR,ERROR,*999)
 
+                  ! Create list for boundary nodes
+                  NULLIFY(BoundaryNodesList)
+                  CALL LIST_CREATE_START(BoundaryNodesList,ERR,ERROR,*999)
+                  CALL LIST_DATA_DIMENSION_SET(BoundaryNodesList,1,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(BoundaryNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(BoundaryNodesList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(BoundaryNodesList,ERR,ERROR,*999)
 
-                      IF (DIAGNOSTICS2) &
-                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global " //&
-                          & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
-                        !PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
+                  ! Create list for boundary nodes (idx in BPNodes array)
+                  NULLIFY(BoundaryNodesIdxList)
+                  CALL LIST_CREATE_START(BoundaryNodesIdxList,ERR,ERROR,*999)
+                  CALL LIST_DATA_DIMENSION_SET(BoundaryNodesIdxList,1,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(BoundaryNodesIdxList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(BoundaryNodesIdxList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(BoundaryNodesIdxList,ERR,ERROR,*999)
 
-                      ! determine if adjacent element is on a different domain, that is the case if it is a ghost
-                      IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
-                        & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ERR,ERROR)) THEN
+                  ! Create list for boundary plane nodes
+                  NULLIFY(BoundaryPlaneNodesList)
+                  CALL LIST_CREATE_START(BoundaryPlaneNodesList,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(BoundaryPlaneNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(BoundaryPlaneNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(BoundaryPlaneNodesList,ERR,ERROR,*999)
 
+                  !Temporary Fix to bug: nodes on boundary elements are NOT internal.
+                  !They are local boundary or ghosts since involved in communication.
+                  !Nodes on boundary elements that are NOT on boundary planes are local boundary nodes.
+                  ALLOCATE(boundaryPlane(TOPOLOGY%NODES%numberOfNodes))
+                  boundaryPlane = -1
 
-                        IF (DIAGNOSTICS2) &
-                          CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on other domain",ERR,ERROR,*999)
-                          !PRINT *, MyComputationalNodeNumber, ":     on other domain"
+                  !Determine the internal nodes, boundary nodes not on BP and BP nodes.
+                  DO NodeIdx=1,TOPOLOGY%NODES%numberOfNodes
+                    NULLIFY(ADJACENT_DOMAINS_LIST)
+                    CALL LIST_CREATE_START(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(ADJACENT_DOMAINS_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(ADJACENT_DOMAINS_LIST,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    NULLIFY(ALL_ADJACENT_DOMAINS_LIST)
+                    CALL LIST_CREATE_START(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(ALL_ADJACENT_DOMAINS_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(ALL_ADJACENT_DOMAINS_LIST,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
 
-                        OnOtherDomain = .TRUE.
-                        EXIT
+                    DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeIdx)%numberOfSurroundingElements
+                      AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeIdx)%surroundingElements(AdjacentElementIdx)
+
+                      isElementLocal =.FALSE.
+
+                      IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
+                        & ELEMENTS_MAPPING%INTERNAL_START:ELEMENTS_MAPPING%BOUNDARY_FINISH), &
+                        & AdjacentElementGlobalNo,ArrayIndex,ERR,ERROR)) THEN
+
+                        ElementLocalNo = ELEMENTS_MAPPING%INTERNAL_START + ArrayIndex-1
+                        domainNo1=DECOMPOSITION%ELEMENT_DOMAIN(AdjacentElementGlobalNo)
+                        CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
+                        CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
+                        DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                        !Check first if any send ghost are present
+                          IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                            & LOCAL_GHOST_SEND_INDICES)) THEN
+                            IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                              & LOCAL_GHOST_SEND_INDICES,ElementLocalNo,ERR,ERROR)) THEN
+
+                              domainNo2 = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+
+                              CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo2,ERR,ERROR,*999)
+                            END IF
+                          END IF
+                        END DO
+                        isElementLocal =.TRUE.
+                      ELSE IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
+                        & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ArrayIndex,&
+                        & ERR,ERROR)) THEN
+
+                        ElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
+                        domainNo1=DECOMPOSITION%ELEMENT_DOMAIN(AdjacentElementGlobalNo)
+                        CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
+                        CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
+
+                        domainNo2 = MyComputationalNodeNumber
+                        CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo2,ERR,ERROR,*999)
+                        isElementLocal=.TRUE.
+                      END IF
+
+                      IF(.NOT.isElementLocal) THEN
+                        CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,-1,ERR,ERROR,*999)
+                        CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,-1,ERR,ERROR,*999)
+                      END IF
+                    END DO !adjacent elements
+
+                    CALL LIST_REMOVE_DUPLICATES(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(ADJACENT_DOMAINS_LIST,NUMBER_OF_DOMAINS,DOMAINS,ERR,ERROR,*999)
+                    CALL LIST_REMOVE_DUPLICATES(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(ALL_ADJACENT_DOMAINS_LIST,MAX_NUMBER_DOMAINS,ALL_DOMAINS,ERR,ERROR,*999)
+
+                    IF(DIAGNOSTICS1) THEN
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Node = ",NodeIdx,ERR,ERROR,*999)
+                      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,NUMBER_OF_DOMAINS,8,8,DOMAINS, &
+                        & '("      Adj domains list :",8(X,I7))','(24X,8(X,I7))',ERR,ERROR,*999)
+                      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,MAX_NUMBER_DOMAINS,8,8,ALL_DOMAINS, &
+                        & '("      ALL Adj domains list :",8(X,I7))','(28X,8(X,I7))',ERR,ERROR,*999)
+
+                    END IF
+
+                    !Node is an internal node
+                    IF(MAX_NUMBER_DOMAINS==1 .AND. ALL_DOMAINS(1)/=-1) THEN
+                      CALL LIST_ITEM_ADD(InternalNodesList, nodeIdx,ERR,ERROR,*999)
+                    ELSE
+                      IF(NUMBER_OF_DOMAINS==1 .AND. DOMAINS(1)==myComputationalNodeNumber) THEN
+                        ! node is a boundary but not on the border between domains
+                        boundaryPlane(nodeIdx) = 0
+                        CALL LIST_ITEM_ADD(BoundaryNodesList, nodeIdx,ERR,ERROR,*999)
+                        !Fill with -1 this list required later
+                        CALL LIST_ITEM_ADD(BoundaryNodesIdxList, -1,ERR,ERROR,*999)
+                      END IF
+                      IF(NUMBER_OF_DOMAINS/=1 .AND. &
+                        & SORTED_ARRAY_CONTAINS_ELEMENT(DOMAINS,myComputationalNodeNumber,ERR,ERROR)) THEN
+                        ! node is on boundary plane
+                        boundaryPlane(nodeIdx) = 1
+                        CALL LIST_ITEM_ADD(BoundaryPlaneNodesList, nodeIdx,ERR,ERROR,*999)
                       ENDIF
 
+                    END IF
+
+                    DEALLOCATE(DOMAINS)
+                    DEALLOCATE(ALL_DOMAINS)
+
+                  END DO ! nodes
+
+                  ! Sort list by global node number and store in local nodes storage
+                  CALL LIST_REMOVE_DUPLICATES(InternalNodesList,ERR,ERROR,*999)
+                  CALL LIST_DETACH_AND_DESTROY(InternalNodesList,NODES_MAPPING%NUMBER_OF_INTERNAL,&
+                    & InternalNodes,ERR,ERROR,*999)
+                  IF (DIAGNOSTICS1) THEN
+                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
+                      & " Number of internal nodes: ",NODES_MAPPING%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
+                    DO I=1,NODES_MAPPING%NUMBER_OF_INTERNAL
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global no. ", &
+                        & InternalNodes(I),ERR,ERROR,*999)
                     ENDDO
-
-                     !IF (DIAGNOSTICS2) PRINT *, MyComputationalNodeNumber, ": is node internal? ",(.NOT. OnOtherDomain)
-
-                    IF (.NOT. OnOtherDomain) THEN
-                      ! add node to internal nodes list
-                      CALL LIST_ITEM_ADD(InternalNodesList, NodeGlobalNo,ERR,ERROR,*999)
-                    ENDIF
-
-                  ENDDO
-
-                ENDDO
-
-                ! Sort list by global node number and store in local nodes storage
-                CALL LIST_REMOVE_DUPLICATES(InternalNodesList,ERR,ERROR,*999)
-                CALL LIST_DETACH_AND_DESTROY(InternalNodesList,NODES_MAPPING%NUMBER_OF_INTERNAL,&
-                  & InternalNodes,ERR,ERROR,*999)
-
-                IF (DIAGNOSTICS1) THEN
-                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                    & "number internal nodes: ",NODES_MAPPING%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
-                  DO I=1,NODES_MAPPING%NUMBER_OF_INTERNAL
-                    CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  global no. ", &
-                      & InternalNodes(I),ERR,ERROR,*999)
-                  ENDDO
-                ENDIF
-
-                ! create list for boundary nodes (global node numbers)
-                NULLIFY(BoundaryAndGhostNodesList)
-                CALL LIST_CREATE_START(BoundaryAndGhostNodesList,ERR,ERROR,*999)
-                CALL LIST_DATA_TYPE_SET(BoundaryAndGhostNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
-                CALL LIST_INITIAL_SIZE_SET(BoundaryAndGhostNodesList,ELEMENTS_MAPPING%NUMBER_OF_LOCAL,ERR,ERROR,*999)
-                CALL LIST_CREATE_FINISH(BoundaryAndGhostNodesList,ERR,ERROR,*999)
-
-                ! loop over boundary elements
-                DO ElementIdx = ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
-                  ElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ElementIdx)
-                  ElementGlobalNo = ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ElementLocalNo)
-
-                  ! loop over nodes of element
-                  DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
-                    NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
-
-                    ! if global node is not contained in internal nodes list
-                    IF (.NOT. SORTED_ARRAY_CONTAINS_ELEMENT(InternalNodes,NodeGlobalNo,ERR,ERROR)) THEN
-
-                      ! add node to boundary nodes list
-                      CALL LIST_ITEM_ADD(BoundaryAndGhostNodesList,NodeGlobalNo,ERR,ERROR,*999)
-                    ENDIF
-                  ENDDO
-                ENDDO
+                  ENDIF
 
                 ! Sort list by global node number and remove duplicates
-                CALL LIST_REMOVE_DUPLICATES(BoundaryAndGhostNodesList,ERR,ERROR,*999)
-
-                ! count number of nodes that lie on boundary and are shared with other domains
-                CALL LIST_DETACH_AND_DESTROY(BoundaryAndGhostNodesList,NumberBoundaryAndGhostNodes,IntegerArray,&
+                CALL LIST_REMOVE_DUPLICATES(BoundaryPlaneNodesList,ERR,ERROR,*999)
+                ! count number of BP nodes (nodes that lie on boundary and are shared with other domains)
+                CALL LIST_DETACH_AND_DESTROY(BoundaryPlaneNodesList,numberBoundaryPlaneNodes,IntegerArray,&
                   & ERR,ERROR,*999)
-                BoundaryAndGhostNodes = IntegerArray(1:NumberBoundaryAndGhostNodes)
+                BoundaryPlaneNodes = IntegerArray(1:numberBoundaryPlaneNodes)
                 DEALLOCATE(IntegerArray)
 
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                    & "number boundary and ghost nodes: ",NumberBoundaryAndGhostNodes,ERR,ERROR,*999)
-                  DO I=1,NumberBoundaryAndGhostNodes
+                    & " Number of boundary plane nodes: ",numberBoundaryPlaneNodes,ERR,ERROR,*999)
+                  DO I=1,numberBoundaryPlaneNodes
                     CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                      & "  global no. ",BoundaryAndGhostNodes(I),ERR,ERROR,*999)
+                      & "  global no. ",BoundaryPlaneNodes(I),ERR,ERROR,*999)
                   ENDDO
                 ENDIF
 
-                ! allocate lists of foreign domains in which boundary nodes are present
-                ALLOCATE(DomainsOfNodeList(NumberBoundaryAndGhostNodes),STAT=ERR)
+                ! allocate lists of foreign domains in which boundary plane nodes are present
+                ! Domains = my rank if adj element is local, rank where adj element is local if ghost on my rank
+                ! AllDomains = above + all ranks where adj element is ghost
+                ALLOCATE(DomainsOfBPNodeList(numberBoundaryPlaneNodes),STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate domain list.",ERR,ERROR,*999)
+                ALLOCATE(AllDomainsOfBPNodeList(numberBoundaryPlaneNodes),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate all domain list.",ERR,ERROR,*999)
 
-                DO I=1, NumberBoundaryAndGhostNodes
-                  NULLIFY(DomainsOfNodeList(I)%PTR)
-                  CALL LIST_CREATE_START(DomainsOfNodeList(I)%PTR,ERR,ERROR,*999)
-                  CALL LIST_DATA_TYPE_SET(DomainsOfNodeList(I)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
-                  CALL LIST_INITIAL_SIZE_SET(DomainsOfNodeList(I)%PTR,7,ERR,ERROR,*999)
-                  CALL LIST_CREATE_FINISH(DomainsOfNodeList(I)%PTR,ERR,ERROR,*999)
+                DO I=1, numberBoundaryPlaneNodes
+                  NULLIFY(DomainsOfBPNodeList(I)%PTR)
+                  CALL LIST_CREATE_START(DomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(DomainsOfBPNodeList(I)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(DomainsOfBPNodeList(I)%PTR,7,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(DomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
+                  NULLIFY(AllDomainsOfBPNodeList(I)%PTR)
+                  CALL LIST_CREATE_START(AllDomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(AllDomainsOfBPNodeList(I)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(AllDomainsOfBPNodeList(I)%PTR,7,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(AllDomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
+
                 ENDDO
 
-                ! fill DomainsOfNodeList with all foreign domains for each boundary node
+                !BandBP = All boundary nodes + BP nodes
+                !BnotBP = Boundary nodes which are NOT on BP
+                CALL LIST_NUMBER_OF_ITEMS_GET(BoundaryNodesList, numberBNotBPNodes, ERR,ERROR,*999)
+                ALLOCATE(DomainsOfBandBPNodeList(numberBoundaryPlaneNodes+numberBNotBPNodes),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate domain list.",ERR,ERROR,*999)
+                ALLOCATE(AllDomainsOfBandBPNodeList(numberBoundaryPlaneNodes+numberBNotBPNodes),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate domain list.",ERR,ERROR,*999)
 
-                ! loop over boundary and ghost nodes
-                DO BoundaryAndGhostNodeIdx=1,NumberBoundaryAndGhostNodes
-                  NodeGlobalNo=BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
+                DO I=1, numberBoundaryPlaneNodes+numberBNotBPNodes
+                  NULLIFY(DomainsOfBandBPNodeList(I)%PTR)
+                  CALL LIST_CREATE_START(DomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(DomainsOfBandBPNodeList(I)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(DomainsOfBandBPNodeList(I)%PTR,7,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(DomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
 
+                  NULLIFY(AllDomainsOfBandBPNodeList(I)%PTR)
+                  CALL LIST_CREATE_START(AllDomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(AllDomainsOfBandBPNodeList(I)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_INITIAL_SIZE_SET(AllDomainsOfBandBPNodeList(I)%PTR,7,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(AllDomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
+                ENDDO
+
+
+                ! Fill DomainsOfBPNodeList for BP Nodes and
+                ! fill DomainsOfBandBPNodeList for Boundary AND BP Nodes
+                ! with all FOREIGN domains.
+                ! Loop over boundary and boundary plane nodes:
+                boundaryPlaneNodeIdx = 0
+                boundaryNotBPNodeIdx = 0
+
+                DO BoundaryAndBPNodeIdx=1,numberBoundaryPlaneNodes+numberBNotBPNodes
+
+                  isNodeNotBP = .FALSE.
+                  IF(boundaryNotBPNodeIdx < numberBNotBPNodes) THEN
+                    isNodeNotBP = .TRUE.
+                    boundaryNotBPNodeIdx = boundaryNotBPNodeIdx+1
+                    CALL LIST_ITEM_GET(BoundaryNodesList, boundaryNotBPNodeIdx, NodeGlobalNo, ERR,ERROR,*999)
+                  ELSE
+                    boundaryPlaneNodeIdx = boundaryPlaneNodeIdx+1
+                    NodeGlobalNo=BoundaryPlaneNodes(boundaryPlaneNodeIdx)
+                  END IF
 
                   IF (DIAGNOSTICS2) &
                       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"node global "//TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)), &
                       & ERR,ERROR,*999)
                       ! PRINT *, MyComputationalNodeNumber, ": node global ",NodeGlobalNo
 
-                  ! determine the other domains which have this node as boundary node
-
+                  ! determine the other domains which share this node
                   ! loop over adjacent elements of this node
                   DO AdjacentElementIdx=1,TOPOLOGY%NODES%NODES(NodeGlobalNo)%numberOfSurroundingElements
                     AdjacentElementGlobalNo=TOPOLOGY%NODES%NODES(NodeGlobalNo)%surroundingElements(AdjacentElementIdx)
@@ -7165,17 +7303,16 @@ CONTAINS
 
                     IF (DIAGNOSTICS2) &
                       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element global "// &
-                        & TRIM(NumberToVString(NodeGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                        & TRIM(NumberToVString(AdjacentElementGlobalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
                       ! PRINT *, MyComputationalNodeNumber, ":     adjacent element global ",AdjacentElementGlobalNo
 
-                    ! determine local (ghost) number
-                    ! if adjacent element is among the ghost elements, i.e. on a different domain (and not a boundary element)
+                    ! Determine local (ghost) number
+                    ! if adjacent element is among the ghost elements, i.e. on a different domain
                     IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP( &
                       & ELEMENTS_MAPPING%GHOST_START:ELEMENTS_MAPPING%GHOST_FINISH),AdjacentElementGlobalNo,ArrayIndex,&
                       & ERR,ERROR)) THEN
 
                       AdjacentElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
-
 
                       IF (DIAGNOSTICS2) &
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element local "// &
@@ -7184,52 +7321,171 @@ CONTAINS
 
                       ! determine domain of AdjacentElementLocalNo
                       DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-                        IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
-                          & LOCAL_GHOST_RECEIVE_INDICES,AdjacentElementLocalNo,ERR,ERROR)) THEN
+                        IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                          & LOCAL_GHOST_RECEIVE_INDICES)) THEN
+                          IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                            & LOCAL_GHOST_RECEIVE_INDICES,AdjacentElementLocalNo,ERR,ERROR)) THEN
 
-                          DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                            DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
 
-                          IF (DIAGNOSTICS2) &
-                            CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on domain "// &
-                              & TRIM(NumberToVString(DomainNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                            IF (DIAGNOSTICS2) THEN
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on domain "// &
+                                & TRIM(NumberToVString(DomainNo,"*",ERR,ERROR)),ERR,ERROR,*999)
                             ! PRINT *, MyComputationalNodeNumber, ":     on domain ",DomainNo
+                              IF(.NOT.isNodeNotBP) &
+                                & CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     boundaryPlaneNodeIdx "// &
+                                    & TRIM(NumberToVString(boundaryPlaneNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     BoundaryAndBPNodeIdx "// &
+                                & TRIM(NumberToVString(BoundaryAndBPNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                            END IF
 
                           ! now it was found that NodeGlobalNo is also on domain AdjacentDomainIdx, add to list
-                          CALL LIST_ITEM_ADD(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
-                          EXIT
-                        ENDIF
-                      ENDDO  ! AdjacentDomainIdx
-                    ELSE
+                          !Only BP:
+                            IF(.NOT.isNodeNotBP) THEN
+                              CALL LIST_ITEM_ADD(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                              CALL LIST_ITEM_ADD(AllDomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                            END IF
 
-                      IF (DIAGNOSTICS2) &
-                        CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     is on same domain",ERR,ERROR,*999)
-                        ! PRINT *, MyComputationalNodeNumber, ":     is on same domain"
+                          !All nodes:
+                            CALL LIST_ITEM_ADD(DomainsOfBandBPNodeList(BoundaryAndBPNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                            CALL LIST_ITEM_ADD(AllDomainsOfBandBPNodeList(BoundaryAndBPNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                          ENDIF
+                        END IF
+
+                        ! If adj element is ghost on my rank, check also if it is ghost on other domains (further ghosts)
+                        ! and add this domain to ALL domains lists
+                        IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                          & LOCAL_GHOST_FURTHER_INDICES)) THEN
+                          IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                            & LOCAL_GHOST_FURTHER_INDICES,AdjacentElementLocalNo,ERR,ERROR)) THEN
+
+                            DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+
+                            IF (DIAGNOSTICS2) THEN
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     on domain "// &
+                                & TRIM(NumberToVString(DomainNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                            ! PRINT *, MyComputationalNodeNumber, ":     on domain ",DomainNo
+                              IF(.NOT.isNodeNotBP) &
+                                & CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     boundaryPlaneNodeIdx "// &
+                                    & TRIM(NumberToVString(boundaryPlaneNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                              CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     BoundaryAndBPNodeIdx "// &
+                                & TRIM(NumberToVString(BoundaryAndBPNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                             END IF
+
+                            !Now it was found that NodeGlobalNo is also on domain AdjacentDomainIdx, add to list:
+                            !Only BP:
+                            IF(.NOT.isNodeNotBP) THEN
+                              CALL LIST_ITEM_ADD(AllDomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                            END IF
+                            !All nodes:
+                            CALL LIST_ITEM_ADD(AllDomainsOfBandBPNodeList(BoundaryAndBPNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                          END IF
+                        END IF
+                      ENDDO  ! AdjacentDomainIdx
+
+                    ELSE !if adj element is not ghost
+
+                      ! Check if adj element is boundary:
+                      ! LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%BOUNDARY_START:ELEMENTS_MAPPING%BOUNDARY_FINISH)
+                      ! is WRONG since in LTG map internal and boundary elements are not sorted!!!
+                      ! Then one must go through domain_list:
+                      DO ArrayIndex=ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%BOUNDARY_FINISH
+                        IF(ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(ELEMENTS_MAPPING%DOMAIN_LIST(ArrayIndex)) &
+                          & ==AdjacentElementGlobalNo) THEN
+
+                          AdjacentElementLocalNo = ELEMENTS_MAPPING%DOMAIN_LIST(ArrayIndex)
+
+                          IF (DIAGNOSTICS2) &
+                            & CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     adjacent element local "// &
+                            & TRIM(NumberToVString(AdjacentElementLocalNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                        ! PRINT *, MyComputationalNodeNumber, ":     adjacent element local ",AdjacentElementLocalNo
+
+                           ! determine domain of AdjacentElementLocalNo
+                          DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                        !Check first if any send ghost are present
+                            IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                              & LOCAL_GHOST_SEND_INDICES)) THEN
+                              IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                                & LOCAL_GHOST_SEND_INDICES,AdjacentElementLocalNo,ERR,ERROR)) THEN
+
+                                DomainNo = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+
+                                IF (DIAGNOSTICS2) THEN
+                                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     to domain "// &
+                                    & TRIM(NumberToVString(DomainNo,"*",ERR,ERROR)),ERR,ERROR,*999)
+                              ! PRINT *, MyComputationalNodeNumber, ":     on domain ",DomainNo
+                                  IF(.NOT.isNodeNotBP) &
+                                    & CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     boundaryPlaneNodeIdx "// &
+                                    & TRIM(NumberToVString(boundaryPlaneNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                                  CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"     BoundaryAndBPNodeIdx "// &
+                                    & TRIM(NumberToVString(BoundaryAndBPNodeIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
+                                END IF
+                          ! now it was found that NodeGlobalNo is also on domain AdjacentDomainIdx, add to list
+                          !Only BP:
+                                IF(.NOT.isNodeNotBP) &
+                                  & CALL LIST_ITEM_ADD(AllDomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+
+                          !All nodes:
+                                CALL LIST_ITEM_ADD(AllDomainsOfBandBPNodeList(BoundaryAndBPNodeIdx)%PTR,DomainNo,ERR,ERROR,*999)
+                              END IF ! if bdry element is sent to this domain
+                            ENDIF ! if allocated send ghosts to this domain
+                          END DO  ! AdjacentDomainIdx
+                        END IF ! if adjacent element is boundary element
+                      END DO ! loop over boundary elements
                     ENDIF
                   ENDDO  ! AdjacentElementIdx
-                ENDDO  ! BoundaryAndGhostNodeIdx
-
+                ENDDO  ! boundaryPlaneNodeIdx
 
                 NULLIFY(AdjacentDomainsList)
                 CALL LIST_CREATE_START(AdjacentDomainsList,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(AdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
                 CALL LIST_CREATE_FINISH(AdjacentDomainsList,ERR,ERROR,*999)
 
+                NULLIFY(AllAdjacentDomainsList)
+                CALL LIST_CREATE_START(AllAdjacentDomainsList,ERR,ERROR,*999)
+                CALL LIST_DATA_TYPE_SET(AllAdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                CALL LIST_CREATE_FINISH(AllAdjacentDomainsList,ERR,ERROR,*999)
+
                 ! remove duplicate entries for the domains for the nodes
-                DO I=1, NumberBoundaryAndGhostNodes
-                  CALL LIST_REMOVE_DUPLICATES(DomainsOfNodeList(I)%PTR,ERR,ERROR,*999)
+                DO I=1, numberBoundaryPlaneNodes
+                  CALL LIST_REMOVE_DUPLICATES(DomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
 
                   ! add adjacent domains to AdjacentDomainsList
-                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
                   DO J=1,NumberDomains
-                    CALL LIST_ITEM_GET(DomainsOfNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
+                    CALL LIST_ITEM_GET(DomainsOfBPNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
                     CALL LIST_ITEM_ADD(AdjacentDomainsList,AdjacentDomain,ERR,ERROR,*999)
                   ENDDO
                 ENDDO
 
+                DO I=1, numberBoundaryPlaneNodes
+                  CALL LIST_REMOVE_DUPLICATES(AllDomainsOfBPNodeList(I)%PTR,ERR,ERROR,*999)
+
+                  ! add adjacent domains to AdjacentDomainsList
+                  CALL LIST_NUMBER_OF_ITEMS_GET(AllDomainsOfBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                  DO J=1,NumberDomains
+                    CALL LIST_ITEM_GET(AllDomainsOfBPNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
+                    CALL LIST_ITEM_ADD(AllAdjacentDomainsList,AdjacentDomain,ERR,ERROR,*999)
+                  ENDDO
+                ENDDO
+
+                DO I=1,numberBoundaryPlaneNodes+numberBNotBPNodes
+                  CALL LIST_REMOVE_DUPLICATES(AllDomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
+
+                  ! add adjacent domains to AdjacentDomainsList
+                  CALL LIST_NUMBER_OF_ITEMS_GET(AllDomainsOfBandBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                  DO J=1,NumberDomains
+                    CALL LIST_ITEM_GET(AllDomainsOfBandBPNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
+                    CALL LIST_ITEM_ADD(AllAdjacentDomainsList,AdjacentDomain,ERR,ERROR,*999)
+                  ENDDO
+
+                ENDDO
+
                 ! determine distinct list of adjacent domains
                 CALL LIST_REMOVE_DUPLICATES(AdjacentDomainsList,ERR,ERROR,*999)
+                CALL LIST_REMOVE_DUPLICATES(AllAdjacentDomainsList,ERR,ERROR,*999)
 
-                ! create sorted list that contains local domain and all adjacent domains
+                ! create sorted list that contains local domain and adjacent domains
                 NULLIFY(LocalAndAdjacentDomainsList)
                 CALL LIST_CREATE_START(LocalAndAdjacentDomainsList,ERR,ERROR,*999)
                 CALL LIST_DATA_TYPE_SET(LocalAndAdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
@@ -7238,6 +7494,15 @@ CONTAINS
                 CALL LIST_APPENDLIST(LocalAndAdjacentDomainsList,AdjacentDomainsList,ERR,ERROR,*999)
                 CALL LIST_SORT(LocalAndAdjacentDomainsList,ERR,ERROR,*999)
 
+                ! create sorted list that contains local domain and ALL adjacent domains
+                NULLIFY(LocalAndAllAdjacentDomainsList)
+                CALL LIST_CREATE_START(LocalAndAllAdjacentDomainsList,ERR,ERROR,*999)
+                CALL LIST_DATA_TYPE_SET(LocalAndAllAdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                CALL LIST_CREATE_FINISH(LocalAndAllAdjacentDomainsList,ERR,ERROR,*999)
+                CALL LIST_ITEM_ADD(LocalAndAllAdjacentDomainsList,MyComputationalNodeNumber,ERR,ERROR,*999)
+                CALL LIST_APPENDLIST(LocalAndAllAdjacentDomainsList,AllAdjacentDomainsList,ERR,ERROR,*999)
+                CALL LIST_SORT(LocalAndAllAdjacentDomainsList,ERR,ERROR,*999)
+
                 CALL LIST_DETACH_AND_DESTROY(AdjacentDomainsList,NumberAdjacentDomains,IntegerArray,ERR,ERROR,*999)
                 AdjacentDomains = IntegerArray(1:NumberAdjacentDomains)
                 DEALLOCATE(IntegerArray)
@@ -7245,6 +7510,15 @@ CONTAINS
                 CALL LIST_DETACH_AND_DESTROY(LocalAndAdjacentDomainsList,NumberLocalAndAdjacentDomains,IntegerArray,&
                   & ERR,ERROR,*999)
                 LocalAndAdjacentDomains = IntegerArray(1:NumberLocalAndAdjacentDomains)
+                DEALLOCATE(IntegerArray)
+
+                CALL LIST_DETACH_AND_DESTROY(AllAdjacentDomainsList,NumberAllAdjacentDomains,IntegerArray,ERR,ERROR,*999)
+                AllAdjacentDomains = IntegerArray(1:NumberAllAdjacentDomains)
+                DEALLOCATE(IntegerArray)
+
+                CALL LIST_DETACH_AND_DESTROY(LocalAndAllAdjacentDomainsList,NumberLocalAndAllAdjacentDomains,IntegerArray,&
+                  & ERR,ERROR,*999)
+                LocalAndAllAdjacentDomains = IntegerArray(1:NumberLocalAndAllAdjacentDomains)
                 DEALLOCATE(IntegerArray)
 
                 IF (DIAGNOSTICS1) THEN
@@ -7270,12 +7544,12 @@ CONTAINS
                 ENDDO
 
                 ! fill SharedNodesList
-                DO I=1,NumberBoundaryAndGhostNodes
+                DO I=1,numberBoundaryPlaneNodes
 
                   ! loop over adjacent domains of node I
-                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
                   DO J=1,NumberDomains
-                    CALL LIST_ITEM_GET(DomainsOfNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
+                    CALL LIST_ITEM_GET(DomainsOfBPNodeList(I)%PTR,J,AdjacentDomain,ERR,ERROR,*999)
 
                     ! get index of SharedNodesList
                     IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(AdjacentDomains(1:NumberAdjacentDomains),&
@@ -7289,15 +7563,15 @@ CONTAINS
 
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                    & "number boundary and ghost nodes: ",NumberBoundaryAndGhostNodes,ERR,ERROR,*999)
-                  DO I=1,NumberBoundaryAndGhostNodes
+                    & " Number of boundary plane nodes: ",numberBoundaryPlaneNodes,ERR,ERROR,*999)
+                  DO I=1,numberBoundaryPlaneNodes
                     CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
-                      & "  global no. ",BoundaryAndGhostNodes(I),ERR,ERROR,*999)
+                      & "  global no. ",BoundaryPlaneNodes(I),ERR,ERROR,*999)
                     CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  domains:",ERR,ERROR,*999)
 
-                    CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                    CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
                     DO DomainIdx=1,NumberDomains
-                      CALL LIST_ITEM_GET(DomainsOfNodeList(I)%PTR,DomainIdx,DomainNo,ERR,ERROR,*999)
+                      CALL LIST_ITEM_GET(DomainsOfBPNodeList(I)%PTR,DomainIdx,DomainNo,ERR,ERROR,*999)
                       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
                         & "    ",DomainNo,ERR,ERROR,*999)
                     ENDDO
@@ -7312,40 +7586,40 @@ CONTAINS
                     CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"    nodes: ",ERR,ERROR,*999)
                     CALL LIST_NUMBER_OF_ITEMS_GET(SharedNodesList(AdjacentDomainIdx)%PTR,NumberSharedNodes,ERR,ERROR,*999)
                     DO SharedNodeIdx = 1,NumberSharedNodes
-                      CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,BoundaryAndGhostNodeIdx,&
+                      CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,boundaryPlaneNodeIdx,&
                         & ERR,ERROR,*999)
-                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    ",BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx), &
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    ",BoundaryPlaneNodes(boundaryPlaneNodeIdx), &
                         & ERR,ERROR,*999)
 
                     ENDDO
                   ENDDO
                 ENDIF
 
-!STOP
-
                 ! initialize NODES_MAPPING%ADJACENT_DOMAINS
-                NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NumberAdjacentDomains
+                NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = NumberAllAdjacentDomains
 
                 ! allocate ADJACENT_DOMAINS
-                ALLOCATE(NODES_MAPPING%ADJACENT_DOMAINS(NumberAdjacentDomains), STAT=ERR)
+                ALLOCATE(NODES_MAPPING%ADJACENT_DOMAINS(NumberAllAdjacentDomains), STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains array with size "//&
-                  & TRIM(NUMBER_TO_VSTRING(NumberAdjacentDomains,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+                  & TRIM(NUMBER_TO_VSTRING(NumberAllAdjacentDomains,"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
-                DO AdjacentDomainIdx=1,NumberAdjacentDomains
-                  AdjacentDomain = AdjacentDomains(AdjacentDomainIdx)
+                DO AdjacentDomainIdx=1,NumberAllAdjacentDomains
+                  AdjacentDomain = AllAdjacentDomains(AdjacentDomainIdx)
                   NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER = AdjacentDomain
                   NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS = 0
                   NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS = 0
                   NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_FURTHER_LINKED_GHOSTS = 0
                 ENDDO
 
-                ! determine total number of nodes on all ranks
+                ! determine total number of nodes on all ranks:
+                !(1) Get internal + boundary nodes not on bp
+                CALL LIST_NUMBER_OF_ITEMS_GET(BoundaryNodesList,NODES_MAPPING%NUMBER_OF_BOUNDARY,ERR,ERROR,*999)
+                NumberNodes = INT(NODES_MAPPING%NUMBER_OF_INTERNAL+NODES_MAPPING%NUMBER_OF_BOUNDARY)
 
-                ! count number of nodes where boundary/ghost nodes are counted as the resp. fraction such that the sum is 1 for all processes
-                NumberNodes = INT(NODES_MAPPING%NUMBER_OF_INTERNAL)
-
-                DO I=1,NumberBoundaryAndGhostNodes
-                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
+                !(2) count number of nodes where boundary plane nodes are counted as the resp. fraction
+                ! such that the sum is 1 for all processes
+                DO I=1,numberBoundaryPlaneNodes
+                  CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(I)%PTR,NumberDomains,ERR,ERROR,*999)
                   NumberNodes = NumberNodes + 1.0/(NumberDomains+1)
                 ENDDO
 
@@ -7359,14 +7633,14 @@ CONTAINS
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NODES_MAPPING%NUMBER_OF_INTERNAL: ",&
                     & NODES_MAPPING%NUMBER_OF_INTERNAL,ERR,ERROR,*999)
-                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NumberBoundaryAndGhostNodes: ", &
-                    & NumberBoundaryAndGhostNodes,ERR,ERROR,*999)
+                  CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"numberBoundaryPlaneNodes: ", &
+                    & numberBoundaryPlaneNodes,ERR,ERROR,*999)
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NumberNodes: ",NumberNodes,ERR,ERROR,*999)
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"TotalNumberNodes: ",TotalNumberNodes,ERR,ERROR,*999)
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"NODES_MAPPING%NUMBER_OF_GLOBAL: ", &
                     & NODES_MAPPING%NUMBER_OF_GLOBAL,ERR,ERROR,*999)
                   !PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_INTERNAL: ",NODES_MAPPING%NUMBER_OF_INTERNAL
-                  !PRINT *, MyComputationalNodeNumber, ": NumberBoundaryAndGhostNodes: ",NumberBoundaryAndGhostNodes
+                  !PRINT *, MyComputationalNodeNumber, ": numberBoundaryPlaneNodes: ",numberBoundaryPlaneNodes
                   !PRINT *, MyComputationalNodeNumber, ": NumberNodes: ",NumberNodes
                   !PRINT *, MyComputationalNodeNumber, ": TotalNumberNodes: ",TotalNumberNodes
                   !PRINT *, MyComputationalNodeNumber, ": NODES_MAPPING%NUMBER_OF_GLOBAL: ",NODES_MAPPING%NUMBER_OF_GLOBAL
@@ -7384,9 +7658,10 @@ CONTAINS
                 ENDIF
 
                 ! exchange number of local nodes among adjacent ranks
-                NumberLocalNodes = NODES_MAPPING%NUMBER_OF_INTERNAL + NumberBoundaryAndGhostNodes
-                NumberInteriorAndLocalNodes(1) = NODES_MAPPING%NUMBER_OF_INTERNAL
-                NumberInteriorAndLocalNodes(2) = NumberLocalNodes
+                NumberBPandLocalNodes = NODES_MAPPING%NUMBER_OF_INTERNAL + NODES_MAPPING%NUMBER_OF_BOUNDARY + &
+                  & numberBoundaryPlaneNodes
+                NumberLocalAndBPandLocalNodes(1) = NODES_MAPPING%NUMBER_OF_INTERNAL + NODES_MAPPING%NUMBER_OF_BOUNDARY
+                NumberLocalAndBPandLocalNodes(2) = NumberBPandLocalNodes
 
                 ! allocate request handles
                 ALLOCATE(SendRequestHandle(NumberAdjacentDomains+1), STAT=ERR)
@@ -7398,15 +7673,15 @@ CONTAINS
                   & TRIM(NUMBER_TO_VSTRING(NumberAdjacentDomains+1,"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
                 ! allocate receive buffer (2 entries for interior and totally stored local nodes, adjacent domains + local domain)
-                ALLOCATE(NumberInteriorAndLocalNodesOnRank(2,NumberAdjacentDomains+1), STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate NumberInteriorAndLocalNodesOnRank array with size "//&
+                ALLOCATE(NumberLocalAndBPandLocalNodesOnRank(2,NumberAdjacentDomains+1), STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate NumberLocalAndBPandLocalNodesOnRank array with size "//&
                   & TRIM(NUMBER_TO_VSTRING(2*(NumberAdjacentDomains+1),"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
                 ! commit send commands
                 DO AdjacentDomainIdx=1,NumberAdjacentDomains+1
                   AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
 
-                  CALL MPI_ISEND(NumberInteriorAndLocalNodes, 2, MPI_INT, AdjacentDomain, 0, &
+                  CALL MPI_ISEND(NumberLocalAndBPandLocalNodes, 2, MPI_INT, AdjacentDomain, 0, &
                     & computationalEnvironment%mpiCommunicator, SendRequestHandle(AdjacentDomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
                 ENDDO
@@ -7414,7 +7689,7 @@ CONTAINS
                 ! commit receive commands
                 DO AdjacentDomainIdx=1,NumberAdjacentDomains+1
                   AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
-                  CALL MPI_IRECV(NumberInteriorAndLocalNodesOnRank(:,AdjacentDomainIdx), 2, MPI_INT, AdjacentDomain, 0, &
+                  CALL MPI_IRECV(NumberLocalAndBPandLocalNodesOnRank(:,AdjacentDomainIdx), 2, MPI_INT, AdjacentDomain, 0, &
                     & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(AdjacentDomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                 ENDDO
@@ -7431,21 +7706,21 @@ CONTAINS
                     AdjacentDomain = LocalAndAdjacentDomains(AdjacentDomainIdx)
 
                     CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "rank "//TRIM(NumberToVString(AdjacentDomain,"*",ERR,ERROR)) // &
-                      & ", interior:"//TRIM(NumberToVString(AdjacentDomain,"*",ERR,ERROR)) // &
-                      & ", total:"//TRIM(NumberToVString(NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx),"*",ERR,ERROR)) //&
+                      & ", BP+Local:"//TRIM(NumberToVString(NumberLocalAndBPandLocalNodesOnRank(2,AdjacentDomainIdx), &
+                      & "*",ERR,ERROR)) //&
                       & ", AdjacentDomainIdx="//TRIM(NumberToVString(AdjacentDomainIdx,"*",ERR,ERROR)),ERR,ERROR,*999)
                     !PRINT *, MyComputationalNodeNumber, ": rank ",AdjacentDomain,&
-                    !  & " interior:",NumberInteriorAndLocalNodesOnRank(1,AdjacentDomainIdx), &
-                    !  & ", total:",NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx),", AdjacentDomainIdx=",AdjacentDomainIdx
+                    !  & " interior:",NumberLocalAndBPandLocalNodesOnRank(1,AdjacentDomainIdx), &
+                    !  & ", total:",NumberLocalAndBPandLocalNodesOnRank(2,AdjacentDomainIdx),", AdjacentDomainIdx=",AdjacentDomainIdx
                   ENDDO
                 ENDIF
 
-                ! assign boundary nodes to domains
-                ! allocate BoundaryAndGhostNodesDomain
-                ALLOCATE(BoundaryAndGhostNodesDomain(NumberBoundaryAndGhostNodes), STAT=ERR)
-                IF(ERR/=0) CALL FlagError("Could not allocate BoundaryAndGhostNodesDomain array with size "//&
-                  & TRIM(NUMBER_TO_VSTRING(NumberBoundaryAndGhostNodes,"*",ERR,ERROR))//".",ERR,ERROR,*999)
-                BoundaryAndGhostNodesDomain = -1
+                ! assign bp nodes to domains
+                ! allocate BoundaryPlaneNodesDomain
+                ALLOCATE(BoundaryPlaneNodesDomain(numberBoundaryPlaneNodes), STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate BoundaryPlaneNodesDomain array with size "//&
+                  & TRIM(NUMBER_TO_VSTRING(numberBoundaryPlaneNodes,"*",ERR,ERROR))//".",ERR,ERROR,*999)
+                BoundaryPlaneNodesDomain = -1
 
                 ALLOCATE(NumberNodesInDomain(NumberAdjacentDomains+1), STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate NumberNodesInDomain array with size "//&
@@ -7453,9 +7728,15 @@ CONTAINS
                 NumberNodesInDomain = 0
 
                 ! add local domain to domain list of each node
-                DO BoundaryAndGhostNodeIdx=1,NumberBoundaryAndGhostNodes
-                  CALL LIST_ITEM_ADD(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,MyComputationalNodeNumber,ERR,ERROR,*999)
-                  CALL LIST_SORT(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,ERR,ERROR,*999)
+                DO boundaryPlaneNodeIdx=1,numberBoundaryPlaneNodes
+                  CALL LIST_ITEM_ADD(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,MyComputationalNodeNumber,ERR,ERROR,*999)
+                  CALL LIST_SORT(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,ERR,ERROR,*999)
+                  CALL LIST_ITEM_ADD(DomainsOfBandBPNodeList(boundaryPlaneNodeIdx)%PTR,MyComputationalNodeNumber,ERR,ERROR,*999)
+                  CALL LIST_SORT(DomainsOfBandBPNodeList(boundaryPlaneNodeIdx)%PTR,ERR,ERROR,*999)
+                ENDDO
+                DO I=numberBoundaryPlaneNodes+1,numberBoundaryPlaneNodes+numberBNotBPNodes
+                  CALL LIST_ITEM_ADD(DomainsOfBandBPNodeList(I)%PTR,MyComputationalNodeNumber,ERR,ERROR,*999)
+                  CALL LIST_SORT(DomainsOfBandBPNodeList(I)%PTR,ERR,ERROR,*999)
                 ENDDO
 
                 ! loop over adjacent domains
@@ -7471,9 +7752,9 @@ CONTAINS
                     !PRINT *, MyComputationalNodeNumber, ": domain ", AdjacentDomain, " has ",NumberSharedNodes," nodes "
                     DO SharedNodeIdx = 1,NumberSharedNodes
 
-                      CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,BoundaryAndGhostNodeIdx,&
+                      CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,boundaryPlaneNodeIdx,&
                         & ERR,ERROR,*999)
-                      GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
+                      GlobalNodeNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx)
 
                       !PRINT *, MyComputationalNodeNumber, ":     global no. ", GlobalNodeNo
                       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "     global no. ",GlobalNodeNo,ERR,ERROR,*999)
@@ -7481,15 +7762,20 @@ CONTAINS
 
                   ENDIF
 
+                END DO !AdjacentDomainIdx
+
+                DO AdjacentDomainIdx=1,NumberAdjacentDomains
+                  AdjacentDomain = AdjacentDomains(AdjacentDomainIdx)
+
                   ! loop over adjacent nodes on that adjacent domain
                   CALL LIST_NUMBER_OF_ITEMS_GET(SharedNodesList(AdjacentDomainIdx)%PTR,NumberSharedNodes,ERR,ERROR,*999)
                   DO SharedNodeIdx = 1,NumberSharedNodes
-                    CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,BoundaryAndGhostNodeIdx,&
+                    CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,boundaryPlaneNodeIdx,&
                       & ERR,ERROR,*999)
-                    GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
+                    GlobalNodeNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx)
 
                     IF (DIAGNOSTICS2) THEN
-                      CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, NumberDomains, ERR,ERROR,*999)
+                      CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR, NumberDomains, ERR,ERROR,*999)
 
                       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " consider node "//&
                         & TRIM(NumberToVString(GlobalNodeNo,"*",ERR,ERROR)) // &
@@ -7498,58 +7784,70 @@ CONTAINS
                       !PRINT *, MyComputationalNodeNumber, ": consider node ",GlobalNodeNo," which is shared by the ",&
                       !  NumberDomains," domains "
                       DO I=1,NumberDomains
-                        CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I,DomainNo,ERR,ERROR,*999)
+                        CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,I,DomainNo,ERR,ERROR,*999)
 
                         !PRINT *, MyComputationalNodeNumber, ":   ",DomainNo
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "   ",DomainNo,ERR,ERROR,*999)
                       ENDDO
-                    ENDIF
 
-                    IF (DIAGNOSTICS2) THEN
-
-                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, " node assigned to domain ",BoundaryAndGhostNodesDomain( &
-                        & BoundaryAndGhostNodeIdx),ERR,ERROR,*999)
+                      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, " node assigned to domain ",BoundaryPlaneNodesDomain( &
+                        & boundaryPlaneNodeIdx),ERR,ERROR,*999)
                       !PRINT *, MyComputationalNodeNumber, ": node assigned to domain ", &
-                      !  & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                      !  & BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx)
                     ENDIF
+                  END DO !SharedNodeIdx
+                END DO !AdjacentDomainIdx
+
+                DO AdjacentDomainIdx=1,NumberAdjacentDomains
+                  AdjacentDomain = AdjacentDomains(AdjacentDomainIdx)
+
+
+                  ! loop over adjacent nodes on that adjacent domain
+                  CALL LIST_NUMBER_OF_ITEMS_GET(SharedNodesList(AdjacentDomainIdx)%PTR,NumberSharedNodes,ERR,ERROR,*999)
+                  DO SharedNodeIdx = 1,NumberSharedNodes
+                    CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx,boundaryPlaneNodeIdx,&
+                      & ERR,ERROR,*999)
+                    GlobalNodeNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx)
+
 
                     ! if node was not yet assigned to a domain
-                    IF (BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx) == -1) THEN
-                      ! note: this node is shared by the domains in DomainsOfNodeList(BoundaryAndGhostNodeIdx) (includes local domain)
+                    IF (BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx) == -1) THEN
+                      ! note: this node is shared by the domains in DomainsOfBPNodeList(boundaryPlaneNodeIdx) (includes local domain)
 
                       NumberNodesWithThatSetOfDomains = 0
 
                       ! loop over all further nodes to find other nodes that are shared by the same domains, count total number of them
                       DO SharedNodeIdx2 = SharedNodeIdx,NumberSharedNodes
-                        CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx2,BoundaryAndGhostNodeIdx2,&
+                        CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx2,boundaryPlaneNodeIdx2,&
                           & ERR,ERROR,*999)
 
                         IF (DIAGNOSTICS2) THEN
-                          GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx2)
+                          GlobalNodeNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx2)
 
 
                           CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, " further node ",GlobalNodeNo,ERR,ERROR,*999)
                           !PRINT *, MyComputationalNodeNumber, ": further node ", GlobalNodeNo
-                          CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,NumberDomains,&
+                          CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,NumberDomains,&
                             & ERR,ERROR,*999)
                           DO I=1,NumberDomains
-                            CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,I,DomainNo,ERR,ERROR,*999)
+                            CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,I,DomainNo,ERR,ERROR,*999)
 
                             CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE, "     domain set  ",DomainNo,ERR,ERROR,*999)
                             !PRINT *, MyComputationalNodeNumber, ":     domain set  ",DomainNo
                           ENDDO
                         ENDIF
 
-                        IF (BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx2) == -1) THEN
-
-                          IF (LIST_EQUAL(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, &
-                            & DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,ERR,ERROR)) THEN
-
+                        IF (BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx2) == -1) THEN
+                          CALL LIST_EQUAL(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR, &
+                            & DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,isListEqual,ERR,ERROR, *999)
+                          IF (isListEqual) THEN
                             IF (DIAGNOSTICS2) CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "     domain set is equal",ERR,ERROR,*999)
                             !PRINT *, MyComputationalNodeNumber, ":     domain set is equal"
+                            NumberNodesWithThatSetOfDomains = NumberNodesWithThatSetOfDomains+1
                           ENDIF
                         ENDIF
-                      ENDDO
+                      ENDDO !SharedNodeIdx2
+
                       IF (DIAGNOSTICS2) THEN
 
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " there are "//&
@@ -7562,23 +7860,24 @@ CONTAINS
                       ! get first of the shared domains
                       NumberNodesInDomain = 0
                       DomainToAssignNodesToIdx = 1
-                      CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,DomainToAssignNodesToIdx, &
+                      CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,DomainToAssignNodesToIdx, &
                         & DomainToAssignNodesTo,ERR,ERROR,*999)
-                      CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,NumberDomains,ERR,ERROR,*999)
+                      CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,NumberDomains,ERR,ERROR,*999)
 
                       ! again loop over all further nodes with the same domains, assign them to domains
                       DO SharedNodeIdx2 = SharedNodeIdx,NumberSharedNodes
-                        CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx2,BoundaryAndGhostNodeIdx2,&
+                        CALL LIST_ITEM_GET(SharedNodesList(AdjacentDomainIdx)%PTR,SharedNodeIdx2,boundaryPlaneNodeIdx2,&
                             & ERR,ERROR,*999)
 
-                        IF (BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx2) /= -1) CYCLE
+                        IF (BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx2) /= -1) CYCLE
 
-                        IF (LIST_EQUAL(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, &
-                          & DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,ERR,ERROR)) THEN
+                        CALL LIST_EQUAL(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR, &
+                          & DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,isListEqual,ERR,ERROR,*999)
+                        IF (isListEqual) THEN
 
                           DO
 
-                            ! find index for NumberInteriorAndLocalNodesOnRank that corresponds to domain DomainToAssignNodesTo
+                            ! find index for NumberLocalAndBPandLocalNodesOnRank that corresponds to domain DomainToAssignNodesTo
                             AdjacentDomainIdx2 = 1
                             DO I=1,NumberAdjacentDomains+1
                               AdjacentDomain = LocalAndAdjacentDomains(I)
@@ -7589,11 +7888,11 @@ CONTAINS
                             ENDDO
 
                             ! compute the number of nodes that this domain will get from the current set of nodes
-                            NumberLocalNodesOnRank = NumberInteriorAndLocalNodesOnRank(2,AdjacentDomainIdx2)
-                            NumberInteriorNodesOnRank = NumberInteriorAndLocalNodesOnRank(1,AdjacentDomainIdx2)
+                            NumberBPandLocalNodesOnRank = NumberLocalAndBPandLocalNodesOnRank(2,AdjacentDomainIdx2)
+                            NumberLocalNodesOnRank = NumberLocalAndBPandLocalNodesOnRank(1,AdjacentDomainIdx2)
 
-                            NumberNodesAboveOptimum = NumberLocalNodesOnRank - OptimalNumberNodesPerDomain
-                            NumberSharedNodesOnRank = NumberLocalNodesOnRank - NumberInteriorNodesOnRank
+                            NumberNodesAboveOptimum = NumberBPandLocalNodesOnRank - OptimalNumberNodesPerDomain
+                            NumberSharedNodesOnRank = NumberBPandLocalNodesOnRank - NumberLocalNodesOnRank
 
                             ! compute the portion of each node that adjacent domain should get from other domains
                             ! E.g. if PortionToDistribute=0.4 that means that 4 out of 10 shared nodes of the adjacent domain should be assigned to other domains and 6 should remain their own
@@ -7608,8 +7907,8 @@ CONTAINS
                               CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " Domain "//&
                                 & TRIM(NumberToVString(DomainToAssignNodesTo,"*",ERR,ERROR)),ERR,ERROR,*999)
                               CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, "   has "//&
-                                & TRIM(NumberToVString(NumberInteriorNodesOnRank,"*",ERR,ERROR))//" interior, "//&
-                                & TRIM(NumberToVString(NumberLocalNodesOnRank,"*",ERR,ERROR))//" total, "//&
+                                & TRIM(NumberToVString(NumberLocalNodesOnRank,"*",ERR,ERROR))//" interior, "//&
+                                & TRIM(NumberToVString(NumberBPandLocalNodesOnRank,"*",ERR,ERROR))//" total, "//&
                                 & TRIM(NumberToVString(NumberSharedNodesOnRank,"*",ERR,ERROR))//" shared nodes, "//&
                                 & "AdjacentDomainIdx2="//&
                                 & TRIM(NumberToVString(AdjacentDomainIdx2,"*",ERR,ERROR)),ERR,ERROR,*999)
@@ -7624,8 +7923,8 @@ CONTAINS
                                 & " nodes",ERR,ERROR,*999)
 
                               !PRINT *, MyComputationalNodeNumber, ": Domain ", DomainToAssignNodesTo
-                              !PRINT *, MyComputationalNodeNumber, ":   has ", NumberInteriorNodesOnRank, " interior, ",&
-                              !  & NumberLocalNodesOnRank, " total, ", NumberSharedNodesOnRank, " shared nodes",&
+                              !PRINT *, MyComputationalNodeNumber, ":   has ", NumberLocalNodesOnRank, " interior, ",&
+                              !  & NumberBPandLocalNodesOnRank, " total, ", NumberSharedNodesOnRank, " shared nodes",&
                               !  & ", AdjacentDomainIdx2=",AdjacentDomainIdx2
                               !PRINT *, MyComputationalNodeNumber, ":   NumberNodesAboveOptimum=",NumberNodesAboveOptimum
                               !PRINT *, MyComputationalNodeNumber, ":   PortionToDistribute=",PortionToDistribute
@@ -7643,19 +7942,19 @@ CONTAINS
 
                               ! now that domain has got enough nodes, get the next domain
                               DomainToAssignNodesToIdx = DomainToAssignNodesToIdx + 1
-                              CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx2)%PTR,DomainToAssignNodesToIdx, &
+                              CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx2)%PTR,DomainToAssignNodesToIdx, &
                                 & DomainToAssignNodesTo,ERR,ERROR,*999)
                             ENDIF
                           ENDDO
 
                           ! assign node SharedNodeIdx2 to domain DomainToAssignNodesTo
-                          BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx2) = DomainToAssignNodesTo
+                          BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx2) = DomainToAssignNodesTo
 
                           ! increment count of nodes that this domain has claimed in the current set
                           NumberNodesInDomain(DomainToAssignNodesToIdx) = NumberNodesInDomain(DomainToAssignNodesToIdx) + 1
 
                           IF (DIAGNOSTICS2) THEN
-                            GlobalNodeNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx2)
+                            GlobalNodeNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx2)
 
                             CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " assign node "//&
                               & TRIM(NumberToVString(GlobalNodeNo,"*",ERR,ERROR))//" to domain "//&
@@ -7672,49 +7971,39 @@ CONTAINS
                     ELSE
                       IF (DIAGNOSTICS2) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE, " node already assigned to domain "//&
-                          & TRIM(NumberToVString(BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx),"*",ERR,ERROR))&
+                          & TRIM(NumberToVString(BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx),"*",ERR,ERROR))&
                           & ,ERR,ERROR,*999)
                         !PRINT *, MyComputationalNodeNumber, ": node already assigned to domain ", &
-                        !  & BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                        !  & BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx)
                       ENDIF
                     ENDIF  ! node not yet assigned to domain
 
                   ENDDO  ! SharedNodeIdx
+
                 ENDDO  ! AdjacentDomainIdx
 
-                ! fill local numbering arrays
-
-                ! create list to hold ghost nodes (BoundaryAndGhostNodeIdx)
-                NULLIFY(GhostNodesList)
-                CALL LIST_CREATE_START(GhostNodesList,ERR,ERROR,*999)
-                CALL LIST_DATA_DIMENSION_SET(GhostNodesList,1,ERR,ERROR,*999)
-                CALL LIST_DATA_TYPE_SET(GhostNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
-                CALL LIST_INITIAL_SIZE_SET(GhostNodesList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
-                CALL LIST_CREATE_FINISH(GhostNodesList,ERR,ERROR,*999)
-
-                ! create list to hold boundary nodes (BoundaryAndGhostNodeIdx)
-                NULLIFY(BoundaryNodesList)
-                CALL LIST_CREATE_START(BoundaryNodesList,ERR,ERROR,*999)
-                CALL LIST_DATA_DIMENSION_SET(BoundaryNodesList,1,ERR,ERROR,*999)
-                CALL LIST_DATA_TYPE_SET(BoundaryNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
-                CALL LIST_INITIAL_SIZE_SET(BoundaryNodesList,CEILING(ELEMENTS_MAPPING%NUMBER_OF_LOCAL*0.2),ERR,ERROR,*999)
-                CALL LIST_CREATE_FINISH(BoundaryNodesList,ERR,ERROR,*999)
-
-                ! count number of boundary and ghost nodes
-                DO BoundaryAndGhostNodeIdx=1,NumberBoundaryAndGhostNodes
-                  DomainNo = BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                ! count number of boundary plane nodes
+                DO boundaryPlaneNodeIdx=1,numberBoundaryPlaneNodes
+                  DomainNo = BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx)
 
                   ! if node is a boundary nodes and stays on own domain
                   IF (DomainNo == MyComputationalNodeNumber) THEN
-                    CALL LIST_ITEM_ADD(BoundaryNodesList,BoundaryAndGhostNodeIdx,ERR,ERROR,*999)
+                    CALL LIST_ITEM_ADD(BoundaryNodesList,BoundaryPlaneNodes(boundaryPlaneNodeIdx),ERR,ERROR,*999)
+                    !store also idx in BPnodes array
+                    CALL LIST_ITEM_ADD(BoundaryNodesIdxList,boundaryPlaneNodeIdx,ERR,ERROR,*999)
                   ELSE
-                    CALL LIST_ITEM_ADD(GhostNodesList,BoundaryAndGhostNodeIdx,ERR,ERROR,*999)
+                    CALL LIST_ITEM_ADD(GhostNodesIdxList,boundaryPlaneNodeIdx,ERR,ERROR,*999)
                   ENDIF
                 ENDDO
 
                 ! extract arrays of local boundary and ghost nodes
+                IF(ALLOCATED(BoundaryNodesIdxArray)) DEALLOCATE(BoundaryNodesIdxArray)
+                CALL LIST_DETACH_AND_DESTROY(BoundaryNodesIdxList, NODES_MAPPING%NUMBER_OF_BOUNDARY, &
+                  & BoundaryNodesIdxArray, ERR,ERROR,*999)
+                IF(ALLOCATED(BoundaryNodes)) DEALLOCATE(BoundaryNodes)
                 CALL LIST_DETACH_AND_DESTROY(BoundaryNodesList, NODES_MAPPING%NUMBER_OF_BOUNDARY, BoundaryNodes, ERR,ERROR,*999)
-                CALL LIST_DETACH_AND_DESTROY(GhostNodesList, NumberGhostNodes, GhostNodes, ERR,ERROR,*999)
+                IF(ALLOCATED(GhostNodesIdx)) DEALLOCATE(GhostNodesIdx)
+                CALL LIST_DETACH_AND_DESTROY(GhostNodesIdxList, NumberGhostNodes, GhostNodesIdx, ERR,ERROR,*999)
 
                 ! create list of ghost nodes with their home domain
                 NULLIFY(GhostNodesDomainsList)
@@ -7725,13 +8014,13 @@ CONTAINS
                 CALL LIST_CREATE_FINISH(GhostNodesDomainsList,ERR,ERROR,*999)
 
                 DO GhostNodeIdx=1,NumberGhostNodes
-                  BoundaryAndGhostNodeIdx = GhostNodes(GhostNodeIdx)
-                  GhostNodeGlobalNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
-                  GhostDomain = BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                  boundaryPlaneNodeIdx = GhostNodesIdx(GhostNodeIdx)
+                  GhostNodeGlobalNo = BoundaryPlaneNodes(boundaryPlaneNodeIdx)
+                  GhostDomain = BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx)
                   CALL LIST_ITEM_ADD(GhostNodesDomainsList,[GhostNodeGlobalNo,GhostDomain],ERR,ERROR,*999)
                 ENDDO
 
-                ! exchange outer ghost nodes that are not nodes of a boundary element
+                ! exchange outer ghost nodes (= that are not nodes of a boundary element, ghosts not on a bp)
                 ! allocate send buffers
                 ALLOCATE(SendBufferList(ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS), STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate SendBufferList array with size "//&
@@ -7754,7 +8043,7 @@ CONTAINS
                   CALL LIST_CREATE_FINISH(SendBufferList(I)%PTR,ERR,ERROR,*999)
                 ENDDO
 
-                ! add own nodes that are ghost nodes on other domains and do not lie on the border between boundary and ghost elements at the other domain
+                ! add own nodes that are ghost nodes on other domains and do not lie on the bp at the other domain
                 ! to send buffer to the send to that domain
 
                 ! loop over boundary elements
@@ -7767,13 +8056,12 @@ CONTAINS
                   DO nn=1,TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%BASIS%NUMBER_OF_NODES
                     NodeGlobalNo=TOPOLOGY%ELEMENTS%ELEMENTS(ElementGlobalNo)%MESH_ELEMENT_NODES(nn)
 
-                    ! if node is at border between boundary and ghost elements, i.e. it is boundary node at some domain
-                    IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(BoundaryAndGhostNodes, NodeGlobalNo,BoundaryAndGhostNodeIdx,&
+                    ! if node is on boundary plane
+                    IF (SORTED_ARRAY_CONTAINS_ELEMENT_INDEX(BoundaryPlaneNodes, NodeGlobalNo,boundaryPlaneNodeIdx,&
                       & ERR,ERROR)) THEN
 
-
-                      ! get the domain that owns the node
-                      DomainNo = BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                      ! get the domain that owns the node as boundary node
+                      DomainNo = BoundaryPlaneNodesDomain(boundaryPlaneNodeIdx)
 
                       IF (DIAGNOSTICS1) THEN
 
@@ -7782,11 +8070,11 @@ CONTAINS
                         !  & "DomainNo: ",DomainNo
                       ENDIF
 
-                      ! only add to send buffer if it is owned by own domain
+                      ! only add to send buffer if it is owned as boundary node by own domain
                       IF (DomainNo == MyComputationalNodeNumber) THEN
 
-                        ! do not add to send buffer for domains where it lies on the border between boundary and ghost elements (these are already known at the other domain)
-                        ! loop over all domains that have the current element as ghost element and only consider those domains where the node does not have the domain in DomainsOfNodeList, sorry if confusing
+                        ! do not add to send buffer for domains where it lies on the bp (these are already known at the other domain)
+                        ! loop over all domains that have the current element as ghost element and only consider those domains where the node does not have the domain in DomainsOfBPNodeList, sorry if confusing
 
                         ! loop over domains where boundary element is ghost element
                         DO DomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
@@ -7801,20 +8089,20 @@ CONTAINS
                                  !PRINT *, MyComputationalNodeNumber, ":      boundary element is ghost on domain ",DomainNo
                               ENDIF
 
-                              NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
+                              NodeIsOnBoundaryPlaneOnThatDomain = .FALSE.
 
                               ! loop over domains that share the node
-                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,NumberDomains, &
+                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,NumberDomains, &
                                 & ERR,ERROR,*999)
                               DO I=1,NumberDomains
-                                CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I, &
+                                CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,I, &
                                   & DomainNo2,ERR,ERROR,*999)
 
                                 IF (DIAGNOSTICS1) THEN
                                    !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
-                                  NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE.
+                                  NodeIsOnBoundaryPlaneOnThatDomain = .TRUE.
                                   EXIT
                                 ENDIF
                               ENDDO  ! I
@@ -7822,12 +8110,12 @@ CONTAINS
                               IF (DIAGNOSTICS1) THEN
 
                                 !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBoundaryPlaneOnThatDomain
                               ENDIF
 
-                              IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
+                              IF (.NOT.NodeIsOnBoundaryPlaneOnThatDomain) THEN
 
-                                ! add node to list to be send to domain of boundary element
+                                ! add node to list to be sent to domain of boundary element
                                 CALL LIST_ITEM_ADD(SendBufferList(DomainIdx)%PTR, NodeGlobalNo, ERR,ERROR,*999)
 
                               ENDIF
@@ -7845,20 +8133,20 @@ CONTAINS
                                  !PRINT *, MyComputationalNodeNumber, ":      boundary element is (recv) ghost on domain ",DomainNo
                               ENDIF
 
-                              NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
+                              NodeIsOnBoundaryPlaneOnThatDomain = .FALSE.
 
                               ! loop over domains that share the node
-                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,NumberDomains, &
+                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,NumberDomains, &
                                 & ERR,ERROR,*999)
                               DO I=1,NumberDomains
-                                CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I, &
+                                CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,I, &
                                   & DomainNo2,ERR,ERROR,*999)
 
                                 IF (DIAGNOSTICS1) THEN
                                    !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
-                                  NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE.
+                                  NodeIsOnBoundaryPlaneOnThatDomain = .TRUE.
                                   EXIT
                                 ENDIF
                               ENDDO  ! I
@@ -7866,12 +8154,12 @@ CONTAINS
                               IF (DIAGNOSTICS1) THEN
 
                                 !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBoundaryPlaneOnThatDomain
                               ENDIF
 
-                              IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
+                              IF (.NOT.NodeIsOnBoundaryPlaneOnThatDomain) THEN
 
-                                ! add node to list to be send to domain of boundary element
+                                ! add node to list to be sent to domain of boundary element
                                 CALL LIST_ITEM_ADD(SendBufferList(DomainIdx)%PTR, NodeGlobalNo, ERR,ERROR,*999)
 
                               ENDIF
@@ -7889,20 +8177,20 @@ CONTAINS
                                  !PRINT *, MyComputationalNodeNumber, ":      boundary element is (further) ghost on domain ",DomainNo
                               ENDIF
 
-                              NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .FALSE.
+                              NodeIsOnBoundaryPlaneOnThatDomain = .FALSE.
 
                               ! loop over domains that share the node
-                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,NumberDomains, &
+                              CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,NumberDomains, &
                                 & ERR,ERROR,*999)
                               DO I=1,NumberDomains
-                                CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I, &
+                                CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,I, &
                                   & DomainNo2,ERR,ERROR,*999)
 
                                 IF (DIAGNOSTICS1) THEN
                                    !PRINT *, MyComputationalNodeNumber, ":        node is on domain ",DomainNo2
                                 ENDIF
                                 IF (DomainNo == DomainNo2) THEN
-                                  NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain = .TRUE.
+                                  NodeIsOnBoundaryPlaneOnThatDomain = .TRUE.
                                   EXIT
                                 ENDIF
                               ENDDO  ! I
@@ -7910,12 +8198,12 @@ CONTAINS
                               IF (DIAGNOSTICS1) THEN
 
                                 !PRINT *, MyComputationalNodeNumber, ":        -> NodeIsOnBorderBetweenBoundary"//&
-                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain
+                                !  & "AndGhostElementsOnThatDomain=",NodeIsOnBoundaryPlaneOnThatDomain
                               ENDIF
 
-                              IF (.NOT.NodeIsOnBorderBetweenBoundaryAndGhostElementsOnThatDomain) THEN
+                              IF (.NOT.NodeIsOnBoundaryPlaneOnThatDomain) THEN
 
-                                ! add node to list to be send to domain of boundary element
+                                ! add node to list to be sent to domain of boundary element
                                 CALL LIST_ITEM_ADD(SendBufferList(DomainIdx)%PTR, NodeGlobalNo, ERR,ERROR,*999)
 
                               ENDIF
@@ -7925,13 +8213,13 @@ CONTAINS
                         ENDDO ! DomainIdx
                       ENDIF
                     ELSE
-                      ! if node is not at border between boundary and ghost elements, i.e. it is not in BoundaryAndGhostNodes
+                      ! if node is not at border between boundary and ghost elements, i.e. it is not in BoundaryPlaneNodes
 
                       IF (DIAGNOSTICS1) THEN
 
                        ! PRINT *, MyComputationalNodeNumber, ": boundary element local ", ElementLocalNo, &
                        !   & ", node global ",NodeGlobalNo, " is not at border boundary/ghost element, ", &
-                       !   & "BoundaryAndGhostNodes: ", BoundaryAndGhostNodes
+                       !   & "BoundaryPlaneNodes: ", BoundaryPlaneNodes
                       ENDIF
 
                       ! get domains where boundary element is ghost element
@@ -7946,7 +8234,7 @@ CONTAINS
                                !PRINT *, MyComputationalNodeNumber, ":    ghost on domain ", DomainNo, ", DomainIdx=",DomainIdx
                             ENDIF
 
-                            ! add node to list to be send to domain of boundary element
+                            ! add node to list to be sent to domain of boundary element
                             CALL LIST_ITEM_ADD(SendBufferList(DomainIdx)%PTR, NodeGlobalNo, ERR,ERROR,*999)
 
                             EXIT
@@ -7992,7 +8280,7 @@ CONTAINS
                     !  & SendBuffer(1:NumberToSendToDomain(DomainIdx),DomainIdx)
                   ENDIF
 
-                  ! number of nodes to be send to domain
+                  ! number of nodes to be sent to domain
                   CALL MPI_ISEND(NumberToSendToDomain(DomainIdx),1,MPI_INT,DomainNo,0, &
                     & computationalEnvironment%mpiCommunicator, SendRequestHandle0(DomainIdx), MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,ERR,ERROR,*999)
@@ -8072,22 +8360,23 @@ CONTAINS
                   & TRIM(NUMBER_TO_VSTRING(NODES_MAPPING%TOTAL_NUMBER_OF_LOCAL,"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
                 ! create lists for local ghost send and receive indices
-                ALLOCATE(LocalGhostSendIndices(NumberAdjacentDomains), STAT=ERR)
+                !ALLOCATE(LocalGhostSendIndices(NumberAdjacentDomains), STAT=ERR)
+                ALLOCATE(LocalGhostSendIndices(NumberAllAdjacentDomains), STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate LocalGhostSendIndices with size "//&
                   & TRIM(NUMBER_TO_VSTRING(NumberAdjacentDomains,"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
-                ALLOCATE(LocalGhostReceiveIndices(NumberAdjacentDomains), STAT=ERR)
+                ALLOCATE(LocalGhostReceiveIndices(NumberAllAdjacentDomains), STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate LocalGhostReceiveIndices with size "//&
                   & TRIM(NUMBER_TO_VSTRING(NumberAdjacentDomains,"*",ERR,ERROR))//".",ERR,ERROR,*999)
 
-                DO AdjacentDomainIdx=1,NumberAdjacentDomains
+                DO AdjacentDomainIdx=1,NumberAllAdjacentDomains !NumberAdjacentDomains
 
                   ! create list for local ghost send indices
                   NULLIFY(LocalGhostSendIndices(AdjacentDomainIdx)%PTR)
                   CALL LIST_CREATE_START(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,ERR,ERROR,*999)
                   CALL LIST_DATA_DIMENSION_SET(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,1,ERR,ERROR,*999)
                   CALL LIST_DATA_TYPE_SET(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
-                  CALL LIST_INITIAL_SIZE_SET(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,NumberBoundaryAndGhostNodes,&
+                  CALL LIST_INITIAL_SIZE_SET(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,numberBoundaryPlaneNodes,&
                     & ERR,ERROR,*999)
                   CALL LIST_CREATE_FINISH(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,ERR,ERROR,*999)
 
@@ -8096,26 +8385,26 @@ CONTAINS
                   CALL LIST_CREATE_START(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,ERR,ERROR,*999)
                   CALL LIST_DATA_DIMENSION_SET(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,1,ERR,ERROR,*999)
                   CALL LIST_DATA_TYPE_SET(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
-                  CALL LIST_INITIAL_SIZE_SET(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,NumberBoundaryAndGhostNodes,&
+                  CALL LIST_INITIAL_SIZE_SET(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,numberBoundaryPlaneNodes,&
                     & ERR,ERROR,*999)
                   CALL LIST_CREATE_FINISH(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,ERR,ERROR,*999)
                 ENDDO
 
                 ! InternalNodes contains the global numbers of the internal nodes
-
                 ! loop over internal and boundary nodes and assign local node numbers
                 InternalNodesIdx = 1
                 BoundaryNodesIdx = 1
                 LocalNodeNo = 1
+                boundaryPlaneNodeIdx = 0
                 DomainListInternalIdx = NODES_MAPPING%INTERNAL_START
                 DomainListBoundaryIdx = NODES_MAPPING%BOUNDARY_START
                 DO WHILE(InternalNodesIdx <= NODES_MAPPING%NUMBER_OF_INTERNAL &
                   & .OR. BoundaryNodesIdx <= NODES_MAPPING%NUMBER_OF_BOUNDARY)
 
-                  ! get next internal or boundary node, ascending with global node number, if there are no more internal or boundary nodes, set to -1
+                  ! Get next internal or boundary node, ascending with global node number,
+                  ! if there are no more internal or boundary nodes, set to -1
                   IF (BoundaryNodesIdx <= NODES_MAPPING%NUMBER_OF_BOUNDARY) THEN
-                    BoundaryAndGhostNodeIdx = BoundaryNodes(BoundaryNodesIdx)
-                   BoundaryNodeGlobalNo = BoundaryAndGhostNodes(BoundaryAndGhostNodeIdx)
+                    BoundaryNodeGlobalNo = BoundaryNodes(BoundaryNodesIdx)
                   ELSE
                     BoundaryNodeGlobalNo = -1
                   ENDIF
@@ -8126,9 +8415,13 @@ CONTAINS
                     InternalNodeGlobalNo = -1
                   ENDIF
 
-                  IF ((InternalNodeGlobalNo < BoundaryNodeGlobalNo .AND. InternalNodeGlobalNo /= -1) &
-                    & .OR. BoundaryNodeGlobalNo == -1) THEN
-                    ! the next node is an internal node
+                  ! Where is the logic behind this local numbering?
+                  ! = boundary not bp + internal + boundary bp
+                  !IF ((InternalNodeGlobalNo < BoundaryNodeGlobalNo .AND. InternalNodeGlobalNo /= -1) &
+                  !  & .OR. BoundaryNodeGlobalNo == -1) THEN
+                  ! Better would be to have all internal then all boundary?:
+                  IF (InternalNodeGlobalNo /= -1) THEN
+                    ! this node is an internal node
                     NODES_MAPPING%DOMAIN_LIST(DomainListInternalIdx) = LocalNodeNo
                     NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LocalNodeNo) = InternalNodeGlobalNo
                     DomainListInternalIdx = DomainListInternalIdx + 1
@@ -8139,12 +8432,7 @@ CONTAINS
                       !PRINT *, MyComputationalNodeNumber, ": Node global ",InternalNodeGlobalNo," local ",LocalNodeNo,&
                       !  & ", interior"
                     ENDIF
-                  ELSE
-                    ! the next node is a boundary node
-                    NODES_MAPPING%DOMAIN_LIST(DomainListBoundaryIdx) = LocalNodeNo
-                    NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LocalNodeNo) = BoundaryNodeGlobalNo
-                    DomainListBoundaryIdx = DomainListBoundaryIdx + 1
-                    BoundaryNodesIdx = BoundaryNodesIdx + 1
+                  ELSE ! the next node is a boundary node
 
                     IF (DIAGNOSTICS1) THEN
 
@@ -8155,15 +8443,35 @@ CONTAINS
                     ! update LOCAL_GHOST_SEND_INDICES
                     AdjacentDomainIdx = 1
                     ! loop over the domains where this node is present
-                    CALL LIST_NUMBER_OF_ITEMS_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR, NumberDomains, ERR,ERROR,*999)
+
+                    IF (BoundaryNodesIdx <= numberBnotBPNodes) THEN
+                      CALL LIST_NUMBER_OF_ITEMS_GET(AllDomainsOfBandBPNodeList(BoundaryNodesIdx)%PTR, &
+                        & NumberDomains, ERR,ERROR,*999)
+                    ELSE
+                      !BoundaryNodesIdxArray = -1s for b. nodes not bp, then correct idx for bp b. nodes.
+                      boundaryPlaneNodeIdx = BoundaryNodesIdxArray(BoundaryNodesIdx)
+                      CALL LIST_NUMBER_OF_ITEMS_GET(AllDomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR, &
+                        & NumberDomains, ERR,ERROR,*999)
+                    END IF
+
                     DO I=1,NumberDomains
                       ! get domain no
-                      CALL LIST_ITEM_GET(DomainsOfNodeList(BoundaryAndGhostNodeIdx)%PTR,I,DomainNo,ERR,ERROR,*999)
+                      !CALL LIST_ITEM_GET(DomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR,I,DomainNo,ERR,ERROR,*999)
+                      IF (BoundaryNodesIdx <= numberBnotBPNodes) THEN
+                        CALL LIST_ITEM_GET(AllDomainsOfBandBPNodeList(BoundaryNodesIdx)%PTR, &
+                          & I,DomainNo,ERR,ERROR,*999)
+                      ELSE
+                        boundaryPlaneNodeIdx = BoundaryNodesIdxArray(BoundaryNodesIdx)
+                        CALL LIST_ITEM_GET(AllDomainsOfBPNodeList(boundaryPlaneNodeIdx)%PTR, &
+                          & I,DomainNo,ERR,ERROR,*999)
+                      END IF
+
+
                       IF (DomainNo /= MyComputationalNodeNumber) THEN
 
                         ! go to entry in ADJACENT_DOMAINS array for DomainNo, at index AdjacentDomainIdx
                         DO
-                          IF (AdjacentDomains(AdjacentDomainIdx) == DomainNo) THEN
+                          IF (AllAdjacentDomains(AdjacentDomainIdx) == DomainNo) THEN
 
                             IF (DIAGNOSTICS1) THEN
 
@@ -8180,7 +8488,11 @@ CONTAINS
                       ENDIF
                     ENDDO
 
-                    DomainNo = BoundaryAndGhostNodesDomain(BoundaryAndGhostNodeIdx)
+                    ! the next node is a boundary node
+                    NODES_MAPPING%DOMAIN_LIST(DomainListBoundaryIdx) = LocalNodeNo
+                    NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LocalNodeNo) = BoundaryNodeGlobalNo
+                    DomainListBoundaryIdx = DomainListBoundaryIdx + 1
+                    BoundaryNodesIdx = BoundaryNodesIdx + 1
 
                   ENDIF
                   LocalNodeNo = LocalNodeNo + 1
@@ -8224,6 +8536,7 @@ CONTAINS
                   ENDDO ! AdjacentDomainIdx
 
                   ! TODO: fix following
+                  ! BM leftover. What needs fixing?
                   IF (.NOT. AdacentDomainEntryFound.AND..TRUE.) THEN
                     IF (DIAGNOSTICS1) THEN
                        !PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
@@ -8332,7 +8645,8 @@ CONTAINS
 
                 ENDDO  ! GhostNodeIdx
 
-                DO AdjacentDomainIdx=1,NumberAdjacentDomains
+                DO AdjacentDomainIdx=1,NumberAllAdjacentDomains
+
                   ! create LocalGhostSendIndices for the adjacent domain
                   CALL LIST_DETACH_AND_DESTROY(LocalGhostSendIndices(AdjacentDomainIdx)%PTR, &
                     & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS,IntegerArray,ERR,ERROR,*999)
@@ -8348,14 +8662,12 @@ CONTAINS
                   DEALLOCATE(IntegerArray)
 
                   IF (DIAGNOSTICS1) THEN
-                    AdjacentDomain = AdjacentDomains(AdjacentDomainIdx)
-
                     !PRINT *, MyComputationalNodeNumber, ": adjacent domain ",AdjacentDomain,", LOCAL_GHOST_SEND_INDICES:", &
                     !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_SEND_INDICES(1: &
                     !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_SEND_GHOSTS), &
                     !  & ", LOCAL_GHOST_RECEIVE_INDICES: ",&
                     !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%LOCAL_GHOST_RECEIVE_INDICES(1: &
-                    !  & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
+                    ! & NODES_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%NUMBER_OF_RECEIVE_GHOSTS)
                   ENDIF
                 ENDDO
 
@@ -8491,15 +8803,15 @@ CONTAINS
                 ENDIF
 
                 ! deallocate arrays
-                DEALLOCATE(BoundaryAndGhostNodes)
+                DEALLOCATE(BoundaryPlaneNodes)
                 DEALLOCATE(AdjacentDomains)
                 DEALLOCATE(SendRequestHandle)
                 DEALLOCATE(ReceiveRequestHandle)
-                DEALLOCATE(NumberInteriorAndLocalNodesOnRank)
+                DEALLOCATE(NumberLocalAndBPandLocalNodesOnRank)
                 DEALLOCATE(LocalAndAdjacentDomains)
-                DEALLOCATE(BoundaryAndGhostNodesDomain)
+                DEALLOCATE(BoundaryPlaneNodesDomain)
                 DEALLOCATE(NumberNodesInDomain)
-                DEALLOCATE(GhostNodes)
+                DEALLOCATE(GhostNodesIdx)
                 DEALLOCATE(InternalNodes)
                 DEALLOCATE(BoundaryNodes)
                 DEALLOCATE(SendRequestHandle0)
@@ -8507,18 +8819,29 @@ CONTAINS
                 DEALLOCATE(GhostNodesDomains)
                 DEALLOCATE(SendBuffer)
                 DEALLOCATE(NumberToSendToDomain)
-
-                !PRINT *, "Stop in DOMAIN_MAPPINGS_NODES_CALCULATE"
-                !STOP
-
+                DEALLOCATE(BoundaryNodesIdxArray)
+                DEALLOCATE(LOCAL_NODE_NUMBERS)
+                DEALLOCATE(LOCAL_DOF_NUMBERS)
+                DEALLOCATE(NUMBER_INTERNAL_NODES)
+                DEALLOCATE(NUMBER_BOUNDARY_NODES)
+                DEALLOCATE(boundaryPlane)
+                IF (ALLOCATED(DOMAINS)) DEALLOCATE(DOMAINS)
+                IF (ALLOCATED(ALL_DOMAINS)) DEALLOCATE(ALL_DOMAINS)
+                IF (ALLOCATED(GHOST_NODES)) DEALLOCATE(GHOST_NODES)
+                DEALLOCATE(numberOfDomainsNodesArray)
+                DEALLOCATE(AllAdjacentDomains)
+                DEALLOCATE(LocalAndAllAdjacentDomains)
+               ELSE
+                  CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
+                ENDIF
               ELSE
-                CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
+                CALL FlagError("Domain decomposition is not associated.",ERR,ERROR,*999)
               ENDIF
             ELSE
-              CALL FlagError("Elements mapping is not associated.",ERR,ERROR,*999)
+              CALL FlagError("Domain mappings elements is not associated.",ERR,ERROR,*999)
             ENDIF
           ELSE
-            CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
+            CALL FlagError("Domain mappings dofs is not associated.",ERR,ERROR,*999)
           ENDIF
         ELSE
           CALL FlagError("Domain mappings nodes is not associated.",ERR,ERROR,*999)
@@ -8527,12 +8850,20 @@ CONTAINS
         CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FlagError("Domain is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Domain is not associated.",ERR,ERROR,*998)
     ENDIF
 
     EXITS("DOMAIN_MAPPINGS_NODES_CALCULATE")
     RETURN
-999 ERRORSEXITS("DOMAIN_MAPPINGS_NODES_CALCULATE",ERR,ERROR)
+999 IF(ALLOCATED(DOMAINS)) DEALLOCATE(DOMAINS)
+    IF(ALLOCATED(ALL_DOMAINS)) DEALLOCATE(ALL_DOMAINS)
+    IF(ALLOCATED(GHOST_NODES)) DEALLOCATE(GHOST_NODES)
+    IF(ALLOCATED(numberOfDomainsNodesArray)) DEALLOCATE(numberOfDomainsNodesArray)
+    IF(ALLOCATED(NUMBER_INTERNAL_NODES)) DEALLOCATE(NUMBER_INTERNAL_NODES)
+    IF(ALLOCATED(NUMBER_BOUNDARY_NODES)) DEALLOCATE(NUMBER_BOUNDARY_NODES)
+    IF(ASSOCIATED(DOMAIN%MAPPINGS%NODES)) CALL DOMAIN_MAPPINGS_NODES_FINALISE(DOMAIN%MAPPINGS,DUMMY_ERR,DUMMY_ERROR,*998)
+998 IF(ASSOCIATED(DOMAIN%MAPPINGS%DOFS)) CALL DOMAIN_MAPPINGS_DOFS_FINALISE(DOMAIN%MAPPINGS,DUMMY_ERR,DUMMY_ERROR,*997)
+997 ERRORSEXITS("DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE DOMAIN_MAPPINGS_NODES_CALCULATE
 
@@ -8698,7 +9029,7 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfFaceList(:), sharedFacesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneFaceList(:)
     REAL(DP) :: numberFaces, optimalNumberFacesPerDomain, totalNumberFaces, portionToDistribute, numberFacesAboveOptimum
-    LOGICAL :: onOtherDomain,adacentDomainEntryFound, found
+    LOGICAL :: onOtherDomain,adacentDomainEntryFound, found, isListEqual
     TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_FacesCalculate",err,error,*999)
@@ -9330,8 +9661,9 @@ CONTAINS
             IF (boundaryAndBoundaryPlaneFacesDomain(boundaryAndBoundaryPlaneFaceIdx2) == -1) THEN
 
               !if the domain list of each boundary face is equal then add 1 to the number of faces with that set of domains.
-              IF (LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
-                & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
+              CALL LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+                & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,isListEqual,err,error,*999)
+              IF (isListEqual) THEN
 
                 numberFacesWithThatSetOfDomains = numberFacesWithThatSetOfDomains+1
               ENDIF
@@ -9352,8 +9684,9 @@ CONTAINS
                 & err,error,*999)
 
             !if the domain list of each boundary face is equal
-            IF(LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
-              & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,err,error)) THEN
+            CALL LIST_EQUAL(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR, &
+              & domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx2)%PTR,isListEqual,err,error,*999) 
+            IF(isListEqual) THEN
 
 
               !FIXTHIS should iterate DO domainToAssignFacesToIdx = 1,2 for faces, leave as is for now so it is more similar to what it should be for nodes.
@@ -9529,7 +9862,7 @@ CONTAINS
       IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
 
-      ! number of faces to be send to domain
+      ! number of faces to be sent to domain
       CALL MPI_ISEND(numberToSendToDomain(domainIdx),1,MPI_INT,domainNo,0, &
         & computationalEnvironment%mpiCommunicator, sendRequestHandle0(domainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
@@ -10000,7 +10333,7 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: domainsOfLineList(:), sharedLinesList(:), sendBufferList(:), localGhostSendIndices(:), &
        & localGhostReceiveIndices(:), domainsOfBoundaryPlaneLineList(:)
     REAL(DP) :: numberLines, optimalNumberLinesPerDomain, totalNumberLines, portionToDistribute, numberLinesAboveOptimum
-    LOGICAL :: onOtherDomain,adacentDomainEntryFound, found
+    LOGICAL :: onOtherDomain,adacentDomainEntryFound, found, isListEqual
     TYPE(VARYING_STRING) :: dummyError, localError
 
     ENTERS("DomainMappings_2DLinesCalculate",err,error,*999)
@@ -10623,8 +10956,9 @@ CONTAINS
             IF (boundaryAndBoundaryPlaneLinesDomain(boundaryAndBoundaryPlaneLineIdx2) == -1) THEN
 
               !if the domain list of each boundary line is equal then add 1 to the number of lines with that set of domains.
-              IF (LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
-                & domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR,err,error)) THEN
+              CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
+                & domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR,isListEqual,err,error,*999)
+              IF (isListEqual) THEN
 
                 numberLinesWithThatSetOfDomains = numberLinesWithThatSetOfDomains+1
               ENDIF
@@ -10645,8 +10979,9 @@ CONTAINS
                 & err,error,*999)
 
             !if the domain list of each boundary line is equal
-            IF(LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
-              & domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR,err,error)) THEN
+            CALL LIST_EQUAL(domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx)%PTR, &
+              & domainsOfBoundaryPlaneLineList(boundaryAndBoundaryPlaneLineIdx2)%PTR,isListEqual,err,error,*999) 
+            IF(isListEqual) THEN
 
 
               !FIXTHIS should iterate DO domainToAssignLinesToIdx = 1,2 for lines, leave as is for now so it is more similar to what it should be for nodes.
@@ -10822,7 +11157,7 @@ CONTAINS
       IF(ALLOCATED(integerArray)) DEALLOCATE(integerArray)
 
 
-      ! number of lines to be send to domain
+      ! number of lines to be sent to domain
       CALL MPI_ISEND(numberToSendToDomain(domainIdx),1,MPI_INT,domainNo,0, &
         & computationalEnvironment%mpiCommunicator, sendRequestHandle0(domainIdx), MPI_IERROR)
       CALL MPI_ERROR_CHECK("MPI_ISEND",MPI_IERROR,err,error,*999)
@@ -11231,13 +11566,15 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,no_computational_node,no_ghost_node,adjacent_element,ghost_node, &
       & NUMBER_OF_NODES_PER_DOMAIN,domain_idx,domain_idx2,domain_no,node_idx,derivative_idx,version_idx,ny,NUMBER_OF_DOMAINS, &
-      & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,myComputationalNodeNumber,numberOfComputationalNodes,component_idx
+      & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,myComputationalNodeNumber,numberOfComputationalNodes, &
+      & component_idx, diffNumberDomains
     INTEGER(INTG), ALLOCATABLE :: LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:),NODE_COUNT(:),NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:)
-    INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:),GHOST_NODES(:)
+    INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:), diffDomains(:), &
+      & GHOST_NODES(:),numberOfDomainsNodesArray(:)
     LOGICAL :: BOUNDARY_DOMAIN
-    TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST
-    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:)
+    TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST, diffAdjacentDomainsList
+    TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:), ghostNodesBoundaryList(:)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -11269,7 +11606,9 @@ CONTAINS
                   IF(ERR/=0) GOTO 999
 
                   !Calculate the local and global numbers and set up the mappings
-                  ! allocate arrays
+                  ALLOCATE(numberOfDomainsNodesArray(MESH_TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate numberOfDomainsNodesArray.",ERR,ERROR,*999)
+                  numberOfDomainsNodesArray = 0
                   ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(MESH_TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate node mapping global to local map.",ERR,ERROR,*999)
                   NODES_MAPPING%NUMBER_OF_GLOBAL=MESH_TOPOLOGY%NODES%numberOfNodes
@@ -11299,7 +11638,9 @@ CONTAINS
                   IF(ERR/=0) CALL FlagError("Could not allocate number of boundary nodes.",ERR,ERROR,*999)
                   NUMBER_BOUNDARY_NODES=0
 
-                  !Temporary Fix
+                  !Temporary Fix to bug: nodes on boundary elements are NOT internal.
+                  !They are local boundary or ghosts since involved in communication.
+                  !Nodes on boundary elements that are NOT on boundary planes are local boundary nodes.
                   ALLOCATE(boundaryPlane(MESH_TOPOLOGY%NODES%numberOfNodes))
                   boundaryPlane = -1
 
@@ -11313,21 +11654,28 @@ CONTAINS
                     CALL LIST_DATA_TYPE_SET(ADJACENT_DOMAINS_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
                     CALL LIST_INITIAL_SIZE_SET(ADJACENT_DOMAINS_LIST,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
                     CALL LIST_CREATE_FINISH(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
-                    ! ALL_ADJACENT_DOMAINS_LIST will contain the domains where an adjacent elements to this node is stored, even as ghost
                     NULLIFY(ALL_ADJACENT_DOMAINS_LIST)
                     CALL LIST_CREATE_START(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
                     CALL LIST_DATA_TYPE_SET(ALL_ADJACENT_DOMAINS_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
                     CALL LIST_INITIAL_SIZE_SET(ALL_ADJACENT_DOMAINS_LIST,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
                     CALL LIST_CREATE_FINISH(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
+                    NULLIFY(diffAdjacentDomainsList)
+                    CALL LIST_CREATE_START(diffAdjacentDomainsList,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(diffAdjacentDomainsList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(diffAdjacentDomainsList,DECOMPOSITION%NUMBER_OF_DOMAINS,ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(diffAdjacentDomainsList,ERR,ERROR,*999)
 
-                    ! loop over adjacent elements to that node
-                    DO no_adjacent_element = 1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfSurroundingElements
-                      adjacent_element = MESH_TOPOLOGY%NODES%NODES(node_idx)%surroundingElements(no_adjacent_element)
-                      domain_no = DECOMPOSITION%ELEMENT_DOMAIN(adjacent_element)
+                    DO no_adjacent_element=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfSurroundingElements
+                      adjacent_element=MESH_TOPOLOGY%NODES%NODES(node_idx)%surroundingElements(no_adjacent_element)
+                      domain_no=DECOMPOSITION%ELEMENT_DOMAIN(adjacent_element)
                       CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domain_no,ERR,ERROR,*999)
-                      ! loop over all occurences of the element on different ranks
                       DO domain_idx=1,ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(adjacent_element)%NUMBER_OF_DOMAINS
                         CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(adjacent_element)% &
+                          & DOMAIN_NUMBER(domain_idx),ERR,ERROR,*999)
+                        !Add here items that are NOT in the ADJACENT_DOMAINS_LIST already
+                        !First domain is the one the element belongs to, the others are where it is ghost.
+                        IF (domain_idx>1) &
+                          & CALL LIST_ITEM_ADD(diffAdjacentDomainsList,ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(adjacent_element)% &
                           & DOMAIN_NUMBER(domain_idx),ERR,ERROR,*999)
                       ENDDO !domain_idx
                     ENDDO !no_adjacent_element
@@ -11335,25 +11683,24 @@ CONTAINS
                     CALL LIST_DETACH_AND_DESTROY(ADJACENT_DOMAINS_LIST,NUMBER_OF_DOMAINS,DOMAINS,ERR,ERROR,*999)
                     CALL LIST_REMOVE_DUPLICATES(ALL_ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
                     CALL LIST_DETACH_AND_DESTROY(ALL_ADJACENT_DOMAINS_LIST,MAX_NUMBER_DOMAINS,ALL_DOMAINS,ERR,ERROR,*999)
-! if an adjacent element is a ghost element on the local rank
-                    IF(NUMBER_OF_DOMAINS /= MAX_NUMBER_DOMAINS) THEN !Ghost node
+                    CALL LIST_REMOVE_DUPLICATES(diffAdjacentDomainsList,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(diffAdjacentDomainsList, &
+                      & diffNumberDomains,diffDomains,ERR,ERROR,*999)
 
-                      ! loop over all adjacent domains at the nodes, those that have a ghost node included
-                      DO domain_idx = 1,MAX_NUMBER_DOMAINS
+                    IF(NUMBER_OF_DOMAINS/=MAX_NUMBER_DOMAINS) THEN !Ghost node
+                      DO domain_idx=1,MAX_NUMBER_DOMAINS
                         domain_no=ALL_DOMAINS(domain_idx)
-                        ! determine if the current domain contains a boundary element, i.e. not only ghost elements
                         BOUNDARY_DOMAIN=.FALSE.
-
-                        DO domain_idx2 = 1,NUMBER_OF_DOMAINS
-                          IF(domain_no == DOMAINS(domain_idx2)) THEN
+                        DO domain_idx2=1,NUMBER_OF_DOMAINS
+                          IF(domain_no==DOMAINS(domain_idx2)) THEN
                             BOUNDARY_DOMAIN=.TRUE.
                             EXIT
                           ENDIF
                         ENDDO !domain_idx2
-                        ! if the domain domain_no only contains ghost elements adjacent to this node, add node to ghost nodes list of that domain
                         IF(.NOT.BOUNDARY_DOMAIN) CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                       ENDDO !domain_idx
                     ENDIF
+                    ! All ghosts that do not lie on boundary planes are added.
 
                     ! allocate arrays
                     ALLOCATE(NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -11364,7 +11711,7 @@ CONTAINS
                     IF(ERR/=0) CALL FlagError("Could not allocate node global to local map local type.",ERR,ERROR,*999)
                     DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
                       DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
-                        ny = MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+                        ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
                         ALLOCATE(DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%LOCAL_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
                         IF(ERR/=0) CALL FlagError("Could not allocate dof global to local map local number.",ERR,ERROR,*999)
                         ALLOCATE(DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%DOMAIN_NUMBER(MAX_NUMBER_DOMAINS),STAT=ERR)
@@ -11374,18 +11721,19 @@ CONTAINS
                       ENDDO !version_idx
                     ENDDO !derivative_idx
 
+                    ! Was (develop before FA):
+                    !IF(NUMBER_OF_DOMAINS==1) THEN
                     IF(MAX_NUMBER_DOMAINS==1) THEN
                       !Node is an internal node
-                      ! increase counter of internal nodes on its domain
                       domain_no=DOMAINS(1)
                       NUMBER_INTERNAL_NODES(domain_no)=NUMBER_INTERNAL_NODES(domain_no)+1
                       !LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=MAX_NUMBER_DOMAINS
+                      numberOfDomainsNodesArray(node_idx) = MAX_NUMBER_DOMAINS
                       !NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(1)=LOCAL_NODE_NUMBERS(DOMAINS(1))
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(1)=-1
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(1)=DOMAINS(1)
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_TYPE(1)=DOMAIN_LOCAL_INTERNAL
-                      ! fill DOFS_MAPPING
                       DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
                         DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
                           ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
@@ -11404,6 +11752,10 @@ CONTAINS
                       ENDIF
                       !Node is on the boundary plane of computational domains
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=MAX_NUMBER_DOMAINS
+                      !Since FA changed %NUMBER_OF_DOMAINS to MAX_NUMBER_DOMAINS to fix the bug,
+                      !add an additional array to store NUMBER_DOMAINS (=domains the node is adjacent to,
+                      !no ghost elements)
+                      numberOfDomainsNodesArray(node_idx) = NUMBER_OF_DOMAINS
                       DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
                         DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
                           ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
@@ -11411,7 +11763,15 @@ CONTAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
                       DO domain_idx=1,MAX_NUMBER_DOMAINS
-                        domain_no=ALL_DOMAINS(domain_idx)
+
+                        IF (domain_idx<=NUMBER_OF_DOMAINS) THEN
+                          !Include FIRST domains in NUMBER_OF_DOMAINS
+                          domain_no=DOMAINS(domain_idx)
+                        ELSE
+                          !Then the remaining ones:
+                          domain_no=diffDomains(domain_idx)
+                        END IF
+
                         !LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
                         !NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(domain_idx)=LOCAL_NODE_NUMBERS(domain_no)
                         NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(domain_idx)=-1
@@ -11426,10 +11786,42 @@ CONTAINS
                           ENDDO !version_idx
                         ENDDO !derivative_idx
                       ENDDO !domain_idx
-                    ENDIF
+                    END IF
                     DEALLOCATE(DOMAINS)
                     DEALLOCATE(ALL_DOMAINS)
+                    DEALLOCATE(diffDomains)
                   ENDDO !node_idx
+
+                  !Check:
+                  !These should be ONLY ghost nodes that are not on boundary planes
+                  IF (.FALSE.) THEN
+                    DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                      CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                      CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,  &
+                        & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                      IF (domain_idx==myComputationalNodeNumber) THEN
+                        WRITE(*,*) "Domain"
+                        WRITE(*,*) myComputationalNodeNumber
+                        DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                          WRITE(*,*) GHOST_NODES(no_ghost_node)
+                        END DO
+                      END IF
+                      DEALLOCATE(GHOST_NODES)
+                    END DO
+                  END IF
+
+                  ! Check
+                  ! Use this list to keep track of ghosts on boundary planes
+                  ALLOCATE(ghostNodesBoundaryList(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate ghost nodes list.",ERR,ERROR,*999)
+                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    NULLIFY(ghostNodesBoundaryList(domain_idx)%PTR)
+                    CALL LIST_CREATE_START(ghostNodesBoundaryList(domain_idx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DATA_TYPE_SET(ghostNodesBoundaryList(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
+                    CALL LIST_INITIAL_SIZE_SET(ghostNodesBoundaryList(domain_idx)%PTR,INT(MESH_TOPOLOGY%NODES%numberOfNodes/2), &
+                      & ERR,ERROR,*999)
+                    CALL LIST_CREATE_FINISH(ghostNodesBoundaryList(domain_idx)%PTR,ERR,ERROR,*999)
+                  ENDDO !domain_idx
 
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   ! compute average number of nodes per domain
@@ -11456,16 +11848,15 @@ CONTAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
                     ELSEIF(boundaryPlane(node_idx)/=1) THEN
-                      !boundary nodes that aren't on the boundary plane get assigned as boundary nodes.
-                      !Allocate the node to this domain
-
+                    !Nodes on boundary elements that are not on boundary planes are boundary nodes.
+                      !Allocate the node to this domain:
                       !the domain number is that of any adjacent element
                       adjacent_element=MESH_TOPOLOGY%NODES%NODES(node_idx)%surroundingElements(1)
                       domain_no=DECOMPOSITION%ELEMENT_DOMAIN(adjacent_element)
                       DOMAIN%NODE_DOMAIN(node_idx)=domain_no
                       NUMBER_BOUNDARY_NODES(domain_no)=NUMBER_BOUNDARY_NODES(domain_no)+1
                       LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
-                      !Reset the boundary information to be in the first domain index. The remaining domain indicies will
+                      !Reset the boundary information to be in the first domain index. The remaining domain indices will
                       !be overwritten when the ghost nodes are calculated below.
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(1)=LOCAL_NODE_NUMBERS(domain_no)
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(1)=domain_no
@@ -11480,22 +11871,33 @@ CONTAINS
                         ENDDO !version_idx
                       ENDDO !derivative_idx
 
-                    ELSE !Boundary node
-                      NUMBER_OF_DOMAINS=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS
-                      ! loop over domains that have an adjacent not-ghost element to this node
+
+                    ELSE !Node is on the boundary plane
+                      ! FA: %NUMBER_OF_DOMAINS is MAX number of domains.
+                      ! Changed the loop and IF below using number_of_domains.
+                      !NUMBER_OF_DOMAINS=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS
+                      NUMBER_OF_DOMAINS=numberOfDomainsNodesArray(node_idx)
                       DO domain_idx=1,NUMBER_OF_DOMAINS
+
+                        ! %DOMAIN NUMBER(:) includes domains in NUMBER_OF_DOMAINS first,
+                        ! THEN the others which in this loop are not considered (see diffDomains above).
                         domain_no=NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(domain_idx)
                         ! if node is not yet assigned to a domain
                         IF(DOMAIN%NODE_DOMAIN(node_idx)<0) THEN
-                          IF((NUMBER_INTERNAL_NODES(domain_no) + NUMBER_BOUNDARY_NODES(domain_no) < NUMBER_OF_NODES_PER_DOMAIN).OR.&
-                            & (domain_idx==NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS)) THEN
+                          ! load balancing
+                          IF((NUMBER_INTERNAL_NODES(domain_no)+NUMBER_BOUNDARY_NODES(domain_no)<NUMBER_OF_NODES_PER_DOMAIN).OR. &
+                            !This would be wrong (FA change)?
+                            !Node should be assigned as local boundary only to one of
+                            !the surrounding domains.
+                            !& (domain_idx==NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS)) THEN
+                            & (domain_idx==numberOfDomainsNodesArray(node_idx))) THEN
                             !Allocate the node to this domain
                             DOMAIN%NODE_DOMAIN(node_idx)=domain_no
                             ! increase counter of boundary nodes for the domain
                             NUMBER_BOUNDARY_NODES(domain_no)=NUMBER_BOUNDARY_NODES(domain_no)+1
                             ! assign local node number
                             LOCAL_NODE_NUMBERS(domain_no)=LOCAL_NODE_NUMBERS(domain_no)+1
-                            !Reset the boundary information to be in the first domain index. The remaining domain indicies will
+                            !Reset the boundary information to be in the first domain index. The remaining domain indices will
                             !be overwritten when the ghost nodes are calculated below.
                             NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_NUMBER(1)=LOCAL_NODE_NUMBERS(domain_no)
                             NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(1)=domain_no
@@ -11510,37 +11912,66 @@ CONTAINS
                               ENDDO !version_idx
                             ENDDO !derivative_idx
                           ELSE
-                            !This domain doesn't take this node, so make it a ghost node in this domain
+                            !The node has already been assigned to a domain so it must be a ghost node in this domain
                             CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+                            CALL LIST_ITEM_ADD(ghostNodesBoundaryList(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+
                           ENDIF
                         ELSE
                           !The node has already been assigned to a domain so it must be a ghost node in this domain
                           CALL LIST_ITEM_ADD(GHOST_NODES_LIST(domain_no)%PTR,node_idx,ERR,ERROR,*999)
+                          CALL LIST_ITEM_ADD(ghostNodesBoundaryList(domain_no)%PTR,node_idx,ERR,ERROR,*999)
                         ENDIF
                       ENDDO !domain_idx
                     ENDIF
 
                     !Reset the number of domains for each node, this will be increased for each ghost.
                     NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%NUMBER_OF_DOMAINS=1
-                    DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
+                    !Reset the number of domains for each dof, this will be increased for each ghost.
+                    DO derivative_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%numberOfDerivatives
+                      DO version_idx=1,MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%numberOfVersions
+                        ny=MESH_TOPOLOGY%NODES%NODES(node_idx)%DERIVATIVES(derivative_idx)%dofIndex(version_idx)
+                        DOFS_MAPPING%GLOBAL_TO_LOCAL_MAP(ny)%NUMBER_OF_DOMAINS=1
+                      END DO
+                    END DO
 
-
+                  !Check that boundary nodes are where they are supposed to be
+                    IF (.FALSE.) THEN
+                      WRITE(*,*)"Local boundary on node 1:"
+                      IF (NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%LOCAL_TYPE(1) &
+                        & ==DOMAIN_LOCAL_BOUNDARY .AND. &! myComputationalNodeNumber==0 &
+                        & 1 == NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(node_idx)%DOMAIN_NUMBER(1)) THEN
+                        WRITE(*,*) node_idx
+                      END IF
+                    END IF
                   ENDDO !node_idx
+
                   DEALLOCATE(NUMBER_INTERNAL_NODES)
+                  DEALLOCATE(numberOfDomainsNodesArray)
+
+                  ! Check also the ghost nodes on boundary planes:
+                  IF (.FALSE.) THEN
+                    DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                      CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                      CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR, &
+                        & NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                      IF (domain_idx==myComputationalNodeNumber) THEN
+                        WRITE(*,*) "Domain"
+                        WRITE(*,*) myComputationalNodeNumber
+                        DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
+                          WRITE(*,*) GHOST_NODES(no_ghost_node)
+                        END DO
+                      END IF
+                      DEALLOCATE(GHOST_NODES)
+                    END DO
+                  END IF
 
                   !Calculate ghost node and dof mappings
-
-                 ! loop over all domains
-                 DO domain_idx = 0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
-
-                    ! determine all ghost nodes of this domain
-                   CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
-                   CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
-
-                   ! loop over the ghost nodes of this domain
-                   DO no_ghost_node = 1,NUMBER_OF_GHOST_NODES
+                  DO domain_idx=0,DECOMPOSITION%NUMBER_OF_DOMAINS-1
+                    CALL LIST_REMOVE_DUPLICATES(GHOST_NODES_LIST(domain_idx)%PTR,ERR,ERROR,*999)
+                    CALL LIST_DETACH_AND_DESTROY(GHOST_NODES_LIST(domain_idx)%PTR,NUMBER_OF_GHOST_NODES,GHOST_NODES,ERR,ERROR,*999)
+                    DO no_ghost_node=1,NUMBER_OF_GHOST_NODES
                       ghost_node=GHOST_NODES(no_ghost_node)
-                      ! add the 'ghost in this domain' information to GLOBAL_TO_LOCAL_MAP of this node
                       LOCAL_NODE_NUMBERS(domain_idx)=LOCAL_NODE_NUMBERS(domain_idx)+1
                       NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(ghost_node)%NUMBER_OF_DOMAINS= &
                         & NODES_MAPPING%GLOBAL_TO_LOCAL_MAP(ghost_node)%NUMBER_OF_DOMAINS+1
@@ -11678,7 +12109,11 @@ CONTAINS
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
         & NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
-
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,NODES_MAPPING%NUMBER_OF_DOMAINS+1,8,8, &
+        & NODES_MAPPING%ADJACENT_DOMAINS_PTR,'("    Adjacent domains ptr  :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,NODES_MAPPING%ADJACENT_DOMAINS_PTR( &
+        & NODES_MAPPING%NUMBER_OF_DOMAINS)-1,8,8,NODES_MAPPING%ADJACENT_DOMAINS_LIST, &
+        '("    Adjacent domains list :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
       DO domain_idx=1,NODES_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domain_idx,ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &
@@ -11739,7 +12174,11 @@ CONTAINS
       CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"  Adjacent domains :",ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of adjacent domains = ", &
         & DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS,ERR,ERROR,*999)
-
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOFS_MAPPING%NUMBER_OF_DOMAINS+1,8,8, &
+        & DOFS_MAPPING%ADJACENT_DOMAINS_PTR,'("    Adjacent domains ptr  :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
+      CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOFS_MAPPING%ADJACENT_DOMAINS_PTR( &
+        & DOFS_MAPPING%NUMBER_OF_DOMAINS)-1,8,8,DOFS_MAPPING%ADJACENT_DOMAINS_LIST, &
+        '("    Adjacent domains list :",8(X,I7))','(27X,8(X,I7))',ERR,ERROR,*999)
       DO domain_idx=1,DOFS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Adjacent domain idx : ",domain_idx,ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Domain number = ", &
@@ -11762,6 +12201,8 @@ CONTAINS
 999 IF(ALLOCATED(DOMAINS)) DEALLOCATE(DOMAINS)
     IF(ALLOCATED(ALL_DOMAINS)) DEALLOCATE(ALL_DOMAINS)
     IF(ALLOCATED(GHOST_NODES)) DEALLOCATE(GHOST_NODES)
+    IF(ALLOCATED(numberOfDomainsNodesArray)) DEALLOCATE(numberOfDomainsNodesArray)
+    IF(ALLOCATED(diffDomains)) DEALLOCATE(diffDomains)
     IF(ALLOCATED(NUMBER_INTERNAL_NODES)) DEALLOCATE(NUMBER_INTERNAL_NODES)
     IF(ALLOCATED(NUMBER_BOUNDARY_NODES)) DEALLOCATE(NUMBER_BOUNDARY_NODES)
     IF(ASSOCIATED(DOMAIN%MAPPINGS%NODES)) CALL DOMAIN_MAPPINGS_NODES_FINALISE(DOMAIN%MAPPINGS,DUMMY_ERR,DUMMY_ERROR,*998)

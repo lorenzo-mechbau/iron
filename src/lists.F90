@@ -2723,6 +2723,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_INTG,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
@@ -2778,6 +2781,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_INTG2,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               CALL FlagError("Invalid data dimension. The supplied data dimension is > 1 and the list data dimension is 1.", &
@@ -2832,6 +2838,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_SP,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
@@ -2886,6 +2895,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_SP2,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               CALL FlagError("Invalid data dimension. The supplied data dimension is > 1 and the list data dimension is 1.", &
@@ -2940,6 +2952,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_DP,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               LOCAL_ERROR="Invalid data dimension. The supplied data dimension is 1 and the list data dimension is "// &
@@ -2995,6 +3010,9 @@ CONTAINS
               NUMBER_IN_LIST=LIST%NUMBER_IN_LIST
               !Note this will return more memory as the list will be bigger. Maybe copy to an array the correct size?
               CALL MOVE_ALLOC(LIST%LIST_DP2,LIST_VALUES)
+              !Following line should fix the problem:
+              LIST_VALUES=LIST_VALUES(:,1:NUMBER_IN_LIST)
+
               CALL LIST_FINALISE(LIST,ERR,ERROR,*999)
             ELSE
               CALL FlagError("Invalid data dimension. The supplied data dimension is > 1 and the list data dimension is 1.", &
@@ -3023,7 +3041,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  SUBROUTINE LIST_EQUAL(LIST,LIST2,LIST_EQUAL,ERR,ERROR,*)
+  SUBROUTINE LIST_EQUAL(LIST,LIST2,isListEqual,ERR,ERROR,*)
 !  FUNCTION (LIST,LIST2,ERR,ERROR)
 
     !Argument Variables
@@ -3032,12 +3050,12 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Function Variable
-    LOGICAL, INTENT(OUT) :: LIST_EQUAL  !< if the lists are equal
+    LOGICAL, INTENT(OUT) :: isListEqual  !< if the lists are equal
     !Local Variables
     INTEGER(INTG) :: I, J
 
     ENTERS("LIST_EQUAL",ERR,ERROR,*999)
-    LIST_EQUAL = .FALSE.
+    isListEqual = .FALSE.
 
     IF(ASSOCIATED(LIST)) THEN
       IF(LIST%LIST_FINISHED) THEN
@@ -3113,7 +3131,7 @@ CONTAINS
             ELSE
               CALL FlagError("List type is invalid.",ERR,ERROR,*999)
             ENDIF
-            LIST_EQUAL = .TRUE.
+            isListEqual = .TRUE.
 
           ELSE
             CALL FlagError("List2 has not been finished.",ERR,ERROR,*999)
