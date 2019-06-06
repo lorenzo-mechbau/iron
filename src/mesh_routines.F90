@@ -302,6 +302,8 @@ CONTAINS
 
       !Calculate which elements belong to which domain
       CALL DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
+      !Before merging with FV_l_m:
+      !CALL DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE_OLD(DECOMPOSITION,ERR,ERROR,*999)
 
       !Initialise the topology information for this decomposition
       CALL DECOMPOSITION_TOPOLOGY_INITIALISE(DECOMPOSITION,ERR,ERROR,*999)
@@ -641,7 +643,7 @@ CONTAINS
       & NumberComputationalNodes,NumberOfElements,NumberElementsOnOwnComputationalNode, &
       & ElementStart,ElementStop,MyElementStart,MyElementStop, I,J,ElementToSendNo,GlobalElementNo, &
       & MyNumberOfElements,MPI_IERROR,MaxNumberElementsPerNode,component_idx,MinNumberXi,RequestHandle,&
-      & MaximumNumberElementsToSendToOneComputationalNode, GlobalElementNoDomainPair(2)
+      & MaximumNumberElementsToSendToOneComputationalNode, GlobalElementNoDomainPair(2), ElementDomainIdx
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_COUNT(:),ADJACENT_NODE_PTR(:),ADJACENT_NODE_INDICES(:),ELEMENT_DISTRIBUTION(:), &
       ! & DISPLACEMENTS(:),RECEIVE_COUNTS(:),ElementDomain(:),NumberElementsDomainTemporary(:),RequestHandles(:),&
       ! & NumberElementsToReceive(:),ReceiveBuffer(:)
@@ -889,6 +891,7 @@ CONTAINS
 
                   ! use variable DECOMPOSITION%GLOBAL_ELEMENT_NUMBER which is the same as DOMAIN%LOCAL_TO_GLOBAL_MAP for elements
                   ALLOCATE(ElementDomain(0:MyNumberOfElements-1),STAT=ERR)
+
                   IF(ERR/=0) CALL FlagError("Could not allocate ElementDomain variable.",ERR,ERROR,*999)
 
                   !Call ParMETIS to calculate the partitioning of the mesh graph. The graph is the dual graph to the node graph.
@@ -905,9 +908,9 @@ CONTAINS
                     & ElementDomain, &    ! output: ELEMENT_DOMAIN(ne) contains newly determined domain number of local element ne, c style numbering
                     & computationalEnvironment%mpiCommunicator,ERR,ERROR,*999)
 
+
                   ! fill DECOMPOSITION%GlobalElementDomain list with data from ElementDomain
                   ! the list contains pairs of (global el. no., domain no)
-
                   NULLIFY(GlobalElementDomain)
                   CALL LIST_CREATE_START(GlobalElementDomain,ERR,ERROR,*999)
                   CALL LIST_DATA_TYPE_SET(GlobalElementDomain,LIST_INTG_TYPE,ERR,ERROR,*999)
@@ -915,17 +918,21 @@ CONTAINS
                   CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
                   CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
 
+                  ElementDomainIdx = 0 ! see allocation above
                   DO GlobalElementNo=MyElementStart,MyElementStop
                     GlobalElementNoDomainPair(1) = GlobalElementNo
-                    GlobalElementNoDomainPair(2) = MyComputationalNodeNumber
+                    !GlobalElementNoDomainPair(2) = MyComputationalNodeNumber
+                    GlobalElementNoDomainPair(2) = ElementDomain(ElementDomainIdx)
 
                     CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
+                    ElementDomainIdx = ElementDomainIdx+1
                   ENDDO
 
                   ! create new list with known number of elements
                   IF (ASSOCIATED(DECOMPOSITION%GlobalElementDomain)) THEN
                     CALL LIST_DESTROY(DECOMPOSITION%GlobalElementDomain,ERR,ERROR,*999)
                   ENDIF
+
                   !Sort according to element global number
                   CALL LIST_SORT(GlobalElementDomain,ERR,ERROR,*999)
                   DECOMPOSITION%GlobalElementDomain=>GlobalElementDomain
@@ -1533,7 +1540,6 @@ CONTAINS
         ComputationalNodeNo=ComputationalNodeNo+1
         IF (ComputationalNodeNo == NumberComputationalNodes) ComputationalNodeNo=0
 
-
         ! find out how many elements this computational node will get from MyComputationalNodeNumber
         NumberElementsToComputationalNode = NumberStoredElementsForRank(ComputationalNodeNo)
 
@@ -1575,12 +1581,10 @@ CONTAINS
         NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
 
         IF (NumberElementsFromComputationalNode /= 0) THEN
-
           CALL MPI_IRECV(ElementReceiveBuffers(1:NumberElementsFromComputationalNode,ComputationalNodesToReceiveFromNo), &
-            & NumberElementsFromComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
-            & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
+           & NumberElementsFromComputationalNode, MPI_INT, ComputationalNodeNo, 0, &
+           & computationalEnvironment%mpiCommunicator, ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_IERROR)
           CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
-
           ComputationalNodesToReceiveFromNo = ComputationalNodesToReceiveFromNo + 1
         ENDIF
       ENDDO
@@ -1610,11 +1614,13 @@ CONTAINS
         ComputationalNodeNo=ComputationalNodeNo-1
         IF (ComputationalNodeNo == -1) ComputationalNodeNo=NumberComputationalNodes-1
 
-        CALL MPI_WAIT(ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_STATUS_IGNORE, MPI_IERROR)
-        CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
-
         NumberElementsFromComputationalNode = NumberLocalElementsOnRank(ComputationalNodeNo)
         IF (NumberElementsFromComputationalNode /= 0) THEN
+
+          !Wait should be INSIDE the IF
+          CALL MPI_WAIT(ReceiveRequestHandle(ComputationalNodesToReceiveFromNo), MPI_STATUS_IGNORE, MPI_IERROR)
+          CALL MPI_ERROR_CHECK("MPI_WAIT",MPI_IERROR,ERR,ERROR,*999)
+
           !DO I=1,NumberElementsFromComputationalNode
           !  CALL LIST_ITEM_ADD(ReceivedElementsList,ElementReceiveBuffers(I,ComputationalNodesToReceiveFromNo),ERR,ERROR,*999)
           !ENDDO
@@ -2739,6 +2745,9 @@ CONTAINS
                 CALL TREE_NODE_VALUE_GET(MESH_ELEMENTS%ELEMENTS_TREE,TREE_NODE,GLOBAL_ELEMENT_NUMBER,ERR,ERROR,*999)
                 IF(GLOBAL_ELEMENT_NUMBER>0.AND.GLOBAL_ELEMENT_NUMBER<=MESH_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS) THEN
                   !DOMAIN_NUMBER=DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)
+
+                  CALL FlagError("A local solution should be implemented, e.g. hash table!",ERR,ERROR,*999)
+
                   CALL LIST_ITEM_GET(DECOMPOSITION%GlobalElementDomain,GLOBAL_ELEMENT_NUMBER, &
                     & GlobalElementNoDomainPair, ERR,ERROR,*999)
                   DOMAIN_NUMBER = GlobalElementNoDomainPair(2)
@@ -6102,6 +6111,7 @@ CONTAINS
   !================================================================================================================================
   !
 
+  ! This subroutine uses OLD GLOBAL and should be DELETED!
   !>Calculates the local/global element mappings for a domain decomposition.
   SUBROUTINE DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*)
 
@@ -6188,6 +6198,10 @@ CONTAINS
 
               DO ne=1,MESH%NUMBER_OF_ELEMENTS
                 !Calculate the local numbers
+
+                CALL FlagError("DECOMPOSITION%ELEMENT_DOMAIN belongs to old_global,"// &
+                  & " GlobalElementDomain is only temporary!!!",ERR,ERROR,*999)
+
                 !domain_no=DECOMPOSITION%ELEMENT_DOMAIN(ne)
                 CALL LIST_ITEM_GET(DECOMPOSITION%GlobalElementDomain,ne, &
                   & GlobalElementNoDomainPair, ERR,ERROR,*999)
@@ -6591,7 +6605,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: numberOfComputationalNodes
+    INTEGER(INTG) :: numberOfComputationalNodes, myComputationalNodeNumber
 
     ENTERS("DOMAIN_MAPPINGS_INITIALISE",ERR,ERROR,*999)
 
@@ -6601,6 +6615,8 @@ CONTAINS
       ELSE
 
         numberOfComputationalNodes=ComputationalEnvironment_NumberOfNodesGet(ERR,ERROR)
+        IF(ERR/=0) GOTO 999
+        myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
         IF(ERR/=0) GOTO 999
 
         ALLOCATE(DOMAIN%MAPPINGS,STAT=ERR)
@@ -7176,6 +7192,7 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
+                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
                   CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
                     & GlobalElementNoDomainPair, ERR,ERROR,*999)
                   domainNo2 = GlobalElementNoDomainPair(2)
@@ -8476,6 +8493,7 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
+                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
                   CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
                     & GlobalElementNoDomainPair, ERR,ERROR,*999)
                   domainNo2 = GlobalElementNoDomainPair(2)
@@ -9871,6 +9889,7 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
+                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
                   CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
                     & GlobalElementNoDomainPair, ERR,ERROR,*999)
                   domainNo2 = GlobalElementNoDomainPair(2)
@@ -10784,6 +10803,7 @@ STOP
   !================================================================================================================================
   !
 
+  ! This subroutine uses OLD GLOBAL and should be DELETED!
   !>Calculates the local/global node and dof mappings for a domain decomposition.
   SUBROUTINE DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,err,ERROR,*)
 
@@ -11666,8 +11686,7 @@ STOP
       & DUMMY_ERR, &
       & NUMBER_OF_DOMAINS, MAX_NUMBER_DOMAINS, domainIdx1, domainIdx2, &
       & boundaryAndBPNodeIdx, boundaryNotBPNodeIdx, numberBNotBPNodes, &
-      & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains, &
-      & GlobalElementNoDomainPair(2)
+      & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains
 
     INTEGER(INTG), ALLOCATABLE :: BoundaryPlaneNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberLocalAndBPandLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryPlaneNodesDomain(:), &
@@ -11828,10 +11847,7 @@ STOP
                         & AdjacentElementGlobalNo,ArrayIndex,ERR,ERROR)) THEN
 
                         ElementLocalNo = ELEMENTS_MAPPING%INTERNAL_START + ArrayIndex-1
-                        CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,AdjacentElementGlobalNo, &
-                          & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                        !domainNo1=DECOMPOSITION%ELEMENT_DOMAIN(AdjacentElementGlobalNo)
-                        domainNo1=GlobalElementNoDomainPair(2)
+                        domainNo1=MyComputationalNodeNumber
                         CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
                         CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
                         DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
@@ -11853,10 +11869,20 @@ STOP
                         & ERR,ERROR)) THEN
 
                         ElementLocalNo = ELEMENTS_MAPPING%GHOST_START + ArrayIndex-1
-                        !domainNo1=DECOMPOSITION%ELEMENT_DOMAIN(AdjacentElementGlobalNo)
-                        CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,AdjacentElementGlobalNo, &
-                          & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                        domainNo1=GlobalElementNoDomainPair(2)
+
+                        DO AdjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                        !Check first if any receive ghost are present
+                          IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                            & LOCAL_GHOST_RECEIVE_INDICES)) THEN
+                            IF (SORTED_ARRAY_CONTAINS_ELEMENT(ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+                              & LOCAL_GHOST_RECEIVE_INDICES,ElementLocalNo,ERR,ERROR)) THEN
+
+                              domainNo1 = ELEMENTS_MAPPING%ADJACENT_DOMAINS(AdjacentDomainIdx)%DOMAIN_NUMBER
+                              EXIT
+                            END IF
+                          END IF
+                        END DO
+
                         CALL LIST_ITEM_ADD(ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
                         CALL LIST_ITEM_ADD(ALL_ADJACENT_DOMAINS_LIST,domainNo1,ERR,ERROR,*999)
 
