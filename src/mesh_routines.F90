@@ -918,6 +918,9 @@ CONTAINS
                   CALL LIST_INITIAL_SIZE_SET(GlobalElementDomain,MyNumberOfElements,ERR,ERROR,*999)
                   CALL LIST_CREATE_FINISH(GlobalElementDomain,ERR,ERROR,*999)
 
+                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                    & " should not be used!!!",ERR,ERROR,*999)
+
                   ElementDomainIdx = 0 ! see allocation above
                   DO GlobalElementNo=MyElementStart,MyElementStop
                     GlobalElementNoDomainPair(1) = GlobalElementNo
@@ -926,6 +929,9 @@ CONTAINS
 
                     CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
                     ElementDomainIdx = ElementDomainIdx+1
+
+                    !This should be deleted!!! Needed in element_domain_get, lines and faces.
+                    DECOMPOSITION%ELEMENT_DOMAIN(GlobalElementNo) = ElementDomain(ElementDomainIdx)
                   ENDDO
 
                   ! create new list with known number of elements
@@ -2744,13 +2750,11 @@ CONTAINS
               IF(ASSOCIATED(TREE_NODE)) THEN
                 CALL TREE_NODE_VALUE_GET(MESH_ELEMENTS%ELEMENTS_TREE,TREE_NODE,GLOBAL_ELEMENT_NUMBER,ERR,ERROR,*999)
                 IF(GLOBAL_ELEMENT_NUMBER>0.AND.GLOBAL_ELEMENT_NUMBER<=MESH_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS) THEN
-                  !DOMAIN_NUMBER=DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)
 
-                  CALL FlagError("A local solution should be implemented, e.g. hash table!",ERR,ERROR,*999)
+                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                    & " should not be used!!!",ERR,ERROR,*999)
+                  DOMAIN_NUMBER = DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)
 
-                  CALL LIST_ITEM_GET(DECOMPOSITION%GlobalElementDomain,GLOBAL_ELEMENT_NUMBER, &
-                    & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                  DOMAIN_NUMBER = GlobalElementNoDomainPair(2)
                 ELSE
                   LOCAL_ERROR="Global element number found "//TRIM(NUMBER_TO_VSTRING(GLOBAL_ELEMENT_NUMBER,"*",ERR,ERROR))// &
                     & " is invalid. The limits are 1 to "// &
@@ -6643,10 +6647,6 @@ CONTAINS
         DOMAIN%MAPPINGS%ELEMENTS=>DOMAIN%DECOMPOSITION%ELEMENTS_MAPPING
         CALL DOMAIN_MAPPINGS_NODES_CALCULATE(DOMAIN,ERR,ERROR,*999)
 
-PRINT *, "NODES ARE COMPUTED NEW"
-STOP
-
-
         !Initialise lines
         IF(DOMAIN%DECOMPOSITION%CALCULATE_LINES) &
           & CALL DomainMappings_LinesInitialise(DOMAIN%MAPPINGS,ERR,ERROR,*999) ! leave here
@@ -7192,11 +7192,11 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
-                  CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
-                    & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                  domainNo2 = GlobalElementNoDomainPair(2)
-                  !domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2) !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                    & " should not be used!!!",ERR,ERROR,*999)
+                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                  !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                  !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
 
                   IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
 
@@ -8493,12 +8493,12 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
-                  CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
-                    & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                  domainNo2 = GlobalElementNoDomainPair(2)
-                  !domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                    & " should not be used!!!",ERR,ERROR,*999)
+                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
                   !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                  !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
+
 
                   IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
 
@@ -9889,12 +9889,12 @@ STOP
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagError("Replace below (global) with hash tables!!!",ERR,ERROR,*999)
-                  CALL LIST_ITEM_GET(decomposition%GlobalElementDomain,adjacentElementGlobalNo2, &
-                    & GlobalElementNoDomainPair, ERR,ERROR,*999)
-                  domainNo2 = GlobalElementNoDomainPair(2)
-                  !domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                    & " should not be used!!!",ERR,ERROR,*999)
+                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
                   !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                  !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
+
 
                   IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
 
@@ -11686,7 +11686,8 @@ STOP
       & DUMMY_ERR, &
       & NUMBER_OF_DOMAINS, MAX_NUMBER_DOMAINS, domainIdx1, domainIdx2, &
       & boundaryAndBPNodeIdx, boundaryNotBPNodeIdx, numberBNotBPNodes, &
-      & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains
+      & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains, &
+      & numberOfHashKeys
 
     INTEGER(INTG), ALLOCATABLE :: BoundaryPlaneNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberLocalAndBPandLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryPlaneNodesDomain(:), &
@@ -11695,7 +11696,8 @@ STOP
       & SendRequestHandle0(:), SendRequestHandle1(:), GhostNodesDomains(:,:), SendBuffer(:,:), NumberToSendToDomain(:), &
       & LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:), NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:), DOMAINS(:), ALL_DOMAINS(:), &
-      & GHOST_NODES(:),numberOfDomainsNodesArray(:), AllAdjacentDomains(:), LocalAndAllAdjacentDomains(:)
+      & GHOST_NODES(:),numberOfDomainsNodesArray(:), AllAdjacentDomains(:), LocalAndAllAdjacentDomains(:), &
+      & hashKeysArray(:), hashIntegerArray(:), hashValuesNodesMatrix(:,:), hashValuesSubMatrix(:,:)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -11705,7 +11707,7 @@ STOP
     TYPE(LIST_TYPE), POINTER :: InternalNodesList, BoundaryPlaneNodesList, AdjacentDomainsList, LocalAndAdjacentDomainsList, &
       & BoundaryNodesList, BoundaryNodesIdxList, GhostNodesIdxList, GhostNodesDomainsList, &
       & ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST, &
-      & AllAdjacentDomainsList, LocalAndAllAdjacentDomainsList
+      & AllAdjacentDomainsList, LocalAndAllAdjacentDomainsList, hashKeysNodesList
 
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: DomainsOfBPNodeList(:), DomainsOfBAndBPNodeList(:), &
       & AllDomainsOfBPNodeList(:), AllDomainsOfBAndBPNodeList(:), &
@@ -11760,6 +11762,8 @@ STOP
                   IF(ERR/=0) CALL FlagError("Could not allocate local node numbers.",ERR,ERROR,*999)
                   LOCAL_NODE_NUMBERS=0
                   DOFS_MAPPING%NUMBER_OF_GLOBAL=TOPOLOGY%DOFS%numberOfDofs
+                  ALLOCATE(NODES_MAPPING%domainMappingHashes(1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate nodes hash tables.",ERR,ERROR,*999)
                   ALLOCATE(LOCAL_DOF_NUMBERS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate local dof numbers.",ERR,ERROR,*999)
                   LOCAL_DOF_NUMBERS=0
@@ -11779,6 +11783,18 @@ STOP
                   ALLOCATE(NUMBER_BOUNDARY_NODES(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate number of boundary nodes.",ERR,ERROR,*999)
                   NUMBER_BOUNDARY_NODES=0
+
+                  !Allocate hashValuesNodesMatrix 
+                  ALLOCATE(hashValuesNodesMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1, &
+                    & TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate hashValuesNodesMatrix.",ERR,ERROR,*999)
+                  hashValuesNodesMatrix=0
+
+                  !Create hashKeysNodesList
+                  NULLIFY(hashKeysNodesList)
+                  CALL LIST_CREATE_START(hashKeysNodesList,ERR,ERROR,*999)
+                  CALL LIST_DATA_TYPE_SET(hashKeysNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
+                  CALL LIST_CREATE_FINISH(hashKeysNodesList,ERR,ERROR,*999)
 
                   ! Create list for internal nodes
                   NULLIFY(InternalNodesList)
@@ -11938,6 +11954,7 @@ STOP
 
                   ! Sort list by global node number and store in local nodes storage
                   CALL LIST_REMOVE_DUPLICATES(InternalNodesList,ERR,ERROR,*999)
+                  CALL LIST_SORT(InternalNodesList,ERR,ERROR,*999)
                   CALL LIST_DETACH_AND_DESTROY(InternalNodesList,NODES_MAPPING%NUMBER_OF_INTERNAL,&
                     & InternalNodes,ERR,ERROR,*999)
                   IF (DIAGNOSTICS1) THEN
@@ -11949,13 +11966,15 @@ STOP
                     ENDDO
                   ENDIF
 
-                ! Sort list by global node number and remove duplicates
-                CALL LIST_REMOVE_DUPLICATES(BoundaryPlaneNodesList,ERR,ERROR,*999)
-                ! count number of BP nodes (nodes that lie on boundary and are shared with other domains)
-                CALL LIST_DETACH_AND_DESTROY(BoundaryPlaneNodesList,numberBoundaryPlaneNodes,IntegerArray,&
-                  & ERR,ERROR,*999)
-                BoundaryPlaneNodes = IntegerArray(1:numberBoundaryPlaneNodes)
-                DEALLOCATE(IntegerArray)
+                  ! Sort list by global node number and remove duplicates
+                  CALL LIST_REMOVE_DUPLICATES(BoundaryPlaneNodesList,ERR,ERROR,*999)
+                  ! count number of BP nodes (nodes that lie on boundary and are shared with other domains)
+                  CALL LIST_DETACH_AND_DESTROY(BoundaryPlaneNodesList,numberBoundaryPlaneNodes,IntegerArray,&
+                    & ERR,ERROR,*999)
+                  BoundaryPlaneNodes = IntegerArray(1:numberBoundaryPlaneNodes)
+
+                  ! INDENT FROM HERE!!!!!!!!!!!!!!!!!
+                  DEALLOCATE(IntegerArray)
 
                 IF (DIAGNOSTICS1) THEN
                   CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,&
@@ -13155,7 +13174,7 @@ STOP
                     InternalNodeGlobalNo = -1
                   ENDIF
 
-                  ! Where is the logic behind this local numbering?
+                  ! Where is the logic behind the original BM local numbering?
                   ! = boundary not bp + internal + boundary bp
                   !IF ((InternalNodeGlobalNo < BoundaryNodeGlobalNo .AND. InternalNodeGlobalNo /= -1) &
                   !  & .OR. BoundaryNodeGlobalNo == -1) THEN
@@ -13167,12 +13186,22 @@ STOP
                     DomainListInternalIdx = DomainListInternalIdx + 1
                     InternalNodesIdx = InternalNodesIdx + 1
 
+                    hashValuesNodesMatrix(2:4,InternalNodeGlobalNo)= &
+                      & [myComputationalNodeNumber,LocalNodeNo,DOMAIN_LOCAL_INTERNAL]
+                    hashValuesNodesMatrix(1,InternalNodeGlobalNo)=1
+                    CALL LIST_ITEM_ADD (hashKeysNodesList, InternalNodeGlobalNo, err, error,*999)
+
                     IF (DIAGNOSTICS1) THEN
 
                       !PRINT *, MyComputationalNodeNumber, ": Node global ",InternalNodeGlobalNo," local ",LocalNodeNo,&
                       !  & ", interior"
                     ENDIF
                   ELSE ! the next node is a boundary node
+
+                    hashValuesNodesMatrix(2:4,BoundaryNodeGlobalNo)= &
+                      & [MyComputationalNodeNumber,LocalNodeNo,DOMAIN_LOCAL_BOUNDARY]
+                    hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)=1
+                    CALL LIST_ITEM_ADD (hashKeysNodesList, BoundaryNodeGlobalNo, err, error,*999)
 
                     IF (DIAGNOSTICS1) THEN
 
@@ -13220,6 +13249,12 @@ STOP
                             ENDIF
 
                             CALL LIST_ITEM_ADD(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,LocalNodeNo,ERR,ERROR,*999)
+
+                            hashValuesNodesMatrix(hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)*3+2:4,BoundaryNodeGlobalNo)= &
+                              & [DomainNo,0,DOMAIN_LOCAL_GHOST]
+                            hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)= &
+                              & hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)+1
+
                             EXIT
                           ENDIF
                           AdjacentDomainIdx = AdjacentDomainIdx+1
@@ -13269,17 +13304,31 @@ STOP
                       ENDIF
 
                       CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
+
+                      !Domain where node belongs as boundary
+                      hashValuesNodesMatrix(2:4,GhostNodeGlobalNo)= &
+                        & [GhostDomain,0,DOMAIN_LOCAL_BOUNDARY]
+                      hashValuesNodesMatrix(1,GhostNodeGlobalNo)= 1
+                      CALL LIST_ITEM_ADD (hashKeysNodesList, GhostNodeGlobalNo, err, error,*999)
+
+                      !myRank
+                      hashValuesNodesMatrix(5:7,GhostNodeGlobalNo)= &
+                        & [myComputationalNodeNumber,LocalNodeNo-1,DOMAIN_LOCAL_GHOST]
+                      hashValuesNodesMatrix(1,GhostNodeGlobalNo)= &
+                        & hashValuesNodesMatrix(1,GhostNodeGlobalNo)+1
+
                       adjacentDomainEntryFound = .TRUE.
                       EXIT
                     ENDIF
 
                   ENDDO ! AdjacentDomainIdx
 
+                  ! THIS CONDITION IS NEVER REACHED (since adjacent domains are already ALL adjacent domains?)
                   ! TODO: fix following
                   ! BM leftover. What needs fixing?
                   IF (.NOT. adjacentDomainEntryFound.AND..TRUE.) THEN
                     IF (DIAGNOSTICS1) THEN
-                       !PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
+                       PRINT *, MyComputationalNodeNumber, ": create new AdjacentDomainEntry"
                     ENDIF
 
                     ! create new AdjacentDomain entry in NODES_MAPPING%ADJACENT_DOMAINS
@@ -13384,6 +13433,32 @@ STOP
                   ENDIF
 
                 ENDDO  ! GhostNodeIdx
+
+                !Hash tables nodes can be concluded here for now
+                CALL LIST_DETACH_AND_DESTROY(hashKeysNodesList,numberOfHashKeys, &
+                  & hashIntegerArray,ERR,ERROR,*999)
+
+                ALLOCATE(hashKeysArray(numberOfHashKeys))
+                hashKeysArray=hashIntegerArray(1:numberOfHashKeys)
+                IF(ALLOCATED(hashIntegerArray)) DEALLOCATE(hashIntegerArray)
+
+                ALLOCATE(hashValuesSubMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1,numberOfHashKeys),STAT=ERR)
+                IF(ERR/=0) CALL FlagError("Could not allocate hashValuesMatrix.",ERR,ERROR,*999)
+                hashValuesSubMatrix=0
+
+                hashValuesSubMatrix = hashValuesNodesMatrix(:,hashKeysArray)
+
+                !Finally compute the table
+                NULLIFY(NODES_MAPPING%domainMappingHashes(1)%PTR)
+                CALL HashTable_CreateStart(NODES_MAPPING%domainMappingHashes(1)%PTR,ERR,ERROR,*999)
+                ! define some parameters here if needed
+                CALL HashTable_CreateFinish(NODES_MAPPING%domainMappingHashes(1)%PTR,ERR,ERROR,*999)
+                CALL HashTable_ValuesSetAndInsert(NODES_MAPPING%domainMappingHashes(1)%PTR, &
+                  & hashKeysArray,hashValuesSubMatrix, .FALSE., ERR, ERROR, *999)
+                IF(ALLOCATED(hashValuesNodesMatrix)) DEALLOCATE(hashValuesNodesMatrix)
+                IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
+                IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
+ 
 
                 DO AdjacentDomainIdx=1,NumberAllAdjacentDomains
 
@@ -13571,17 +13646,17 @@ STOP
                 DEALLOCATE(numberOfDomainsNodesArray)
                 DEALLOCATE(AllAdjacentDomains)
                 DEALLOCATE(LocalAndAllAdjacentDomains)
-               ELSE
-                  CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
-                ENDIF
               ELSE
-                CALL FlagError("Domain decomposition is not associated.",ERR,ERROR,*999)
+                CALL FlagError("Domain mesh is not associated.",ERR,ERROR,*999)
               ENDIF
             ELSE
-              CALL FlagError("Domain mappings elements is not associated.",ERR,ERROR,*999)
+              CALL FlagError("Domain decomposition is not associated.",ERR,ERROR,*999)
             ENDIF
           ELSE
-            CALL FlagError("Domain mappings dofs is not associated.",ERR,ERROR,*999)
+            CALL FlagError("Domain mappings elements is not associated.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("Domain mappings dofs is not associated.",ERR,ERROR,*999)
           ENDIF
         ELSE
           CALL FlagError("Domain mappings nodes is not associated.",ERR,ERROR,*999)
@@ -14091,7 +14166,7 @@ STOP
                     !IF (local_node /= local_HashNode) CALL FlagError("Node hash has a problem!",ERR,ERROR,*999)
                     IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
                   ELSE
-                    CALL FlagError("Could not find local node!",ERR,ERROR,*999)
+                    CALL FlagError("Could not find total local node!",ERR,ERROR,*999)
                   END IF
 
                   DOMAIN_ELEMENTS%ELEMENTS(local_element)%ELEMENT_NODES(nn)=local_node
