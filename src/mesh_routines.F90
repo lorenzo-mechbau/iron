@@ -11784,7 +11784,7 @@ CONTAINS
                   IF(ERR/=0) CALL FlagError("Could not allocate number of boundary nodes.",ERR,ERROR,*999)
                   NUMBER_BOUNDARY_NODES=0
 
-                  !Allocate hashValuesNodesMatrix 
+                  !Allocate hashValuesNodesMatrix
                   ALLOCATE(hashValuesNodesMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1, &
                     & TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate hashValuesNodesMatrix.",ERR,ERROR,*999)
@@ -13458,7 +13458,6 @@ CONTAINS
                 IF(ALLOCATED(hashValuesNodesMatrix)) DEALLOCATE(hashValuesNodesMatrix)
                 IF(ALLOCATED(hashKeysArray)) DEALLOCATE(hashKeysArray)
                 IF(ALLOCATED(hashValuesSubMatrix)) DEALLOCATE(hashValuesSubMatrix)
- 
 
                 DO AdjacentDomainIdx=1,NumberAllAdjacentDomains
 
