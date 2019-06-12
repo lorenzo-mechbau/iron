@@ -312,7 +312,6 @@ CONTAINS
       !Calculate the decomposition topology
       CALL DECOMPOSITION_TOPOLOGY_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
       DECOMPOSITION%DECOMPOSITION_FINISHED=.TRUE.
-      !
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -402,7 +401,7 @@ CONTAINS
                   newDecomposition%CALCULATE_LINES=.True.
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(2)
-                  newDecomposition%CALCULATE_LINES=.True.
+                  newDecomposition%CALCULATE_LINES=.FALSE.!.True.
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(3)
                   !\todo calculate lines in 3D when needed
@@ -11687,7 +11686,7 @@ CONTAINS
       & NUMBER_OF_DOMAINS, MAX_NUMBER_DOMAINS, domainIdx1, domainIdx2, &
       & boundaryAndBPNodeIdx, boundaryNotBPNodeIdx, numberBNotBPNodes, &
       & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains, &
-      & numberOfHashKeys
+      & numberOfHashKeys, countZero, globalNodeIdx
 
     INTEGER(INTG), ALLOCATABLE :: BoundaryPlaneNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberLocalAndBPandLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryPlaneNodesDomain(:), &
@@ -11697,7 +11696,7 @@ CONTAINS
       & LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:), NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:), boundaryPlane(:), DOMAINS(:), ALL_DOMAINS(:), &
       & GHOST_NODES(:),numberOfDomainsNodesArray(:), AllAdjacentDomains(:), LocalAndAllAdjacentDomains(:), &
-      & hashKeysArray(:), hashIntegerArray(:), hashValuesNodesMatrix(:,:), hashValuesSubMatrix(:,:)
+      & hashKeysArray(:), hashIntegerArray(:), hashValuesNodesMatrix(:,:), hashValuesSubMatrix(:,:), hashArrayLocalNumbers(:)
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
@@ -11795,6 +11794,9 @@ CONTAINS
                   CALL LIST_CREATE_START(hashKeysNodesList,ERR,ERROR,*999)
                   CALL LIST_DATA_TYPE_SET(hashKeysNodesList,LIST_INTG_TYPE,ERR,ERROR,*999)
                   CALL LIST_CREATE_FINISH(hashKeysNodesList,ERR,ERROR,*999)
+
+                  ALLOCATE(hashArrayLocalNumbers(0:NumberComputationalNodes-1),STAT=ERR)
+                  IF(ERR/=0) CALL FlagError("Could not allocate hashArrayLocalNumbers.",ERR,ERROR,*999)
 
                   ! Create list for internal nodes
                   NULLIFY(InternalNodesList)
@@ -13434,6 +13436,26 @@ CONTAINS
 
                 ENDDO  ! GhostNodeIdx
 
+                ! ALLGATHER TO ASSIGN LOCAL NUMBERS OF GHOSTS ON MY RANK
+                DO globalNodeIdx=1,NODES_MAPPING%NUMBER_OF_GLOBAL
+                  hashArrayLocalNumbers(myComputationalNodeNumber) = &
+                    & hashValuesNodesMatrix(3,globalNodeIdx)
+                  !IF (hashValuesNodesMatrix(3,globalNodeIdx)==0) THEN
+                  CALL MPI_ALLGATHER(MPI_IN_PLACE, &
+                    & 1,MPI_INTEGER, hashArrayLocalNumbers(0:NumberComputationalNodes-1), &
+                    & 1,MPI_INTEGER, computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+                  !END IF
+                  IF (hashValuesNodesMatrix(3,globalNodeIdx)==0) THEN
+                    countZero = COUNT(hashArrayLocalNumbers/=0)
+                    IF(countZero==1) THEN
+                      hashValuesNodesMatrix(3,globalNodeIdx) = SUM(hashArrayLocalNumbers)
+                    ELSE
+                      CALL FlagError("One and only one local node on each rank!",ERR,ERROR,*999)
+                    END IF
+                  END IF
+                END DO
+
                 !Hash tables nodes can be concluded here for now
                 CALL LIST_DETACH_AND_DESTROY(hashKeysNodesList,numberOfHashKeys, &
                   & hashIntegerArray,ERR,ERROR,*999)
@@ -14013,8 +14035,9 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: local_element,global_element,local_node,global_node,version_idx,derivative_idx,node_idx,dof_idx, &
-      & component_idx, local_HashNode, indexHash, domain_idx, myComputationalNodeNumber
+    INTEGER(INTG) :: local_element,global_element,local_node, local_node2, &
+      & global_node,version_idx,derivative_idx,node_idx,dof_idx, &
+      & component_idx, indexHash, domain_idx, myComputationalNodeNumber
     INTEGER(INTG) :: ne,nn,nkk,INSERT_STATUS
     INTEGER(INTG), ALLOCATABLE :: hashArray (:)
     LOGICAL :: FOUND, isHashFound
@@ -14027,6 +14050,7 @@ CONTAINS
     TYPE(DOMAIN_DOFS_TYPE), POINTER :: DOMAIN_DOFS
     TYPE(DOMAIN_FACES_TYPE), POINTER :: DOMAIN_FACES
     TYPE(DOMAIN_LINES_TYPE), POINTER :: DOMAIN_LINES
+    !TYPE(TREE_NODE_TYPE), POINTER :: nodeOfNodesTree
 
     ENTERS("DOMAIN_TOPOLOGY_INITIALISE_FROM_MESH",ERR,ERROR,*999)
 
@@ -14039,6 +14063,7 @@ CONTAINS
             MESH=>DOMAIN%MESH
             component_idx=DOMAIN%MESH_COMPONENT_NUMBER
             IF(ASSOCIATED(MESH%TOPOLOGY(component_idx)%PTR)) THEN
+              !NULLIFY(nodeOfNodesTree)
               MESH_ELEMENTS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS
               DOMAIN_ELEMENTS=>DOMAIN%TOPOLOGY%ELEMENTS
               MESH_NODES=>MESH%TOPOLOGY(component_idx)%PTR%NODES
@@ -14125,6 +14150,7 @@ CONTAINS
                 ENDDO !derivative_idx
                 DOMAIN_NODES%NODES(local_node)%BOUNDARY_NODE=MESH_NODES%NODES(global_node)%boundaryNode
               ENDDO !local_node
+
               !Loop over the domain elements and renumber from the mesh elements
               DO local_element=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
                 CALL DOMAIN_TOPOLOGY_ELEMENT_INITIALISE(DOMAIN_ELEMENTS%ELEMENTS(local_element),ERR,ERROR,*999)
@@ -14142,31 +14168,37 @@ CONTAINS
                 IF(ERR/=0) CALL FlagError("Could not allocate domain elements element versions.",ERR,ERROR,*999)
                 DO nn=1,BASIS%NUMBER_OF_NODES
                   global_node=MESH_ELEMENTS%ELEMENTS(global_element)%MESH_ELEMENT_NODES(nn)
+
+                  ! GlobalToLocal obsolete strategy:
                   !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(global_node)%LOCAL_NUMBER(1)
+
+                  !Replace with tree search:
+                  ! NO: local_node is local number on myRank, we want local number at owning domain!
+                  !CALL TREE_SEARCH(DOMAIN_NODES%NODES_TREE,MESH_NODES%NODES(global_node)%userNumber, &
+                  !  & nodeOfNodesTree,ERR,ERROR,*999)
+                  !IF (ASSOCIATED(nodeOfNodesTree)) THEN
+                  !  CALL TREE_NODE_VALUE_GET(DOMAIN_NODES%NODES_TREE, nodeOfNodesTree, local_node2, ERR,ERROR,*999)
+                  !  DEALLOCATE(nodeOfNodesTree)
+                  !ELSE
+                  !  CALL FlagError("Could not find total local node!",ERR,ERROR,*999)
+                  !END IF
 
                   !Replace with hash:
                   CALL HashTable_GetKey(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
-                    global_node, indexHash, isHashFound, ERR, ERROR, *999)
+                    & global_node, indexHash, isHashFound, ERR, ERROR, *999)
                   IF (isHashFound) THEN
                     CALL HashTable_GetValue(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
-                      indexHash, hashArray, ERR, ERROR, *999)
-                    DO domain_idx=1,hashArray(1)
-                      IF(myComputationalNodeNumber==hashArray(domain_idx*3-1)) THEN
-                        !local_HashNode = hashArray(domain_idx*3)  !(1) n. of domains (2) domain no. (3) local no. ...
-                        local_node = hashArray(domain_idx*3)
-                        EXIT
-                      END IF
-                    END DO
-                    !Get rid of write statements
-                    !WRITE(*,*) "hashArray"
-                    !WRITE(*,*) hashArray
-                    !WRITE(*,*) "local_node"
-                    !WRITE(*,*) local_node
-                    !IF (local_node /= local_HashNode) CALL FlagError("Node hash has a problem!",ERR,ERROR,*999)
+                      & indexHash, hashArray, ERR, ERROR, *999)
+                    ! Rather:
+                    local_node= hashArray(3)
+
                     IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
                   ELSE
                     CALL FlagError("Could not find total local node!",ERR,ERROR,*999)
                   END IF
+
+                  !IF (local_node /= local_node2) &
+                  !  & CALL FlagError("Either hash or trees are wrong!!!",ERR,ERROR,*999)
 
                   DOMAIN_ELEMENTS%ELEMENTS(local_element)%ELEMENT_NODES(nn)=local_node
                   DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(nn)
@@ -14534,7 +14566,6 @@ CONTAINS
         CALL DOMAIN_TOPOLOGY_FACES_INITIALISE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
         !Initialise the domain topology from the domain mappings and the mesh it came from
         CALL DOMAIN_TOPOLOGY_INITIALISE_FROM_MESH(DOMAIN,ERR,ERROR,*999)
-        !STOP ! testing hash tables
         !Calculate the topological information.
         CALL DOMAIN_TOPOLOGY_CALCULATE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
       ENDIF
@@ -19164,7 +19195,10 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Gets the domain for a given node in a decomposition of a mesh. \todo should be able to specify lists of elements. \see OPENCMISS::Iron::cmfe_DecompositionNodeDomainGet
+  !>Gets the domain for a given node in a decomposition of a mesh.
+  ! If not local, return -1! Calls to this function are ALWAYS followed by
+  ! IF(DOMAIN_NUMBER==myRank)
+  !\todo should be able to specify lists of elements. \see OPENCMISS::Iron::cmfe_DecompositionNodeDomainGet
   SUBROUTINE DECOMPOSITION_NODE_DOMAIN_GET(DECOMPOSITION,USER_NODE_NUMBER,MESH_COMPONENT_NUMBER,DOMAIN_NUMBER,ERR,ERROR,*)
 
     !Argument variables
@@ -19178,7 +19212,9 @@ CONTAINS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NODE_NUMBER
+    INTEGER(INTG) :: GLOBAL_NODE_NUMBER, indexHash
+    INTEGER(INTG), ALLOCATABLE :: hashArray (:)
+    LOGICAL :: isHashFound
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
     TYPE(MeshNodesType), POINTER :: MESH_NODES
     TYPE(DOMAIN_TYPE), POINTER :: MESH_DOMAIN
@@ -19203,7 +19239,27 @@ CONTAINS
                   IF(MESH_COMPONENT_NUMBER>0.AND.MESH_COMPONENT_NUMBER<=MESH%NUMBER_OF_COMPONENTS) THEN
                     MESH_DOMAIN=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR
                     IF(ASSOCIATED(MESH_DOMAIN)) THEN
-                      DOMAIN_NUMBER=MESH_DOMAIN%NODE_DOMAIN(GLOBAL_NODE_NUMBER)
+                      !DOMAIN_NUMBER=MESH_DOMAIN%NODE_DOMAIN(GLOBAL_NODE_NUMBER)
+
+                      !Replace with hash since we do not populate MESH_DOMAIN%NODE_DOMAIN:
+                      IF(ASSOCIATED(MESH_DOMAIN%MAPPINGS)) THEN
+                        IF(ASSOCIATED(MESH_DOMAIN%MAPPINGS%NODES)) THEN
+                          CALL HashTable_GetKey(MESH_DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
+                            & GLOBAL_NODE_NUMBER, indexHash, isHashFound, ERR, ERROR, *999)
+                          IF (isHashFound) THEN
+                            CALL HashTable_GetValue(MESH_DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
+                              & indexHash, hashArray, ERR, ERROR, *999)
+                            DOMAIN_NUMBER = hashArray(2)
+                            IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
+                          ELSE
+                            DOMAIN_NUMBER = -1
+                          END IF
+                        ELSE
+                          CALL FlagError("Domain mappings is not associated.",ERR,ERROR,*999)
+                        END IF
+                      ELSE
+                        CALL FlagError("Nodes mapping is not associated.",ERR,ERROR,*999)
+                      END IF
                     ELSE
                       CALL FlagError("Decomposition domain is not associated.",ERR,ERROR,*999)
                     ENDIF
