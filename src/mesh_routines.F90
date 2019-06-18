@@ -401,7 +401,7 @@ CONTAINS
                   newDecomposition%CALCULATE_LINES=.True.
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(2)
-                  newDecomposition%CALCULATE_LINES=.FALSE.!.True.
+                  newDecomposition%CALCULATE_LINES=.True.!.FALSE.!
                   newDecomposition%CALCULATE_FACES=.False.
                 CASE(3)
                   !\todo calculate lines in 3D when needed
@@ -642,7 +642,7 @@ CONTAINS
       & NumberComputationalNodes,NumberOfElements,NumberElementsOnOwnComputationalNode, &
       & ElementStart,ElementStop,MyElementStart,MyElementStop, I,J,ElementToSendNo,GlobalElementNo, &
       & MyNumberOfElements,MPI_IERROR,MaxNumberElementsPerNode,component_idx,MinNumberXi,RequestHandle,&
-      & MaximumNumberElementsToSendToOneComputationalNode, GlobalElementNoDomainPair(2), ElementDomainIdx
+      & MaximumNumberElementsToSendToOneComputationalNode, GlobalElementNoDomainPair(2), ElementDomainIdx, ListSize
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_COUNT(:),ADJACENT_NODE_PTR(:),ADJACENT_NODE_INDICES(:),ELEMENT_DISTRIBUTION(:), &
       ! & DISPLACEMENTS(:),RECEIVE_COUNTS(:),ElementDomain(:),NumberElementsDomainTemporary(:),RequestHandles(:),&
       ! & NumberElementsToReceive(:),ReceiveBuffer(:)
@@ -927,10 +927,9 @@ CONTAINS
                     GlobalElementNoDomainPair(2) = ElementDomain(ElementDomainIdx)
 
                     CALL LIST_ITEM_ADD(GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
-                    ElementDomainIdx = ElementDomainIdx+1
-
-                    !This should be deleted!!! Needed in element_domain_get, lines and faces.
+                    !This should be deleted!!! Still needed in lines and faces.
                     DECOMPOSITION%ELEMENT_DOMAIN(GlobalElementNo) = ElementDomain(ElementDomainIdx)
+                    ElementDomainIdx = ElementDomainIdx+1
                   ENDDO
 
                   ! create new list with known number of elements
@@ -1061,7 +1060,9 @@ CONTAINS
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"    Number of elements = ",DECOMPOSITION%numberOfElements, &
         & ERR,ERROR,*999)
 
-      DO ne=1,DECOMPOSITION%numberOfElements
+      CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,ListSize,ERR,ERROR,*999)
+!      DO ne=1,DECOMPOSITION%numberOfElements
+      DO ne=1,ListSize
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Element = ",ne,ERR,ERROR,*999)
         !CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Domain = ",DECOMPOSITION%ELEMENT_DOMAIN(ne), &
         !  & ERR,ERROR,*999)
@@ -2714,7 +2715,9 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Gets the domain for a given element in a decomposition of a mesh. \todo should be able to specify lists of elements. \see OPENCMISS::Iron::cmfe_DecompositionElementDomainGet
+  !>Gets the domain for a given element in a decomposition of a mesh.
+  !Return -1 if element is not local!
+  ! \todo should be able to specify lists of elements. \see OPENCMISS::Iron::cmfe_DecompositionElementDomainGet
   SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_GET(DECOMPOSITION,USER_ELEMENT_NUMBER,DOMAIN_NUMBER,ERR,ERROR,*)
 
     !Argument variables
@@ -2727,11 +2730,12 @@ CONTAINS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_ELEMENT_NUMBER
+    INTEGER(INTG) :: GLOBAL_ELEMENT_NUMBER, localElementNumber
     INTEGER(INTG) :: GlobalElementNoDomainPair(2)
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
     TYPE(MeshElementsType), POINTER :: MESH_ELEMENTS
 
+    LOGICAL :: elementExists, ghostElement
 
     ENTERS("DECOMPOSITION_ELEMENT_DOMAIN_GET",ERR,ERROR,*999)
 
@@ -2750,10 +2754,18 @@ CONTAINS
                 CALL TREE_NODE_VALUE_GET(MESH_ELEMENTS%ELEMENTS_TREE,TREE_NODE,GLOBAL_ELEMENT_NUMBER,ERR,ERROR,*999)
                 IF(GLOBAL_ELEMENT_NUMBER>0.AND.GLOBAL_ELEMENT_NUMBER<=MESH_TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS) THEN
 
-                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
-                    & " should not be used!!!",ERR,ERROR,*999)
-                  DOMAIN_NUMBER = DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)
+                  !CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                  !  & " should not be used!!!",ERR,ERROR,*999)
+                  !DOMAIN_NUMBER = DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)
 
+                  CALL DecompositionTopology_ElementCheckExists(decomposition%Topology, &
+                    & USER_ELEMENT_NUMBER,elementExists,localElementNumber, &
+                    & ghostElement,err,error,*999)
+                  IF (localElementNumber==0 .OR. ghostElement) THEN
+                    DOMAIN_NUMBER = -1
+                  ELSE
+                    DOMAIN_NUMBER = ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+                  END IF
                 ELSE
                   LOCAL_ERROR="Global element number found "//TRIM(NUMBER_TO_VSTRING(GLOBAL_ELEMENT_NUMBER,"*",ERR,ERROR))// &
                     & " is invalid. The limits are 1 to "// &
@@ -2824,16 +2836,15 @@ CONTAINS
               IF(ERR/=0) GOTO 999
               IF(DOMAIN_NUMBER>=0.AND.DOMAIN_NUMBER<number_computational_nodes) THEN
                 !IF (USE_OLD_GLOBAL_IMPLEMENTATION) &
-                IF (.FALSE.) &
-                  & DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
+                IF(GLOBAL_ELEMENT_NUMBER==0) & ! Display following only once
+                  & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                  & " should not be used!!!",ERR,ERROR,*999)
+                DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
 
 !               IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
-                IF (.TRUE.) THEN
-                  GlobalElementNoDomainPair(1) = GLOBAL_ELEMENT_NUMBER
-                  GlobalElementNoDomainPair(2) = DOMAIN_NUMBER
-                  CALL LIST_ITEM_ADD(DECOMPOSITION%GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
-                ENDIF
-
+                GlobalElementNoDomainPair(1) = GLOBAL_ELEMENT_NUMBER
+                GlobalElementNoDomainPair(2) = DOMAIN_NUMBER
+                CALL LIST_ITEM_ADD(DECOMPOSITION%GlobalElementDomain,GlobalElementNoDomainPair,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Domain number "//TRIM(NUMBER_TO_VSTRING(DOMAIN_NUMBER,"*",ERR,ERROR))// &
                   & " is invalid. The limits are 0 to "//TRIM(NUMBER_TO_VSTRING(number_computational_nodes,"*",ERR,ERROR))//"."
@@ -3158,6 +3169,7 @@ CONTAINS
                   DOMAIN=>DECOMPOSITION%DOMAIN(component_idx)%PTR
                   SELECT CASE(DOMAIN%NUMBER_OF_DIMENSIONS)
                   CASE(2)
+
                     CALL DomainMappings_2DLinesCalculate(DOMAIN,ERR,ERROR,*999)! merge into topology lines and generalise
                   CASE(1)
                     CALL DomainMappings_1DLinesCalculate(DOMAIN,ERR,ERROR,*999)! merge into topology lines and generalise
@@ -3166,6 +3178,7 @@ CONTAINS
                     !STOP
                     !CALL FlagError("3D is not yet implemented for line mappings!!",ERR,ERROR,*999)
                   END SELECT
+
                   DOMAIN_LINES=>DOMAIN%TOPOLOGY%LINES
                   ALLOCATE(DOMAIN_LINES%LINES(DOMAIN%MAPPINGS%LINES%TOTAL_NUMBER_OF_LOCAL),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate domain lines lines.",ERR,ERROR,*999)
@@ -3175,6 +3188,7 @@ CONTAINS
                 END DO
                 CALL DECOMPOSITION_TOPOLOGY_LINES_CALCULATE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
               ENDIF
+
               !Calculate the face topology
               IF(DECOMPOSITION%CALCULATE_FACES) THEN
                 CALL DECOMPOSITION_TOPOLOGY_FACES_CALCULATE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
@@ -7238,12 +7252,14 @@ CONTAINS
 
             domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
-
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_SEND_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
               ! now it was found that faceGlobalNo is also on domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
-            ENDIF
+                CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
+              ENDIF
+            END IF
           ENDDO  ! adjacentDomainIdxDomainMappings_FacesCalculate
         ENDIF
 
@@ -7960,13 +7976,15 @@ CONTAINS
 
     !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
     !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-    ALLOCATE(facesMapping%ADJACENT_DOMAINS_PTR(0:facesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
-    facesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+    !OLD implementation only! Comment out for now.
 
-    ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
-    facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+    !ALLOCATE(facesMapping%ADJACENT_DOMAINS_PTR(0:facesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+    !facesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+
+    !ALLOCATE(facesMapping%ADJACENT_DOMAINS_LIST(facesMapping%ADJACENT_DOMAINS_PTR(facesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+    !facesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
 
 
 
@@ -8471,40 +8489,41 @@ CONTAINS
 
           ! determine domain of adjacentElementLocalNo
           DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_RECEIVE_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
 
-              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+                domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
-              ! now it was found that lineGlobalNo is also on the boundary plane of domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+                ! now it was found that lineGlobalNo is also on the boundary plane of domain domainNo, add to list
+                CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
 
-              lineOnBoundaryPlane(boundaryElementLinesIdx)=1
-              numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
+                lineOnBoundaryPlane(boundaryElementLinesIdx)=1
+                numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
 
               !now check if any of the adjacent elements to this adjacent element is on another domain.
               !If it is add it to the domainsOfLineList for this lines index,
               !the rest of domainsOfLineList gets assigned in the following section
-              DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES 
+                DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES
               !Fix this, atm iterating through nodes then surrounding elems of those nodes
               !is the only way to find surrounding elems (including diagonal elems)
-                meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
-                DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
-                  adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
+                  meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
+                  DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
+                    adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
-                    & " should not be used!!!",ERR,ERROR,*999)
-                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
-                  !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
-                  !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
+                    IF (nodeIdx==1.AND.surroundingElemIdx==1) &
+                      & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                      & " should not be used!!!",ERR,ERROR,*999)
+                    domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                    !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                    !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
 
-
-                  IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
-
-                    CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
-                  ENDIF
-                ENDDO !surroundingElemIdx
-              ENDDO !nodeIdx
+                    IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) &
+                      & CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
+                  ENDDO !surroundingElemIdx
+                ENDDO !nodeIdx
+              END IF
             ENDIF
           ENDDO  ! adjacentDomainIdx
         ENDIF
@@ -8541,11 +8560,14 @@ CONTAINS
 
             domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_SEND_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
 
               ! now it was found that lineGlobalNo is also on domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+                CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+              END IF
             ENDIF
           ENDDO  ! adjacentDomainIdxDomainMappings_LinesCalculate
         ENDIF
@@ -9271,16 +9293,15 @@ CONTAINS
 
     !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
     !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+    !OLD implementation only! Comment out for now.
 
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+    !ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
+    !linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
 
-
-
+    !ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
+    !linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
 
     !Diagnostics
 
@@ -9888,7 +9909,8 @@ CONTAINS
                 DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
                   adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                  IF (nodeIdx==1.AND.surroundingElemIdx==1) &
+                    & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
                     & " should not be used!!!",ERR,ERROR,*999)
                   domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
                   !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
@@ -9937,11 +9959,13 @@ CONTAINS
 
             domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
-
-              ! now it was found that lineGlobalNo is also on domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_SEND_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_SEND_INDICES,adjacentElementLocalNo,err,error)) THEN
+                ! now it was found that lineGlobalNo is also on domain domainNo, add to list
+                CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+              ENDIF
             ENDIF
           ENDDO  ! adjacentDomainIdxDomainMappings_LinesCalculate
         ENDIF
@@ -10685,13 +10709,15 @@ CONTAINS
 
     !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
     !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+    !OLD implementation only! Comment out for now.
 
-    ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
-    linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
+    !ALLOCATE(linesMapping%ADJACENT_DOMAINS_PTR(0:linesMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",err,error,*999)
+    !linesMapping%ADJACENT_DOMAINS_PTR=elementsMapping%ADJACENT_DOMAINS_PTR
+
+    !ALLOCATE(linesMapping%ADJACENT_DOMAINS_LIST(linesMapping%ADJACENT_DOMAINS_PTR(linesMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",err,error,*999)
+    !linesMapping%ADJACENT_DOMAINS_LIST=elementsMapping%ADJACENT_DOMAINS_LIST
 
 
     END IF ! Skip everything below internal lines if ranks>1
@@ -11686,7 +11712,7 @@ CONTAINS
       & NUMBER_OF_DOMAINS, MAX_NUMBER_DOMAINS, domainIdx1, domainIdx2, &
       & boundaryAndBPNodeIdx, boundaryNotBPNodeIdx, numberBNotBPNodes, &
       & NumberLocalAndAllAdjacentDomains, NumberAllAdjacentDomains, &
-      & numberOfHashKeys, countZero, globalNodeIdx
+      & numberOfHashKeys, countZero, globalNodeIdx, domainNumberHash, computationalNodeIdx
 
     INTEGER(INTG), ALLOCATABLE :: BoundaryPlaneNodes(:), AdjacentDomains(:), SendRequestHandle(:), ReceiveRequestHandle(:), &
       & NumberLocalAndBPandLocalNodesOnRank(:,:), LocalAndAdjacentDomains(:), BoundaryPlaneNodesDomain(:), &
@@ -11787,7 +11813,7 @@ CONTAINS
                   ALLOCATE(hashValuesNodesMatrix(DECOMPOSITION%NUMBER_OF_DOMAINS*3+1, &
                     & TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate hashValuesNodesMatrix.",ERR,ERROR,*999)
-                  hashValuesNodesMatrix=0
+                  hashValuesNodesMatrix=-1
 
                   !Create hashKeysNodesList
                   NULLIFY(hashKeysNodesList)
@@ -13252,6 +13278,8 @@ CONTAINS
 
                             CALL LIST_ITEM_ADD(LocalGhostSendIndices(AdjacentDomainIdx)%PTR,LocalNodeNo,ERR,ERROR,*999)
 
+                            IF (hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)==-1) &
+                              & hashValuesNodesMatrix(1,BoundaryNodeGlobalNo) = 0
                             hashValuesNodesMatrix(hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)*3+2:4,BoundaryNodeGlobalNo)= &
                               & [DomainNo,0,DOMAIN_LOCAL_GHOST]
                             hashValuesNodesMatrix(1,BoundaryNodeGlobalNo)= &
@@ -13308,13 +13336,13 @@ CONTAINS
                       CALL LIST_ITEM_ADD(LocalGhostReceiveIndices(AdjacentDomainIdx)%PTR,LocalNodeNo-1,ERR,ERROR,*999)
 
                       !Domain where node belongs as boundary
-                      hashValuesNodesMatrix(2:4,GhostNodeGlobalNo)= &
+                      hashValuesNodesMatrix(5:7,GhostNodeGlobalNo)= &
                         & [GhostDomain,0,DOMAIN_LOCAL_BOUNDARY]
                       hashValuesNodesMatrix(1,GhostNodeGlobalNo)= 1
                       CALL LIST_ITEM_ADD (hashKeysNodesList, GhostNodeGlobalNo, err, error,*999)
 
                       !myRank
-                      hashValuesNodesMatrix(5:7,GhostNodeGlobalNo)= &
+                      hashValuesNodesMatrix(2:4,GhostNodeGlobalNo)= &
                         & [myComputationalNodeNumber,LocalNodeNo-1,DOMAIN_LOCAL_GHOST]
                       hashValuesNodesMatrix(1,GhostNodeGlobalNo)= &
                         & hashValuesNodesMatrix(1,GhostNodeGlobalNo)+1
@@ -13436,24 +13464,28 @@ CONTAINS
 
                 ENDDO  ! GhostNodeIdx
 
-                ! ALLGATHER TO ASSIGN LOCAL NUMBERS OF GHOSTS ON MY RANK
+                ! ALLGATHER to assign local numbers on:
+                ! - for ghost node on myRank: domain where node is local (boundary) -- NO further ghosts!!
+                ! - for boundary node on myRank: all domains where node is ghost
                 DO globalNodeIdx=1,NODES_MAPPING%NUMBER_OF_GLOBAL
+
+                  ! Include local number on myRank
                   hashArrayLocalNumbers(myComputationalNodeNumber) = &
-                    & hashValuesNodesMatrix(3,globalNodeIdx)
-                  !IF (hashValuesNodesMatrix(3,globalNodeIdx)==0) THEN
+                      & hashValuesNodesMatrix(3,globalNodeIdx)
+
                   CALL MPI_ALLGATHER(MPI_IN_PLACE, &
                     & 1,MPI_INTEGER, hashArrayLocalNumbers(0:NumberComputationalNodes-1), &
                     & 1,MPI_INTEGER, computationalEnvironment%mpiCommunicator,MPI_IERROR)
                   CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
-                  !END IF
-                  IF (hashValuesNodesMatrix(3,globalNodeIdx)==0) THEN
-                    countZero = COUNT(hashArrayLocalNumbers/=0)
-                    IF(countZero==1) THEN
-                      hashValuesNodesMatrix(3,globalNodeIdx) = SUM(hashArrayLocalNumbers)
-                    ELSE
-                      CALL FlagError("One and only one local node on each rank!",ERR,ERROR,*999)
-                    END IF
-                  END IF
+
+
+                  DO computationalNodeIdx=1,NumberComputationalNodes
+                    !all domain_nos for this global node in the table
+                    domainNumberHash = hashValuesNodesMatrix(computationalNodeIdx*3-1,globalNodeIdx)
+                    IF (domainNumberHash/=-1) &
+                      & hashValuesNodesMatrix(computationalNodeIdx*3,globalNodeIdx) = hashArrayLocalNumbers(domainNumberHash)
+                  END DO
+
                 END DO
 
                 !Hash tables nodes can be concluded here for now
@@ -14037,10 +14069,10 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: local_element,global_element,local_node, local_node2, &
       & global_node,version_idx,derivative_idx,node_idx,dof_idx, &
-      & component_idx, indexHash, domain_idx, myComputationalNodeNumber
+      & component_idx, domain_idx!, myComputationalNodeNumber, indexHash
     INTEGER(INTG) :: ne,nn,nkk,INSERT_STATUS
-    INTEGER(INTG), ALLOCATABLE :: hashArray (:)
-    LOGICAL :: FOUND, isHashFound
+    !INTEGER(INTG), ALLOCATABLE :: hashArray (:)
+    LOGICAL :: FOUND, NODE_EXISTS,GHOST_NODE !,isHashFound
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: DOMAIN_ELEMENTS
@@ -14050,11 +14082,10 @@ CONTAINS
     TYPE(DOMAIN_DOFS_TYPE), POINTER :: DOMAIN_DOFS
     TYPE(DOMAIN_FACES_TYPE), POINTER :: DOMAIN_FACES
     TYPE(DOMAIN_LINES_TYPE), POINTER :: DOMAIN_LINES
-    !TYPE(TREE_NODE_TYPE), POINTER :: nodeOfNodesTree
 
     ENTERS("DOMAIN_TOPOLOGY_INITIALISE_FROM_MESH",ERR,ERROR,*999)
 
-    myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
+    !myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
 
     IF(ASSOCIATED(DOMAIN)) THEN
       IF(ASSOCIATED(DOMAIN%TOPOLOGY)) THEN
@@ -14063,7 +14094,6 @@ CONTAINS
             MESH=>DOMAIN%MESH
             component_idx=DOMAIN%MESH_COMPONENT_NUMBER
             IF(ASSOCIATED(MESH%TOPOLOGY(component_idx)%PTR)) THEN
-              !NULLIFY(nodeOfNodesTree)
               MESH_ELEMENTS=>MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS
               DOMAIN_ELEMENTS=>DOMAIN%TOPOLOGY%ELEMENTS
               MESH_NODES=>MESH%TOPOLOGY(component_idx)%PTR%NODES
@@ -14173,29 +14203,20 @@ CONTAINS
                   !local_node=DOMAIN%MAPPINGS%NODES%GLOBAL_TO_LOCAL_MAP(global_node)%LOCAL_NUMBER(1)
 
                   !Replace with tree search:
-                  ! NO: local_node is local number on myRank, we want local number at owning domain!
-                  !CALL TREE_SEARCH(DOMAIN_NODES%NODES_TREE,MESH_NODES%NODES(global_node)%userNumber, &
-                  !  & nodeOfNodesTree,ERR,ERROR,*999)
-                  !IF (ASSOCIATED(nodeOfNodesTree)) THEN
-                  !  CALL TREE_NODE_VALUE_GET(DOMAIN_NODES%NODES_TREE, nodeOfNodesTree, local_node2, ERR,ERROR,*999)
-                  !  DEALLOCATE(nodeOfNodesTree)
+                  CALL DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(DOMAIN%TOPOLOGY,MESH_NODES%NODES(global_node)%userNumber, &
+                    & NODE_EXISTS,local_node,GHOST_NODE,ERR,ERROR,*999)
+                 !Replace with hash:
+                 ! CALL HashTable_GetKey(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
+                 !   & global_node, indexHash, isHashFound, ERR, ERROR, *999)
+                 ! IF (isHashFound) THEN
+                 !   CALL HashTable_GetValue(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
+                 !     & indexHash, hashArray, ERR, ERROR, *999)
+                 !   local_node= hashArray(3)
+
+                  !  IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
                   !ELSE
-                  !  CALL FlagError("Could not find total local node!",ERR,ERROR,*999)
+                  !  CALL FlagError("Hash: Could not find total local node!",ERR,ERROR,*999)
                   !END IF
-
-                  !Replace with hash:
-                  CALL HashTable_GetKey(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
-                    & global_node, indexHash, isHashFound, ERR, ERROR, *999)
-                  IF (isHashFound) THEN
-                    CALL HashTable_GetValue(DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
-                      & indexHash, hashArray, ERR, ERROR, *999)
-                    ! Rather:
-                    local_node= hashArray(3)
-
-                    IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
-                  ELSE
-                    CALL FlagError("Could not find total local node!",ERR,ERROR,*999)
-                  END IF
 
                   !IF (local_node /= local_node2) &
                   !  & CALL FlagError("Either hash or trees are wrong!!!",ERR,ERROR,*999)
@@ -19249,7 +19270,23 @@ CONTAINS
                           IF (isHashFound) THEN
                             CALL HashTable_GetValue(MESH_DOMAIN%MAPPINGS%NODES%domainMappingHashes(1)%PTR, &
                               & indexHash, hashArray, ERR, ERROR, *999)
-                            DOMAIN_NUMBER = hashArray(2)
+                            SELECT CASE (hashArray(4)) ! Type of node on myRank
+                            !Node is local:
+                            CASE(DOMAIN_LOCAL_INTERNAL)
+                              DOMAIN_NUMBER = hashArray(2)
+                            CASE(DOMAIN_LOCAL_BOUNDARY)
+                              DOMAIN_NUMBER = hashArray(2)
+                            !Node is ghost: owner domain (boundary) is the following entry in the table
+                            CASE(DOMAIN_LOCAL_GHOST)
+                              IF (hashArray(7)==DOMAIN_LOCAL_BOUNDARY) THEN
+                                DOMAIN_NUMBER = hashArray(5)
+                              ELSE
+                                CALL FlagError("Hash table entries are wrong!",ERR,ERROR,*999)
+                              END IF
+                            CASE DEFAULT
+                              CALL FlagError("Hash table entries are wrong!",ERR,ERROR,*999)
+                            END SELECT
+
                             IF (ALLOCATED(hashArray)) DEALLOCATE (hashArray)
                           ELSE
                             DOMAIN_NUMBER = -1

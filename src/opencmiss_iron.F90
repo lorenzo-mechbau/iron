@@ -43332,6 +43332,7 @@ CONTAINS
   !
 
   !>Returns the domain for a given element in a decomposition identified by a user number.
+  !Returns -1 if element is not local.
   SUBROUTINE cmfe_Decomposition_ElementDomainGetNumber(regionUserNumber,meshUserNumber,decompositionUserNumber, &
     & elementUserNumber,domain,err)
     !DLLEXPORT(cmfe_Decomposition_ElementDomainGetNumber)
@@ -43371,6 +43372,7 @@ CONTAINS
   !
 
   !>Returns the domain for a given element in a decomposition identified by an object.
+  !Returns -1 if element is not local.
   SUBROUTINE cmfe_Decomposition_ElementDomainGetObj(decomposition,elementUserNumber,domain,err)
     !DLLEXPORT(cmfe_Decomposition_ElementDomainGetObj)
 
@@ -44105,6 +44107,7 @@ CONTAINS
   !
 
   !>Returns the domain for a given node in a decomposition identified by a user number.
+  !Returns -1 if node is not total-local.
   SUBROUTINE cmfe_Decomposition_NodeDomainGetNumber(regionUserNumber,meshUserNumber,decompositionUserNumber, &
     & nodeUserNumber,meshComponentNumber,domain,err)
     !DLLEXPORT(cmfe_Decomposition_NodeDomainGetNumber)
@@ -44145,6 +44148,7 @@ CONTAINS
   !
 
   !>Returns the domain for a given node in a decomposition identified by an object. \todo Maybe swap Node and MeshComponent?
+  !Returns -1 if node is not total-local.
   SUBROUTINE cmfe_Decomposition_NodeDomainGetObj(decomposition,nodeUserNumber,meshComponentNumber,domain,err)
     !DLLEXPORT(cmfe_Decomposition_NodeDomainGetObj)
 
