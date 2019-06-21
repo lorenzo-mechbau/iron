@@ -416,7 +416,7 @@ CONTAINS
                 newDecomposition%CALCULATE_CENTRE_LENGTHS=.FALSE.
                 ALLOCATE(newDecomposition%ELEMENT_DOMAIN(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
                 IF(ERR/=0) CALL FlagError("Could not allocate new decomposition element domain.",ERR,ERROR,*999)
-                newDecomposition%ELEMENT_DOMAIN=0
+                newDecomposition%ELEMENT_DOMAIN=-1
 
                 !create DECOMPOSITION%GlobalElementDomain, with standard size (of 10 entries)
                 NULLIFY(GlobalElementDomain)
@@ -932,6 +932,10 @@ CONTAINS
                     ElementDomainIdx = ElementDomainIdx+1
                   ENDDO
 
+                  CALL MPI_ALLGATHERV(MPI_IN_PLACE,MaxNumberElementsPerNode,MPI_INTEGER,DECOMPOSITION%ELEMENT_DOMAIN, &
+                    & RECEIVE_COUNTS,ELEMENT_DISTRIBUTION,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+                  CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+
                   ! create new list with known number of elements
                   IF (ASSOCIATED(DECOMPOSITION%GlobalElementDomain)) THEN
                     CALL LIST_DESTROY(DECOMPOSITION%GlobalElementDomain,ERR,ERROR,*999)
@@ -957,9 +961,20 @@ CONTAINS
               ENDIF
 
             CASE(DECOMPOSITION_USER_DEFINED_TYPE)
-            !Do nothing. Decomposition checked below.
+
+            !Use allreduce to get all %element_domain in all ranks in case of distributed input.
+            !%element_domain is initialised to -1, then max would return the correct rank.
+              IF (COUNT(decomposition%ELEMENT_DOMAIN==-1)/=0) THEN
+                DO elem_index=1,MESH%NUMBER_OF_ELEMENTS
+                  CALL MPI_ALLREDUCE(MPI_IN_PLACE,DECOMPOSITION%ELEMENT_DOMAIN(elem_index), &
+                    & 1,MPI_INTEGER,MPI_MAX, computationalEnvironment%mpiCommunicator,MPI_IERROR )
+                  CALL MPI_ERROR_CHECK("MPI_ALLREDUCE",MPI_IERROR,err,error,*999)
+                END DO
+              END IF
+
             !Sort according to element global number
               CALL LIST_SORT(DECOMPOSITION%GlobalElementDomain,ERR,ERROR,*999)
+
             CASE DEFAULT
               CALL FlagError("Invalid domain decomposition type.",ERR,ERROR,*999)
             END SELECT
@@ -1063,10 +1078,10 @@ CONTAINS
       CALL List_NumberOfItemsGet(DECOMPOSITION%GlobalElementDomain,ListSize,ERR,ERROR,*999)
 !      DO ne=1,DECOMPOSITION%numberOfElements
       DO ne=1,ListSize
-        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Element = ",ne,ERR,ERROR,*999)
         !CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Domain = ",DECOMPOSITION%ELEMENT_DOMAIN(ne), &
         !  & ERR,ERROR,*999)
         CALL LIST_ITEM_GET(DECOMPOSITION%GlobalElementDomain,ne, GlobalElementNoDomainPair, ERR,ERROR,*999)
+        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Element = ",GlobalElementNoDomainPair(1),ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"        Domain = ",GlobalElementNoDomainPair(2), &
           & ERR,ERROR,*999)
       ENDDO !ne
@@ -2836,9 +2851,10 @@ CONTAINS
               IF(ERR/=0) GOTO 999
               IF(DOMAIN_NUMBER>=0.AND.DOMAIN_NUMBER<number_computational_nodes) THEN
                 !IF (USE_OLD_GLOBAL_IMPLEMENTATION) &
-                IF(GLOBAL_ELEMENT_NUMBER==0) & ! Display following only once
+                IF(GLOBAL_ELEMENT_NUMBER==1) & ! Display following only once
                   & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
                   & " should not be used!!!",ERR,ERROR,*999)
+
                 DECOMPOSITION%ELEMENT_DOMAIN(GLOBAL_ELEMENT_NUMBER)=DOMAIN_NUMBER
 
 !               IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
@@ -7187,36 +7203,39 @@ CONTAINS
 
           ! determine domain of adjacentElementLocalNo
           DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_RECEIVE_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
 
-              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+                domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
               ! now it was found that faceGlobalNo is also on the boundary plane of domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
+                CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo,err,error,*999)
 
-              faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx)=1
-              numberBoundaryPlaneFaces=numberBoundaryPlaneFaces+1
+                faceOnBoundaryPlane(boundaryAndBoundaryPlaneFaceIdx)=1
+                numberBoundaryPlaneFaces=numberBoundaryPlaneFaces+1
 
               !now check if any of the adjacent elements to this adjacent element is on another domain.
               !If it is add it to the domainsOfFaceList for this faces index, the rest of domainsOfFaceList gets assigned in the following section
-              DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES !Fix this, atm iterating through nodes then surrounding elems of those nodes is the only way to find surrounding elems (including diagonal elems)
-                meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
-                DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
-                  adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
+                DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES !Fix this, atm iterating through nodes then surrounding elems of those nodes is the only way to find surrounding elems (including diagonal elems)
+                  meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
+                  DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
+                    adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
-                    & " should not be used!!!",ERR,ERROR,*999)
-                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                    CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                      & " should not be used!!!",ERR,ERROR,*999)
+                    domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
                   !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
                   !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
 
-                  IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
+                    IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
 
-                    CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo2,err,error,*999)
-                  ENDIF
-                ENDDO !surroundingElemIdx
-              ENDDO !nodeIdx
+                      CALL LIST_ITEM_ADD(domainsOfFaceList(boundaryAndBoundaryPlaneFaceIdx)%PTR,domainNo2,err,error,*999)
+                    ENDIF
+                  ENDDO !surroundingElemIdx
+                ENDDO !nodeIdx
+              END IF
             ENDIF
           ENDDO  ! adjacentDomainIdx
         ENDIF
@@ -8502,7 +8521,7 @@ CONTAINS
                 lineOnBoundaryPlane(boundaryElementLinesIdx)=1
                 numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
 
-              !now check if any of the adjacent elements to this adjacent element is on another domain.
+              !now check if any of the adjacent elements to this adjacent element is on ANOTHER domain.
               !If it is add it to the domainsOfLineList for this lines index,
               !the rest of domainsOfLineList gets assigned in the following section
                 DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES
@@ -8516,8 +8535,6 @@ CONTAINS
                       & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
                       & " should not be used!!!",ERR,ERROR,*999)
                     domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
-                    !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
-                    !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
 
                     IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) &
                       & CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
@@ -8546,7 +8563,7 @@ CONTAINS
         adjacentElementGlobalNo=topology%lines%lines(lineGlobalNo)%surroundingElements(adjacentElementIdx)
 
 
-        ! if adjacent element is among the boundary or ghost elements, i.e is also on another domain. 
+        ! if adjacent element is among the boundary elements, i.e is also on another domain.
         !The tempArray has the global numbers
         !of the boundary elements from boundary start in index 1 to boundary finish in the final index, 
         !therefore we can get the element idx from the index in the array.
@@ -8774,6 +8791,7 @@ CONTAINS
     DO boundaryElementLinesIdx=1,numberBoundaryElementLinesList
       CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,myComputationalNodeNumber,err,error,*999)
       CALL LIST_SORT(domainsOfLineList(boundaryElementLinesIdx)%PTR,err,error,*999)
+      CALL LIST_REMOVE_DUPLICATES(domainsOfLineList(boundaryElementLinesIdx)%PTR,err,error,*999)
     ENDDO
 
 
@@ -9888,41 +9906,43 @@ CONTAINS
 
           ! determine domain of adjacentElementLocalNo
           DO adjacentDomainIdx=1,elementsMapping%NUMBER_OF_ADJACENT_DOMAINS
-            IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
-              & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
+            IF (ALLOCATED(elementsMapping%ADJACENT_DOMAINS(AdjacentDomainIdx)%&
+              & LOCAL_GHOST_RECEIVE_INDICES)) THEN
+              IF (SORTED_ARRAY_CONTAINS_ELEMENT(elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%&
+                & LOCAL_GHOST_RECEIVE_INDICES,adjacentElementLocalNo,err,error)) THEN
 
-              domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+                domainNo = elementsMapping%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
 
               ! now it was found that lineGlobalNo is also on the boundary plane of domain domainNo, add to list
-              CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
+                CALL LIST_ITEM_ADD(domainsOfBoundaryPlaneLineList(boundaryElementLinesIdx)%PTR,domainNo,err,error,*999)
 
-              lineOnBoundaryPlane(boundaryElementLinesIdx)=1
-              numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
+                lineOnBoundaryPlane(boundaryElementLinesIdx)=1
+                numberBoundaryPlaneLines=numberBoundaryPlaneLines+1
 
               !now check if any of the adjacent elements to this adjacent element is on another domain.
               !If it is add it to the domainsOfLineList for this lines index,
               !the rest of domainsOfLineList gets assigned in the following section
-              DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES
+                DO nodeIdx = 1,topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%BASIS%NUMBER_OF_NODES
               !Fix this, atm iterating through nodes then surrounding elems of those nodes
               !is the only way to find surrounding elems (including diagonal elems)
-                meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
-                DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
-                  adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
+                  meshNodeNo=topology%ELEMENTS%ELEMENTS(adjacentElementGlobalNo)%MESH_ELEMENT_NODES(nodeIdx)
+                  DO surroundingElemIdx = 1,topology%NODES%NODES(meshNodeNo)%numberOfSurroundingElements
+                    adjacentElementGlobalNo2 = topology%NODES%NODES(meshNodeNo)%surroundingElements(surroundingElemIdx)
 
-                  IF (nodeIdx==1.AND.surroundingElemIdx==1) &
-                    & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
-                    & " should not be used!!!",ERR,ERROR,*999)
-                  domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
-                  !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
-                  !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
+                    IF (nodeIdx==1.AND.surroundingElemIdx==1) &
+                      & CALL FlagWarning("DECOMPOSITION%ELEMENT_DOMAIN is a global structure which" // &
+                      & " should not be used!!!",ERR,ERROR,*999)
+                    domainNo2=decomposition%ELEMENT_DOMAIN(adjacentElementGlobalNo2)
+                    !Unsure if decomposition should be used here. If so, can use decomposition more in this subroutine.
+                    !It should NOT because elements are now distributed!!! DECOMPOSITION%ELEMENT_DOMAIN is only a temporary fix.
 
 
-                  IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
-
-                    CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
-                  ENDIF
-                ENDDO !surroundingElemIdx
-              ENDDO !nodeIdx
+                    IF(domainNo2/=domainNo .AND. domainNo2/=myComputationalNodeNumber) THEN
+                      CALL LIST_ITEM_ADD(domainsOfLineList(boundaryElementLinesIdx)%PTR,domainNo2,err,error,*999)
+                    ENDIF
+                  ENDDO !surroundingElemIdx
+                ENDDO !nodeIdx
+              END IF
             ENDIF
           ENDDO  ! adjacentDomainIdx
         ENDIF
