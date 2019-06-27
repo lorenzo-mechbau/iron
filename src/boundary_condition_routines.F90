@@ -2948,15 +2948,16 @@ CONTAINS
         ENDDO ! adjacentDomainIdx
 
 
-        !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
+        !Not needed:
+        !allocate and assign domainMappings%ADJACENT_DOMAINS_PTR and domainMappings%ADJACENT_DOMAINS_LIST
         !From the rowMapping mapping
-        ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_PTR(0:pointDofMapping%NUMBER_OF_DOMAINS),STAT=ERR)
-        IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
-        pointDofMapping%ADJACENT_DOMAINS_PTR=rowMapping%ADJACENT_DOMAINS_PTR
+        !ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_PTR(0:pointDofMapping%NUMBER_OF_DOMAINS),STAT=ERR)
+        !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+        !pointDofMapping%ADJACENT_DOMAINS_PTR=rowMapping%ADJACENT_DOMAINS_PTR
 
-        ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_LIST(rowMapping%ADJACENT_DOMAINS_PTR(rowMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-        IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
-        pointDofMapping%ADJACENT_DOMAINS_LIST=rowMapping%ADJACENT_DOMAINS_LIST
+        !ALLOCATE(pointDofMapping%ADJACENT_DOMAINS_LIST(rowMapping%ADJACENT_DOMAINS_PTR(rowMapping%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+        !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+        !pointDofMapping%ADJACENT_DOMAINS_LIST=rowMapping%ADJACENT_DOMAINS_LIST
 
 
         ! CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(pointDofMapping,err,error,*999)

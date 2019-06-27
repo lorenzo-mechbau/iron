@@ -1894,12 +1894,13 @@ CONTAINS
       & NumberRemoteBoundaryElements, RemoteDomainNo, ComputationalNodeNo, MpiMemoryWindow, Sign, &
       & AdjacentDomainIdx, DomainIdx, ElementIdx, MpiRequest, AssertValue, MpiGroup, GhostSendIndexGlobalNo, LocalElementNo, &
       & MaximumReceiveBufferSize, MaximumSendBufferSize, FoundElementsCount, GhostIdx, &
-      & FirstGhostElementGlobalNo, LastGhostElementGlobalNo, NumberRemoteGhostElements
+      & FirstGhostElementGlobalNo, LastGhostElementGlobalNo, NumberRemoteGhostElements, &
+      & domainNo, domainNo2, countAdjacentDomains, countAdjacentDomains2, adjacentDomainsListSize
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     INTEGER(INTG), ALLOCATABLE :: NumberBoundaryElements(:), FirstLastBoundaryElement(:), BoundaryElementGlobalNumber(:), &
       & RemoteBoundaryElements(:), SendRequestHandle(:), ReceiveRequestHandle(:), SendBuffers(:,:), ReceiveBuffers(:,:), &
       & NumberGhostElements(:), FirstLastGhostElement(:), GhostElementGlobalNumber(:), &
-      & RemoteGhostElements(:)
+      & RemoteGhostElements(:), adjacentFullList(:), ELEMENT_DISTRIBUTION(:), RECEIVE_COUNTS(:)
     INTEGER(KIND=MPI_ADDRESS_KIND) LB, EXTENT, MpiLocalWindowSizeBytes, MpiTargetDisplacement, MpiDisplacementsUnitBytes
     TYPE(LIST_TYPE), POINTER :: AdjacentDomainsList
     TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: AdjacentDomain
@@ -2189,7 +2190,6 @@ CONTAINS
               AdjacentDomain%LOCAL_GHOST_RECEIVE_INDICES(1) = GhostElementLocalNo
 
               ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS = ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS+1
-
 
               IF (DIAGNOSTICS2) THEN
                 CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"reshape to size "// &
@@ -2665,6 +2665,79 @@ CONTAINS
         IF (FoundElementsCount >= 6) EXIT
       ENDDO ! I
     ENDDO ! GhostElementLocalNo
+
+    !Now fill %adjacent_domains_list and _ptr
+    !ELEMENTS_MAPPING%NUMBER_OF_DOMAINS=numberOfComputationalNodes!
+
+    ALLOCATE(ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+
+    !Fill first with the number of adjacent domains to myRank
+    ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR=0
+    ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(myComputationalNodeNumber)=ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+    !Gather from all ranks
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,1,MPI_INTEGER,ELEMENTS_MAPPING%&
+      & ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1), &
+      & 1,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+
+    !For testing (-np 4): OK
+    !ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1) = [0,2,1,3]
+
+    !Fill according to the definition of %ADJACENT_DOMAINS_PTR in types.F90
+    countAdjacentDomains = ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(0)
+    ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(0) = 1
+    DO domainNo=0,ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1
+      countAdjacentDomains2=ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNo+1)
+      ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNo+1) = &
+        & ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNo)+ countAdjacentDomains
+      countAdjacentDomains=countAdjacentDomains2
+    END DO
+
+    !In adjacent_domains_list all adjacent domains to every rank are stored.
+    !Assume first that every rank is adjacent to all the others:
+    ALLOCATE(adjacentFullList(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS*(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacentFullList.",ERR,ERROR,*999)
+
+    adjacentFullList=-1
+    !Fill with the adjacent domains to myRank
+    DO adjacentDomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+      adjacentFullList(myComputationalNodeNumber*(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)+adjacentDomainIdx)= &
+        & ELEMENTS_MAPPING%ADJACENT_DOMAINS(adjacentDomainIdx)%DOMAIN_NUMBER
+    END DO
+
+    !For testing (-np 4): OK
+    !adjacentFullList = [-1,-1,-1,2,3,-1,1,-1,-1,0,3,2]
+
+    !Now prepare an allgatherv on adjacentFullList:
+    ! ELEMENT_DISTRIBUTION(np): first global element number for process np
+    ALLOCATE(ELEMENT_DISTRIBUTION(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate element distance.",ERR,ERROR,*999)
+
+    !RECEIVE_COUNTS(np): number of global elements for process np
+    ALLOCATE(RECEIVE_COUNTS(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate recieve counts.",ERR,ERROR,*999)
+
+    DO domainIdx=0,ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1
+      ELEMENT_DISTRIBUTION(domainIdx)= &
+        & (ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)*domainIdx !+1:NO, C numbering!!
+      RECEIVE_COUNTS(domainIdx) = ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1
+    END DO
+
+    !Gather from all ranks the adjacent domains into adjacentFullList
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1,MPI_INTEGER,adjacentFullList, &
+      & RECEIVE_COUNTS,ELEMENT_DISTRIBUTION,MPI_INTEGER,computationalEnvironment%mpiCommunicator,MPI_IERROR)
+    CALL MPI_ERROR_CHECK("MPI_ALLGATHERV",MPI_IERROR,ERR,ERROR,*999)
+
+    !Now build %ADJACENT_DOMAINS_LIST as described in types.F90
+    !Adjust array to actual number of adjacent domains.
+    adjacentDomainsListSize = COUNT(adjacentFullList/=-1)
+
+    IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST)) DEALLOCATE(ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST)
+    ALLOCATE(ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST(adjacentDomainsListSize),STAT=ERR)
+    IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+
+    ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST = PACK(adjacentFullList,adjacentFullList/=-1)
 
     ! synchronize RMA
     CALL MPI_WIN_FENCE(MPI_MODE_NOSUCCEED, MpiMemoryWindow, MPI_IERROR)
@@ -13595,6 +13668,12 @@ CONTAINS
                   !  PRINT *, MyComputationalNodeNumber, ": rank ",I,": ",NODES_MAPPING%NUMBER_OF_DOMAIN_GHOST(I)
                   !ENDDO
                 ENDIF
+
+                ! Deallocate ghost_further_indices since not any longer needed
+                DO DomainIdx=1,ELEMENTS_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+                  IF (ALLOCATED(ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%LOCAL_GHOST_FURTHER_INDICES)) &
+                    & DEALLOCATE (ELEMENTS_MAPPING%ADJACENT_DOMAINS(DomainIdx)%LOCAL_GHOST_FURTHER_INDICES)
+                END DO
 
                 ! ----------------------------------------------
                 ! set some values in DOFS_MAPPING

@@ -6047,9 +6047,9 @@ CONTAINS
             ENDIF
           ENDDO !domainIdx2
           IF(.NOT.found) CALL FlagError("Could not find domain to set the receive tag number.",err,error,*999)
-            domainIdx2=domainIdx2-domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+1
-            cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber+ &
-              & domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
+          domainIdx2=domainIdx2-domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+1
+          cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber+ &
+            & domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
           SELECT CASE(distributedVector%dataType)
           CASE(DISTRIBUTED_MATRIX_VECTOR_INTG_TYPE)
             ALLOCATE(cmissVector%transfers(domainIdx)%sendBufferIntg(cmissVector%transfers(domainIdx)%sendBufferSize),STAT=err)
