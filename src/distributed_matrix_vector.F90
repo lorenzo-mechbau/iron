@@ -922,7 +922,7 @@ CONTAINS
       distributedDataId=distributedDataId+1
     ELSE
       distributedDataId=distributedDataId+ &
-        & domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
+        & domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
     END IF
     CALL Matrix_CreateFinish(cmissMatrix%matrix,err,error,*999)
 
@@ -1030,7 +1030,10 @@ CONTAINS
       CALL FlagError(localError,err,error,*999)
     END SELECT
 
-    ! START my hash implementation    
+    ! START my hash implementation
+    !This is just an early example to demonstrate functioning of hash tables implemented according to
+    !Fredman 1984
+    !Can be removed since does not affect solution.
 
     ! use columnDomainMapping ltg info to create hash:
     ! hash type in type of distributedMatrix%cmiss, move in future? petsc already handles. OK
@@ -6023,7 +6026,9 @@ CONTAINS
     IF(domainMapping%NUMBER_OF_DOMAINS==1) THEN
       distributedDataId=distributedDataId+1
     ELSE
-      distributedDataId=distributedDataId+domainMapping%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
+      !We take adjacent_domains_ptr and _list directly from the decomposition
+      distributedDataId=distributedDataId+ &
+        &domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainMapping%NUMBER_OF_DOMAINS)
     END IF
     IF(domainMapping%NUMBER_OF_ADJACENT_DOMAINS>0) THEN
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(err,error)
@@ -6037,19 +6042,20 @@ CONTAINS
           cmissVector%transfers(domainIdx)%receiveBufferSize=domainMapping%ADJACENT_DOMAINS(domainIdx)%NUMBER_OF_RECEIVE_GHOSTS
           cmissVector%transfers(domainIdx)%dataType=distributedVector%dataType
           cmissVector%transfers(domainIdx)%sendTagNumber=cmissVector%baseTagNumber+ &
-            & domainMapping%ADJACENT_DOMAINS_PTR(myComputationalNodeNumber)+domainIdx-1
+            & domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(myComputationalNodeNumber)+domainIdx-1
           domainNumber=domainMapping%ADJACENT_DOMAINS(domainIdx)%DOMAIN_NUMBER
           found=.FALSE.
-          DO domainIdx2=domainMapping%ADJACENT_DOMAINS_PTR(domainNumber),domainMapping%ADJACENT_DOMAINS_PTR(domainNumber+1)-1
-            IF(domainMapping%ADJACENT_DOMAINS_LIST(domainIdx2)==myComputationalNodeNumber) THEN
+          DO domainIdx2=domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNumber), &
+            & domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNumber+1)-1
+            IF(domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST(domainIdx2)==myComputationalNodeNumber) THEN
               found=.TRUE.
               EXIT
             ENDIF
           ENDDO !domainIdx2
           IF(.NOT.found) CALL FlagError("Could not find domain to set the receive tag number.",err,error,*999)
-          domainIdx2=domainIdx2-domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+1
+          domainIdx2=domainIdx2-domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNumber)+1
           cmissVector%transfers(domainIdx)%receiveTagNumber=cmissVector%baseTagNumber+ &
-            & domainMapping%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
+            & domainMapping%decomposition%ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR(domainNumber)+domainIdx2-1
           SELECT CASE(distributedVector%dataType)
           CASE(DISTRIBUTED_MATRIX_VECTOR_INTG_TYPE)
             ALLOCATE(cmissVector%transfers(domainIdx)%sendBufferIntg(cmissVector%transfers(domainIdx)%sendBufferSize),STAT=err)

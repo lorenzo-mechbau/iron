@@ -11176,7 +11176,6 @@ CONTAINS
       myComputationalNodeNumber=ComputationalEnvironment_NodeNumberGet(ERR,ERROR)
       IF(ERR/=0) GOTO 999
 
-
       !The following line is what the if statement should be, for now we will just use new implementation if one of the components has face or line interpolation
       !IF (USE_NEW_LOCAL_IMPLEMENTATION) THEN
       countIfFace=0
@@ -11670,6 +11669,16 @@ CONTAINS
 
           ! mapping from variable data (multiple components) to storage positions (dofs)
           FIELD_VARIABLE_DOFS_MAPPING=>FIELD%VARIABLES(variable_idx)%DOMAIN_MAPPING
+
+          ! Define the pointer to the decomposition
+          IF(.NOT.ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION)) THEN
+            FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION=>FIELD%DECOMPOSITION
+          ELSE
+            CALL FlagError("FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION already associated!",ERR,ERROR,*999)
+          END IF
+
+          PRINT *, "Testing field dofs calculation."
+          STOP
 
           FIELD%VARIABLES(variable_idx)%NUMBER_OF_DOFS = NUMBER_OF_LOCAL_VARIABLE_DOFS
           FIELD%VARIABLES(variable_idx)%TOTAL_NUMBER_OF_DOFS = TOTAL_NUMBER_OF_VARIABLE_DOFS
@@ -15594,16 +15603,16 @@ CONTAINS
 
 
 
+          !No need! We access this %ADJACENT_DOMAIN_PTR and _LIST directly from the decomposition.
           !allocate and assign domainMappings%ADJACENT_DOMAIN_PTR and domainMappings%ADJACENT_DOMAIN_LIST
           !Currently for elements and nodes this is done in DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE
-          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
-          FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR=ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR
-
-          ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST(ELEMENTS_MAPPING% &
-            & ADJACENT_DOMAINS_PTR(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)),STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
-          FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST=ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST
+          !ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR(0:ELEMENTS_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
+          !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
+          !FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_PTR=ELEMENTS_MAPPING%ADJACENT_DOMAINS_PTR
+          !ALLOCATE(FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST(ELEMENTS_MAPPING% &
+          !  & ADJACENT_DOMAINS_PTR(ELEMENTS_MAPPING%NUMBER_OF_DOMAINS-1)),STAT=ERR)
+          !IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
+          !FIELD_VARIABLE_DOFS_MAPPING%ADJACENT_DOMAINS_LIST=ELEMENTS_MAPPING%ADJACENT_DOMAINS_LIST
 
 
 
@@ -15816,6 +15825,16 @@ CONTAINS
             CALL LIST_CREATE_START(hashKeysList(1)%PTR,ERR,ERROR,*999)
             CALL LIST_DATA_TYPE_SET(hashKeysList(1)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
             CALL LIST_CREATE_FINISH(hashKeysList(1)%PTR,ERR,ERROR,*999)
+
+            ! Define the pointer to the decomposition
+            IF(.NOT.ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION)) THEN
+              FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION=>FIELD%DECOMPOSITION
+            ELSE
+              CALL FlagError("FIELD_VARIABLE_DOFS_MAPPING%DECOMPOSITION already associated!",ERR,ERROR,*999)
+            END IF
+
+            PRINT *, "Testing field dofs calculation."
+            STOP
 
           ENDIF
           !The ordering of the DOFs with respect to components is arbitrary. Allow for two orderings: The first ordering is that

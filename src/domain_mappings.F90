@@ -789,6 +789,7 @@ CONTAINS
         DOMAIN_MAPPING%GHOST_START=0
         DOMAIN_MAPPING%GHOST_FINISH=0
         DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS=0
+        NULLIFY(DOMAIN_MAPPING%DECOMPOSITION)
       ELSE
         LOCAL_ERROR="The specified number of domains of "//TRIM(NUMBER_TO_VSTRING(NUMBER_OF_DOMAINS,"*",ERR,ERROR))// &
           & " is invalid. The number of domains must be > 0."
